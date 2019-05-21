@@ -1,3 +1,9 @@
+loki (3.0.6-2~ubuntu1804) bionic; urgency=medium
+
+  * Create bionic packaging branch
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 21 May 2019 20:10:44 -0300
+
 loki (3.0.6-2) unstable; urgency=medium
 
   * Add systemd service files for mainnet/testnet.  mainnet gets enabled by
