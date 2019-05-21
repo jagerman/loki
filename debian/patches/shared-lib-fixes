@@ -89,38 +89,6 @@ index cea50c9..fc80654 100644
  endif()
  
  if(HAVE_C11)
-diff --git a/debian/changelog b/debian/changelog
-index 68e83b3..a36062b 100644
---- a/debian/changelog
-+++ b/debian/changelog
-@@ -1,3 +1,9 @@
-+loki (3.0.6-2~deb9) stretch; urgency=medium
-+
-+  * Update for stretch.
-+
-+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 21 May 2019 19:34:57 -0300
-+
- loki (3.0.6-2) unstable; urgency=medium
- 
-   * Add systemd service files for mainnet/testnet.  mainnet gets enabled by
-diff --git a/debian/gbp.conf b/debian/gbp.conf
-index b40df07..4de1001 100644
---- a/debian/gbp.conf
-+++ b/debian/gbp.conf
-@@ -1,11 +1,11 @@
- [DEFAULT]
- upstream-branch = master
--debian-branch = debian/sid
-+debian-branch = debian/stretch
- upstream-tag = v%(version)s
- 
- [buildpackage]
- ignore-new = true
- pbuilder = true
--dist = sid
-+dist = stretch
- arch = amd64
- submodules = true
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
 index 7553f87..b907c1b 100644
 --- a/external/CMakeLists.txt

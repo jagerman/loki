@@ -1,3 +1,10 @@
+loki (3.0.6-2~deb9) stretch; urgency=medium
+
+  * Drop system libminiupnpc patch
+  * Update packaging for debian stretch.
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 21 May 2019 19:42:46 -0300
+
 loki (3.0.6-2) unstable; urgency=medium
 
   * Add systemd service files for mainnet/testnet.  mainnet gets enabled by
