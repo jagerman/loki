@@ -4,14 +4,14 @@ Priority: optional
 Maintainer: Jason Rhinelander <jason@imaginary.ca>
 Build-Depends: debhelper (>= 11), dh-systemd, cmake, g++, libboost-dev (>= 1.58), libboost-filesystem-dev, libboost-thread-dev,
     libboost-date-time-dev, libboost-chrono-dev, libboost-regex-dev, libboost-serialization-dev, libboost-program-options-dev,
-    libboost-locale-dev, libunbound-dev (>= 1.4.16), libminiupnpc-dev (>= 2.1), libunwind8-dev, libssl-dev, libreadline-dev,
+    libboost-locale-dev, libunbound-dev (>= 1.4.16), libunwind8-dev, libssl-dev, libreadline-dev, libsodium-dev,
     libhidapi-dev, libusb-1.0-0-dev, libzmq3-dev, libprotobuf-dev, protobuf-compiler, python3, pkg-config
 Standards-Version: 4.1.3
 Homepage: https://loki.network
 
 Package: libloki-core3.0.6
 Architecture: any
-Depends: libminiupnpc17 (>= 2.1), ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Loki shared libraries
  This package contains the common Loki library code used by the various loki
  binaries.
@@ -73,6 +73,6 @@ Section: libdevel
 Depends: libloki-core-wallet3.0.6 (= ${binary:Version}), libloki-core3.0.6 (= ${binary:Version}),
  libboost-dev (>= 1.58), libboost-filesystem-dev,libboost-thread-dev, libboost-date-time-dev, libboost-chrono-dev,
  libboost-regex-dev, libboost-serialization-dev, libboost-program-options-dev, libboost-locale-dev, libunbound-dev (>= 1.4.16),
- libminiupnpc-dev, libssl-dev, libreadline-dev, libhidapi-dev, libzmq3-dev, ${misc:Depends}
+ libsodium-dev, libreadline-dev, libhidapi-dev, libzmq3-dev, ${misc:Depends}
 Description: Loki development files
  This contains the headers needed to compile code that uses the loki libraries.
