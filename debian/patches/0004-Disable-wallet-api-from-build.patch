@@ -1,0 +1,18 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Tue, 21 May 2019 21:01:51 -0300
+Subject: Disable wallet/api from build
+
+---
+ src/wallet/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/wallet/CMakeLists.txt b/src/wallet/CMakeLists.txt
+index c8c7901..d80743c 100644
+--- a/src/wallet/CMakeLists.txt
++++ b/src/wallet/CMakeLists.txt
+@@ -150,4 +150,4 @@ if (BUILD_GUI_DEPS)
+             DESTINATION ${lib_folder})
+ endif()
+ 
+-add_subdirectory(api)
++#add_subdirectory(api)

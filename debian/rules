@@ -24,8 +24,8 @@ override_dh_strip:
 	dh_strip --no-ddebs
 
 override_dh_installsystemd:
-	dh_installsystemd --name=loki-testnet-node --no-enable --no-start
-	dh_installsystemd --name=loki-node
+	dh_installsystemd --name=loki-testnet-node --no-enable --no-start --restart-after-upgrade
+	dh_installsystemd --name=loki-node --restart-after-upgrade
 
 override_dh_systemd_enable:
 	dh_systemd_enable --name=loki-node

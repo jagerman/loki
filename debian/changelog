@@ -1,6 +1,6 @@
-loki (3.0.6-2~ubuntu1804) unstable; urgency=medium
+loki (3.0.6-2~ubuntu1604) xenial; urgency=medium
 
-  * Create bionic packaging branch
+  * Create xenial packaging branch
 
  -- Jason Rhinelander <jason@imaginary.ca>  Tue, 21 May 2019 20:10:44 -0300
 

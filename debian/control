@@ -2,7 +2,7 @@ Source: loki
 Section: net
 Priority: optional
 Maintainer: Jason Rhinelander <jason@imaginary.ca>
-Build-Depends: debhelper (>= 11), dh-systemd, cmake, g++, libboost-dev (>= 1.58), libboost-filesystem-dev, libboost-thread-dev,
+Build-Depends: debhelper (>= 9), dh-systemd, cmake, g++, libboost-dev (>= 1.58), libboost-filesystem-dev, libboost-thread-dev,
     libboost-date-time-dev, libboost-chrono-dev, libboost-regex-dev, libboost-serialization-dev, libboost-program-options-dev,
     libboost-locale-dev, libunbound-dev (>= 1.4.16), libunwind8-dev, libssl-dev, libreadline-dev, libsodium-dev,
     libhidapi-dev, libusb-1.0-0-dev, libzmq3-dev, libprotobuf-dev, protobuf-compiler, python3, pkg-config

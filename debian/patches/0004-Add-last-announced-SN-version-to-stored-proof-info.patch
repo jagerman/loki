@@ -22,10 +22,10 @@ guaranteed to iterate through all elements before C++14.
  6 files changed, 31 insertions(+), 23 deletions(-)
 
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index 36cb957..533d278 100644
+index d6b828a..7fcc0f1 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -1367,10 +1367,9 @@ namespace cryptonote
+@@ -1382,10 +1382,9 @@ namespace cryptonote
      return true;
    }
    //-----------------------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ index 36cb957..533d278 100644
    }
    //-----------------------------------------------------------------------------------------------
    bool core::handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof)
-@@ -1704,7 +1703,7 @@ namespace cryptonote
+@@ -1719,7 +1718,7 @@ namespace cryptonote
      {
        // Code snippet from Github @Jagerman
        m_check_uptime_proof_interval.do_call([&states, this](){
@@ -48,10 +48,10 @@ index 36cb957..533d278 100644
            this->submit_uptime_proof();
  
 diff --git a/src/cryptonote_core/cryptonote_core.h b/src/cryptonote_core/cryptonote_core.h
-index db09913..b255504 100644
+index c193ba3..84a43ce 100644
 --- a/src/cryptonote_core/cryptonote_core.h
 +++ b/src/cryptonote_core/cryptonote_core.h
-@@ -876,9 +876,9 @@ namespace cryptonote
+@@ -877,9 +877,9 @@ namespace cryptonote
        *
        * @param key The public key of the service node
        *
