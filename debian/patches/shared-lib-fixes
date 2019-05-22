@@ -211,9 +211,9 @@ index ada901e..41bde6d 100644
  add_subdirectory(device_trezor)
 +
 +install(
-+    DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}"
++    DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/"
 +    DESTINATION "include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}"
-+    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
++    FILES_MATCHING PATTERN "*.h")
 diff --git a/src/blockchain_db/CMakeLists.txt b/src/blockchain_db/CMakeLists.txt
 index 8663b63..ff1266d 100644
 --- a/src/blockchain_db/CMakeLists.txt
