@@ -1,3 +1,9 @@
+loki (3.0.6-2~ubuntu1904) disco; urgency=medium
+
+  * Add disco package.
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 22 May 2019 16:55:22 -0300
+
 loki (3.0.6-2) unstable; urgency=medium
 
   * Add systemd service files for mainnet/testnet.  mainnet gets enabled by
