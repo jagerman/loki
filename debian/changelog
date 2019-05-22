@@ -1,3 +1,9 @@
+loki (3.0.6-3~ubuntu1904) disco; urgency=medium
+
+  * Fix -dev package header install location.
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 22 May 2019 17:32:06 -0300
+
 loki (3.0.6-2~ubuntu1904) disco; urgency=medium
 
   * Add disco package.
