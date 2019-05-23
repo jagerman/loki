@@ -1,8 +1,9 @@
 loki (3.0.6-3~ubuntu1804) bionic; urgency=medium
 
+  * Remove `arch` to allow both amd64/i386 builds
   * Fix -dev package header install location.
 
- -- Jason Rhinelander <jason@imaginary.ca>  Wed, 22 May 2019 17:32:06 -0300
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 23 May 2019 01:20:20 -0300
 
 loki (3.0.6-2~ubuntu1804) bionic; urgency=medium
 
