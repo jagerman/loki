@@ -1,5 +1,11 @@
 loki (3.0.6-3~deb9) stretch; urgency=medium
 
+  * Remove `arch` to allow both amd64/i386 builds
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 23 May 2019 01:21:28 -0300
+
+loki (3.0.6-3~deb9) stretch; urgency=medium
+
   * Fix -dev package header install location.
 
  -- Jason Rhinelander <jason@imaginary.ca>  Wed, 22 May 2019 17:32:06 -0300
