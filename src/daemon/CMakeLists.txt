@@ -97,3 +97,10 @@ set_property(TARGET daemon
   PROPERTY
     OUTPUT_NAME "lokid")
 install(TARGETS daemon DESTINATION bin)
+
+loki_add_executable(loki-generate-service-key
+  generate-service-key.cpp)
+target_link_libraries(loki-generate-service-key
+  PRIVATE
+    cryptonote_core
+    )
