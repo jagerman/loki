@@ -198,21 +198,31 @@ namespace service_nodes
                   if (!info.is_decommissioned())
                     continue;
 
-                  // Currently decommissioned but came back online: recommission
                   vote_for_state = new_state::recommission;
+                  LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " is now online; voting to recommission");
                 }
                 else {
                   int64_t credit = calculate_decommission_credit(info, latest_height);
 
                   if (info.is_decommissioned()) {
-                    if (credit >= 0)
-                      continue; // Still have some decommission credit left: leave decommissioned
+                    if (credit >= 0) {
+                      LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " is still down but has remaining credit (" <<
+                          credit << " blocks); abstaining (to leave decommissioned)");
+                      continue;
+                    }
 
+                    LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " has no remaining credit; voting to deregister");
                     vote_for_state = new_state::deregister; // Credit ran out!
                   } else {
-                    // Not currently decommissioned: if the snode meets the minimum credit
-                    // requirement, decommission; otherwise deregister.
-                    vote_for_state = credit >= DECOMMISSION_MINIMUM ? new_state::decommission : new_state::deregister;
+                    if (credit >= DECOMMISSION_MINIMUM) {
+                      vote_for_state = new_state::decommission;
+                      LOG_PRINT_L2("Service node " << quorum->workers[node_index] << " is offline but has sufficient earned credit (" <<
+                          credit << " blocks) to avoid deregistration; voting to decommission");
+                    } else {
+                      vote_for_state = new_state::deregister;
+                      LOG_PRINT_L2("Service node " << quorum->workers[node_index] << " is offline but has insufficient earned credit (" <<
+                          credit << " blocks, " << DECOMMISSION_MINIMUM << " required) to decommission; voting to deregister");
+                    }
                   }
                 }
 
