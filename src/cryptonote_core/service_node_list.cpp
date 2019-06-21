@@ -1412,13 +1412,21 @@ namespace service_nodes
 
       quorum->validators.reserve(num_validators);
       quorum->workers.reserve(num_workers);
-      auto validators_it = pub_keys_indexes.begin(),
-           workers_it    = validators_it + num_validators,
-           end_it        = workers_it + num_workers;
-      auto get_pubkey = [&active_snode_list, &decomm_snode_list](size_t node_index) -> const crypto::public_key & {
-        return (node_index < active_snode_list.size() ? active_snode_list[node_index] : decomm_snode_list[node_index - active_snode_list.size()]).first; };
-      std::transform(validators_it, workers_it, std::back_inserter(quorum->validators), get_pubkey);
-      std::transform(workers_it,    end_it,     std::back_inserter(quorum->workers),    get_pubkey);
+
+      size_t i = 0;
+      for (; i < num_validators; i++)
+      {
+        quorum->validators.push_back(active_snode_list[pub_keys_indexes[i]].first);
+      }
+
+      for (; i < num_validators + num_workers; i++)
+      {
+        size_t j = pub_keys_indexes[i];
+        if (j < active_snode_list.size())
+          quorum->workers.push_back(active_snode_list[j].first);
+        else
+          quorum->workers.push_back(decomm_snode_list[j - active_snode_list.size()].first);
+      }
     }
   }
 
