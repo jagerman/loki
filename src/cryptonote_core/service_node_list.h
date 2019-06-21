@@ -159,8 +159,8 @@ namespace service_nodes
   template<typename RandomIt>
   void loki_shuffle(RandomIt begin, RandomIt end, uint64_t seed)
   {
+    if (end <= begin + 1) return;
     const size_t size = std::distance(begin, end);
-    if (size <= 1) return;
     std::mt19937_64 mersenne_twister(seed);
     for (size_t i = 1; i < size; i++)
     {
