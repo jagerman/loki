@@ -848,11 +848,7 @@ namespace cryptonote
       if (find_tx_extra_field_by_type(tx_extra_fields, state_change))
         return true;
     }
-
-    // Old-style deregistration are accepted in v12 mainly to allow ones in the mempool at the fork
-    // to work; v12 nodes should only be producing new-style txes, and they will be refused from v13
-    // onwards.
-    if (hf_version <= cryptonote::network_version_12_checkpointing) {
+    else { // v11 or earlier; parse the old style and copy into a new style
       tx_extra_service_node_deregister_old dereg;
       if (find_tx_extra_field_by_type(tx_extra_fields, dereg))
       {
