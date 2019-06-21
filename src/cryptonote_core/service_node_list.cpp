@@ -53,16 +53,7 @@ namespace service_nodes
 {
   static int get_min_service_node_info_version_for_hf(int hf_version)
   {
-    if (hf_version >= cryptonote::network_version_7 && hf_version <= cryptonote::network_version_9_service_nodes)
-      return service_node_info::version_0;
-
-    if (hf_version == cryptonote::network_version_10_bulletproofs)
-      return service_node_info::version_1_swarms;
-
-    if (hf_version == cryptonote::network_version_11_infinite_staking)
-      return service_node_info::version_2_infinite_staking;
-
-    return service_node_info::version_3_checkpointing;
+    return service_node_info::version_0_checkpointing; // Versioning reset with the full SN rescan in 4.0.0
   }
 
   service_node_list::service_node_list(cryptonote::Blockchain& blockchain)
@@ -654,9 +645,7 @@ namespace service_nodes
     info.total_contributed = 0;
     info.total_reserved = 0;
     info.version = get_min_service_node_info_version_for_hf(hf_version);
-
-    if (info.version >= service_node_info::version_1_swarms)
-      info.swarm_id = UNASSIGNED_SWARM_ID;
+    info.swarm_id = UNASSIGNED_SWARM_ID;
 
     info.contributors.clear();
 

@@ -43,10 +43,7 @@ namespace service_nodes
   {
     enum version
     {
-      version_0,
-      version_1_swarms,
-      version_2_infinite_staking,
-      version_3_checkpointing,
+      version_0_checkpointing, // versioning reset in 4.0.0 (data structure storage changed)
     };
 
     struct contribution_t
@@ -85,8 +82,7 @@ namespace service_nodes
         VARINT_FIELD(amount)
         VARINT_FIELD(reserved)
         FIELD(address)
-        if (version >= version_2_infinite_staking)
-          FIELD(locked_contributions)
+        FIELD(locked_contributions)
       END_SERIALIZE()
     };
 
@@ -127,16 +123,11 @@ namespace service_nodes
       VARINT_FIELD(staking_requirement)
       VARINT_FIELD(portions_for_operator)
       FIELD(operator_address)
-
-      if (version >= service_node_info::version_1_swarms)
-        VARINT_FIELD(swarm_id)
-      if (version >= service_node_info::version_3_checkpointing)
-      {
-        VARINT_FIELD(public_ip)
-        VARINT_FIELD(storage_port)
-        VARINT_FIELD(active_since_height)
-        VARINT_FIELD(last_decommission_height)
-      }
+      VARINT_FIELD(swarm_id)
+      VARINT_FIELD(public_ip)
+      VARINT_FIELD(storage_port)
+      VARINT_FIELD(active_since_height)
+      VARINT_FIELD(last_decommission_height)
     END_SERIALIZE()
   };
 
@@ -314,12 +305,8 @@ namespace service_nodes
       BEGIN_SERIALIZE()
         FIELD(version)
         FIELD(height)
-        if (version >= service_node_info::version_3_checkpointing) {
-          FIELD_N("obligations_quorum", quorums[static_cast<uint8_t>(quorum_type::obligations)])
-          FIELD_N("checkpointing_quorum", quorums[static_cast<uint8_t>(quorum_type::checkpointing)])
-        } else {
-          FIELD_N("deregister_quorum", quorums[static_cast<uint8_t>(quorum_type::state_change)])
-        }
+        FIELD_N("obligations_quorum", quorums[static_cast<uint8_t>(quorum_type::obligations)])
+        FIELD_N("checkpointing_quorum", quorums[static_cast<uint8_t>(quorum_type::checkpointing)])
       END_SERIALIZE()
     };
 
@@ -338,8 +325,7 @@ namespace service_nodes
         FIELD(infos)
         FIELD(events)
         FIELD(height)
-        if (version >= service_node_info::version_2_infinite_staking)
-          FIELD(key_image_blacklist)
+        FIELD(key_image_blacklist)
       END_SERIALIZE()
     };
 
