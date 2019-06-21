@@ -91,6 +91,8 @@ namespace service_nodes
 
     static int64_t calculate_decommission_credit(const service_node_info &info, uint64_t current_height);
 
+    bool check_service_node(const crypto::public_key &pubkey, const service_node_info &info) const;
+
   private:
     void process_quorums(cryptonote::block const &block);
 

@@ -128,35 +128,36 @@ namespace service_nodes
     void                         remove_used_votes   (std::vector<cryptonote::transaction> const &txs, uint8_t hard_fork_version);
     std::vector<quorum_vote_t>   get_relayable_votes () const;
 
-    struct state_change_pool_key
+  private:
+    std::vector<pool_vote_entry> *find_vote_pool(const quorum_vote_t &vote, bool create_if_not_found = false);
+
+    struct state_change_pool_entry
     {
-      state_change_pool_key(const quorum_vote_t &vote)
+      explicit state_change_pool_entry(const quorum_vote_t &vote)
           : height{vote.block_height}, worker_index{vote.state_change.worker_index}, state{vote.state_change.state} {}
-      state_change_pool_key(const cryptonote::tx_extra_service_node_state_change &sc)
+      state_change_pool_entry(const cryptonote::tx_extra_service_node_state_change &sc)
           : height{sc.block_height}, worker_index{sc.service_node_index}, state{sc.state} {}
 
       uint64_t                     height;
       uint32_t                     worker_index;
       new_state                    state;
+      std::vector<pool_vote_entry> votes;
 
-      bool operator==(const state_change_pool_key &e) const { return height == e.height && worker_index == e.worker_index && state == e.state; }
-      struct hash { size_t operator()(const state_change_pool_key &e) const { return std::hash<uint64_t>{}(e.height) + e.worker_index; } };
+      bool operator==(const state_change_pool_entry &e) const { return height == e.height && worker_index == e.worker_index && state == e.state; }
     };
+    std::vector<state_change_pool_entry> m_state_change_pool;
 
-  private:
-    std::unordered_map<state_change_pool_key, std::vector<pool_vote_entry>, state_change_pool_key::hash> m_state_change_pool;
-
-    struct checkpoint_pool_key
+    struct checkpoint_pool_entry
     {
-      checkpoint_pool_key(const quorum_vote_t &vote) : height{vote.block_height}, hash{vote.checkpoint.block_hash} {}
-
+      explicit checkpoint_pool_entry(const quorum_vote_t &vote) : height{vote.block_height}, hash{vote.checkpoint.block_hash} {}
+      checkpoint_pool_entry(uint64_t height, crypto::hash const &hash): height(height), hash(hash) {}
       uint64_t                     height;
       crypto::hash                 hash;
+      std::vector<pool_vote_entry> votes;
 
-      bool operator==(const checkpoint_pool_key &e) const { return height == e.height && hash == e.hash; }
-      struct hash_t { size_t operator()(const checkpoint_pool_key &e) const { return std::hash<crypto::hash>{}(e.hash); } };
+      bool operator==(const checkpoint_pool_entry &e) const { return height == e.height && hash == e.hash; }
     };
-    std::unordered_map<checkpoint_pool_key, std::vector<pool_vote_entry>, checkpoint_pool_key::hash_t> m_checkpoint_pool;
+    std::vector<checkpoint_pool_entry> m_checkpoint_pool;
 
     mutable epee::critical_section m_lock;
   };

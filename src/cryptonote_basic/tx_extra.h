@@ -274,6 +274,12 @@ namespace cryptonote
     uint32_t                 service_node_index;
     std::vector<vote>        votes;
 
+    tx_extra_service_node_state_change() = default;
+
+    template <typename... VotesArgs>
+    tx_extra_service_node_state_change(service_nodes::new_state state, uint64_t block_height, uint32_t service_node_index, VotesArgs &&...votes)
+        : state{state}, block_height{block_height}, service_node_index{service_node_index}, votes{std::forward<VotesArgs>(votes)...} {}
+
     // Compares equal if this represents a state change of the same SN (does *not* require equality of stored votes)
     bool operator==(const tx_extra_service_node_state_change &sc) const {
       return state == sc.state && block_height == sc.block_height && service_node_index == sc.service_node_index;

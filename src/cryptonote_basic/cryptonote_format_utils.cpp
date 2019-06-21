@@ -857,7 +857,7 @@ namespace cryptonote
       if (find_tx_extra_field_by_type(tx_extra_fields, dereg))
       {
         state_change = tx_extra_service_node_state_change{
-          service_nodes::new_state::deregister, dereg.block_height, dereg.service_node_index, {dereg.votes.begin(), dereg.votes.end()}};
+          service_nodes::new_state::deregister, dereg.block_height, dereg.service_node_index, dereg.votes.begin(), dereg.votes.end()};
         return true;
       }
     }

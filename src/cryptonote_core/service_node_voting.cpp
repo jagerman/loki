@@ -330,6 +330,34 @@ namespace service_nodes
     return result;
   }
 
+  template <typename T>
+  static std::vector<pool_vote_entry> *find_vote_in_pool(std::vector<T> &pool, const quorum_vote_t &vote, bool create) {
+    T typed_vote{vote};
+    auto it = std::find(pool.begin(), pool.end(), typed_vote);
+    if (it != pool.end())
+      return &it->votes;
+    if (!create)
+      return nullptr;
+    pool.push_back(std::move(typed_vote));
+    return &pool.back().votes;
+  }
+
+  std::vector<pool_vote_entry> *voting_pool::find_vote_pool(const quorum_vote_t &find_vote, bool create_if_not_found) {
+    switch(find_vote.type)
+    {
+      default:
+        LOG_PRINT_L1("Unhandled find_vote type with value: " << (int)find_vote.type);
+        assert("Unhandled find_vote type" == 0);
+        return nullptr;
+
+      case quorum_type::state_change:
+        return find_vote_in_pool(m_state_change_pool, find_vote, create_if_not_found);
+
+      case quorum_type::checkpointing:
+        return find_vote_in_pool(m_checkpoint_pool, find_vote, create_if_not_found);
+    }
+  }
+
   void voting_pool::set_relayed(const std::vector<quorum_vote_t>& votes)
   {
     CRITICAL_REGION_LOCAL(m_lock);
@@ -337,32 +365,7 @@ namespace service_nodes
 
     for (const quorum_vote_t &find_vote : votes)
     {
-      std::vector<pool_vote_entry> *vote_pool = nullptr;
-      switch(find_vote.type)
-      {
-        default:
-        {
-          LOG_PRINT_L1("Unhandled find_vote type with value: " << (int)find_vote.type);
-          assert("Unhandled find_vote type" == 0);
-          break;
-        };
-
-        case quorum_type::state_change:
-        {
-          auto it = m_state_change_pool.find(find_vote);
-          if (it != m_state_change_pool.end())
-            vote_pool = &it->second;
-        }
-        break;
-
-        case quorum_type::checkpointing:
-        {
-          auto it = m_checkpoint_pool.find(find_vote);
-          if (it != m_checkpoint_pool.end())
-            vote_pool = &it->second;
-        }
-        break;
-      }
+      std::vector<pool_vote_entry> *vote_pool = find_vote_pool(find_vote);
 
       if (vote_pool) // We found the group that this vote belongs to
       {
@@ -378,10 +381,10 @@ namespace service_nodes
     }
   }
 
-  template <typename Map>
-  static void append_relayable_votes(std::vector<quorum_vote_t> &result, const Map &pool, const time_t now, const time_t threshold) {
+  template <typename T>
+  static void append_relayable_votes(std::vector<quorum_vote_t> &result, const T &pool, const time_t now, const time_t threshold) {
     for (const auto &pool_entry : pool)
-      for (const auto &vote_entry : pool_entry.second)
+      for (const auto &vote_entry : pool_entry.votes)
         if (now > (time_t)vote_entry.time_last_sent_p2p + threshold)
           result.push_back(vote_entry.vote);
   }
@@ -433,16 +436,9 @@ namespace service_nodes
     }
 
     CRITICAL_REGION_LOCAL(m_lock);
-    auto *votes =
-      vote.type == quorum_type::state_change  ? &m_state_change_pool[vote] :
-      vote.type == quorum_type::checkpointing ? &m_checkpoint_pool[vote]   :
-      nullptr;
+    auto *votes = find_vote_pool(vote, /*create_if_not_found=*/ true);
     if (!votes)
-    {
-      LOG_PRINT_L1("Unhandled vote type with value: " << (int)vote.type);
-      assert("Unhandled vote type" == 0);
       return {};
-    }
 
     vvc.m_added_to_pool = add_vote_to_pool_if_unique(*votes, vote);
     return *votes;
@@ -467,16 +463,20 @@ namespace service_nodes
         continue;
       }
 
-      m_state_change_pool.erase(state_change);
+      auto it = std::find(m_state_change_pool.begin(), m_state_change_pool.end(), state_change);
+
+      if (it != m_state_change_pool.end())
+        m_state_change_pool.erase(it);
     }
   }
 
   template <typename T>
-  static void cull_votes(T &vote_pool, uint64_t min_height, uint64_t max_height)
+  static void cull_votes(std::vector<T> &vote_pool, uint64_t min_height, uint64_t max_height)
   {
-    for (auto it = vote_pool.begin(), end = vote_pool.end(); it != end; )
+    for (auto it = vote_pool.begin(); it != vote_pool.end(); )
     {
-      if (it->first.height < min_height || it->first.height > max_height)
+      const T &pool_entry = *it;
+      if (pool_entry.height < min_height || pool_entry.height > max_height)
         it = vote_pool.erase(it);
       else
         ++it;

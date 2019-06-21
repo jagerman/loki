@@ -65,6 +65,18 @@ namespace service_nodes
       process_quorums(blk);
   }
 
+  // Perform service node tests -- this returns true is the server node is in a good state, that is,
+  // has submitted uptime proofs, participated in required quorums, etc.
+  bool quorum_cop::check_service_node(const crypto::public_key &pubkey, const service_node_info &info) const
+  {
+      if (!m_uptime_proof_seen.count(pubkey))
+        return false;
+
+      // TODO: check for missing checkpoint quorum votes
+
+      return true;
+  }
+
   void quorum_cop::blockchain_detached(uint64_t height)
   {
     // TODO(doyle): Assumes large reorgs that are no longer possible with checkpointing
@@ -111,7 +123,7 @@ namespace service_nodes
     if (!m_core.get_service_node_keys(my_pubkey, my_seckey))
       return;
 
-    if (!m_core.is_service_node(my_pubkey))
+    if (!m_core.is_service_node(my_pubkey, /*require_active=*/ true))
       return;
 
     uint64_t const height = cryptonote::get_block_height(block);
@@ -179,6 +191,7 @@ namespace service_nodes
               auto worker_states = m_core.get_service_node_list_state(quorum->workers);
               auto worker_it = worker_states.begin();
               CRITICAL_REGION_LOCAL(m_lock);
+              int good = 0, total = 0;
               for (size_t node_index = 0; node_index < quorum->workers.size(); ++worker_it, ++node_index)
               {
                 // If the SN no longer exists then it'll be omitted from the worker_states vector,
@@ -187,26 +200,29 @@ namespace service_nodes
                   node_index++;
                 if (node_index == quorum->workers.size())
                   break;
+                total++;
 
                 const auto &node_key = worker_it->pubkey;
                 const auto &info  = worker_it->info;
 
-                bool online_now = m_uptime_proof_seen.count(node_key);
+                bool checks_passed = check_service_node(node_key, info);
 
                 new_state vote_for_state;
-                if (online_now) {
-                  if (!info.is_decommissioned())
+                if (checks_passed) {
+                  if (!info.is_decommissioned()) {
+                    good++;
                     continue;
+                  }
 
                   vote_for_state = new_state::recommission;
-                  LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " is now online; voting to recommission");
+                  LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " is now passing required checks; voting to recommission");
                 }
                 else {
                   int64_t credit = calculate_decommission_credit(info, latest_height);
 
                   if (info.is_decommissioned()) {
                     if (credit >= 0) {
-                      LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " is still down but has remaining credit (" <<
+                      LOG_PRINT_L2("Decommissioned service node " << quorum->workers[node_index] << " is still not passing required checks, but has remaining credit (" <<
                           credit << " blocks); abstaining (to leave decommissioned)");
                       continue;
                     }
@@ -216,11 +232,11 @@ namespace service_nodes
                   } else {
                     if (credit >= DECOMMISSION_MINIMUM) {
                       vote_for_state = new_state::decommission;
-                      LOG_PRINT_L2("Service node " << quorum->workers[node_index] << " is offline but has sufficient earned credit (" <<
+                      LOG_PRINT_L2("Service node " << quorum->workers[node_index] << " has stopped passing required checks, but has sufficient earned credit (" <<
                           credit << " blocks) to avoid deregistration; voting to decommission");
                     } else {
                       vote_for_state = new_state::deregister;
-                      LOG_PRINT_L2("Service node " << quorum->workers[node_index] << " is offline but has insufficient earned credit (" <<
+                      LOG_PRINT_L2("Service node " << quorum->workers[node_index] << " has stopped passing required checks, but does not have sufficient earned credit (" <<
                           credit << " blocks, " << DECOMMISSION_MINIMUM << " required) to decommission; voting to deregister");
                     }
                   }
@@ -232,6 +248,8 @@ namespace service_nodes
                 if (!handle_vote(vote, vvc))
                   LOG_ERROR("Failed to add uptime check_state vote; reason: " << print_vote_verification_context(vvc, nullptr));
               }
+              if (good > 0)
+                LOG_PRINT_L2(good << " of " << total << " service nodes are active and passing checks; no state change votes required");
             }
           }
         }
@@ -323,7 +341,8 @@ namespace service_nodes
         return false;
       };
 
-      case quorum_type::state_change: break;
+      case quorum_type::state_change:
+      break;
       case quorum_type::checkpointing:
       {
         cryptonote::block block;
@@ -365,14 +384,12 @@ namespace service_nodes
       {
         if (votes.size() >= STATE_CHANGE_MIN_VOTES_TO_CHANGE_STATE)
         {
-          cryptonote::tx_extra_service_node_state_change state_change;
-          state_change.block_height       = vote.block_height;
-          state_change.service_node_index = vote.state_change.worker_index;
+          cryptonote::tx_extra_service_node_state_change state_change{
+            vote.state_change.state, vote.block_height, vote.state_change.worker_index};
           state_change.votes.reserve(votes.size());
 
           std::transform(votes.begin(), votes.end(), std::back_inserter(state_change.votes), [](pool_vote_entry const &pool_vote) {
-            auto result = cryptonote::tx_extra_service_node_state_change::vote(pool_vote.vote.signature, pool_vote.vote.index_in_group);
-            return result;
+            return cryptonote::tx_extra_service_node_state_change::vote{pool_vote.vote.signature, pool_vote.vote.index_in_group};
           });
 
           cryptonote::transaction state_change_tx = {};
@@ -400,6 +417,10 @@ namespace service_nodes
                          << vote.block_height << " and service node: " << vote.state_change.worker_index);
           }
         }
+        else
+        {
+          LOG_PRINT_L2("Don't have enough votes yet to submit a state change transaction: have " << votes.size() << " of " << STATE_CHANGE_MIN_VOTES_TO_CHANGE_STATE << " required");
+        }
       }
       break;
 
@@ -422,6 +443,9 @@ namespace service_nodes
           }
 
           m_core.get_blockchain_storage().update_checkpoint(checkpoint);
+        }
+        {
+          LOG_PRINT_L2("Don't have enough votes yet to submit a checkpoint: have " << votes.size() << " of " << CHECKPOINT_MIN_VOTES << " required");
         }
       }
       break;
@@ -475,24 +499,39 @@ namespace service_nodes
     const uint32_t public_ip         = proof.public_ip;
     const uint16_t storage_port      = proof.storage_port;
 
-    if ((timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS))
+    if ((timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS)) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": timestamp is too far from now");
       return false;
+    }
 
-    if (!m_core.is_service_node(pubkey))
+    if (!m_core.is_service_node(pubkey, /*require_active=*/ false)) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": no such service node is currently registered");
       return false;
+    }
 
     uint64_t height = m_core.get_current_blockchain_height();
     int version     = m_core.get_hard_fork_version(height);
 
     // NOTE: Only care about major version for now
-    if (version >= cryptonote::network_version_11_infinite_staking && proof.snode_version_major < 3)
+    // FIXME(Jason): remove this `false` before release!
+    if (false && version >= cryptonote::network_version_12_checkpointing && proof.snode_version_major < 4) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": v4+ loki version is required for v12+ network proofs");
       return false;
-    else if (version >= cryptonote::network_version_10_bulletproofs && proof.snode_version_major < 2)
+    }
+    else if (version >= cryptonote::network_version_11_infinite_staking && proof.snode_version_major < 3) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": v3+ loki version is required for v11+ network proofs");
       return false;
+    }
+    else if (version >= cryptonote::network_version_10_bulletproofs && proof.snode_version_major < 2) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": v2+ loki version is required for v10+ network proofs");
+      return false;
+    }
 
     CRITICAL_REGION_LOCAL(m_lock);
-    if (m_uptime_proof_seen[pubkey].timestamp >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2))
-      return false; // already received one uptime proof for this node recently.
+    if (m_uptime_proof_seen[pubkey].timestamp >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2)) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": already received one uptime proof for this node recently");
+      return false;
+    }
 
     const uint64_t hf12_height = m_core.get_earliest_ideal_height_for_version(cryptonote::network_version_12_checkpointing);
 
@@ -522,10 +561,12 @@ namespace service_nodes
     }
 
     if (!signature_ok) {
+      LOG_PRINT_L2("Rejecting uptime proof from " << pubkey << ": signature validation failed");
       return false;
     }
 
     m_uptime_proof_seen[pubkey] = {now, proof.snode_version_major, proof.snode_version_minor, proof.snode_version_patch};
+    LOG_PRINT_L2("Accepted uptime proof from " << pubkey);
     return true;
   }
 
