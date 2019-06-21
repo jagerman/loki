@@ -182,6 +182,8 @@ namespace service_nodes
                 continue;
               }
 
+              if (quorum->workers.empty()) continue;
+
               int index_in_group = find_index_in_quorum_group(quorum->validators, my_pubkey);
               if (index_in_group <= -1) continue;
 
