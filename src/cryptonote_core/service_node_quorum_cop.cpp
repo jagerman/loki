@@ -46,13 +46,13 @@ namespace service_nodes
   static_assert(quorum_cop::REORG_SAFETY_BUFFER_IN_BLOCKS < STATE_CHANGE_VOTE_LIFETIME, "Safety buffer should always be less than the vote lifetime");
 
   quorum_cop::quorum_cop(cryptonote::core& core)
-    : m_core(core), m_uptime_proof_height(0), m_last_checkpointed_height(0)
+    : m_core(core), m_obligations_height(0), m_last_checkpointed_height(0)
   {
   }
 
   void quorum_cop::init()
   {
-    m_uptime_proof_height      = 0;
+    m_obligations_height       = 0;
     m_last_checkpointed_height = 0;
     m_uptime_proof_seen.clear();
 
@@ -80,11 +80,11 @@ namespace service_nodes
   void quorum_cop::blockchain_detached(uint64_t height)
   {
     // TODO(doyle): Assumes large reorgs that are no longer possible with checkpointing
-    if (m_uptime_proof_height >= height)
+    if (m_obligations_height >= height)
     {
-      LOG_ERROR("The blockchain was detached to height: " << height << ", but quorum cop has already processed votes up to " << m_uptime_proof_height);
+      LOG_ERROR("The blockchain was detached to height: " << height << ", but quorum cop has already processed votes up to " << m_obligations_height);
       LOG_ERROR("This implies a reorg occured that was over " << REORG_SAFETY_BUFFER_IN_BLOCKS << ". This should never happen! Please report this to the devs.");
-      m_uptime_proof_height = height;
+      m_obligations_height = height;
     }
 
     if (m_last_checkpointed_height >= height)
@@ -149,7 +149,7 @@ namespace service_nodes
           LOG_ERROR("Unhandled quorum type with value: " << (int)type);
         } break;
 
-        case quorum_type::state_change:
+        case quorum_type::obligations:
         {
           if (hf_version >= cryptonote::network_version_9_service_nodes)
           {
@@ -166,19 +166,19 @@ namespace service_nodes
               continue;
             }
 
-            if (m_uptime_proof_height < start_voting_from_height)
-              m_uptime_proof_height = start_voting_from_height;
+            if (m_obligations_height < start_voting_from_height)
+              m_obligations_height = start_voting_from_height;
 
-            for (; m_uptime_proof_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_uptime_proof_height++)
+            for (; m_obligations_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_obligations_height++)
             {
-              if (m_core.get_hard_fork_version(m_uptime_proof_height) < cryptonote::network_version_9_service_nodes) continue;
+              if (m_core.get_hard_fork_version(m_obligations_height) < cryptonote::network_version_9_service_nodes) continue;
 
               const std::shared_ptr<const testing_quorum> quorum =
-                  m_core.get_testing_quorum(quorum_type::state_change, m_uptime_proof_height);
+                  m_core.get_testing_quorum(quorum_type::obligations, m_obligations_height);
               if (!quorum)
               {
                 // TODO(loki): Fatal error
-                LOG_ERROR("Uptime quorum for height: " << m_uptime_proof_height << " was not cached in daemon!");
+                LOG_ERROR("Obligations quorum for height: " << m_obligations_height << " was not cached in daemon!");
                 continue;
               }
 
@@ -243,7 +243,7 @@ namespace service_nodes
                 }
 
                 quorum_vote_t vote = service_nodes::make_state_change_vote(
-                    m_uptime_proof_height, static_cast<uint16_t>(index_in_group), node_index, vote_for_state, my_pubkey, my_seckey);
+                    m_obligations_height, static_cast<uint16_t>(index_in_group), node_index, vote_for_state, my_pubkey, my_seckey);
                 cryptonote::vote_verification_context vvc;
                 if (!handle_vote(vote, vvc))
                   LOG_ERROR("Failed to add uptime check_state vote; reason: " << print_vote_verification_context(vvc, nullptr));
@@ -341,7 +341,7 @@ namespace service_nodes
         return false;
       };
 
-      case quorum_type::state_change:
+      case quorum_type::obligations:
       break;
       case quorum_type::checkpointing:
       {
@@ -380,7 +380,7 @@ namespace service_nodes
         return false;
       };
 
-      case quorum_type::state_change:
+      case quorum_type::obligations:
       {
         if (votes.size() >= STATE_CHANGE_MIN_VOTES_TO_CHANGE_STATE)
         {

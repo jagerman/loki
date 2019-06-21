@@ -3123,7 +3123,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
         return false;
       }
 
-      auto quorum = m_service_node_list.get_testing_quorum(service_nodes::quorum_type::state_change, state_change.block_height);
+      auto quorum = m_service_node_list.get_testing_quorum(service_nodes::quorum_type::obligations, state_change.block_height);
       if (!quorum)
       {
         MERROR_VER("State change TX could not get quorum for height: " << state_change.block_height);
@@ -3193,10 +3193,10 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
           continue;
         }
 
-        const auto existing_quorum = m_service_node_list.get_testing_quorum(service_nodes::quorum_type::state_change, existing_state_change.block_height);
+        const auto existing_quorum = m_service_node_list.get_testing_quorum(service_nodes::quorum_type::obligations, existing_state_change.block_height);
         if (!existing_quorum)
         {
-          MERROR_VER("could not get uptime quorum for recent state change tx");
+          MERROR_VER("could not get obligations quorum for recent state change tx");
           continue;
         }
 

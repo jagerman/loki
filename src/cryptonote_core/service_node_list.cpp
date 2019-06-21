@@ -151,8 +151,8 @@ namespace service_nodes
     const auto &it = m_transient_state.quorum_states.find(height);
     if (it != m_transient_state.quorum_states.end())
     {
-      if (type == quorum_type::state_change)
-        return it->second.state_change;
+      if (type == quorum_type::obligations)
+        return it->second.obligations;
       else if (type == quorum_type::checkpointing)
         return it->second.checkpointing;
       else
@@ -321,7 +321,7 @@ namespace service_nodes
       return false;
     }
 
-    const auto state = get_testing_quorum(quorum_type::state_change, state_change.block_height);
+    const auto state = get_testing_quorum(quorum_type::obligations, state_change.block_height);
     if (!state)
     {
       // TODO(loki): Not being able to find a quorum is fatal! We want better caching abilities.
@@ -1393,14 +1393,14 @@ namespace service_nodes
       auto quorum           = std::make_shared<testing_quorum>();
       std::vector<size_t> pub_keys_indexes;
 
-      if (type == quorum_type::state_change)
+      if (type == quorum_type::obligations)
       {
         if (hf_version >= cryptonote::network_version_9_service_nodes)
         {
           size_t total_nodes         = active_snode_list.size() + decomm_snode_list.size();
           num_validators             = std::min(active_snode_list.size(), STATE_CHANGE_QUORUM_SIZE);
           pub_keys_indexes           = generate_shuffled_service_node_index_list(total_nodes, block_hash, type, num_validators, active_snode_list.size());
-          manager.state_change       = quorum;
+          manager.obligations        = quorum;
           size_t num_remaining_nodes = total_nodes - num_validators;
           num_workers                = std::min(num_remaining_nodes, std::max(STATE_CHANGE_MIN_NODES_TO_TEST, num_remaining_nodes/STATE_CHANGE_NTH_OF_THE_NETWORK_TO_TEST));
         }
@@ -1479,14 +1479,11 @@ namespace service_nodes
         quorum.height                   = kv_pair.first;
         quorum_manager const &manager   = kv_pair.second;
 
-        if (manager.state_change)
-          quorum.quorums[static_cast<uint8_t>(quorum_type::state_change)] = *manager.state_change;
+        if (manager.obligations)
+          quorum.quorums[static_cast<uint8_t>(quorum_type::obligations)] = *manager.obligations;
 
-        if (quorum.version >= service_node_info::version_3_checkpointing)
-        {
-          if (manager.checkpointing)
-            quorum.quorums[static_cast<uint8_t>(quorum_type::checkpointing)] = *manager.checkpointing;
-        }
+        if (manager.checkpointing)
+          quorum.quorums[static_cast<uint8_t>(quorum_type::checkpointing)] = *manager.checkpointing;
 
         data_to_store.quorum_states.push_back(quorum);
       }
@@ -1592,16 +1589,11 @@ namespace service_nodes
 
     for (const auto& states : data_in.quorum_states)
     {
-      {
-        testing_quorum const &state_change = states.quorums[static_cast<uint8_t>(quorum_type::state_change)];
-        m_transient_state.quorum_states[states.height].state_change = std::make_shared<testing_quorum>(state_change);
-      }
+      testing_quorum const &obligations = states.quorums[static_cast<uint8_t>(quorum_type::obligations)];
+      m_transient_state.quorum_states[states.height].obligations = std::make_shared<testing_quorum>(obligations);
 
-      if (states.version >= service_node_info::version_3_checkpointing)
-      {
-        testing_quorum const &checkpointing = states.quorums[static_cast<uint8_t>(quorum_type::checkpointing)];
-        m_transient_state.quorum_states[states.height].checkpointing = std::make_shared<testing_quorum>(checkpointing);
-      }
+      testing_quorum const &checkpointing = states.quorums[static_cast<uint8_t>(quorum_type::checkpointing)];
+      m_transient_state.quorum_states[states.height].checkpointing = std::make_shared<testing_quorum>(checkpointing);
     }
 
     for (const auto& info : data_in.infos)

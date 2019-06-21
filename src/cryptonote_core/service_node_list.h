@@ -315,7 +315,7 @@ namespace service_nodes
         FIELD(version)
         FIELD(height)
         if (version >= service_node_info::version_3_checkpointing) {
-          FIELD_N("state_change_quorum", quorums[static_cast<uint8_t>(quorum_type::state_change)])
+          FIELD_N("obligations_quorum", quorums[static_cast<uint8_t>(quorum_type::obligations)])
           FIELD_N("checkpointing_quorum", quorums[static_cast<uint8_t>(quorum_type::checkpointing)])
         } else {
           FIELD_N("deregister_quorum", quorums[static_cast<uint8_t>(quorum_type::state_change)])

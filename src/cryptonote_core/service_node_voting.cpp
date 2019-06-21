@@ -50,7 +50,7 @@ namespace service_nodes
 {
   bool convert_deregister_vote_to_legacy(quorum_vote_t const &vote, legacy_deregister_vote &legacy_vote)
   {
-    if (vote.type != quorum_type::state_change || vote.state_change.state != new_state::deregister)
+    if (vote.type != quorum_type::obligations || vote.state_change.state != new_state::deregister)
       return false;
 
     legacy_vote.block_height           = vote.block_height;
@@ -63,7 +63,7 @@ namespace service_nodes
   quorum_vote_t convert_legacy_deregister_vote(legacy_deregister_vote const &vote)
   {
     quorum_vote_t result             = {};
-    result.type                      = quorum_type::state_change;
+    result.type                      = quorum_type::obligations;
     result.block_height              = vote.block_height;
     result.signature                 = vote.signature;
     result.group                     = quorum_group::validator;
@@ -107,7 +107,7 @@ namespace service_nodes
         return result;
       };
 
-      case quorum_type::state_change:
+      case quorum_type::obligations:
       {
         crypto::hash hash = make_state_change_vote_hash(vote.block_height, vote.state_change.worker_index, vote.state_change.state);
         crypto::generate_signature(hash, pub, sec, result);
@@ -217,7 +217,7 @@ namespace service_nodes
   quorum_vote_t make_state_change_vote(uint64_t block_height, uint16_t validator_index, uint16_t worker_index, new_state state, crypto::public_key const &pub_key, crypto::secret_key const &sec_key)
   {
     quorum_vote_t result             = {};
-    result.type                      = quorum_type::state_change;
+    result.type                      = quorum_type::obligations;
     result.block_height              = block_height;
     result.group                     = quorum_group::validator;
     result.index_in_group            = validator_index;
@@ -254,7 +254,7 @@ namespace service_nodes
           return false;
         };
 
-        case quorum_type::state_change:
+        case quorum_type::obligations:
         {
           if (vote.group != quorum_group::validator)
           {
@@ -350,8 +350,8 @@ namespace service_nodes
         assert("Unhandled find_vote type" == 0);
         return nullptr;
 
-      case quorum_type::state_change:
-        return find_vote_in_pool(m_state_change_pool, find_vote, create_if_not_found);
+      case quorum_type::obligations:
+        return find_vote_in_pool(m_obligations_pool, find_vote, create_if_not_found);
 
       case quorum_type::checkpointing:
         return find_vote_in_pool(m_checkpoint_pool, find_vote, create_if_not_found);
@@ -402,7 +402,7 @@ namespace service_nodes
 
     time_t const now = time(nullptr);
     std::vector<quorum_vote_t> result;
-    append_relayable_votes(result, m_state_change_pool, now, TIME_BETWEEN_RELAY);
+    append_relayable_votes(result, m_obligations_pool, now, TIME_BETWEEN_RELAY);
     append_relayable_votes(result, m_checkpoint_pool,   now, TIME_BETWEEN_RELAY);
     return result;
   }
@@ -448,7 +448,7 @@ namespace service_nodes
   {
     // TODO(doyle): Cull checkpoint votes
     CRITICAL_REGION_LOCAL(m_lock);
-    if (m_state_change_pool.empty())
+    if (m_obligations_pool.empty())
       return;
 
     for (const auto &tx : txs)
@@ -463,10 +463,10 @@ namespace service_nodes
         continue;
       }
 
-      auto it = std::find(m_state_change_pool.begin(), m_state_change_pool.end(), state_change);
+      auto it = std::find(m_obligations_pool.begin(), m_obligations_pool.end(), state_change);
 
-      if (it != m_state_change_pool.end())
-        m_state_change_pool.erase(it);
+      if (it != m_obligations_pool.end())
+        m_obligations_pool.erase(it);
     }
   }
 
@@ -487,7 +487,7 @@ namespace service_nodes
   {
     CRITICAL_REGION_LOCAL(m_lock);
     uint64_t deregister_min_height = (height < STATE_CHANGE_VOTE_LIFETIME) ? 0 : height - STATE_CHANGE_VOTE_LIFETIME;
-    cull_votes(m_state_change_pool, deregister_min_height, height);
+    cull_votes(m_obligations_pool, deregister_min_height, height);
 
     uint64_t checkpoint_min_height = (height < CHECKPOINT_VOTE_LIFETIME)   ? 0 : height - CHECKPOINT_VOTE_LIFETIME;
     cull_votes(m_checkpoint_pool, checkpoint_min_height, height);

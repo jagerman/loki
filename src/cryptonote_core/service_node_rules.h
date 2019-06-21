@@ -93,7 +93,7 @@ namespace service_nodes {
   {
     switch (type)
     {
-      case quorum_type::state_change:  return STATE_CHANGE_VOTE_LIFETIME;
+      case quorum_type::obligations:   return STATE_CHANGE_VOTE_LIFETIME;
       case quorum_type::checkpointing: return CHECKPOINT_VOTE_LIFETIME;
       default:
       {

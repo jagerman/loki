@@ -65,7 +65,7 @@ namespace service_nodes
 
   enum struct quorum_type : uint8_t
   {
-    state_change = 0,
+    obligations = 0,
     checkpointing,
     count,
   };
@@ -131,11 +131,11 @@ namespace service_nodes
   private:
     std::vector<pool_vote_entry> *find_vote_pool(const quorum_vote_t &vote, bool create_if_not_found = false);
 
-    struct state_change_pool_entry
+    struct obligations_pool_entry
     {
-      explicit state_change_pool_entry(const quorum_vote_t &vote)
+      explicit obligations_pool_entry(const quorum_vote_t &vote)
           : height{vote.block_height}, worker_index{vote.state_change.worker_index}, state{vote.state_change.state} {}
-      state_change_pool_entry(const cryptonote::tx_extra_service_node_state_change &sc)
+      obligations_pool_entry(const cryptonote::tx_extra_service_node_state_change &sc)
           : height{sc.block_height}, worker_index{sc.service_node_index}, state{sc.state} {}
 
       uint64_t                     height;
@@ -143,9 +143,9 @@ namespace service_nodes
       new_state                    state;
       std::vector<pool_vote_entry> votes;
 
-      bool operator==(const state_change_pool_entry &e) const { return height == e.height && worker_index == e.worker_index && state == e.state; }
+      bool operator==(const obligations_pool_entry &e) const { return height == e.height && worker_index == e.worker_index && state == e.state; }
     };
-    std::vector<state_change_pool_entry> m_state_change_pool;
+    std::vector<obligations_pool_entry> m_obligations_pool;
 
     struct checkpoint_pool_entry
     {

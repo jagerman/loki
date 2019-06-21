@@ -62,7 +62,7 @@ namespace service_nodes
 
   struct quorum_manager
   {
-    std::shared_ptr<const testing_quorum> state_change;
+    std::shared_ptr<const testing_quorum> obligations;
     std::shared_ptr<const testing_quorum> checkpointing;
   };
 
@@ -98,7 +98,7 @@ namespace service_nodes
 
     cryptonote::core& m_core;
     voting_pool       m_vote_pool;
-    uint64_t          m_uptime_proof_height;
+    uint64_t          m_obligations_height;
     uint64_t          m_last_checkpointed_height;
 
     std::unordered_map<crypto::public_key, proof_info> m_uptime_proof_seen;
