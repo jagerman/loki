@@ -984,13 +984,8 @@ namespace service_nodes
       const cryptonote::transaction& tx = txs[index];
       if (tx.type == cryptonote::txtype::standard)
       {
-        bool new_reg = process_registration_tx(tx, block.timestamp, block_height, index);
-        bool activation = process_contribution_tx(tx, block_height, index);
-
-        // In v11 swarms were only recalculated on registration (even if the registration wasn't
-        // fully funded), and not recalculated on contributions (even if they become fully funded).
-        // In v12 this is fixed: quorums are recalculated when a SN becomes fully staked
-        need_swarm_update += hard_fork_version >= cryptonote::network_version_12_checkpointing ? activation : new_reg;
+        process_registration_tx(tx, block.timestamp, block_height, index);
+        need_swarm_update += process_contribution_tx(tx, block_height, index);
       }
       else if (tx.type == cryptonote::txtype::state_change)
       {
