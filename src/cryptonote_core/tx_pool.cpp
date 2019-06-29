@@ -760,7 +760,7 @@ namespace cryptonote
               if (tx.type != txtype::state_change)
                 return true;
 
-              tx_verification_context tvc;
+              tx_verification_context tvc = {};
               uint64_t max_used_block_height = 0;
               crypto::hash max_used_block_id = null_hash;
               // FIXME: not check_tx_inputs anymore
