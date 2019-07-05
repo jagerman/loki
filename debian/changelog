@@ -1,3 +1,35 @@
+loki (3.0.7-1~ubuntu1604) xenial; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Remove `arch` to allow both amd64/i386 builds
+
+  [ Doyle ]
+  * Update stake result enum for shared lib compilation
+  * Update libwallet api for the GUI wallet
+  * Add overrides to calm warnings on GUI, make is_open in header
+  * Use the precalculated public key when trying to gen key images (#640)
+
+  [ moneromooo-monero ]
+  * epee: basic sanity check on allocation size from untrusted source
+
+  [ anonimal ]
+  * cryptonote_protocol_handler: prevent potential DoS
+
+  [ moneromooo-monero ]
+  * cryptonote_protocol: expand basic DoS protection
+  * serialization: fail on read_varint error
+  * tree-hash: allocate variable memory on heap, not stack
+  * serialization: check stream good flag at the end
+  * ensure no NULL is passed to memcpy
+  * rpc: restrict the recent cutoff size in restricted RPC mode
+
+  [ Doyle ]
+  * Drop connection when requesting duplicated tx indexes (#637)
+  * Fix cherry-pick merge failure in core_rpc_server
+  * Bump Summer Sigyn patch to 7
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 05 Jul 2019 12:19:45 -0300
+
 loki (3.0.6-3~ubuntu1604) xenial; urgency=medium
 
   * Fix -dev package header install location.
