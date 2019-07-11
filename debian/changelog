@@ -1,3 +1,1122 @@
+loki (4.0.2-1~ubuntu1604) xenial; urgency=medium
+
+  * Loki 4.0.2 release
+
+  [ Gingeropolous ]
+  * update readme to include blurb on decentralization
+
+  [ moneromooo-monero ]
+  * db_lmdb: don't unnecessarily cast to double on the way to uint64_t
+  * bulletproofs: speed up vector_power_sum
+  * wallet2: fix hashchain going out of sync on refresh error
+  * blockchain: fix default genesis block timestamp
+  * performance_tests: better stats, and keep track of timing history
+
+  [ Lee Clagett ]
+  * Adding initial support for broadcasting transactions over Tor
+
+  [ monerorus ]
+  * README.md - add few FreeBSD instructions, fix v13.0 release tag
+
+  [ moneromooo-monero ]
+  * blockchain_prune: don't prune before v10
+
+  [ Jethro Grassie ]
+  * i2p: initial support
+
+  [ moneromooo-monero ]
+  * cryptonote_protocol_handler: pad tx messages when using tor/i2p
+
+  [ Howard Chu ]
+  * ITS#8969 tweak mdb_page_split
+
+  [ Tom Smeding ]
+  * serialization: Use pos_type instead of streampos
+  * cryptonote: Add const-qualifier on comparison functor
+  * cryptonote: Fix enum check in expand_transaction_2
+
+  [ moneromooo-monero ]
+  * unit_tests: remove leftover debug print
+  * network_throttle: use circular_buffer where appropriate
+  * wallet_rpc_server: remove detached short payment ids support
+  * epee: add SSL support
+  * ringct: fix v1 ecdhInfo serialization
+  * simplewallet: tell the user to complain to the recipient
+
+  [ erciccione ]
+  * readme: add new workflow for translations (Pootle)
+
+  [ cslashm ]
+  * New scheme key destination contrfol
+  * fix log namespace
+  * Fix dummy decryption in debug mode
+  * Add support for V10 protocol with BulletProofV2 and short amount.
+
+  [ Markus Behm ]
+  * Fixed missing return value in once_a_time class on windows
+
+  [ who-biz ]
+  * Update openssl to 1.0.2q in depends build system
+
+  [ italocoin ]
+  * Human readable message if maximum outputs reached
+
+  [ Lee Clagett ]
+  * Use io_service::work in epee tcp server
+
+  [ Doyle ]
+  * Don't decrypt keys in view only wallets in wallet_keys_unlocker
+
+  [ Dusan Klinec ]
+  * debug compilation fix: net lib missing common deps
+
+  [ moneromooo-monero ]
+  * simplewallet: mark confirm-missing-payment-id as obsolete
+  * simplewallet: add help for ask-password options
+
+  [ SChernykh ]
+  * Cryptonight variant 4 aka CryptonightR
+  * Adding cnv4-2 tweaks
+  * Fixed path to int-util.h
+
+  [ moneromooo-monero ]
+  * wallet_rpc_server: add a validate_address RPC
+
+  [ TheCharlatan ]
+  * Support docker for gitian builds
+
+  [ Jethro Grassie ]
+  * wallet-rpc: get transfers for all accounts and subaddresses
+
+  [ Tom Smeding ]
+  * epee: Add space after ':' in additional http response headers
+
+  [ Joel ]
+  * Add generate_from_keys RPC method
+  * Add generate_from_view_key RPC method
+
+  [ Dusan Klinec ]
+  * device/trezor: dummy payment ID fix
+  * wallet: fix payment ID decryption for construction data
+
+  [ stoffu ]
+  * wallet-rpc: get balance for all accounts and subaddresses
+
+  [ moneromooo-monero ]
+  * db_lmdb: fix missing mdb_dbi_close in migration
+
+  [ Joel ]
+  * Remove code duplication
+
+  [ moneromooo-monero ]
+  * dns_utils: remove MoneroPulse/checkpoints mention in TXT record code
+
+  [ Jesse Jackson ]
+  * OS X -> macOS
+
+  [ moneromooo-monero ]
+  * rpc: quantize db size up to 5 GB in restricted mode
+  * Better error when sending a tx with a too large extra field
+  * miner: it can now autodetect the optimal number of threads
+
+  [ TheCharlatan ]
+  * Various speedups to depends and Travis
+
+  [ moneromooo-monero ]
+  * unbound: update to get the redefinition fix
+
+  [ xiphon ]
+  * daemon: add --public-node mode, RPC port propagation over P2P
+  * daemon: add '--no-sync' arg to optionally disable blockchain sync
+
+  [ moneromooo-monero ]
+  * discontinue use of alloca
+  * performance_tests: fix NetBSD build
+  * cryptonote_protocol_handler: search for syncing peers in "cruise mode"
+  * cn_deserialize: remove some unused code
+  * dns_utils: use fallback if the default resolver does not support DNSSEC
+
+  [ Jesse Jackson ]
+  * SHALL -> MUST
+
+  [ Nathan Dorfman ]
+  * rpc: Allow submitting tx as hex blob over ZMQ
+
+  [ Joel ]
+  * Simplify RPC endpoint, emoving second RPC endpoint generate_from_view_key
+
+  [ moneromooo-monero ]
+  * wallet2: fix mishandling rct outputs in coinbase tx
+  * ArticMine's new block weight algorithm
+
+  [ moneromooo ]
+  * hardfork: fix fork determination for historical heights
+
+  [ moneromooo-monero ]
+  * notify: fix tokenizing being too strict
+  * core: add --block-rate-notify
+  * core: add a few more block rate window sizes
+  * blockchain: include number of discarded blocks in --reorg-notify
+  * Print the reason why a notification spec failed to parse
+  * blockchain: add v10 fork heights
+
+  [ SChernykh ]
+  * CNv4 JIT compiler for x86-64 and tests
+
+  [ moneromooo-monero ]
+  * performance_tests: add tests for new Cryptonight variants
+  * crypto: clear cache after generating random program
+  * crypto: plug CNv4 JIT into cn_slow_hash
+  * tests: add a CNv4 JIT test
+  * blockchain: forbid older BP rct versions from v11
+  * various: remove unused variables
+  * default initialize rpc structures
+  * check load_t_from_json return values
+
+  [ TheCharlatan ]
+  * cmake: ARCH_ID fixes for cross compilation
+
+  [ moneromooo-monero ]
+  * slow-hash: fix build on arm
+  * CryptonightR: define out i386/x86_64 specific code on other archs
+  * db: speedup block addition
+  * wallet2: don't calculate prefix hash when we don't need it
+
+  [ Riccardo Spagni ]
+  * update readme via cherry-pick
+  * update checkpoints, update README for 0.14.1 release
+  * update checkpoints hash
+  * fix merge errors, update recommended version to 0.14.0.2
+
+  [ moneromooo-monero ]
+  * Avoid repeated (de)serialization when syncing
+  * core: avoid calculating tx prefix hash when we don't need it
+  * blockchain: avoid duplicate block hash computation
+  * blockchain: avoid pointless transaction copy and temporary
+  * save some database calls when getting top block hash and height
+  * blockchain: avoid unneeded block copy
+  * core: avoid double parsing blocks after hoh
+  * cryptonote: speed up calculating coinbase tx prunable hash
+  * cryptonote: avoid double parsing blocks when syncing
+  * wallet_rpc_server: avoid repeated string allocations when parsing
+  * p2p: avoid busy loop when we have nothing to connect to
+  * db_lmdb: make mdb_block_info format conversion more future proof
+
+  [ Dusan Klinec ]
+  * device/trezor: debugging features, trezor tests
+
+  [ Martijn Otto ]
+  * epee: add SSL support
+
+  [ spoke0 ]
+  * add multisig tx sets to describe_transfer rpc endpoint
+
+  [ binaryFate ]
+  * Update 2019 copyright
+
+  [ moneromooo-monero ]
+  * wallet2: key image import fixes
+  * rpc: make fill_pow restricted
+  * tests: fix cnv4-jit-test link on mac
+  * wallet2: do not use invalid keys as fake outs in rings
+  * timings: fix errno.h mispelt as error.h
+  * aesb: avoid stomping on an existing define on NetBSD
+  * tests: handle any cmake detected python interpreter
+  * gtest: build fix for NetBSD
+  * crypto: fix PaX issue on NetBSD with CNv4 JIT
+  * slow-hash: cache TLS references locally once at function start
+  * blockchain: speed up getting N blocks weights/long term weights
+
+  [ Howard Chu ]
+  * Fix startup errors with SSL cert generation
+
+  [ moneromooo-monero ]
+  * connection_basic: remove debug exception ^_^
+  * daemon: new mining_status command
+
+  [ Jean-Michel DILLY ]
+  * Start monerod as non root user
+
+  [ moneromooo-monero ]
+  * blockchain: fix ahead of time PoW batch calc
+
+  [ Dusan Klinec ]
+  * epee: certificate generation fix, pkey deleted
+
+  [ moneromooo-monero ]
+  * wallet: fix load failure if the mms isn't usable
+
+  [ naughtyfox ]
+  * Wallet API: multisig_tx_set passing bug fixed
+
+  [ moneromooo-monero ]
+  * hardfork: update last_versions on popped block
+  * wallet2: don't store 0 amount outputs, they'll fail to be spent
+  * tests: disable wallet SSL init for tests involving wallet2
+  * wallet_rpc_server: add missing --rpc-ssl-allowed-fingerprints
+  * wallet_rpc_server: include out subaddress indices in get_transfers
+  * console_handler: print newline on EOF
+  * simplewallet: add some missing spacing before uses data
+  * miner: fix possible exit crash due to race in stop
+  * tests: fix path in instructions
+  * wallet2: fix generation from json when restore height is not set
+  * wallet2: set seed language when creating from json
+  * blockchain: do not try to pop the genesis block
+  * mnemonics: fix half length seed to bytes conversion
+
+  [ Dusan Klinec ]
+  * wallet: adds rescan_bc option with preserving key images
+
+  [ moneromooo-monero ]
+  * wallet: move light wallet RPC out of core RPC
+  * wallet_rpc_server: fix buffer read overflow in string assignment
+  * wallet_rpc_server: new auto_refresh RPC
+  * wallet: flush output cache upon reorg
+  * wallet2: make use_fork_rules handle chain heights lower than leeway
+
+  [ Howard Chu ]
+  * Use threadpool instead of new threads for DNS queries
+
+  [ moneromooo-monero ]
+  * simplewallet: make the long payment ids warnigns more warney
+  * rpc: quantize db size up to 5 GB in restricted mode
+
+  [ Guido Vranken ]
+  * Implement array_entry_t copy constructor
+
+  [ Doyle ]
+  * Update libwallet api for the GUI wallet
+  * Add overrides to calm warnings on GUI, make is_open in header
+
+  [ Maxim Shishmarev ]
+  * core tests: update priority for service nodes selected as winners (#506)
+
+  [ Norman Moeschter ]
+  * Upgraded static dependency versions and hashes in Dockerfile.
+
+  [ moneromooo-monero ]
+  * abstract_tcp_server2: fix crashy race on socket shutdown
+
+  [ Lee Clagett ]
+  * Adding classes, functions, and utilities for common LMDB operations.
+
+  [ Doyle ]
+  * Remove old line referring to autostake (not relevant) (#505)
+
+  [ rbrunner7 ]
+  * Fix daemon startup parameter '--limit-rate' processing after parameter defaults
+
+  [ Dusan Klinec ]
+  * crypto: hmac_keccak added
+  * device/trezor: HF10 support added, wallet::API
+  * tests/trezor: HF9 and HF10 tests
+
+  [ moneromooo-monero ]
+  * daemon: init public_port in all ctors
+  * dns_utils: really add default DNSSEC servers on failure
+  * rpc: add miner tx hash to block header response
+  * cmake: handle detecting boost using boost's own cmake files
+  * epee: fix build with boost 1.70.0
+  * slow-hash: default to JIT on x86_64
+  * wallet2: sanity check new tx before sending
+  * wallet: fix offline signing calling a daemon RPC
+  * wallet_rpc_server: remove mixin from transfer RPCs
+  * cryptonote: fix calculating coinbase tx hash
+  * functional_tests: improve RPC blockchain tests
+  * functional_tests: add wallet address/subaddress RPC tests
+  * functional_tests: add basic mining tests
+  * functional_tests: plug RPC tests into the cmake machinery
+  * functional_tests: add basic transfer tests
+  * functional_tests: add integrated address tests
+  * functional_tests: add txpool RPC tests
+  * functional_tests: support several daemons/wallets
+  * functional_tests: add multisig and cold signing tests
+  * functional_tests: add message signing/verification tests
+  * functional_tests: add get_bulk_transfer tests
+  * functional_tests: add more transfer tests
+  * functional_tests: add proofs tests (tx key, in/out tx, reserve)
+
+  [ sachaaaaa ]
+  * Provide --log-level for unit tests
+
+  [ moneromooo-monero ]
+  * wallet: add freeze/thaw/frozen commands
+  * functional_tests: add missing parameters to get_balance
+  * functional_tests: add balance tests
+  * functional_tests: move RPC API to utils, it is not test specific
+  * p2p: don't lookup seed nodes when offline
+  * python-rpc: add console.py
+  * python-rpc: add getblockheadersrange daemon RPC
+
+  [ Nathan Dorfman ]
+  * Fix build on FreeBSD
+
+  [ moneromooo-monero ]
+  * wallet: use original user address if we have a short payment id
+
+  [ rbrunner7 ]
+  * New interactive daemon command 'print_net_stats': Global traffic stats
+
+  [ Dusan Klinec ]
+  * test: hmac_keccak - fix number of chunks counting
+
+  [ moneromooo-monero ]
+  * perf_timer: move some debug levels to info for consistency
+  * Make difficulty 128 bit instead of 64 bit
+  * wallet2: set confirmations to 0 for pool txes in proofs
+  * core: improve block rate monitor trigger probabilities
+
+  [ Lee Clagett ]
+  * Added socks proxy (tor/i2pd/kovri) support to wallet
+
+  [ fuwa ]
+  * ringct: fix capitalization for scaler mult
+
+  [ moneromooo-monero ]
+  * wallet: fix memory only wallets
+  * wallet_rpc_server: allow english/local language names in create_wallet
+  * Avoid repeated (de)serialization when syncing
+  * save some database calls when getting top block hash and height
+  * blockchain: avoid unneeded block copy
+  * cryptonote: block parsing + hash calculation speedup
+  * cryptonote_basic: speedup calculate_block_hash
+  * cryptonote_basic: some more minor speedups
+  * wallet2: skip derivation precalc for blocks we know we'll skip
+  * epee: some more minor JSON parsing speedup
+  * wallet2: fix tx sanity check change test for the sweep_all case
+
+  [ Dusan Klinec ]
+  * tests: trezor_test fix
+
+  [ moneromooo-monero ]
+  * wallet2: factor the watchonly/multisig/etc fields on creation
+
+  [ Martijn Otto ]
+  * No longer use deprecated RSA_generate_key in favor of RSA_generate_key_ex
+
+  [ moneromooo-monero ]
+  * socks: fix build with boost 1.70
+
+  [ Doyle ]
+  * Fix incorrectly assigning default priority using invalid index (#509)
+
+  [ moneromooo-monero ]
+  * cryptonote_protocol_handler: add block/tx hashes in notify logs
+
+  [ Sonofotis ]
+  * Add comments and clean code for loki-rpc-doc-generator. (#499)
+
+  [ Doyle ]
+  * Since early_blocks is unsigned, remove checks intenteded for signed behaviour (#524)
+  * Add missing loki.h header for LOKI_RPC_DOC_INTROSPECT define (#530)
+
+  [ cslashm ]
+  * Add application version compatibility check.
+  * Add support for V11 protocol with BulletProofV2 and short amount. New scheme key destination contrfol Fix dummy decryption in debug mode
+  * Add get_tx_proof support, needed for new sanity check
+
+  [ moneromooo-monero ]
+  * blockchain: simple cache for the long term block weights
+  * blockchain: incremental long term block weight cache
+
+  [ italocoin ]
+  * fix init warning on whatever compiler version
+
+  [ Dusan Klinec ]
+  * device/trezor: increase live-refresh timeout
+
+  [ moneromooo-monero ]
+  * util: name replace_file arguments better
+
+  [ Jane Mercer ]
+  * do not build in parallel as it is non-deterministic
+
+  [ moneromooo-monero ]
+  * blockchain: fix returned height in create_block_template
+  * lmdb: fix size_t size issues on 32 bit
+
+  [ Leon Klingele ]
+  * Add missing include
+
+  [ Howard Chu ]
+  * Add hash of top block to /getheight RPC
+
+  [ sachaaaaa ]
+  * Remove nested shadowed variables (#542)
+
+  [ Jason Rhinelander ]
+  * Add last announced SN version to stored proof info (#503)
+
+  [ moneromooo-monero ]
+  * Allow pruning before v10
+  * block_weight: fix python 2/3 compatibility
+
+  [ cslashm ]
+  * Add NanoX support
+
+  [ moneromooo-monero ]
+  * wallet_rpc_server: set confirmations to 0 for pending/pool txes
+  * wallet_rpc_server: always fill out subaddr_indices in get_transfers
+  * wallet2: init some variables to default values if loading old wallets
+  * wallet_rpc_server: add a set_daemon RPC
+  * wallet_rpc_server: error out on getting the spend key from a hot wallet
+  * blockchain: some debug info when adding txes-from-block fails
+  * various: remove unused variables
+  * blockchain_stats: fix sign in formatting function
+  * miner: fix race when stopping mining with start mining enabled
+  * wallet_rpc_server: always fill out subaddr_indices in get_transfers
+  * wallet_rpc_server: error out on getting the spend key from a hot wallet
+  * wallet2: set confirmations to 0 for pool txes in proofs
+  * wallet: add number of blocks required for the balance to fully unlock
+
+  [ stoffu ]
+  * api/wallet: fix some wrong namespace
+
+  [ George ]
+  * README: add and remove dependencies on OSX line
+
+  [ moneromooo-monero ]
+  * simplewallet: new unset_ring command
+
+  [ selsta ]
+  * libwallet_merged: add missing net target
+
+  [ moneromooo-monero ]
+  * unit_tests: fix long term block weight test after cache change
+
+  [ Maxim Shishmarev ]
+  * new algorithm for generating ids for new swarms (#546)
+
+  [ Doyle ]
+  * Add override to virtual functions missing it to quell warnings
+
+  [ moneromooo-monero ]
+  * tests: add a few try/catch in main to shut coverity up
+  * wallet2: support multi out txes without change in sanity check
+
+  [ stoffu ]
+  * rpc.gettransactions: fill as_json with partial tx in pruned mode
+  * crypto: replace rand<T>()%N idiom with unbiased rand_idx(N)
+
+  [ moneromooo-monero ]
+  * wallet2: add --no-dns flag
+  * wallet: new option to start background mining
+
+  [ Jason Rhinelander ]
+  * Fix reported wrong amount in stake error message
+
+  [ moneromooo-monero ]
+  * cryptonote: rework block blob size sanity check
+  * rpc: make wide_difficulty hexadecimal
+
+  [ Dusan Klinec ]
+  * wallet: API changes to enable passphrase entry
+
+  [ moneromooo-monero ]
+  * rpc: merge the two get_info implementations
+  * wallet: add number of blocks required for the balance to fully unlock
+
+  [ Lee Clagett ]
+  * Change SSL certificate file list to OpenSSL builtin load_verify_location
+  * Do not require client certificate unless server has some whitelisted.
+  * Change default SSL to "enabled" if user specifies fingerprint/certificate
+  * Pass SSL arguments via one class and use shared_ptr instead of reference
+  * Add `verify_fail_if_no_cert` option for proper client authentication
+  * Require server verification when SSL is enabled.
+  * Perform RFC 2818 hostname verification in client SSL handshakes
+  * Call `use_certificate_chain_file` instead of `use_certificate_file`
+  * Only check top-level certificate against fingerprint list.
+  * Require manual override for user chain certificates.
+
+  [ Dusan Klinec ]
+  * device/trezor: add button pressed request
+
+  [ moneromooo-monero ]
+  * core: don't check block rate nor fork time in regtest mode
+  * blockchain_import: error out if preparing to handle blocks fails
+  * easylogging++: update to v9.96.7
+
+  [ Dusan Klinec ]
+  * build fix: combinator.h stdexcept missing include
+  * tests: fix test_options initialization error
+  * build: libusb static compilation fix
+
+  [ Lee Clagett ]
+  * Enabling daemon-rpc SSL now requires non-system CA verification
+
+  [ Justin Gerber ]
+  * README.md: minor spelling issue
+
+  [ Tyler Saballus ]
+  * README.md: fix missing comma
+
+  [ Gingeropolous ]
+  * README.md: fork table, copy lines from release branch
+
+  [ sachaaaaa ]
+  * Bufferless swarm assignment logic (#518)
+
+  [ Doyle ]
+  * Add introspection to dependencies outside of core_rpc, fix syntax for undocumented calls
+  * Fix warnings introduced by rebase
+
+  [ Sonofotis ]
+  * Comments for rpc-doc-generator. (#544)
+
+  [ Doyle ]
+  * Remove boundary HF10/11 work-around code for uptime proofs
+  * Future proof, uptime proof's version checks by changing == to >=
+
+  [ erciccione ]
+  * readme: add some more instructions for translators
+
+  [ Doyle ]
+  * Add helper functions to facilitate more reliable integration tests
+  * Revert IPV6 changes and merge back in upstream
+  * Merge commit '973403bc9f54ab0722b67a3c76ab6e7bafbfeedc'
+
+  [ stoffu ]
+  * blockchain: remove unused calc of short_term_constraint
+  * tests/block_weight: remove unused MULTIPLIER_SMALL
+  * tests/block_weight: use integer division when computing median
+  * unit_tests/long_term_block_weight: some tweaks that seem to make more sense
+
+  [ Doyle ]
+  * Fix uninitialised variable in core tests causing intermittent failures
+  * Add missing include for integration hook
+  * Fix incomplete struct zero init merge
+
+  [ Martijn Otto ]
+  * Fix linker issues using easylogging
+
+  [ moneromooo-monero ]
+  * wallet_rpc_server: add a all flag to export_outputs
+
+  [ Dusan Klinec ]
+  * build: debug and test builds via contrib
+  * tests: trezor tests fixes and improvements
+  * device/trezor: env-configurable ports
+
+  [ Doyle ]
+  * Remove unneeded SFINAE on check_tx/block_verification (#558)
+
+  [ moneromooo-monero ]
+  * simplewallet: new net_stats command
+  * functional_tests: add bans tests
+  * functional_tests: add more blockchain related tests
+  * console.py: support connecting to any host, not just 127.0.0.1
+  * functional_tests: add describe_transfer tests
+  * python-rpc: add set_log_level and set_log_categories
+  * functional_tests: add more wallet tests
+  * functional_tests: add wallet creation language tests
+  * functional_tests: add alt chains tests
+  * functional_tests: add double spend detection tests
+  * functional_tests: cold signing key images/outputs import/export
+  * console.py: add tab completion
+  * functional_tests: exit with 1 if any test fails
+  * cmake: always detect python, it's neeed for some tests
+  * console.py: can now connect to several daemons/wallets
+  * console: simple shell over console.py
+  * epee: init a new ssl related variable in ctor
+  * block_weight: catch exceptions in main for clean exit on error
+  * simplewallet: add a welcome/disclaimer message command
+  * rpc: fix off by one in get_height
+  * wallet2: update estimate_rct_tx_size for smaller rct proofs
+  * simplewallet: fix merge error with new welcome command
+  * ringct: prevent use of full ringct signatures for more than one input
+  * p2p: fix integer overflow in host bans
+
+  [ Doyle ]
+  * Update monero copyright to 2019 pre-emptively to make merge simpler
+  * Add more 2019 license updates for Monero
+  * Don't query moneropulse in DNS code
+  * Add misnamed tx construction data member v3_use_bulletproofs
+
+  [ stoffu ]
+  * rpc.getblocktemplate: set reserved_offset to zero when reserve_size==0
+
+  [ moneromooo-monero ]
+  * wallet_rpc_server: fix inconsistent wallet caches on reload
+  * simplewallet: fix warning about long payment id using the old option
+  * abstract_tcp_server2: fix timeout on exit
+  * rpc: new sanity check on relayed transactions
+  * daemon: if a log file has a /, interpret it from the cwd
+  * net_helper: avoid unnecessary memcpy
+  * bulletproofs: cut down on keyV allocations
+  * blockchain_db: fix db txn ending too early
+  * lmdb: catch non-LMDB negative errors before strerror
+  * core_rpc_server: remove dummy assigning int to bool
+  * daemon: fix ratio not being floating point
+  * easylogging++: minimal stdout logging format
+  * cryptonote_protocol: warn when the last connection goes
+  * hardfork: remove "no hf version db" recreation check
+
+  [ Doyle ]
+  * Update welcome prompt, don't default ask for background mining
+  * Increment m_threads_active when mining thread starts
+  * Simplify locked stakes API
+
+  [ moneromooo-monero ]
+  * rpc: set default log category in core_rpc_server.h
+  * rpc: add relayed in get_transaction output
+  * rpc: omit irrelevant fields for pool txes in gettransactions
+  * wallet_rpc_server: remove unused code
+  * functional_tests: add sweep_single test
+  * wallet: new --offline option
+
+  [ Florian ]
+  * Add Brewfile to allow for an even easier management of dependencies
+
+  [ moneromooo-monero ]
+  * blockchain: lock the blockchain while pruning
+  * rpc: fix get_block_hashes.bin from wallet on pruned blockchain
+  * daemon: remove debug info
+  * simplewallet: add another warning about long payment ids
+  * rpc: add a pruned bool to the prune_blockchain call
+  * wallet_rpc_server: add set_log_level/set_log_categories
+  * wallet_rpc_server: set suggested_confirmations_threshold for pool txes
+  * daemon: fix absolute/relative log file test for windows
+  * unit_tests: undo is_blocked implementation factoring
+
+  [ Doyle ]
+  * Remove unneeded SFINAE on check_tx/block verification in core_tests
+
+  [ stoffu ]
+  * testdb: add override keyword where missing
+
+  [ moneromooo-monero ]
+  * simplewallet: add the change amount to the prompt when locking
+  * wallet_rpc_server: add unlocked field to incoming_transfers output
+
+  [ Monero-Pootle ]
+  * add translations for it, fr, ja, sv from Pootle and refresh template .ts file
+
+  [ iDunk5400 ]
+  * Windows: fix a build error in MSYS2 with boost 1.70.0
+
+  [ moneromooo-monero ]
+  * epee: use boost/timer/timer.hpp, boost/timer.hpp is deprecated
+  * wallet2: "output lineup" fake out selection
+  * simplewallet: fix output representation offset
+
+  [ Dusan Klinec ]
+  * device/trezor: button request callback fix
+
+  [ iDunk5400 ]
+  * Windows: work around a boost 1.70 and cmake SNAFU
+
+  [ moneromooo-monero ]
+  * functional_tests: detect requests python module
+
+  [ Lee Clagett ]
+  * Fix socks tests in windows and handle errors better
+
+  [ moneromooo-monero ]
+  * hardfork: fix off by one updating fork index after popping
+  * wallet_rpc_server: add block_height and frozen to incoming_transfers
+  * functional_tests: reset blockchain on test start
+  * serialization: set default log category
+
+  [ Dusan Klinec ]
+  * wallet: fix key image computation signaling to the device
+
+  [ moneromooo-monero ]
+  * levin_protocol_handler_async: tune down preallocation a fair bit
+  * daemonizer: add --non-interactive for windows
+
+  [ Doyle ]
+  * Allow storing multiple quorum types (#562)
+  * Non-Enforced Transient Service Node Checkpointing (#566)
+
+  [ moneromooo-monero ]
+  * net_helper: clear recv buffer on eof
+  * unit_tests: don't delete log file on windows, it will fail
+  * functional_tests: flush stdout before popening new process
+  * wallet2: fix wrong change being recorded in sweep_all
+  * wallet2: add missing "sanity check failed" reason message
+  * tx_sanity_check: relax uniqueness check a bit
+
+  [ Doyle ]
+  * Fix nullptr check dereferencing in the checking condition (#569)
+  * Revert behaviour for is_alternative_block_allowed (#568)
+
+  [ moneromooo-monero ]
+  * wallet2: default to trying to keep 5 outputs of 2+ monero
+  * p2p: do not send last_seen timestamp to peers
+
+  [ Dusan Klinec ]
+  * device/trezor: device sorting and filtering improved
+
+  [ moneromooo-monero ]
+  * rpc: improve get_output_distribution
+  * unit_tests: fix crash in debug in output_distribution test
+  * wallet_rpc_server: fix crash in validate_address if no wallet is loaded
+  * wallet_rpc_server: return false on error in set_log_categories
+  * wallet_rpc_server: adding missing return on error in set_daemon
+
+  [ Doyle ]
+  * Remove loading checkpoints from DNS (#570)
+  * Initialise test class members to 0 to fix intermittent failures (#574)
+
+  [ moneromooo-monero ]
+  * change SSL certificate fingerprint whitelisting from SHA1 to SHA-256
+
+  [ Maxim Shishmarev ]
+  * extend get service nodes rpc with block height and block hash (#577)
+
+  [ moneromooo-monero ]
+  * wallet2: fix infinite loop picking outputs in corner case
+  * wallet_rpc_server: reject standalone short payment id in address book
+  * mnemonics: fix 4 byte UTF-8 rewriting
+
+  [ Doyle ]
+  * Service Node Checkpoint Storage (#579)
+  * Merge dev into upstream
+  * Remove wallet dns code
+
+  [ moneromooo-monero ]
+  * cmake: fix some case of "backtrace lib not found" breaking
+  * wallet2: reject standalone short payment IDs in monero: URI API
+  * fix wide difficulty conversion with some versions of boost
+
+  [ Jason Rhinelander ]
+  * Add missing depends to version.cpp generator (#583)
+
+  [ Doyle ]
+  * Update MONERO_DEFAULT_LOG_CATEGORY entries
+
+  [ moneromooo-monero ]
+  * blockchain: keep a rolling long term block weight median
+  * error: fix compile error on windows with depends
+
+  [ Jason Rhinelander ]
+  * CLI wallet wording fixes/improvements for SN commands (#587)
+
+  [ moneromooo-monero ]
+  * cmake: fix incorrect hint for OPENSSL_ROOT_DIR
+  * mlog: default to not showing SSL errors
+
+  [ Doyle ]
+  * Add workaround for sanity checking output keys in wallet2
+  * Update MONERO #defines to LOKI
+  * Fix ledger re-declaration of is_change
+
+  [ moneromooo-monero ]
+  * net_ssl: SSL config tweaks for compatibility and security
+
+  [ Doyle ]
+  * Fold down extraneous loops over the same data, add early break in check (#592)
+
+  [ moneromooo-monero ]
+  * rpc: fail update RPC when running offline
+  * net_ssl: free certs after setting them up
+  * wallet_rpc_server: use original addresses in destinations in get_transfers
+  * password: do not use line input on windows
+  * wallet: fix certificate fingerprint length check
+
+  [ Rohaq ]
+  * Added Table of Contents to main README.md
+  * Updated Copyright notice
+  * Made code block usage consistent across all .md files
+  * Used subeaders to avoid slightly wonky looking formatting
+  * Changed odd bullet point to low level header
+
+  [ Maxim Shishmarev ]
+  * sort sn list before applying updates; only assign swarms to fully funded snodes (#605)
+
+  [ Doyle ]
+  * Remove unused variables (#593)
+  * Remove virtual and add override to top_block_hash
+  * Switch to modern bytes format and add missing override
+
+  [ moneromooo-monero ]
+  * wallet: add unlock_time details to show_transfers
+
+  [ who-biz ]
+  * [depends] update openssl to 1.0.2r
+
+  [ Howard Chu ]
+  * Fix #5553
+
+  [ moneromooo-monero ]
+  * unit_tests: make the density test a bit less stringent
+  * functional_tests: fix rare get_output_distribution failure
+
+  [ Lee Clagett ]
+  * Fix configuration bug; wallet2 --daemon-ssl-allow-any-cert now works.
+  * Add ssl_options support to monerod's rpc mode.
+  * Fix allow any cert mode in wallet rpc when configured over rpc
+
+  [ moneromooo-monero ]
+  * core: do not commit half constructed batch db txn
+  * blockchain: do not try to pop blocks down to the genesis block
+
+  [ Maxim Shishmarev ]
+  * Add blockchain testing routine (#608)
+
+  [ Doyle ]
+  * Restore old style hashing for non-standard TX's so calculated hashes are consistent (#613)
+
+  [ moneromooo-monero ]
+  * core: update pruning if using --prune-blockchain on a pruned blockchain
+
+  [ Doyle ]
+  * Update readme ports and versions
+
+  [ moneromooo-monero ]
+  * functional_tests: fix python3 compatibility
+
+  [ Doyle ]
+  * Unify and move responsibility of voting to quorum_cop (#615)
+
+  [ moneromooo-monero ]
+  * blockchain: keep alternative blocks in LMDB
+
+  [ Howard Chu ]
+  * RandomX integration
+  * Proposed tweak for issue with finding seedblock hash
+  * Updated to RandomX v1.0.3
+
+  [ Doyle ]
+  * Remove unused txs member in NOTIFY_RESPONSE_GET_OBJECT (#619)
+  * Enforce miner tx version (#623)
+  * Remove non-fluffy blockchain syncing path (#618)
+  * Service Node Checkpointing Basic Syncing (#621)
+
+  [ Maxim Shishmarev ]
+  * Incorporate service node ip address into uptime proofs (#622)
+
+  [ Doyle ]
+  * Integration Test: Granular block mining (#625)
+
+  [ Maxim Shishmarev ]
+  * Print ip and port with print_sn command (#627)
+
+  [ Doyle ]
+  * Various integration test fixes (#628)
+  * Make --service-node give more verbose failure flags (#630)
+
+  [ Maxim Shishmarev ]
+  * Require storage server running for uptime proofs (v.2) (#631)
+
+  [ moneromooo-monero ]
+  * p2p: fix GCC 9.1 crash
+  * miniupnpc: update to build on BSD
+
+  [ Howard Chu ]
+  * Silence warnings on Windows
+
+  [ ston1th ]
+  * miner: fix double free of thread attributes
+
+  [ moneromooo-monero ]
+  * Fix GCC 9.1 build warnings
+  * cmake: do not use -mmitigate-rop on GCC >= 9.1
+
+  [ Howard Chu ]
+  * Release dataset om stop_mining
+
+  [ xiphon ]
+  * epee: fix SSL autodetect on reconnection
+
+  [ Doyle ]
+  * Don't access array OOB when parsing percentage in stakes (#636)
+  * Drop connection when requesting duplicated tx indexes (#637)
+
+  [ Howard Chu ]
+  * Don't use -march=native
+  * Allow parallel make
+  * Delete redundant cppzmq dependency
+  * Use 9 digit build IDs
+
+  [ Maxim Shishmarev ]
+  * RPC endpoint for requesting random snodes (#638)
+
+  [ Doyle ]
+  * Service Node Checkpointing: More reliable transportation of votes, culling of old checkpoints (#632)
+
+  [ moneromooo-monero ]
+  * epee: basic sanity check on allocation size from untrusted source
+
+  [ anonimal ]
+  * cryptonote_protocol_handler: prevent potential DoS
+
+  [ moneromooo-monero ]
+  * cryptonote_protocol: expand basic DoS protection
+  * cryptonote_protocol: fix another potential P2P DoS
+  * serialization: fail on read_varint error
+  * cryptonote: throw on tx hash calculation error
+  * tree-hash: allocate variable memory on heap, not stack
+  * serialization: check stream good flag at the end
+  * abstract_tcp_server2: improve DoS resistance
+  * ensure no NULL is passed to memcpy
+  * rpc: restrict the recent cutoff size in restricted RPC mode
+
+  [ Doyle ]
+  * Check both tx keys stored in tx_extra in get_reserve_proof (#647)
+
+  [ Jason Rhinelander ]
+  * epee: fix SSL autodetect on reconnection (#651)
+  * RED error message for storage server uptime fail (#653)
+  * Format sn-public-ip option in error message
+  * Make tx type and version scoped enums
+  * Increase simplewallet sweep min tx version to v4
+  * Restrict RPC commands related to the local SN (#658)
+  * lmdb size/endian fix (#660)
+  * Relax deregistration rules
+
+  [ Doyle ]
+  * Remove ncurses and disable readline for Dockerfile (#652)
+
+  [ Jason Rhinelander ]
+  * Add dummy payment IDs (#665)
+  * Tweak decommission credit rules (#666)
+  * Increase fee by 80x at Heimdall fork (#663)
+
+  [ Doyle ]
+  * Add output index after invalid check
+  * Revert "Remove unused txs member in NOTIFY_RESPONSE_GET_OBJECT (#619)"
+
+  [ stoffu ]
+  * rpc: set sanity_check_failed to false when successful
+
+  [ moneromooo-monero ]
+  * tx_sanity_check: relax the median check a lot
+  * wallet2: fix change subaddress mixup when sending pre rct outputs
+  * p2p: don't forget pruning seed or public RPC port when updating peers
+
+  [ Doyle ]
+  * Disallow recursive reorgs from the 2nd oldest checkpoint (#667)
+  * Decrease the miner tx version minimum to v2 (#669)
+  * Service node checkpointing: rebased on relaxed deregistration (#662)
+
+  [ Jason Rhinelander ]
+  * Tighten allowed IPv4 ranges
+  * Replace is_fully_funded() calls with is_active()
+  * Fix recommissioning not reinserting SN at the back of the reward list
+  * Add penalty for switching IPs
+  * Fix missing < 0 on memcmp
+
+  [ Maxim Shishmarev ]
+  * respond with an explicit OK message on storage server ping (#674)
+
+  [ Jason Rhinelander ]
+  * Fix reported pow algorithm
+  * Replace growable vector with fixed-size array
+  * Update submodule for updated salt
+
+  [ Maxim Shishmarev ]
+  * Add hardfork version to get n service node response (#673)
+
+  [ Jason Rhinelander ]
+  * Update randomx with c++11 required change
+
+  [ Doyle ]
+  * Removes sn-public-ip and combines into --service-node (#676)
+  * Add script for collecting output from docker build (#678)
+  * Hefty Heimdall, version tag, add checkpoints, add dates (#668)
+
+  [ Jason Rhinelander ]
+  * Cap difficulty at 30MH/s for first 60 v12 blocks (#677)
+
+  [ Doyle ]
+  * Service node checkpointing deregistration (#672)
+  * Move miner.h to fix cn basic referencing core and core referencing basic (#679)
+
+  [ Maxim Shishmarev ]
+  * Add Maxim's gpg key (#681)
+
+  [ Beaudan Campbell-Brown ]
+  * Add my keys (#684)
+
+  [ Doyle ]
+  * Set miners to 0 to avoid verification in integration mode (#685)
+  * Improve diagnostics for failed tx send (#682)
+  * Set minimum miner tx version to 4 (#683)
+  * Rename monerod message to lokid (#688)
+
+  [ Jason Rhinelander ]
+  * Remove invalid FIXME (#689)
+  * Fix segfault on exit with bad SN args (#690)
+  * Fix setting relayed votes
+  * Don't relay expired votes; add vote tolerance before disconnection
+  * Silence unused variable warnings (#692)
+  * Change monero -> LOKI in expected mining returns (#694)
+  * Performance fix for alt chain blocks (#695)
+  * Update RandomX with upstream (#697)
+  * Extend height tolerance to state_change tx "verifivation"
+  * Add a `state_height` to RPC (#696)
+
+  [ Maxim Shishmarev ]
+  * Add target height field to get_n_service_nodes (#698)
+
+  [ Doyle ]
+  * Fix warnings emitted on Mac CI machine (#687)
+  * Don't std::max() the version otherwise breaks backcompat with older hardforks (#686)
+
+  [ Jason Rhinelander ]
+  * Don't do a full randomx build (#699)
+  * Fix broken height rejection rule
+
+  [ michael-loki ]
+  * Apply additional boost fix (#701)
+
+  [ Doyle ]
+  * Remove the update command in the daemon since Loki doesn't implement (#703)
+  * Bump Hefty Heimdall beta patch to 1 (#704)
+
+  [ Jason Rhinelander ]
+  * Fix rejection of ip changes state change txes (#706)
+
+  [ Doyle ]
+  * Fix broken unit tests from verify_tx_state_change function change (#705)
+
+  [ Jason Rhinelander ]
+  * Don't include stack trace dumping at default log-level (#710)
+
+  [ Doyle ]
+  * Resolve pubkeys from state change in dupe check in the tx_pool (#707)
+  * Improved print_checkpoints + json_rpc get_checkpoints call (#708)
+  * Remove reorg message for height since we checkpoint at the tip of the chain (#715)
+  * Don't use architecture dependent sizes in RPC calls (#714)
+  * Don't discard alt-chains if they have a checkpoint
+
+  [ Jason Rhinelander ]
+  * 3.0.7 release
+
+  [ Doyle ]
+  * Don't enforce block hash in checkpoint votes
+
+  [ Ryan Tharp ]
+  * upgrade MacOS from 10.11 test environment to 10.13
+
+  [ Doyle ]
+  * Improve print quorum state + rpc update (#709)
+
+  [ Ryan Tharp ]
+  * revert back to 10.11
+
+  [ Doyle ]
+  * Allow state changes if non conflicting states (#718)
+  * Difficulty workaround (#722)
+
+  [ Jason Rhinelander ]
+  * Also use bind-ip for outgoing source (#724)
+
+  [ Doyle ]
+  * Rollback chain when receiving conflicting checkpoints (#726)
+  * Update print_checkpoints to be integration_test friendly (#723)
+  * Don't discard alt-chains if they have a checkpoint
+  * Switch to a circular buffer for recording checkpointing votes
+  * Don't run checkpoint vote check when decommissioned
+  * Update softfork date for testnet quorum change
+  * Reset uptime to 0 on decommission, so node must submit uptime to recommission
+  * Use quorums N-MAX_REORG_BLOCKS_POST_HF12 for checkpointing (#721)
+  * Service node checkpointing soft fork for mainnet (#719)
+  * Bump Hefty Heimdall to patch 2
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 11 Jul 2019 11:53:39 -0300
+
 loki (3.0.7-1~ubuntu1604) xenial; urgency=medium
 
   [ Jason Rhinelander ]
