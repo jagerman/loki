@@ -2558,6 +2558,7 @@ namespace cryptonote
       service_nodes::testing_quorum quorum; // Quorum of Service Nodes
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(height)
+        KV_SERIALIZE(quorum_type)
         KV_SERIALIZE(quorum)
       END_KV_SERIALIZE_MAP()
 
