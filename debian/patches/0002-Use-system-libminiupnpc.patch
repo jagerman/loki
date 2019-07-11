@@ -7,7 +7,7 @@ Subject: Use system libminiupnpc
  1 file changed, 1 insertion(+), 13 deletions(-)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index b907c1b..f7f38ad 100644
+index dd449a6..b0df152 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
 @@ -37,19 +37,7 @@

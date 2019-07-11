@@ -7,7 +7,7 @@ Subject: Allow customized version tag
  1 file changed, 3 insertions(+)
 
 diff --git a/cmake/Version.cmake b/cmake/Version.cmake
-index 5c61005..dbeeccf 100644
+index 9e4ad65..6ee3428 100644
 --- a/cmake/Version.cmake
 +++ b/cmake/Version.cmake
 @@ -35,6 +35,9 @@ find_package(Git QUIET)
