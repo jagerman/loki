@@ -1,4 +1,3 @@
 shared-lib-fixes
 0002-Use-system-libminiupnpc.patch
 0003-Allow-customized-version-tag.patch
-0004-Add-last-announced-SN-version-to-stored-proof-info.patch

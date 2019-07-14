@@ -18,10 +18,10 @@ Patch the loki cmake files to properly build and install shared libs.
  11 files changed, 75 insertions(+), 21 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 39a2deb..7d11052 100644
+index d7e9642..3f46657 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -285,6 +285,8 @@ endif()
+@@ -292,6 +292,8 @@ endif()
  # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
  #   set(BSDI TRUE)
  
@@ -31,10 +31,10 @@ index 39a2deb..7d11052 100644
  
  if(APPLE)
 diff --git a/cmake/Version.cmake b/cmake/Version.cmake
-index 3677e80..5c61005 100644
+index 4042bc6..9e4ad65 100644
 --- a/cmake/Version.cmake
 +++ b/cmake/Version.cmake
-@@ -50,3 +50,12 @@ else()
+@@ -51,3 +51,12 @@ else()
  endif ()
  add_custom_target(genversion ALL
    DEPENDS "${CMAKE_BINARY_DIR}/version.cpp")
@@ -61,21 +61,22 @@ index 035b24b..357984d 100644
 +    COMPONENT development
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
 diff --git a/contrib/epee/src/CMakeLists.txt b/contrib/epee/src/CMakeLists.txt
-index cea50c9..fc80654 100644
+index 88c511d..06d6911 100644
 --- a/contrib/epee/src/CMakeLists.txt
 +++ b/contrib/epee/src/CMakeLists.txt
-@@ -26,10 +26,20 @@
+@@ -26,11 +26,21 @@
  # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
  # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
--add_library(epee STATIC hex.cpp http_auth.cpp mlog.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
-+add_library(epee hex.cpp http_auth.cpp mlog.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
-     connection_basic.cpp network_throttle.cpp network_throttle-detail.cpp mlocker.cpp buffer.cpp)
+-add_library(epee STATIC hex.cpp http_auth.cpp mlog.cpp net_helper.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
++add_library(epee hex.cpp http_auth.cpp mlog.cpp net_helper.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
+     connection_basic.cpp network_throttle.cpp network_throttle-detail.cpp mlocker.cpp buffer.cpp net_ssl.cpp)
 +install(TARGETS epee
 +    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
 +    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
 +set_target_properties(epee PROPERTIES
 +  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
+ 
  if (USE_READLINE AND GNU_READLINE_FOUND)
 -  add_library(epee_readline STATIC readline_buffer.cpp)
 +  add_library(epee_readline readline_buffer.cpp)
@@ -88,13 +89,13 @@ index cea50c9..fc80654 100644
  
  if(HAVE_C11)
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 7553f87..b907c1b 100644
+index 06d60d1..dd449a6 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -80,3 +80,9 @@ endif()
- 
+@@ -81,3 +81,9 @@ endif()
  add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
+ add_subdirectory(randomx EXCLUDE_FROM_ALL)
 +
 +install(
 +  DIRECTORY boost
@@ -131,11 +132,11 @@ index 2e8822f..0f5b01c 100644
 +  COMPONENT   development
 +  FILES_MATCHING PATTERN "*.h")
 diff --git a/external/easylogging++/CMakeLists.txt b/external/easylogging++/CMakeLists.txt
-index 78795d5..4b3781b 100644
+index 72d007a..423a1a3 100644
 --- a/external/easylogging++/CMakeLists.txt
 +++ b/external/easylogging++/CMakeLists.txt
-@@ -44,11 +44,11 @@ target_link_libraries(easylogging
-     ${CMAKE_THREAD_LIBS_INIT})
+@@ -46,11 +46,11 @@ target_link_libraries(easylogging
+     ${Backtrace_LIBRARIES})
  
  # GUI/libwallet install target
 -if (BUILD_GUI_DEPS)
@@ -148,7 +149,7 @@ index 78795d5..4b3781b 100644
      endif()
      install(TARGETS easylogging
          ARCHIVE DESTINATION ${lib_folder}
-@@ -56,3 +56,9 @@ if (BUILD_GUI_DEPS)
+@@ -58,3 +58,9 @@ if (BUILD_GUI_DEPS)
  endif()
  set_property(TARGET easylogging APPEND PROPERTY COMPILE_FLAGS "-fPIC")
  
@@ -159,7 +160,7 @@ index 78795d5..4b3781b 100644
 +    DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
 +    COMPONENT development)
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index ada901e..41bde6d 100644
+index 92b7588..3840eed 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -41,13 +41,6 @@ function (loki_private_headers group)
@@ -203,7 +204,7 @@ index ada901e..41bde6d 100644
  loki_add_library(version SOURCES ${CMAKE_BINARY_DIR}/version.cpp DEPENDS genversion)
  
  add_subdirectory(common)
-@@ -141,3 +141,8 @@ endif()
+@@ -143,3 +143,8 @@ endif()
  
  add_subdirectory(device)
  add_subdirectory(device_trezor)
@@ -213,7 +214,7 @@ index ada901e..41bde6d 100644
 +    DESTINATION "include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}"
 +    FILES_MATCHING PATTERN "*.h")
 diff --git a/src/blockchain_db/CMakeLists.txt b/src/blockchain_db/CMakeLists.txt
-index 8663b63..ff1266d 100644
+index c258330..08b63a8 100644
 --- a/src/blockchain_db/CMakeLists.txt
 +++ b/src/blockchain_db/CMakeLists.txt
 @@ -55,7 +55,7 @@ if (BERKELEY_DB)
@@ -226,10 +227,10 @@ index 8663b63..ff1266d 100644
    ${blockchain_db_sources}
    ${blockchain_db_headers}
 diff --git a/src/common/CMakeLists.txt b/src/common/CMakeLists.txt
-index 5b14872..35c7d44 100644
+index efb035e..c055c7c 100644
 --- a/src/common/CMakeLists.txt
 +++ b/src/common/CMakeLists.txt
-@@ -111,9 +111,9 @@ target_link_libraries(common
+@@ -113,9 +113,9 @@ target_link_libraries(common
      ${Boost_THREAD_LIBRARY}
      ${Boost_REGEX_LIBRARY}
      ${Boost_CHRONO_LIBRARY}
@@ -241,7 +242,7 @@ index 5b14872..35c7d44 100644
  
  #monero_install_headers(common
 diff --git a/src/wallet/api/CMakeLists.txt b/src/wallet/api/CMakeLists.txt
-index 419c0f4..338819d 100644
+index d88f0c9..e5ea262 100644
 --- a/src/wallet/api/CMakeLists.txt
 +++ b/src/wallet/api/CMakeLists.txt
 @@ -63,7 +63,8 @@ loki_private_headers(wallet_api
