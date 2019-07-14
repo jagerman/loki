@@ -1,0 +1,25 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Sun, 14 Jul 2019 18:11:41 -0300
+Subject: Version and install librandomx
+
+---
+ external/CMakeLists.txt | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
+index bbab85e..a6e3a62 100644
+--- a/external/CMakeLists.txt
++++ b/external/CMakeLists.txt
+@@ -74,6 +74,12 @@ if(ARCH_ID STREQUAL "westmere")
+ endif()
+ add_subdirectory(randomx EXCLUDE_FROM_ALL)
+ 
++set_target_properties(randomx PROPERTIES
++  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
++install(TARGETS randomx
++  ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
++  LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
++
+ install(
+   DIRECTORY boost
+   DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
