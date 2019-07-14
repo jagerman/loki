@@ -1,1 +1,3 @@
-/usr/lib/*/loki-core/lib[a-vx-z]*.so.@LIBLOKI_VER@
+/usr/lib/*/loki-core/lib[a-ce-vx-z]*.so.@LIBLOKI_VER@
+/usr/lib/*/loki-core/libdevice.so.@LIBLOKI_VER@
+/usr/lib/*/loki-core/libd[a-df-z]*.so.@LIBLOKI_VER@
