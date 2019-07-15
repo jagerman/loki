@@ -1,6 +1,8 @@
 [Unit]
 Description=Loki network node
 After=network-online.target
+Requires=loki-storage.service
+Before=loki-storage.service
 
 [Service]
 User=_loki
