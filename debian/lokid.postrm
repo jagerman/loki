@@ -4,6 +4,14 @@ set -e
 
 if [ "$1" = purge ]; then
     [ -d /etc/loki ] && rmdir --ignore-fail-on-non-empty /etc/loki || true
+
+    if [ -e /usr/share/debconf/confmodule ]; then
+        . /usr/share/debconf/confmodule
+        db_purge
+    fi
+
+    ucfr --purge lokid /etc/loki/loki.conf
+    ucfr --purge lokid /etc/loki/testnet.conf
 fi
 
 #DEBHELPER#
