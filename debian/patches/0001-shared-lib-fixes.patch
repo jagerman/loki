@@ -161,7 +161,7 @@ index 72d007a..423a1a3 100644
 +    DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
 +    COMPONENT development)
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 92b7588..3840eed 100644
+index 92b7588..ad48f88 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -41,13 +41,6 @@ function (loki_private_headers group)
@@ -213,7 +213,7 @@ index 92b7588..3840eed 100644
 +install(
 +    DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/"
 +    DESTINATION "include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}"
-+    FILES_MATCHING PATTERN "*.h")
++    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
 diff --git a/src/blockchain_db/CMakeLists.txt b/src/blockchain_db/CMakeLists.txt
 index c258330..08b63a8 100644
 --- a/src/blockchain_db/CMakeLists.txt
