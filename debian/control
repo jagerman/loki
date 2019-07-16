@@ -1,7 +1,7 @@
 Source: loki
 Section: net
 Priority: optional
-Maintainer: Jason Rhinelander <jason@imaginary.ca>
+Maintainer: Jason Rhinelander <jason@loki.network>
 Build-Depends: debhelper (>= 11), cmake, g++, libboost-dev (>= 1.58), libboost-filesystem-dev, libboost-thread-dev,
     libboost-date-time-dev, libboost-chrono-dev, libboost-regex-dev, libboost-serialization-dev, libboost-program-options-dev,
     libboost-locale-dev, libunbound-dev (>= 1.4.16), libminiupnpc-dev (>= 2.1), libunwind8-dev, libsodium-dev, libssl-dev, libreadline-dev,
@@ -25,7 +25,7 @@ Description: Loki wallet shared libraries
 
 Package: lokid
 Architecture: any
-Depends: libloki-core4.0.2 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libloki-core4.0.2 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, debconf
 Suggests: loki-blockchain-tools, loki-wallet
 Description: Loki network daemon
  This package contains the loki network daemon, lokid, for running a loki node
@@ -76,3 +76,12 @@ Depends: libloki-core-wallet4.0.2 (= ${binary:Version}), libloki-core4.0.2 (= ${
  libminiupnpc-dev, libssl-dev, libsodium-dev, libreadline-dev, libhidapi-dev, libzmq3-dev, ${misc:Depends}
 Description: Loki development files
  This contains the headers needed to compile code that uses the loki libraries.
+
+Package: loki-service-node
+Architecture: all
+Pre-Depends: curl
+Depends: lokid (=${binary:Version}), loki-storage-server
+Description: Loki service node metapackage
+ This package depends on the necessary components to run a loki service node
+ and updates the lokid configuration to operate as a service node instead of a
+ regular node.
