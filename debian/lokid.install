@@ -1,3 +1,4 @@
 /usr/bin/lokid
 debian/loki.conf /etc/loki
 debian/testnet.conf /etc/loki
+debian/ufw/lokid /etc/ufw/applications.d
