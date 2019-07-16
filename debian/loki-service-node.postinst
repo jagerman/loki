@@ -1,0 +1,53 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = configure ]; then
+    . /usr/share/debconf/confmodule
+    db_get loki-service-node/ip-address
+    IP="$RET"
+
+    for conf in loki.conf testnet.conf; do
+        # NB: also purge in postrm
+        ucfr loki-service-node /etc/loki/$conf
+
+        dpkg-divert --package loki-service-node --add --rename --divert /etc/loki/$conf.no-service-node /etc/loki/$conf
+    done
+
+    tmpdir=$(mktemp --tmpdir -d loki-service-node.XXXXXXXXXX)
+    for c in loki.conf testnet.conf; do
+        if [ -f "/etc/loki/$c" ]; then
+            cp /etc/loki/$c ${tmpdir}/$c
+        elif [ -f "/etc/loki/$c.no-service-node" ]; then
+            cp /etc/loki/$c.no-service-node ${tmpdir}/$c
+        elif [ -f "/usr/share/lokid/$c" ]; then
+            cp /usr/share/lokid/$c ${tmpdir}/$c
+        else
+            echo "Internal error: cannot find an existing $c to update!"
+            false
+        fi
+    done
+
+    sed -i '/^#\?service-node=/{h;s/.*=.*/service-node=1/};${x;/^$/{s//service-node=1/;H};x}' \
+        ${tmpdir}/loki.conf ${tmpdir}/testnet.conf
+    sed -i '/^storage-server-port=/{h;s/=.*/=22021/};${x;/^$/{s//storage-server-port=22021/;H};x}' \
+        ${tmpdir}/loki.conf
+    sed -i '/^storage-server-port=/{h;s/=.*/=38155/};${x;/^$/{s//storage-server-port=38155/;H};x}' \
+        ${tmpdir}/testnet.conf
+    sed -i '/^service-node-public-ip=/{h;s/=.*/='"$IP"'/};${x;/^$/{s//service-node-public-ip='"$IP"'/;H};x}' \
+        ${tmpdir}/loki.conf ${tmpdir}/testnet.conf
+
+    for x in loki.conf testnet.conf; do
+        if ! [ -f /etc/loki/$x ]; then
+            mv ${tmpdir}/$x /etc/loki/$x
+            ucfr loki-service-node /etc/loki/$x
+        else
+            ucf --debconf-ok ${tmpdir}/$x /etc/loki/$x
+        fi
+    done
+
+    rm -rf ${tmpdir}
+fi
+
+#DEBHELPER#
+

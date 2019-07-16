@@ -20,23 +20,6 @@ if [ "$1" = configure ]; then
     su -s /bin/sh _loki -c "test -O /var/lib/loki &&
         test -G /var/lib/loki" || \
         chown _loki:_loki /var/lib/loki
-
-
-    . /usr/share/debconf/confmodule
-
-    mkdir -p /tmp/lokid-postinst
-    cp -f /etc/loki/loki.conf /etc/loki/testnet.conf /tmp/lokid-postinst
-
-    db_get lokid/ip-address
-    sed -i '/^service-node-public-ip=/{h;s/=.*/='"$IP"'/};${x;/^$/{s//service-node-public-ip='"$IP"'/;H};x}' \
-        /tmp/lokid-postinst/loki.conf /tmp/lokid-postinst/testnet.conf
-
-    # NB: also purge in postrm
-    ucfr lokid /etc/loki/loki.conf
-    ucfr lokid /etc/loki/testnet.conf
-
-    ucf /tmp/lokid-postinst/loki.conf /etc/loki/loki.conf
-    ucf /tmp/lokid-postinst/testnet.conf /etc/loki/testnet.conf
 fi
 
 #DEBHELPER#
