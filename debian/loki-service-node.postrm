@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = remove -o "$1" = "abort-install" -o "$1" = disappear ]; then
+    tmpdir=$(mktemp --tmpdir -d loki-service-node.XXXXXXXXXX)
+    for c in loki.conf testnet.conf; do
+        ucfr --purge loki-service-node /etc/loki/$c
+
+        if [ -f "/etc/loki/$c" ]; then
+            cp /etc/loki/$c $tmpdir/$c
+        elif [ -f "/etc/loki/$c.no-service-node" ]; then
+            cp /etc/loki/$c.no-service-node $tmpdir/$c
+        else
+            echo "Internal error: cannot find an existing $c to update!"
+            exit 0
+        fi
+
+        # Try to merge any changes from the service node config back into the non-service node
+        # config when removing the service-node package, but with `service-node=1` commented out.
+        sed -i 's/^service-node=/#&/' $tmpdir/$c
+        rm -f /etc/loki/$c
+        dpkg-divert --package loki-service-node --remove --rename --divert /etc/loki/$c.no-service-node /etc/loki/$c
+        ucf --purge /etc/loki/$c
+        ucf --debconf-ok $tmpdir/$c /etc/loki/$c
+        ucf --purge /etc/loki/$c
+    done
+
+    rm -rf $tmpdir
+fi
+
+#DEBHELPER#
