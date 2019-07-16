@@ -25,7 +25,6 @@ Description: Loki wallet shared libraries
 
 Package: lokid
 Architecture: any
-Pre-Depends: curl
 Depends: libloki-core@LIBLOKI_VERSION@ (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, debconf
 Suggests: loki-blockchain-tools, loki-wallet
 Description: Loki network daemon
@@ -77,3 +76,12 @@ Depends: libloki-core-wallet@LIBLOKI_VERSION@ (= ${binary:Version}), libloki-cor
  libminiupnpc-dev, libsodium-dev, libssl-dev, libreadline-dev, libhidapi-dev, libzmq3-dev, ${misc:Depends}
 Description: Loki development files
  This contains the headers needed to compile code that uses the loki libraries.
+
+Package: loki-service-node
+Architecture: all
+Pre-Depends: curl
+Depends: lokid (=${binary:Version}), loki-storage-server
+Description: Loki service node metapackage
+ This package depends on the necessary components to run a loki service node
+ and updates the lokid configuration to operate as a service node instead of a
+ regular node.
