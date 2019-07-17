@@ -11,6 +11,8 @@ include /usr/share/dpkg/pkg-info.mk
 
 override_dh_auto_configure:
 	debian/gen-libloki-install.sh $(DEB_VERSION_UPSTREAM)
+	# Dirty hack to work around cmake <3.13 inability to install targets from another dir
+	echo 'install(TARGETS randomx ARCHIVE DESTINATION lib$${LOKI_INSTALL_LIBDIR_SUFFIX} LIBRARY DESTINATION lib$${LOKI_INSTALL_LIBDIR_SUFFIX})' >>external/randomx/CMakeLists.txt
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DSTATIC=OFF -DUSE_LTO=ON -DBUILD_SHARED_LIBS=ON \
 		-DARCH=westmere -DCMAKE_CXX_FLAGS="-mtune=haswell" -DCMAKE_C_FLAGS="-mtune=haswell" \
 		-DLOKI_INSTALL_LIBDIR_SUFFIX=/$(DEB_HOST_MULTIARCH)/loki-core -DLOKI_INSTALL_INCLUDEDIR_SUFFIX=/loki-core \

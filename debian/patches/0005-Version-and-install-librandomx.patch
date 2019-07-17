@@ -3,23 +3,24 @@ Date: Sun, 14 Jul 2019 18:11:41 -0300
 Subject: Version and install librandomx
 
 ---
- external/CMakeLists.txt | 6 ++++++
- 1 file changed, 6 insertions(+)
+ external/CMakeLists.txt | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index bbab85e..a6e3a62 100644
+index 328e235..41050f4 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -74,6 +74,12 @@ if(ARCH_ID STREQUAL "westmere")
+@@ -84,7 +84,12 @@ add_subdirectory(easylogging++)
+ if(ARCH_ID STREQUAL "westmere")
+   set(ARCH_ID "x86-64")  # deb workaround: randomx doesn't like ARCH_ID=westmere
  endif()
- add_subdirectory(randomx EXCLUDE_FROM_ALL)
- 
+-add_subdirectory(randomx EXCLUDE_FROM_ALL)
++add_subdirectory(randomx)
++
 +set_target_properties(randomx PROPERTIES
 +  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
-+install(TARGETS randomx
-+  ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
-+  LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
-+
++set_target_properties(randomx-tests randomx-benchmark randomx-codegen
++  PROPERTIES EXCLUDE_FROM_ALL TRUE)
+ 
  install(
    DIRECTORY boost
-   DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
