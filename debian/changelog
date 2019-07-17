@@ -1,3 +1,37 @@
+loki (4.0.3-1~ubuntu1804) bionic; urgency=medium
+
+  * Loki 4.0.3 release
+
+  [ Jason Rhinelander ]
+  * Don't send NOTIFY_NEW_SERVICE_NODE_VOTE before v12
+  * Only create checkpoint quorum for heights divisible by CHECKPOINT_INTERVAL
+  * Ensure m_last_checkpointed_height is always divisible by CHECKPOINT_INTERVAL
+  * Fix height check for received checkpoint vote
+  * Skip non-interval height checkpoints when loading
+
+  [ Doyle ]
+  * Document checkpoint quorum generation rules for get_testing_quorum (#733)
+  * Bump Hefty Heimdall patch to 3
+  * Move the refill of votes to recommission because we still update vote counts during decommission
+  * Offset the vote height for checkpointing to the correct quorum height
+  * Update error message on invalid quorum height for vote
+
+  [ Jason Rhinelander ]
+  * Refresh patches
+  * randomx build patch
+  * Move libdevice_trezor.so into libloki-core-wallet
+  * Version and install librandomx
+  * Add bare .so symlinks to dev package
+  * Add default port and public-ip debconf
+  * Switch maintainer e-mail to my loki e-mail
+  * Add ufw file for lokid
+  * Create loki-service-node metapackage
+  * Fix dev package missing *.hpp
+  * Fix testnet data-dir
+  * Fix -dev package to be properly multi-arch
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 17 Jul 2019 16:10:02 -0300
+
 loki (4.0.2-1~ubuntu1804) bionic; urgency=medium
 
   * Loki 4.0.2 release
