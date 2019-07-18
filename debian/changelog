@@ -1,3 +1,9 @@
+loki (4.0.3-3~deb10) buster; urgency=medium
+
+  * Fix lokid restart
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 18 Jul 2019 16:28:44 -0300
+
 loki (4.0.3-2~deb10) buster; urgency=medium
 
   * Restart loki nodes in loki-service-node postinst
