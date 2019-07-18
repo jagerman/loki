@@ -1,3 +1,10 @@
+loki (4.0.3-2~ubuntu1604) xenial; urgency=medium
+
+  * fix for building deb with cmake before 3.13
+  * Restart loki nodes in loki-service-node postinst
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 18 Jul 2019 15:10:58 -0300
+
 loki (4.0.3-1~ubuntu1604) xenial; urgency=medium
 
   * Loki 4.0.3 release
