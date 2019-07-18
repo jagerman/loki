@@ -1,3 +1,10 @@
+loki (4.0.3-2~deb9) stretch; urgency=medium
+
+  * fix for building deb with cmake before 3.13
+  * Restart loki nodes in loki-service-node postinst
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 18 Jul 2019 15:10:41 -0300
+
 loki (4.0.3-1~deb9) stretch; urgency=medium
 
   * Loki 4.0.3 release
