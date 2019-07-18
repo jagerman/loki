@@ -55,10 +55,10 @@ fi
 if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
     if [ -d /run/systemd/system ]; then
         systemctl --system daemon-reload >/dev/null || true
-        if [ -n "$2" ]; then
-            for s in loki-node loki-testnet-node; do
-                deb-systemd-invoke try-restart $s.service >/dev/null || true
-            done
-        fi
+        action=start
+        if [ -n "$2" ]; then action=restart; fi
+        for s in loki-node loki-testnet-node; do
+            deb-systemd-invoke $action $s.service >/dev/null || true
+        done
     fi
 fi
