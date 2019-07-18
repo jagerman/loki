@@ -51,3 +51,14 @@ fi
 
 #DEBHELPER#
 
+# Debhelper doesn't do this here because the loki-service-node package doesn't contain the service files:
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if [ -d /run/systemd/system ]; then
+        systemctl --system daemon-reload >/dev/null || true
+        if [ -n "$2" ]; then
+            for s in loki-node loki-testnet-node; do
+                deb-systemd-invoke try-restart $s.service >/dev/null || true
+            done
+        fi
+    fi
+fi
