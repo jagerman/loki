@@ -1,3 +1,10 @@
+loki (4.0.3-4~deb9) stretch; urgency=medium
+
+  * removed postrm
+  * Install lmdb download helper script
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 25 Jul 2019 17:25:28 -0300
+
 loki (4.0.3-3~deb9) stretch; urgency=medium
 
   * Fix lokid restart
