@@ -1,9 +1,0 @@
-#!/bin/sh
-
-set -e
-
-if [ "$1" = purge ]; then
-    [ -d /etc/loki ] && rmdir --ignore-fail-on-non-empty /etc/loki || true
-fi
-
-#DEBHELPER#
