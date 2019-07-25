@@ -1,0 +1,58 @@
+#!/bin/bash
+
+set -e
+
+if [ "$UID" != 0 ]; then
+    echo "$UID Error: must run this script as root (e.g. with sudo)" >&2
+    exit 1
+fi
+
+if [ "$#" != 1 ] || [[ "$1" == -* ]]; then
+    echo "Error: usage: $0 https://url/for/mainnet/data.mdb"
+    exit 1
+fi
+
+if ! [ -e /var/lib/loki ]; then
+    echo "/var/lib/loki does not exist; did you properly install the lokid package?"
+    exit 1
+fi
+
+if ! [ -e /var/lib/loki/lmdb ]; then
+    mkdir /var/lib/loki/lmdb
+    chown _loki:_loki /var/lib/loki/lmdb
+fi
+
+active=
+if systemctl -q is-active loki-node.service; then
+    active=y
+fi
+
+echo "Ready to download lmdb from $1."
+if [ -e /var/lib/loki/lmdb/data.mdb ]; then
+    echo "Will overwrite existing data.mdb:"
+    ls -l --si /var/lib/loki/lmdb/data.mdb
+fi
+if [ -n "$active" ]; then
+    echo "loki-node.service will be stopped, then restarted when the download is complete"
+else
+    echo "loki-node.service is not currently running and will be left stopped.  (Do not attempt to start it until the download is complete!)"
+fi
+
+echo
+
+read -p "Press enter to continue, ^C to abort"
+
+if [ -n "$active" ]; then
+    systemctl stop loki-node.service
+fi
+
+curl "$1" >/var/lib/loki/lmdb/data.mdb
+
+chown _loki:_loki /var/lib/loki/lmdb/data.mdb
+echo "Downloaded data.mdb:"
+ls -l --si /var/lib/loki/lmdb/data.mdb
+
+if [ -n "$active" ]; then
+    echo "Starting loki-node.service"
+    systemctl start loki-node.service
+fi

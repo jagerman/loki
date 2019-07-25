@@ -4,3 +4,4 @@ debian/loki.conf /usr/share/lokid
 debian/testnet.conf /etc/loki
 debian/testnet.conf /usr/share/lokid
 debian/ufw/lokid /etc/ufw/applications.d
+debian/lokid-download-lmdb /usr/bin
