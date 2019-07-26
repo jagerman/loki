@@ -3,7 +3,7 @@
 set -e
 
 if [ "$UID" != 0 ]; then
-    echo "$UID Error: must run this script as root (e.g. with sudo)" >&2
+    echo "Error: must run this script as root (e.g. with sudo)" >&2
     exit 1
 fi
 
@@ -22,28 +22,34 @@ if ! [ -e /var/lib/loki/lmdb ]; then
     chown _loki:_loki /var/lib/loki/lmdb
 fi
 
-active=
-if systemctl -q is-active loki-node.service; then
-    active=y
-fi
+node_active=
+ss_active=
+if systemctl -q is-active loki-node.service; then node_active=y; fi
+if systemctl -q is-active loki-storage-server.service; then ss_active=y; fi
 
 echo "Ready to download lmdb from $1."
 if [ -e /var/lib/loki/lmdb/data.mdb ]; then
     echo "Will overwrite existing data.mdb:"
     ls -l --si /var/lib/loki/lmdb/data.mdb
 fi
-if [ -n "$active" ]; then
-    echo "loki-node.service will be stopped, then restarted when the download is complete"
+if [ -n "$node_active" ]; then
+    echo -n "loki-node.service"
+    if [ -n "$ss_active" ]; then echo -n " and loki-storage-server.service"; fi
+    echo " will be stopped, then restarted when the lmdb download is complete"
 else
-    echo "loki-node.service is not currently running and will be left stopped.  (Do not attempt to start it until the download is complete!)"
+    echo "loki-node.service is not currently running and will be left stopped.  (Do not attempt to start it or the storage server until the download is complete!)"
 fi
 
 echo
 
 read -p "Press enter to continue, ^C to abort"
 
-if [ -n "$active" ]; then
-    systemctl stop loki-node.service
+if [ -n "$node_active" ]; then
+    if [ -n "$ss_active" ]; then
+        systemctl stop loki-node.service loki-storage-server.service
+    else
+        systemctl stop loki-node.service
+    fi
 fi
 
 curl "$1" >/var/lib/loki/lmdb/data.mdb
@@ -52,7 +58,12 @@ chown _loki:_loki /var/lib/loki/lmdb/data.mdb
 echo "Downloaded data.mdb:"
 ls -l --si /var/lib/loki/lmdb/data.mdb
 
-if [ -n "$active" ]; then
-    echo "Starting loki-node.service"
-    systemctl start loki-node.service
+if [ -n "$node_active" ]; then
+    if [ -n "$ss_active" ]; then
+        echo "Starting loki-node.service, loki-storage-server.service"
+        systemctl start loki-node.service loki-storage-server.service
+    else
+        echo "Starting loki-node.service"
+        systemctl start loki-node.service
+    fi
 fi
