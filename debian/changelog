@@ -1,3 +1,9 @@
+loki (4.0.3-5~ubuntu1604) xenial; urgency=medium
+
+  * lmdb download script fixes
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 26 Jul 2019 02:58:42 -0300
+
 loki (4.0.3-4~ubuntu1604) xenial; urgency=medium
 
   * removed postrm
