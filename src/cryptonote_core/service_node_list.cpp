@@ -54,6 +54,9 @@
 
 namespace service_nodes
 {
+  static std::unordered_map<std::string, uint64_t> total_bad_sn_rewards;
+
+
   size_t constexpr MAX_SHORT_TERM_STATE_HISTORY   = 6 * STATE_CHANGE_TX_LIFETIME_IN_BLOCKS;
   size_t constexpr STORE_LONG_TERM_STATE_INTERVAL = 10000;
 
@@ -79,6 +82,7 @@ namespace service_nodes
     std::vector<std::pair<cryptonote::blobdata, cryptonote::block>> blocks;
     std::vector<cryptonote::transaction> txs;
     std::vector<crypto::hash> missed_txs;
+    bool printed_bad_rewards = false;
     auto work_start = std::chrono::high_resolution_clock::now();
     for (uint64_t i = 0; m_state.height < current_height; i++)
     {
@@ -113,6 +117,38 @@ namespace service_nodes
         }
 
         process_block(block, txs);
+      }
+
+      if (!printed_bad_rewards && m_state.height > 240210) {
+        std::ostringstream transfer;
+        size_t num_transfers = 0;
+        uint64_t total = 0;
+        MGINFO_RED("v1 coinbase rewargs:");
+        for (const auto &r : total_bad_sn_rewards) {
+          total += r.second;
+          std::string amount_str = std::to_string(r.second);
+          while (amount_str.size() < 10)
+            amount_str = '0' + amount_str;
+          if (amount_str.size() < 11)
+            amount_str = ' ' + amount_str;
+          MGINFO(r.first << ": " << amount_str.substr(0, amount_str.size() - 9) << '.' << amount_str.substr(amount_str.size() - 9));
+
+          if (num_transfers % 15 == 0) {
+            if (num_transfers)
+              transfer << "\n\n";
+            transfer << "transfer unimportant";
+          }
+          num_transfers++;
+          transfer << ' ' << r.first << ' ' << amount_str;
+        }
+
+        auto total_str = std::to_string(total);
+        MGINFO_RED("TOTAL BAD SN REWARDS: " << total_str.substr(0, total_str.size() - 9) << '.' << total_str.substr(total_str.size() - 9));
+
+        MGINFO_RED("CLI wallet transfers:");
+        MWARNING(transfer.str());
+
+        printed_bad_rewards = true;
       }
     }
 
@@ -1200,6 +1236,46 @@ namespace service_nodes
         auto &info = duplicate_info(it->second);
         info.last_reward_block_height = block_height;
         info.last_reward_transaction_index = UINT32_MAX;
+      }
+
+      if (block.miner_tx.version < cryptonote::txversion::v2_ringct) {
+        MERROR("Found a pre-v2 coinbase TX in block " << block_height << " https://lokiblocks.com/block/" << block_height);
+        if (it == m_state.service_nodes_infos.end())
+          MERROR("But missing SN info?!");
+        else {
+          uint64_t snode_reward = std::accumulate(std::next(block.miner_tx.vout.begin()), block.miner_tx.vout.end(), uint64_t{0},
+              [](uint64_t sum, const cryptonote::tx_out &txo) { return sum + txo.amount; });
+
+          auto &info = *it->second;
+          auto fee = info.portions_for_operator;
+
+          const uint64_t remaining_portions = STAKING_PORTIONS - info.portions_for_operator;
+
+          MWARNING("SN rewards:");
+          // Add contributors and their portions to winners.
+          for (const auto& contributor : info.contributors)
+          {
+            uint64_t hi, lo, resulthi, resultlo;
+            lo = mul128(contributor.amount, remaining_portions, &hi);
+            div128_64(hi, lo, info.staking_requirement, &resulthi, &resultlo);
+
+            if (contributor.address == info.operator_address)
+              resultlo += info.portions_for_operator;
+
+            auto addr_string = cryptonote::get_account_address_as_str(m_blockchain.nettype(), false, contributor.address);
+            auto cont_reward = cryptonote::get_portion_of_reward(resultlo, snode_reward);
+            total_bad_sn_rewards[addr_string] += cont_reward;
+
+            std::string amount_str = std::to_string(cont_reward);
+            while (amount_str.size() < 10)
+              amount_str = '0' + amount_str;
+            if (amount_str.size() < 11)
+              amount_str = ' ' + amount_str;
+            MWARNING(addr_string << ' ' <<
+                amount_str.substr(0, amount_str.size() - 9) << '.' << amount_str.substr(amount_str.size() - 9) <<
+                (contributor.address == info.operator_address ? " (operator)" : ""));
+          }
+        }
       }
     }
 
