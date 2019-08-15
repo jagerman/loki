@@ -1,3 +1,111 @@
+loki (4.0.4-1~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Subtract buffer blocks from checkpoint quorum in vote check
+  * Push buffer subtraction into get_testing_quorum
+  * Take safety buffer into account before printing error
+
+  [ sachaaaaa ]
+  * New print_sn_state_changes command (#727)
+
+  [ Doyle ]
+  * Revert to manually serializing checkpoints/quorum (#743)
+
+  [ Jason Rhinelander ]
+  * (Low priority) Add disabled-by-default quorum storage support (#702)
+  * Fix credit calculation for awaiting service nodes (#750)
+  * Fix rebase mistake from #702 (#751)
+  * Suppress "transaction is locked" messages for coinbase txes (#755)
+
+  [ Doyle ]
+  * Increase the age of service node rollbacks we keep
+  * Store historical states for every 10k blocks and better detach
+  * ~5ms per block speed up, make serialised struct static
+  * Fix pop-blocks edge case before the first 10k interval
+  * Guard against invalid serialisation and change deque to vector
+  * Make cosmetic changes for RPC declarations for the documentation generator (#756)
+  * Fix ranged quorum query (#762)
+  * Fix off by 1 when checking state_t heights causing sync failure (#759)
+  * Improve duplicated non-standard tx check error messages (#763)
+  * Don't query the blockchain for hardfork which causes major slowdown (#764)
+  * Don't cull checkpoints if they bleed into the finality zone (#744)
+  * Demote error message for missing quorum in handling non-standard txes (#769)
+  * Only store service node list every 10k AND Height-N blocks (#761)
+  * Remove NOTIFY_NEW_DEREGISTER_VOTE code, deprecated by service node vote
+  * Inline update_miner_block_template and remove from core header
+  * Remove legacy P2P vote conversion methods
+  * Add missing LOKI_RPC_DOC_INTROSPECT annotations (#776)
+  * Filter vote age before querying quorum (#777)
+  * Add progress meter to pop_blocks (#770)
+  * Use defer on scope exit to remove some repetitive code (#771)
+  * Bump Hefty Heimdall patch to 4
+  * Immutable checkpoint api update (#773)
+  * Fix off by one in deleting checkpoints on detach (#780)
+  * Remove boundary HF12 uptime proof code (#785)
+  * Handle multi state changes in the pool (#781)
+  * Make the rollback code for update_checkpoint be soft-forky on mainnet (#782)
+  * Make 4.0.4 service node blob backwards compatible (#786)
+  * Fix silly didn't try compile boo boo. nettype() not nettype (#790)
+
+  [ Jason Rhinelander ]
+  * Optimizations and simplifications
+  * Use shared_ptr storage for service_node_info
+  * Update seed nodes (#791)
+
+  [ moneromooo-monero ]
+  * p2p: add a few missing connection close calls
+  * cryptonote_protocol: drop peers we can't download from when syncing
+  * daemon: fix "never seen before" time span display for peers
+  * p2p: don't forget pruning seed or public RPC port when updating peers
+  * p2p: delay IGP probing on startup
+  * p2p: don't connect to more than one IP per class B if we can
+
+  [ Doyle ]
+  * Don't relay service node votes or uptime proof if synchronising (#779)
+
+  [ Jason Rhinelander ]
+  * Fix storage states over-reserved size
+
+  [ Doyle ]
+  * Regression core tests, missing txs on fork, segfault on detach
+  * Fix shared_ptr change to get_service_node_list_state API
+  * Fix checkpoint regression, must accept alt blocks if they are < the first checkpoint (#792)
+
+  [ moneromooo-monero ]
+  * p2p: propagate out peers limit to payload handler
+  * p2p: close the right number of connections on setting max in/out peers
+
+  [ Jason Rhinelander ]
+  * Make close() delete the connection
+  * Limit default p2p in-peers to 32
+  * Don't count pingback connections as outgoing connections
+
+  [ Doyle ]
+  * Lock blockchain when quorum cop attempts to update checkpoint
+
+  [ moneromooo-monero ]
+  * p2p: store network address directly in blocked host list
+  * allow blocking whole subnets
+  * remove obsolete save_graph skeleton code
+
+  [ Jason Rhinelander ]
+  * Add loki docs for new banned rpc command
+
+  [ Doyle ]
+  * Enforce ordering of votes in HF13
+
+  [ Thomas Winget ]
+  * Add IPv6 support
+
+  [ Jason Rhinelander ]
+  * Fix IPv6 addr parsing for boost <1.66
+
+  [ Doyle ]
+  * Assert should be after info.is_active() is true (#799)
+  * Early continue tx pool quorum query if state change is older than received block (#797)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 15 Aug 2019 11:26:32 -0300
+
 loki (4.0.3-5~deb10) buster; urgency=medium
 
   * lmdb download script fixes
