@@ -1,3 +1,29 @@
+loki (4.0.5-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Print good/bad winners in incorrect winner error
+
+  [ Doyle ]
+  * Fix service node winner incorrect error
+  * Remove rollback code and old serialization method, mandate rescan
+
+  [ Jason Rhinelander ]
+  * Fix 4.0.4 uptime proof transmission after recomm
+  * Fix check for disconnecting peers when syncing
+
+  [ Doyle ]
+  * Fix service node winner incorrect error
+  * Don't version code because adding only_loaded_quorums breaks compat
+  * Serialize long term storage separate from short term
+
+  [ doyle ]
+  * Code review
+
+  [ Doyle ]
+  * Bump Hefty Heimdall patch to 5 (#804)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sat, 17 Aug 2019 02:29:12 -0300
+
 loki (4.0.4-1~ubuntu1804) bionic; urgency=medium
 
   [ Jason Rhinelander ]
