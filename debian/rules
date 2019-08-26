@@ -10,7 +10,9 @@ include /usr/share/dpkg/architecture.mk
 ifeq ($(DEB_TARGET_ARCH),$(filter $(DEB_TARGET_ARCH),amd64 i386))
 	DEB_CMAKE_ARCH_OPTIONS=-DARCH=westmere -DCMAKE_CXX_FLAGS="-mtune=haswell" -DCMAKE_C_FLAGS="-mtune=haswell"
 else ifeq ($(DEB_TARGET_ARCH),arm64)
-	DEB_CMAKE_ARCH_OPTIONS=-DARCH=armv8-a+crc
+	DEB_CMAKE_ARCH_OPTIONS=-DARCH=armv8-a+crc -DCMAKE_CXX_FLAGS="-mtune=cortex-a72" -DCMAKE_C_FLAGS="-mtune=cortex-a72"
+else ifeq ($(DEB_TARGET_ARCH),armhf)
+	DEB_CMAKE_ARCH_OPTIONS=-DARCH=armv6 -DCMAKE_CXX_FLAGS="-mtune=cortex-a53 -mfloat-abi=hard -mfpu=vfp" -DCMAKE_C_FLAGS="-mtune=cortex-a53 -mfloat-abi=hard -mfpu=vfp"
 else
 	DEB_CMAKE_ARCH_OPTIONS=
 endif
