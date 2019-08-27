@@ -3,3 +3,4 @@
 0003-Allow-customized-version-tag.patch
 0004-randomx-x86-64-build-fix.patch
 0005-Version-and-install-librandomx.patch
+0006-Add-check-for-latomic-needed-for-armhf-build.patch
