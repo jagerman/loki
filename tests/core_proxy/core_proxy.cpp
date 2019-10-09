@@ -197,7 +197,7 @@ bool tests::proxy_core::handle_incoming_txs(const std::vector<blobdata>& tx_blob
     return true;
 }
 
-bool tests::proxy_core::handle_incoming_block(const cryptonote::blobdata& block_blob, const cryptonote::block *block_, cryptonote::block_verification_context& bvc, cryptonote::checkpoint_t const *checkpoint, bool update_miner_blocktemplate) {
+bool tests::proxy_core::handle_incoming_block(const cryptonote::blobdata& block_blob, const cryptonote::block *block_, cryptonote::block_verification_context& bvc, cryptonote::checkpoint_t *checkpoint, bool update_miner_blocktemplate) {
     block b = AUTO_VAL_INIT(b);
 
     if(!parse_and_validate_block_from_blob(block_blob, b)) {
@@ -223,7 +223,7 @@ bool tests::proxy_core::handle_incoming_block(const cryptonote::blobdata& block_
     return true;
 }
 
-bool tests::proxy_core::handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof)
+bool tests::proxy_core::handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation)
 {
   // TODO: add tests for core uptime proof checking.
   return false; // never relay these for tests.

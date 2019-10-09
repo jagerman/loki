@@ -41,6 +41,8 @@
 #include "math_helper.h"
 #include "syncobj.h"
 
+#include <boost/serialization/base_object.hpp>
+
 namespace cryptonote
 {
   struct tx_verification_context;
@@ -51,23 +53,6 @@ namespace cryptonote
 namespace service_nodes
 {
   struct testing_quorum;
-
-  struct voter_to_signature
-  {
-    uint16_t          voter_index;
-    crypto::signature signature;
-
-    BEGIN_SERIALIZE()
-      FIELD(voter_index)
-      FIELD(signature)
-    END_SERIALIZE()
-
-    BEGIN_KV_SERIALIZE_MAP()
-      KV_SERIALIZE(voter_index)
-      std::string signature = epee::string_tools::pod_to_hex(this_ref.signature);
-      KV_SERIALIZE_VALUE(signature)
-    END_KV_SERIALIZE_MAP()
-  };
 
   struct checkpoint_vote { crypto::hash block_hash; };
   struct state_change_vote { uint16_t worker_index; new_state state; };
@@ -80,13 +65,12 @@ namespace service_nodes
     rpc_request_all_quorums_sentinel_value = 255, // Only valid for get_quorum_state RPC call
   };
 
-  inline char const *quorum_type_to_string(quorum_type v)
-  {
+  inline std::ostream &operator<<(std::ostream &os, quorum_type v) {
     switch(v)
     {
-      case quorum_type::obligations:   return "obligation";
-      case quorum_type::checkpointing: return "checkpointing";
-      default: assert(false);          return "xx_unhandled_type";
+      case quorum_type::obligations:   return os << "obligation";
+      case quorum_type::checkpointing: return os << "checkpointing";
+      default: assert(false);          return os << "xx_unhandled_type";
     }
   }
 
@@ -105,15 +89,39 @@ namespace service_nodes
       state_change_vote state_change;
       checkpoint_vote   checkpoint;
     };
+
+   // TODO(loki): idk exactly if I want to implement this, but need for core tests to compile. Not sure I care about serializing for core tests at all.
+   private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int /*version*/) { }
   };
 
-  quorum_vote_t     make_state_change_vote(uint64_t block_height, uint16_t index_in_group, uint16_t worker_index, new_state state, crypto::public_key const &pub_key, crypto::secret_key const &secret_key);
+  struct voter_to_signature
+  {
+    voter_to_signature() = default;
+    voter_to_signature(quorum_vote_t const &vote) : voter_index(vote.index_in_group), signature(vote.signature) { }
+    uint16_t          voter_index;
+    crypto::signature signature;
 
-  bool              verify_checkpoint                  (cryptonote::checkpoint_t const &checkpoint, service_nodes::testing_quorum const &quorum);
-  bool              verify_tx_state_change             (const cryptonote::tx_extra_service_node_state_change& state_change, uint64_t latest_height, cryptonote::tx_verification_context& vvc, const service_nodes::testing_quorum &quorum, uint8_t hf_version);
-  bool              verify_vote                        (const quorum_vote_t& vote, uint64_t latest_height, cryptonote::vote_verification_context &vvc, const service_nodes::testing_quorum &quorum);
-  crypto::signature make_signature_from_vote           (quorum_vote_t const &vote, const crypto::public_key& pub, const crypto::secret_key& sec);
-  crypto::signature make_signature_from_tx_state_change(cryptonote::tx_extra_service_node_state_change const &state_change, crypto::public_key const &pub, crypto::secret_key const &sec);
+    BEGIN_SERIALIZE()
+      FIELD(voter_index)
+      FIELD(signature)
+    END_SERIALIZE()
+  };
+
+  struct service_node_keys;
+
+  quorum_vote_t            make_state_change_vote(uint64_t block_height, uint16_t index_in_group, uint16_t worker_index, new_state state, const service_node_keys &keys);
+  quorum_vote_t            make_checkpointing_vote(uint8_t hf_version, crypto::hash const &block_hash, uint64_t block_height, uint16_t index_in_quorum, const service_node_keys &keys);
+  cryptonote::checkpoint_t make_empty_service_node_checkpoint(crypto::hash const &block_hash, uint64_t height);
+
+  bool               verify_checkpoint                  (uint8_t hf_version, cryptonote::checkpoint_t const &checkpoint, service_nodes::testing_quorum const &quorum);
+  bool               verify_tx_state_change             (const cryptonote::tx_extra_service_node_state_change& state_change, uint64_t latest_height, cryptonote::tx_verification_context& vvc, const service_nodes::testing_quorum &quorum, uint8_t hf_version);
+  bool               verify_vote_age                    (const quorum_vote_t& vote, uint64_t latest_height, cryptonote::vote_verification_context &vvc);
+  bool               verify_vote_signature              (uint8_t hf_version, const quorum_vote_t& vote, cryptonote::vote_verification_context &vvc, const service_nodes::testing_quorum &quorum);
+  crypto::signature  make_signature_from_vote           (quorum_vote_t const &vote, const service_node_keys &keys);
+  crypto::signature  make_signature_from_tx_state_change(cryptonote::tx_extra_service_node_state_change const &state_change, const service_node_keys &keys);
 
   // NOTE: This preserves the deregister vote format pre-checkpointing so that
   // up to the hardfork, we can still deserialize and serialize until we switch
@@ -126,9 +134,6 @@ namespace service_nodes
     crypto::signature signature;
   };
 
-  bool           convert_deregister_vote_to_legacy(quorum_vote_t const &vote, legacy_deregister_vote &legacy);
-  quorum_vote_t  convert_legacy_deregister_vote   (legacy_deregister_vote const &vote);
-
   struct pool_vote_entry
   {
     quorum_vote_t vote;
@@ -138,10 +143,7 @@ namespace service_nodes
   struct voting_pool
   {
     // return: The vector of votes if the vote is valid (and even if it is not unique) otherwise nullptr
-    std::vector<pool_vote_entry> add_pool_vote_if_unique(uint64_t latest_height,
-                                                         const quorum_vote_t& vote,
-                                                         cryptonote::vote_verification_context& vvc,
-                                                         const service_nodes::testing_quorum &quorum);
+    std::vector<pool_vote_entry> add_pool_vote_if_unique(const quorum_vote_t &vote, cryptonote::vote_verification_context &vvc);
 
     // TODO(loki): Review relay behaviour and all the cases when it should be triggered
     void                         set_relayed         (const std::vector<quorum_vote_t>& votes);

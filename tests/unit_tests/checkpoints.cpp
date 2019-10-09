@@ -77,25 +77,38 @@ struct TestDB: public BaseTestDB
     return true;
   }
 
-  virtual std::vector<checkpoint_t> get_checkpoints_range(uint64_t start, uint64_t end, size_t num_desired_checkpoints) const override
+  virtual uint64_t height() const override
+  {
+    if (checkpoints.size()) return checkpoints.back().height;
+    return 1;
+  }
+
+  std::vector<checkpoint_t> get_checkpoints_range(uint64_t start, uint64_t end, size_t num_desired_checkpoints) const override
   {
     std::vector<checkpoint_t> result;
+    checkpoint_t top_checkpoint    = {};
+    if (!get_top_checkpoint(top_checkpoint)) return result;
+    checkpoint_t bottom_checkpoint = checkpoints.front();
 
-    checkpoint_t top_checkpoint = {};
-    if (get_top_checkpoint(top_checkpoint))
+    start = loki::clamp_u64(start, bottom_checkpoint.height, top_checkpoint.height);
+    end   = loki::clamp_u64(end, bottom_checkpoint.height, top_checkpoint.height);
+    if (start > end)
     {
-      if (top_checkpoint.height < std::min(start, end))
-        return result;
+      if (start < bottom_checkpoint.height) return result;
+    }
+    else
+    {
+      if (start > top_checkpoint.height) return result;
     }
 
-    if (num_desired_checkpoints == 0)
-      num_desired_checkpoints = (size_t)-1;
+    if (num_desired_checkpoints == BlockchainDB::GET_ALL_CHECKPOINTS)
+      num_desired_checkpoints = std::numeric_limits<decltype(num_desired_checkpoints)>::max();
     else
       result.reserve(num_desired_checkpoints);
 
-    for (uint64_t height = start;
-         height != end && result.size() < num_desired_checkpoints;
-         )
+    // NOTE: Get the first checkpoint and then use LMDB's cursor as an iterator to
+    // find subsequent checkpoints so we don't waste time querying every-single-height
+    for (uint64_t height = start; height != end && result.size() < num_desired_checkpoints;)
     {
       checkpoint_t checkpoint;
       if (get_block_checkpoint(height, checkpoint))
@@ -105,15 +118,19 @@ struct TestDB: public BaseTestDB
       else height--;
     }
 
-    if (result.size() < num_desired_checkpoints)
-    {
-      // NOTE: Inclusive of end height
-      checkpoint_t checkpoint;
-      if (get_block_checkpoint(end, checkpoint))
-        result.push_back(checkpoint);
-    }
-
+    // Get inclusive of end if we couldn't find a checkpoint in all the other heights leading up to the end height
+    checkpoint_t end_checkpoint;
+    if (result.size() < num_desired_checkpoints && get_block_checkpoint(end, end_checkpoint))
+      result.push_back(end_checkpoint);
     return result;
+  }
+
+  virtual void remove_block_checkpoint(uint64_t block_height)
+  {
+    auto it = std::find_if(checkpoints.begin(), checkpoints.end(), [block_height](checkpoint_t const &entry) {
+      return entry.height == block_height;
+    });
+    if (it != checkpoints.end()) checkpoints.erase(it);
   }
 
 private:
@@ -331,4 +348,41 @@ TEST(checkpoints_is_alternative_block_allowed, hardcoded_checkpoint_overrides_sn
   ASSERT_TRUE(cp.is_alternative_block_allowed(7, 7));
   ASSERT_TRUE(cp.is_alternative_block_allowed(7, 8));
   ASSERT_TRUE(cp.is_alternative_block_allowed(8, 9));
+}
+
+TEST(checkpoints_blockchain_detached, detach_to_checkpoint_height)
+{
+  std::unique_ptr<TestDB> test_db(new TestDB());
+  checkpoints cp = {}; cp.init(cryptonote::FAKECHAIN, test_db.get());
+
+  uint64_t constexpr FIRST_HEIGHT  = service_nodes::CHECKPOINT_INTERVAL;
+  uint64_t constexpr SECOND_HEIGHT = FIRST_HEIGHT + service_nodes::CHECKPOINT_INTERVAL;
+  checkpoint_t checkpoint          = {};
+  checkpoint.type                  = checkpoint_type::service_node;
+  checkpoint.height                = FIRST_HEIGHT;
+  test_db->update_block_checkpoint(checkpoint);
+
+  checkpoint.height = SECOND_HEIGHT;
+  test_db->update_block_checkpoint(checkpoint);
+
+  // NOTE: Detaching to height. Our top checkpoint should be the 1st checkpoint, we should be deleting the checkpoint at checkpoint.height
+  cp.blockchain_detached(SECOND_HEIGHT);
+  checkpoint_t top_checkpoint;
+  ASSERT_TRUE(test_db->get_top_checkpoint(top_checkpoint));
+  ASSERT_TRUE(top_checkpoint.height == FIRST_HEIGHT);
+}
+
+TEST(checkpoints_blockchain_detached, detach_to_1)
+{
+  std::unique_ptr<TestDB> test_db(new TestDB());
+  checkpoints cp = {}; cp.init(cryptonote::FAKECHAIN, test_db.get());
+
+  checkpoint_t checkpoint = {};
+  checkpoint.type         = checkpoint_type::service_node;
+  checkpoint.height += service_nodes::CHECKPOINT_INTERVAL;
+  test_db->update_block_checkpoint(checkpoint);
+
+  cp.blockchain_detached(1 /*height*/);
+  checkpoint_t top_checkpoint;
+  ASSERT_FALSE(test_db->get_top_checkpoint(top_checkpoint));
 }

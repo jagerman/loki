@@ -294,25 +294,6 @@ namespace cryptonote
   /************************************************************************/
   /*                                                                      */
   /************************************************************************/
-  struct NOTIFY_NEW_DEREGISTER_VOTE
-  {
-    // TODO(doyle): We need to remove this code post fork, pre checkpointing
-    // fork which revamps the voting system, we need to continue accepting
-    // deregisters using the old system.
-    const static int ID = BC_COMMANDS_POOL_BASE + 10;
-
-    struct request
-    {
-      std::vector<service_nodes::legacy_deregister_vote> votes;
-      BEGIN_KV_SERIALIZE_MAP()
-        KV_SERIALIZE_CONTAINER_POD_AS_BLOB(votes)
-      END_KV_SERIALIZE_MAP()
-    };
-  };
-    
-  /************************************************************************/
-  /*                                                                      */
-  /************************************************************************/
   struct NOTIFY_UPTIME_PROOF
   {
     const static int ID = BC_COMMANDS_POOL_BASE + 11;
@@ -326,8 +307,11 @@ namespace cryptonote
       uint64_t timestamp;
       crypto::public_key pubkey;
       crypto::signature sig;
+      crypto::ed25519_public_key pubkey_ed25519;
+      crypto::ed25519_signature sig_ed25519;
       uint32_t public_ip;
       uint16_t storage_port;
+      uint16_t qnet_port;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(snode_version_major)
@@ -336,8 +320,11 @@ namespace cryptonote
         KV_SERIALIZE(timestamp)
         KV_SERIALIZE(public_ip)
         KV_SERIALIZE(storage_port)
+        KV_SERIALIZE(qnet_port)
         KV_SERIALIZE_VAL_POD_AS_BLOB(pubkey)
         KV_SERIALIZE_VAL_POD_AS_BLOB(sig)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(pubkey_ed25519)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(sig_ed25519)
       END_KV_SERIALIZE_MAP()
     };
   };

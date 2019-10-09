@@ -56,8 +56,8 @@ DISABLE_VS_WARNINGS(4355)
 namespace cryptonote
 {
    struct test_options {
-     const std::vector<std::pair<uint8_t, uint64_t>> hard_forks;
-     const size_t long_term_block_weight_window;
+     std::vector<std::pair<uint8_t, uint64_t>> hard_forks;
+     size_t long_term_block_weight_window;
    };
 
   extern const command_line::arg_descriptor<std::string, false, true, 2> arg_data_dir;
@@ -65,6 +65,7 @@ namespace cryptonote
   extern const command_line::arg_descriptor<bool, false> arg_stagenet_on;
   extern const command_line::arg_descriptor<bool, false> arg_regtest_on;
   extern const command_line::arg_descriptor<difficulty_type> arg_fixed_difficulty;
+  extern const command_line::arg_descriptor<bool> arg_dev_allow_local;
   extern const command_line::arg_descriptor<bool> arg_offline;
   extern const command_line::arg_descriptor<size_t> arg_block_download_max_size;
   extern const command_line::arg_descriptor<uint64_t> arg_recalculate_difficulty;
@@ -117,7 +118,7 @@ namespace cryptonote
       *
       * @return true if we haven't seen it before and thus need to relay.
       */
-     bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof);
+     bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation);
 
      /**
       * @brief handles an incoming transaction
@@ -166,7 +167,7 @@ namespace cryptonote
       * @return false if loading new checkpoints fails, or the block is not
       * added, otherwise true
       */
-     bool handle_incoming_block(const blobdata& block_blob, const block *b, block_verification_context& bvc, checkpoint_t const *checkpoint, bool update_miner_blocktemplate = true);
+     bool handle_incoming_block(const blobdata& block_blob, const block *b, block_verification_context& bvc, checkpoint_t *checkpoint, bool update_miner_blocktemplate = true);
 
      /**
       * @copydoc Blockchain::prepare_handle_incoming_blocks
@@ -778,10 +779,12 @@ namespace cryptonote
       * @brief Get the deterministic quorum of service node's public keys responsible for the specified quorum type
       *
       * @param type The quorum type to retrieve
-      * @param height Block height to deterministically recreate the quorum list from
-      * @return Null shared ptr if quorum has not been determined yet for height
+      * @param height Block height to deterministically recreate the quorum list from (note that for
+      * a checkpointing quorum this value is automatically reduced by the correct buffer size).
+      * @param include_old whether to look in the old quorum states (does nothing unless running with --store-full-quorum-history)
+      * @return Null shared ptr if quorum has not been determined yet or is not defined for height
       */
-     std::shared_ptr<const service_nodes::testing_quorum> get_testing_quorum(service_nodes::quorum_type type, uint64_t height) const;
+     std::shared_ptr<const service_nodes::testing_quorum> get_testing_quorum(service_nodes::quorum_type type, uint64_t height, bool include_old = false, std::vector<std::shared_ptr<const service_nodes::testing_quorum>> *alt_states = nullptr) const;
 
      /**
       * @brief Get a non owning reference to the list of blacklisted key images
@@ -817,16 +820,15 @@ namespace cryptonote
       */
      bool add_service_node_vote(const service_nodes::quorum_vote_t& vote, vote_verification_context &vvc);
 
+     using service_node_keys = service_nodes::service_node_keys;
+
      /**
-      * @brief Get the keypair for this service node.
-
-      * @param pub_key The public key for the service node, unmodified if not a service node
-
-      * @param sec_key The secret key for the service node, unmodified if not a service node
-
-      * @return True if we are a service node
+      * @brief Get the keys for this service node.
+      *
+      * @return shared point to service node keys; the shared pointer will be empty if this node is
+      * not running as a service node.
       */
-     bool get_service_node_keys(crypto::public_key &pub_key, crypto::secret_key &sec_key) const;
+     std::shared_ptr<const service_node_keys> get_service_node_keys() const;
 
      /**
       * @brief Get the public key of every service node.
@@ -883,7 +885,12 @@ namespace cryptonote
      /**
       * @brief Record if the service node has checkpointed at this point in time
       */
-     void record_checkpoint_vote(crypto::public_key const &pubkey, bool voted) { m_service_node_list.record_checkpoint_vote(pubkey, voted); }
+     void record_checkpoint_vote(crypto::public_key const &pubkey, uint64_t height, bool voted) { m_service_node_list.record_checkpoint_vote(pubkey, height, voted); }
+
+     /**
+      * @brief Record the reachability status of node's storage server
+      */
+     bool set_storage_server_peer_reachable(crypto::public_key const &pubkey, bool value);
 
      /// Time point at which the storage server last pinged us
      std::atomic<time_t> m_last_storage_server_ping;
@@ -924,15 +931,6 @@ namespace cryptonote
       * @note see Blockchain::add_new_block
       */
      bool add_new_block(const block& b, block_verification_context& bvc, checkpoint_t const *checkpoint);
-
-     /**
-      * @brief load any core state stored on disk
-      *
-      * currently does nothing, but may have state to load in the future.
-      *
-      * @return true
-      */
-     bool load_state_data();
 
      /**
       * @copydoc parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
@@ -976,15 +974,6 @@ namespace cryptonote
      bool handle_incoming_tx_post(const blobdata& tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, bool keeped_by_block, bool relayed, bool do_not_relay);
      struct tx_verification_batch_info { const cryptonote::transaction *tx; crypto::hash tx_hash; tx_verification_context &tvc; bool &result; };
      bool handle_incoming_tx_accumulated_batch(std::vector<tx_verification_batch_info> &tx_info, bool keeped_by_block);
-
-     /**
-      * @copydoc miner::on_block_chain_update
-      *
-      * @note see miner::on_block_chain_update
-      *
-      * @return true
-      */
-     bool update_miner_block_template();
 
      /**
       * @brief act on a set of command line options given
@@ -1061,7 +1050,7 @@ namespace cryptonote
       *
       * @return true on success, false otherwise
       */
-     bool init_service_node_key();
+     bool init_service_node_keys();
 
      /**
       * @brief do the uptime proof logic and calls for idle loop.
@@ -1120,9 +1109,7 @@ namespace cryptonote
 
      std::atomic_flag m_checkpoints_updating; //!< set if checkpoints are currently updating to avoid multiple threads attempting to update at once
 
-     bool m_service_node;
-     crypto::secret_key m_service_node_key;
-     crypto::public_key m_service_node_pubkey;
+     std::shared_ptr<service_node_keys> m_service_node_keys;
 
      /// Service Node's public IP and storage server port
      uint32_t m_sn_public_ip;

@@ -39,13 +39,13 @@ namespace cryptonote
 {
   class core;
   struct vote_verification_context;
+  struct checkpoint_t;
 };
 
 namespace service_nodes
 {
   struct service_node_info;
 
-  LOKI_RPC_DOC_INTROSPECT
   struct testing_quorum
   {
     std::vector<crypto::public_key> validators; // Array of public keys identifying service nodes which are being tested for the queried height.
@@ -55,16 +55,6 @@ namespace service_nodes
       FIELD(validators)
       FIELD(workers)
     END_SERIALIZE()
-
-    BEGIN_KV_SERIALIZE_MAP()
-      std::vector<std::string> validators(this_ref.validators.size());
-      for (size_t i = 0; i < this_ref.validators.size(); i++) validators[i] = epee::string_tools::pod_to_hex(this_ref.validators[i]);
-      KV_SERIALIZE_VALUE(validators);
-
-      std::vector<std::string> workers(this_ref.workers.size());
-      for (size_t i = 0; i < this_ref.workers.size(); i++) workers[i] = epee::string_tools::pod_to_hex(this_ref.workers[i]);
-      KV_SERIALIZE_VALUE(workers);
-    END_KV_SERIALIZE_MAP()
   };
 
   struct quorum_manager
@@ -73,14 +63,25 @@ namespace service_nodes
     // TODO(doyle): Validators aren't used, but I kept this as a testing_quorum
     // to avoid drastic changes for now to a lot of the service node API
     std::shared_ptr<const testing_quorum> checkpointing;
+
+    std::shared_ptr<const testing_quorum> get(quorum_type type) const
+    {
+      if (type == quorum_type::obligations) return obligations;
+      else if (type == quorum_type::checkpointing) return checkpointing;
+      MERROR("Developer error: Unhandled quorum enum with value: " << (size_t)type);
+      assert(!"Developer error: Unhandled quorum enum with value: ");
+      return nullptr;
+    }
   };
 
   struct service_node_test_results {
-    bool uptime_proved        = true;
-    bool single_ip            = true;
-    bool voted_in_checkpoints = true;
+    bool uptime_proved            = true;
+    bool single_ip                = true;
+    bool voted_in_checkpoints     = true;
+    bool storage_server_reachable = true;
 
-    bool passed() const { return uptime_proved && voted_in_checkpoints; }
+    char const *why() const;
+    bool passed() const { return uptime_proved && voted_in_checkpoints && storage_server_reachable; }
   };
 
   class quorum_cop
@@ -92,7 +93,7 @@ namespace service_nodes
     explicit quorum_cop(cryptonote::core& core);
 
     void init() override;
-    void block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs) override;
+    bool block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs, cryptonote::checkpoint_t const * /*checkpoint*/) override;
     void blockchain_detached(uint64_t height) override;
 
     void                       set_votes_relayed  (std::vector<quorum_vote_t> const &relayed_votes);
@@ -103,7 +104,7 @@ namespace service_nodes
 
   private:
     void process_quorums(cryptonote::block const &block);
-    service_node_test_results check_service_node(const crypto::public_key &pubkey, const service_node_info &info) const;
+    service_node_test_results check_service_node(uint8_t hf_version, const crypto::public_key &pubkey, const service_node_info &info) const;
 
     cryptonote::core& m_core;
     voting_pool       m_vote_pool;

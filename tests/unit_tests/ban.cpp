@@ -37,6 +37,8 @@
 #include "cryptonote_core/blockchain.h"
 
 #define MAKE_IPV4_ADDRESS(a,b,c,d) epee::net_utils::ipv4_network_address{MAKE_IP(a,b,c,d),0}
+#define MAKE_IPV4_ADDRESS_PORT(a,b,c,d,e) epee::net_utils::ipv4_network_address{MAKE_IP(a,b,c,d),e}
+#define MAKE_IPV4_SUBNET(a,b,c,d,e) epee::net_utils::ipv4_network_subnet{MAKE_IP(a,b,c,d),e}
 
 class test_core
 {
@@ -54,7 +56,7 @@ public:
   bool handle_incoming_tx(const cryptonote::blobdata& tx_blob, cryptonote::tx_verification_context& tvc, bool keeped_by_block, bool relayed, bool do_not_relay) { return true; }
   bool handle_incoming_txs(const std::vector<cryptonote::blobdata>& tx_blob, std::vector<cryptonote::tx_verification_context>& tvc, bool keeped_by_block, bool relayed, bool do_not_relay) { return true; }
   bool handle_incoming_block(const cryptonote::blobdata& block_blob, const cryptonote::block *block, cryptonote::block_verification_context& bvc, cryptonote::checkpoint_t const *checkpoint, bool update_miner_blocktemplate = true) { return true; }
-  bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) { return false; }
+  bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation) { return false; }
   void pause_mine(){}
   void resume_mine(){}
   bool on_idle(){return true;}
@@ -93,11 +95,10 @@ typedef nodetool::node_server<cryptonote::t_cryptonote_protocol_handler<test_cor
 
 static bool is_blocked(Server &server, const epee::net_utils::network_address &address, time_t *t = NULL)
 {
-  const std::string host = address.host_str();
   std::map<std::string, time_t> hosts = server.get_blocked_hosts();
   for (auto rec: hosts)
   {
-    if (rec.first == host)
+    if (rec.first == address.host_str())
     {
       if (t)
         *t = rec.second;
@@ -206,6 +207,55 @@ TEST(ban, limit)
   ASSERT_TRUE(is_blocked(server,MAKE_IPV4_ADDRESS(1,2,3,4)));
   ASSERT_TRUE(server.block_host(MAKE_IPV4_ADDRESS(1,2,3,4), 1));
   ASSERT_TRUE(is_blocked(server,MAKE_IPV4_ADDRESS(1,2,3,4)));
+}
+
+TEST(ban, subnet)
+{
+  time_t seconds;
+  test_core pr_core;
+  cryptonote::t_cryptonote_protocol_handler<test_core> cprotocol(pr_core, NULL);
+  Server server(cprotocol);
+  cprotocol.set_p2p_endpoint(&server);
+
+  ASSERT_TRUE(server.block_subnet(MAKE_IPV4_SUBNET(1,2,3,4,24), 10));
+  ASSERT_TRUE(server.get_blocked_subnets().size() == 1);
+  ASSERT_TRUE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,3,4), &seconds));
+  ASSERT_TRUE(seconds >= 9);
+  ASSERT_TRUE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,3,255), &seconds));
+  ASSERT_TRUE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,3,0), &seconds));
+  ASSERT_FALSE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,4,0), &seconds));
+  ASSERT_FALSE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,2,0), &seconds));
+  ASSERT_TRUE(server.unblock_subnet(MAKE_IPV4_SUBNET(1,2,3,8,24)));
+  ASSERT_TRUE(server.get_blocked_subnets().size() == 0);
+  ASSERT_FALSE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,3,255), &seconds));
+  ASSERT_FALSE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,2,3,0), &seconds));
+  ASSERT_TRUE(server.block_subnet(MAKE_IPV4_SUBNET(1,2,3,4,8), 10));
+  ASSERT_TRUE(server.get_blocked_subnets().size() == 1);
+  ASSERT_TRUE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,255,3,255), &seconds));
+  ASSERT_TRUE(server.is_host_blocked(MAKE_IPV4_ADDRESS(1,0,3,255), &seconds));
+  ASSERT_FALSE(server.unblock_subnet(MAKE_IPV4_SUBNET(1,2,3,8,24)));
+  ASSERT_TRUE(server.get_blocked_subnets().size() == 1);
+  ASSERT_TRUE(server.block_subnet(MAKE_IPV4_SUBNET(1,2,3,4,8), 10));
+  ASSERT_TRUE(server.get_blocked_subnets().size() == 1);
+  ASSERT_TRUE(server.unblock_subnet(MAKE_IPV4_SUBNET(1,255,0,0,8)));
+  ASSERT_TRUE(server.get_blocked_subnets().size() == 0);
+}
+
+TEST(ban, ignores_port)
+{
+  time_t seconds;
+  test_core pr_core;
+  cryptonote::t_cryptonote_protocol_handler<test_core> cprotocol(pr_core, NULL);
+  Server server(cprotocol);
+  cprotocol.set_p2p_endpoint(&server);
+
+  ASSERT_FALSE(is_blocked(server,MAKE_IPV4_ADDRESS_PORT(1,2,3,4,5)));
+  ASSERT_TRUE(server.block_host(MAKE_IPV4_ADDRESS_PORT(1,2,3,4,5), std::numeric_limits<time_t>::max() - 1));
+  ASSERT_TRUE(is_blocked(server,MAKE_IPV4_ADDRESS_PORT(1,2,3,4,5)));
+  ASSERT_TRUE(is_blocked(server,MAKE_IPV4_ADDRESS_PORT(1,2,3,4,6)));
+  ASSERT_TRUE(server.unblock_host(MAKE_IPV4_ADDRESS_PORT(1,2,3,4,5)));
+  ASSERT_FALSE(is_blocked(server,MAKE_IPV4_ADDRESS_PORT(1,2,3,4,5)));
+  ASSERT_FALSE(is_blocked(server,MAKE_IPV4_ADDRESS_PORT(1,2,3,4,6)));
 }
 
 namespace nodetool { template class node_server<cryptonote::t_cryptonote_protocol_handler<test_core>>; }

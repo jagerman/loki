@@ -34,6 +34,7 @@
 #include "cryptonote_basic/connection_context.h"
 #include "cryptonote_protocol/cryptonote_protocol_defs.h"
 #include "checkpoints/checkpoints.h"
+#include "common/util.h"
 
 #include "misc_log_ex.h"
 #include "string_tools.h"
@@ -49,55 +50,22 @@
 
 namespace service_nodes
 {
-  bool convert_deregister_vote_to_legacy(quorum_vote_t const &vote, legacy_deregister_vote &legacy_vote)
-  {
-    if (vote.type != quorum_type::obligations || vote.state_change.state != new_state::deregister)
-      return false;
-
-    legacy_vote.block_height           = vote.block_height;
-    legacy_vote.service_node_index     = vote.state_change.worker_index;
-    legacy_vote.voters_quorum_index    = vote.index_in_group;
-    legacy_vote.signature              = vote.signature;
-    return true;
-  }
-
-  // TODO(loki): Post HF12 remove legacy votes, no longer should be propagated
-  quorum_vote_t convert_legacy_deregister_vote(legacy_deregister_vote const &vote)
-  {
-    quorum_vote_t result             = {};
-    result.type                      = quorum_type::obligations;
-    result.block_height              = vote.block_height;
-    result.signature                 = vote.signature;
-    result.group                     = quorum_group::validator;
-    result.index_in_group            = vote.voters_quorum_index;
-    result.state_change.worker_index = vote.service_node_index;
-    result.state_change.state        = new_state::deregister;
-    return result;
-  }
-
   static crypto::hash make_state_change_vote_hash(uint64_t block_height, uint32_t service_node_index, new_state state)
   {
     uint16_t state_int = static_cast<uint16_t>(state);
 
-    char buf[sizeof(block_height) + sizeof(service_node_index) + sizeof(state_int)];
+    auto buf = tools::memcpy_le(block_height, service_node_index, state_int);
 
-    boost::endian::native_to_little_inplace(block_height);
-    boost::endian::native_to_little_inplace(service_node_index);
-    boost::endian::native_to_little_inplace(state_int);
-    memcpy(buf,                                                     &block_height,       sizeof(block_height));
-    memcpy(buf + sizeof(block_height),                              &service_node_index, sizeof(service_node_index));
-    memcpy(buf + sizeof(block_height) + sizeof(service_node_index), &state_int,          sizeof(state_int));
-
-    auto size = sizeof(buf);
+    auto size = buf.size();
     if (state == new_state::deregister)
-        size -= sizeof(uint16_t); // Don't include state value for deregs (to be backwards compatible with pre-v12 dereg votes)
+        size -= sizeof(state_int); // Don't include state value for deregs (to be backwards compatible with pre-v12 dereg votes)
 
     crypto::hash result;
-    crypto::cn_fast_hash(buf, size, result);
+    crypto::cn_fast_hash(buf.data(), size, result);
     return result;
   }
 
-  crypto::signature make_signature_from_vote(quorum_vote_t const &vote, const crypto::public_key& pub, const crypto::secret_key& sec)
+  crypto::signature make_signature_from_vote(quorum_vote_t const &vote, const service_node_keys &keys)
   {
     crypto::signature result = {};
     switch(vote.type)
@@ -112,14 +80,14 @@ namespace service_nodes
       case quorum_type::obligations:
       {
         crypto::hash hash = make_state_change_vote_hash(vote.block_height, vote.state_change.worker_index, vote.state_change.state);
-        crypto::generate_signature(hash, pub, sec, result);
+        crypto::generate_signature(hash, keys.pub, keys.key, result);
       }
       break;
 
       case quorum_type::checkpointing:
       {
         crypto::hash hash = vote.checkpoint.block_hash;
-        crypto::generate_signature(hash, pub, sec, result);
+        crypto::generate_signature(hash, keys.pub, keys.key, result);
       }
       break;
     }
@@ -127,11 +95,11 @@ namespace service_nodes
     return result;
   }
 
-  crypto::signature make_signature_from_tx_state_change(cryptonote::tx_extra_service_node_state_change const &state_change, crypto::public_key const &pub, crypto::secret_key const &sec)
+  crypto::signature make_signature_from_tx_state_change(cryptonote::tx_extra_service_node_state_change const &state_change, const service_node_keys &keys)
   {
     crypto::signature result;
     crypto::hash hash = make_state_change_vote_hash(state_change.block_height, state_change.service_node_index, state_change.state);
-    crypto::generate_signature(hash, pub, sec, result);
+    crypto::generate_signature(hash, keys.pub, keys.key, result);
     return result;
   }
 
@@ -156,11 +124,6 @@ namespace service_nodes
     }
     return true;
   }
-
-  // If we get an incoming vote of state change tx that is outside the acceptable range by this many
-  // blocks then ignore it but don't trigger a connection drop; the sending side could be a couple
-  // blocks out of sync and sending something that it thinks is legit.
-  constexpr uint64_t VERIFY_HEIGHT_BUFFER = 5;
 
   static bool bad_tx(cryptonote::tx_verification_context &tvc) {
     tvc.m_verifivation_failed = true;
@@ -211,7 +174,7 @@ namespace service_nodes
                      << ", is newer than current height: " << latest_height
                      << " blocks and has been rejected.");
         vvc.m_invalid_block_height = true;
-        if (state_change.block_height >= latest_height + VERIFY_HEIGHT_BUFFER)
+        if (state_change.block_height >= latest_height + VOTE_OR_TX_VERIFY_HEIGHT_BUFFER)
           tvc.m_verifivation_failed = true;
         return false;
       }
@@ -224,7 +187,7 @@ namespace service_nodes
                      << " (current height: " << latest_height << ") "
                      << "blocks and has been rejected.");
         vvc.m_invalid_block_height = true;
-        if (latest_height >= state_change.block_height + (service_nodes::STATE_CHANGE_TX_LIFETIME_IN_BLOCKS + VERIFY_HEIGHT_BUFFER))
+        if (latest_height >= state_change.block_height + (service_nodes::STATE_CHANGE_TX_LIFETIME_IN_BLOCKS + VOTE_OR_TX_VERIFY_HEIGHT_BUFFER))
           tvc.m_verifivation_failed = true;
         return false;
       }
@@ -232,8 +195,21 @@ namespace service_nodes
 
     crypto::hash const hash = make_state_change_vote_hash(state_change.block_height, state_change.service_node_index, state_change.state);
     std::array<int, service_nodes::STATE_CHANGE_QUORUM_SIZE> validator_set = {};
+    int validator_index_tracker                                            = -1;
     for (const auto &vote : state_change.votes)
     {
+      if (hf_version >= cryptonote::network_version_13_enforce_checkpoints) // NOTE: After HF13, votes must be stored in ascending order
+      {
+        if (validator_index_tracker >= static_cast<int>(vote.validator_index))
+        {
+          vvc.m_votes_not_sorted = true;
+          LOG_PRINT_L1("Vote validator index is not stored in ascending order, prev validator index: "
+                       << validator_index_tracker << ", curr index: " << vote.validator_index);
+          return bad_tx(tvc);
+        }
+        validator_index_tracker = vote.validator_index;
+      }
+
       if (!bounds_check_validator_index(quorum, vote.validator_index, &vvc))
         return bad_tx(tvc);
 
@@ -256,37 +232,66 @@ namespace service_nodes
     return true;
   }
 
-  bool verify_checkpoint(cryptonote::checkpoint_t const &checkpoint, service_nodes::testing_quorum const &quorum)
+  bool verify_checkpoint(uint8_t hf_version, cryptonote::checkpoint_t const &checkpoint, service_nodes::testing_quorum const &quorum)
   {
     if (checkpoint.type == cryptonote::checkpoint_type::service_node)
     {
+      if ((checkpoint.height % service_nodes::CHECKPOINT_INTERVAL) != 0)
+      {
+        LOG_PRINT_L1("Checkpoint given but not expecting a checkpoint at height: " << checkpoint.height);
+        return false;
+      }
+
       if (checkpoint.signatures.size() < service_nodes::CHECKPOINT_MIN_VOTES)
       {
-        LOG_PRINT_L1("Checkpoint has insufficient signatures to be considered");
+        LOG_PRINT_L1("Checkpoint has insufficient signatures to be considered at height: " << checkpoint.height);
         return false;
       }
 
       if (checkpoint.signatures.size() > service_nodes::CHECKPOINT_QUORUM_SIZE)
       {
-        LOG_PRINT_L1("Checkpoint has too many signatures to be considered");
+        LOG_PRINT_L1("Checkpoint has too many signatures to be considered at height: " << checkpoint.height);
         return false;
       }
 
       std::array<size_t, service_nodes::CHECKPOINT_QUORUM_SIZE> unique_vote_set = {};
-      for (service_nodes::voter_to_signature const &voter_to_signature : checkpoint.signatures)
+      for (size_t i = 0; i < checkpoint.signatures.size(); i++)
       {
-        if (!bounds_check_worker_index(quorum, voter_to_signature.voter_index, nullptr)) return false;
+        service_nodes::voter_to_signature const &voter_to_signature = checkpoint.signatures[i];
+        if (hf_version >= cryptonote::network_version_13_enforce_checkpoints && i < (checkpoint.signatures.size() - 1))
+        {
+          auto curr = checkpoint.signatures[i].voter_index;
+          auto next = checkpoint.signatures[i + 1].voter_index;
 
+          if (curr >= next)
+          {
+            LOG_PRINT_L1("Voters in checkpoints are not given in ascending order, checkpoint failed verification at height: " << checkpoint.height);
+            return false;
+          }
+        }
+
+        // TODO(loki): Temporary HF13 code, remove when we hit HF13 because we delete all HF12 checkpoints and don't need conditionals for HF12/HF13 checkpointing code
+        std::vector<crypto::public_key> const &quorum_keys =
+            (hf_version >= cryptonote::network_version_13_enforce_checkpoints) ? quorum.validators : quorum.workers;
+        if (hf_version >= cryptonote::network_version_13_enforce_checkpoints)
+        {
+          if (!bounds_check_validator_index(quorum, voter_to_signature.voter_index, nullptr)) return false;
+        }
+        else
+        {
+          if (!bounds_check_worker_index(quorum, voter_to_signature.voter_index, nullptr)) return false;
+        }
+
+        crypto::public_key const &key = quorum_keys[voter_to_signature.voter_index];
         if (unique_vote_set[voter_to_signature.voter_index]++)
         {
-          LOG_PRINT_L1("Voter quorum index is duplicated: " << voter_to_signature.voter_index);
+          LOG_PRINT_L1("Voter: " << epee::string_tools::pod_to_hex(key) << ", quorum index is duplicated: " << voter_to_signature.voter_index << ", checkpoint failed verification at height: " << checkpoint.height);
           return false;
         }
 
-        crypto::public_key const &key = quorum.workers[voter_to_signature.voter_index];
         if (!crypto::check_signature(checkpoint.block_hash, key, voter_to_signature.signature))
         {
-          LOG_PRINT_L1("Invalid signatures for votes");
+          LOG_PRINT_L1("Invalid signatures for votes, checkpoint failed verification at height: " << checkpoint.height << " for voter: " << epee::string_tools::pod_to_hex(key));
           return false;
         }
       }
@@ -295,7 +300,7 @@ namespace service_nodes
     {
       if (checkpoint.signatures.size() != 0)
       {
-        LOG_PRINT_L1("Non service-node checkpoints should have no signatures");
+        LOG_PRINT_L1("Non service-node checkpoints should have no signatures, checkpoint failed at height: " << checkpoint.height);
         return false;
       }
     }
@@ -303,7 +308,7 @@ namespace service_nodes
     return true;
   }
 
-  quorum_vote_t make_state_change_vote(uint64_t block_height, uint16_t validator_index, uint16_t worker_index, new_state state, crypto::public_key const &pub_key, crypto::secret_key const &sec_key)
+  quorum_vote_t make_state_change_vote(uint64_t block_height, uint16_t validator_index, uint16_t worker_index, new_state state, const service_node_keys &keys)
   {
     quorum_vote_t result             = {};
     result.type                      = quorum_type::obligations;
@@ -312,16 +317,79 @@ namespace service_nodes
     result.index_in_group            = validator_index;
     result.state_change.worker_index = worker_index;
     result.state_change.state        = state;
-    result.signature                 = make_signature_from_vote(result, pub_key, sec_key);
+    result.signature                 = make_signature_from_vote(result, keys);
     return result;
   }
 
-  bool verify_vote(const quorum_vote_t& vote, uint64_t latest_height, cryptonote::vote_verification_context &vvc, const service_nodes::testing_quorum &quorum)
+  quorum_vote_t make_checkpointing_vote(uint8_t hf_version, crypto::hash const &block_hash, uint64_t block_height, uint16_t index_in_quorum, const service_node_keys &keys)
+  {
+    quorum_vote_t result         = {};
+    result.type                  = quorum_type::checkpointing;
+    result.checkpoint.block_hash = block_hash;
+    result.block_height          = block_height;
+    // TODO(loki): Temporary HF13 code, remove when we hit HF13 because we delete all HF12 checkpoints and don't need conditionals for HF12/HF13 checkpointing code
+    result.group                 = (hf_version >= cryptonote::network_version_13_enforce_checkpoints) ? quorum_group::validator : quorum_group::worker;
+    result.index_in_group        = index_in_quorum;
+    result.signature             = make_signature_from_vote(result, keys);
+    return result;
+  }
+
+  cryptonote::checkpoint_t make_empty_service_node_checkpoint(crypto::hash const &block_hash, uint64_t height)
+  {
+    cryptonote::checkpoint_t result = {};
+    result.type                     = cryptonote::checkpoint_type::service_node;
+    result.height                   = height;
+    result.block_hash               = block_hash;
+    return result;
+  }
+
+  bool verify_vote_age(const quorum_vote_t& vote, uint64_t latest_height, cryptonote::vote_verification_context &vvc)
+  {
+    bool result           = true;
+    bool height_in_buffer = false;
+    if (latest_height > vote.block_height + VOTE_LIFETIME)
+    {
+      height_in_buffer = latest_height <= vote.block_height + (VOTE_LIFETIME + VOTE_OR_TX_VERIFY_HEIGHT_BUFFER);
+      LOG_PRINT_L1("Received vote for height: " << vote.block_height << ", is older than: " << VOTE_LIFETIME
+                                                << " blocks and has been rejected.");
+      vvc.m_invalid_block_height = true;
+    }
+    else if (vote.block_height > latest_height)
+    {
+      height_in_buffer = vote.block_height <= latest_height + VOTE_OR_TX_VERIFY_HEIGHT_BUFFER;
+      LOG_PRINT_L1("Received vote for height: " << vote.block_height << ", is newer than: " << latest_height
+                                                << " (latest block height) and has been rejected.");
+      vvc.m_invalid_block_height = true;
+    }
+
+    if (vvc.m_invalid_block_height)
+    {
+      vvc.m_verification_failed = !height_in_buffer;
+      result = false;
+    }
+
+    return result;
+  }
+
+  bool verify_vote_signature(uint8_t hf_version, const quorum_vote_t &vote, cryptonote::vote_verification_context &vvc, const service_nodes::testing_quorum &quorum)
   {
     bool result = true;
-    if (vote.group == quorum_group::invalid)
+    if (vote.type >= quorum_type::count)
+    {
+      vvc.m_invalid_vote_type = true;
       result = false;
-    else if (vote.group == quorum_group::validator)
+    }
+
+    if (vote.group > quorum_group::worker || vote.group < quorum_group::validator)
+    {
+      vvc.m_incorrect_voting_group = true;
+      result = false;
+    }
+
+    if (!result)
+      return result;
+
+    if (vote.group == quorum_group::validator)
       result = bounds_check_validator_index(quorum, vote.index_in_group, &vvc);
     else
       result = bounds_check_worker_index(quorum, vote.index_in_group, &vvc);
@@ -329,92 +397,63 @@ namespace service_nodes
     if (!result)
       return result;
 
-    //
-    // NOTE: Validate vote age
-    //
+    crypto::public_key key = crypto::null_pkey;
+    crypto::hash hash      = crypto::null_hash;
+
+    switch(vote.type)
     {
-      bool height_in_buffer = false;
-      if (latest_height > vote.block_height + VOTE_LIFETIME)
+      default:
       {
-        height_in_buffer = latest_height <= vote.block_height + (VOTE_LIFETIME + VERIFY_HEIGHT_BUFFER);
-        LOG_PRINT_L1("Received vote for height: " << vote.block_height << ", is older than: " << VOTE_LIFETIME
-                                                  << " blocks and has been rejected.");
-        vvc.m_invalid_block_height = true;
-      }
-      else if (vote.block_height > latest_height)
-      {
-        height_in_buffer = vote.block_height <= latest_height + VERIFY_HEIGHT_BUFFER;
-        LOG_PRINT_L1("Received vote for height: " << vote.block_height << ", is newer than: " << latest_height
-                                                  << " (latest block height) and has been rejected.");
-        vvc.m_invalid_block_height = true;
-      }
+        LOG_PRINT_L1("Unhandled vote type with value: " << (int)vote.type);
+        assert("Unhandled vote type" == 0);
+        return false;
+      };
 
-      if (vvc.m_invalid_block_height)
+      case quorum_type::obligations:
       {
-        result                    = false;
-        vvc.m_verification_failed = !height_in_buffer;
-        return result;
-      }
-    }
-
-    {
-      crypto::public_key key = crypto::null_pkey;
-      crypto::hash hash      = crypto::null_hash;
-
-      switch(vote.type)
-      {
-        default:
+        if (vote.group != quorum_group::validator)
         {
-          LOG_PRINT_L1("Unhandled vote type with value: " << (int)vote.type);
-          assert("Unhandled vote type" == 0);
-          return false;
-        };
-
-        case quorum_type::obligations:
+          LOG_PRINT_L1("Vote received specifies incorrect voting group, expected vote from validator");
+          vvc.m_incorrect_voting_group = true;
+          result = false;
+        }
+        else
         {
-          if (vote.group != quorum_group::validator)
-          {
-            LOG_PRINT_L1("Vote received specifies incorrect voting group, expected vote from validator");
-            vvc.m_incorrect_voting_group = true;
-            return false;
-          }
-
           key = quorum.validators[vote.index_in_group];
           hash = make_state_change_vote_hash(vote.block_height, vote.state_change.worker_index, vote.state_change.state);
-
-          bool result = bounds_check_worker_index(quorum, vote.state_change.worker_index, &vvc);
-          if (!result)
-            return result;
+          result = bounds_check_worker_index(quorum, vote.state_change.worker_index, &vvc);
         }
-        break;
+      }
+      break;
 
-        case quorum_type::checkpointing:
+      case quorum_type::checkpointing:
+      {
+        // TODO(loki): Temporary HF13 code, remove when we hit HF13 because we delete all HF12 checkpoints and don't need conditionals for HF12/HF13 checkpointing code
+        quorum_group expected_group =
+            (hf_version >= cryptonote::network_version_13_enforce_checkpoints) ? quorum_group::validator : quorum_group::worker;
+        if (vote.group != expected_group)
         {
-          if (vote.group != quorum_group::worker)
-          {
-            LOG_PRINT_L1("Vote received specifies incorrect voting group, expected vote from worker");
-            vvc.m_incorrect_voting_group = true;
-            return false;
-          }
-
-          key  = quorum.workers[vote.index_in_group];
+          LOG_PRINT_L1("Vote received specifies incorrect voting group");
+          vvc.m_incorrect_voting_group = true;
+          result = false;
+        }
+        else
+        {
+          std::vector<crypto::public_key> const &quorum_keys = (hf_version >= cryptonote::network_version_13_enforce_checkpoints) ? quorum.validators : quorum.workers;
+          key  = quorum_keys[vote.index_in_group];
           hash = vote.checkpoint.block_hash;
         }
-        break;
       }
-
-      //
-      // NOTE: Validate vote signature
-      //
-      result = crypto::check_signature(hash, key, vote.signature);
-      if (!result)
-      {
-        vvc.m_signature_not_valid = true;
-        return result;
-      }
+      break;
     }
 
-    result = true;
+    if (!result)
+      return result;
+
+    result = crypto::check_signature(hash, key, vote.signature);
+    if (!result)
+      vvc.m_signature_not_valid = true;
+
     return result;
   }
 
@@ -500,31 +539,23 @@ namespace service_nodes
   // return: True if the vote was unique
   static bool add_vote_to_pool_if_unique(std::vector<pool_vote_entry> &votes, quorum_vote_t const &vote)
   {
-    auto vote_it = std::find_if(votes.begin(), votes.end(), [&vote](pool_vote_entry const &pool_entry) {
-        assert(pool_entry.vote.group == vote.group);
-        return (pool_entry.vote.index_in_group == vote.index_in_group);
-    });
+    auto vote_it = std::lower_bound(
+        votes.begin(), votes.end(), vote, [](pool_vote_entry const &pool_entry, quorum_vote_t const &vote) {
+          assert(pool_entry.vote.group == vote.group);
+          return pool_entry.vote.index_in_group < vote.index_in_group;
+        });
 
-    if (vote_it == votes.end())
+    if (vote_it == votes.end() || vote_it->vote.index_in_group != vote.index_in_group)
     {
-      votes.push_back({vote});
+      votes.insert(vote_it, {vote});
       return true;
     }
 
     return false;
   }
 
-  std::vector<pool_vote_entry> voting_pool::add_pool_vote_if_unique(uint64_t latest_height,
-                                                                    const quorum_vote_t& vote,
-                                                                    cryptonote::vote_verification_context& vvc,
-                                                                    const service_nodes::testing_quorum &quorum)
+  std::vector<pool_vote_entry> voting_pool::add_pool_vote_if_unique(const quorum_vote_t& vote, cryptonote::vote_verification_context& vvc)
   {
-    if (!verify_vote(vote, latest_height, vvc, quorum))
-    {
-      LOG_PRINT_L1("Signature verification failed for deregister vote");
-      return {};
-    }
-
     CRITICAL_REGION_LOCAL(m_lock);
     auto *votes = find_vote_pool(vote, /*create_if_not_found=*/ true);
     if (!votes)

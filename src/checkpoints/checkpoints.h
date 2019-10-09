@@ -39,12 +39,14 @@
 #include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "string_tools.h"
 
+#include <boost/serialization/base_object.hpp>
+
 #define ADD_CHECKPOINT(h, hash)  CHECK_AND_ASSERT(add_checkpoint(h,  hash), false);
 #define JSON_HASH_FILE_NAME "checkpoints.json"
 
 namespace cryptonote
 {
-  struct Blockchain;
+  class Blockchain;
   enum struct checkpoint_type
   {
     hardcoded,
@@ -59,7 +61,7 @@ namespace cryptonote
     uint64_t                                       height;
     crypto::hash                                   block_hash;
     std::vector<service_nodes::voter_to_signature> signatures; // Only service node checkpoints use signatures
-    uint64_t                                       prev_height;
+    uint64_t                                       prev_height; // TODO(doyle): Unused
 
     bool               check         (crypto::hash const &block_hash) const;
     static char const *type_to_string(checkpoint_type type)
@@ -81,19 +83,11 @@ namespace cryptonote
       FIELD(prev_height)
     END_SERIALIZE()
 
-    BEGIN_KV_SERIALIZE_MAP()
-      KV_SERIALIZE(version)
-      KV_SERIALIZE(height)
-
-      std::string type = checkpoint_t::type_to_string(this_ref.type);
-      KV_SERIALIZE_VALUE(type);
-
-      std::string block_hash = epee::string_tools::pod_to_hex(this_ref.block_hash);
-      KV_SERIALIZE_VALUE(block_hash);
-
-      KV_SERIALIZE(signatures)
-      KV_SERIALIZE(prev_height)
-    END_KV_SERIALIZE_MAP()
+   // TODO(loki): idk exactly if I want to implement this, but need for core tests to compile. Not sure I care about serializing for core tests at all.
+   private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int /*version*/) { }
   };
 
   struct height_to_hash
@@ -131,9 +125,10 @@ namespace cryptonote
       public cryptonote::BlockchainDetachedHook
   {
   public:
-    void block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs) override;
+    bool block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs, checkpoint_t const *checkpoint) override;
     void blockchain_detached(uint64_t height) override;
 
+    bool get_checkpoint(uint64_t height, checkpoint_t &checkpoint) const;
     /**
      * @brief adds a checkpoint to the container
      *
@@ -147,13 +142,6 @@ namespace cryptonote
     bool add_checkpoint(uint64_t height, const std::string& hash_str);
 
     bool update_checkpoint(checkpoint_t const &checkpoint);
-
-    /*
-       @brief Remove checkpoints that should not be stored persistently, i.e.
-       any checkpoint whose height is not divisible by
-       service_nodes::CHECKPOINT_STORE_PERSISTENTLY_INTERVAL
-     */
-    void prune_checkpoints(uint64_t height) const;
 
     /**
      * @brief checks if there is a checkpoint in the future
@@ -184,11 +172,11 @@ namespace cryptonote
      *         true if the passed parameters match the stored checkpoint,
      *         false otherwise
      */
-    bool check_block(uint64_t height, const crypto::hash& h, bool *is_a_checkpoint = nullptr, bool *rejected_by_service_node = nullptr) const;
+    bool check_block(uint64_t height, const crypto::hash& h, bool *is_a_checkpoint = nullptr, bool *service_node_checkpoint = nullptr) const;
 
     /**
      * @brief checks if alternate chain blocks should be kept for a given height and updates
-     * m_oldest_allowable_alternative_block based on the available checkpoints
+     * m_immutable_height based on the available checkpoints
      *
      * this basically says if the blockchain is smaller than the first
      * checkpoint then alternate blocks are allowed.  Alternatively, if the
@@ -201,7 +189,7 @@ namespace cryptonote
      * @return true if alternate blocks are allowed given the parameters,
      *         otherwise false
      */
-    bool is_alternative_block_allowed(uint64_t blockchain_height, uint64_t block_height, bool *rejected_by_service_node = nullptr);
+    bool is_alternative_block_allowed(uint64_t blockchain_height, uint64_t block_height, bool *service_node_checkpoint = nullptr);
 
     /**
      * @brief gets the highest checkpoint height
@@ -221,7 +209,7 @@ namespace cryptonote
   private:
     network_type m_nettype = UNDEFINED;
     uint64_t m_last_cull_height = 0;
-    uint64_t m_oldest_allowable_alternative_block = 0;
+    uint64_t m_immutable_height = 0;
     BlockchainDB *m_db;
   };
 
