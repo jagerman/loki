@@ -5,6 +5,15 @@
 #export DH_VERBOSE = 1
 
 include /usr/share/dpkg/pkg-info.mk
+include /usr/share/dpkg/architecture.mk
+
+ifeq ($(DEB_TARGET_ARCH),$(filter $(DEB_TARGET_ARCH),amd64 i386))
+	DEB_CMAKE_ARCH_OPTIONS=-DARCH=westmere -DCMAKE_CXX_FLAGS="-mtune=haswell" -DCMAKE_C_FLAGS="-mtune=haswell"
+else ifeq ($(DEB_TARGET_ARCH),arm64)
+	DEB_CMAKE_ARCH_OPTIONS=-DARCH=armv8-a+crc
+else
+	DEB_CMAKE_ARCH_OPTIONS=
+endif
 
 %:
 	dh $@ --buildsystem=cmake --with-systemd
@@ -12,7 +21,7 @@ include /usr/share/dpkg/pkg-info.mk
 override_dh_auto_configure:
 	debian/gen-libloki-install.sh $(DEB_VERSION_UPSTREAM)
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release -DSTATIC=OFF -DUSE_LTO=ON -DBUILD_SHARED_LIBS=ON \
-		-DARCH=westmere -DCMAKE_CXX_FLAGS="-mtune=haswell" -DCMAKE_C_FLAGS="-mtune=haswell" \
+		$(DEB_CMAKE_ARCH_OPTIONS) \
 		-DLOKI_INSTALL_LIBDIR_SUFFIX=/$(DEB_HOST_MULTIARCH)/loki-core -DLOKI_INSTALL_INCLUDEDIR_SUFFIX=/loki-core \
 		-DCMAKE_INSTALL_RPATH=/usr/lib/$(DEB_HOST_MULTIARCH)/loki-core \
 		-DLOKI_VERSION_TAG=$(call dpkg_late_eval,LOKI_VERSION_TAG,echo '$(DEB_VERSION)' | sed -e 's/.*-//')
