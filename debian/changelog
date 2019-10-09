@@ -1,3 +1,324 @@
+loki (5.1.0-1~ubuntu1604) xenial; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Initial stable Loki 5 release
+
+  [ Jason Rhinelander ]
+  * Subtract buffer blocks from checkpoint quorum in vote check
+  * Push buffer subtraction into get_testing_quorum
+  * Take safety buffer into account before printing error
+
+  [ sachaaaaa ]
+  * New print_sn_state_changes command (#727)
+
+  [ Doyle ]
+  * Revert to manually serializing checkpoints/quorum (#743)
+
+  [ Jason Rhinelander ]
+  * (Low priority) Add disabled-by-default quorum storage support (#702)
+  * Fix credit calculation for awaiting service nodes (#750)
+  * Fix rebase mistake from #702 (#751)
+  * Suppress "transaction is locked" messages for coinbase txes (#755)
+
+  [ Doyle ]
+  * Increase the age of service node rollbacks we keep
+  * Store historical states for every 10k blocks and better detach
+  * ~5ms per block speed up, make serialised struct static
+  * Fix pop-blocks edge case before the first 10k interval
+  * Guard against invalid serialisation and change deque to vector
+  * Make cosmetic changes for RPC declarations for the documentation generator (#756)
+  * Fix ranged quorum query (#762)
+  * Fix off by 1 when checking state_t heights causing sync failure (#759)
+  * Improve duplicated non-standard tx check error messages (#763)
+  * Don't query the blockchain for hardfork which causes major slowdown (#764)
+  * Don't cull checkpoints if they bleed into the finality zone (#744)
+  * Demote error message for missing quorum in handling non-standard txes (#769)
+  * Only store service node list every 10k AND Height-N blocks (#761)
+  * Remove NOTIFY_NEW_DEREGISTER_VOTE code, deprecated by service node vote
+  * Inline update_miner_block_template and remove from core header
+  * Remove legacy P2P vote conversion methods
+  * Add missing LOKI_RPC_DOC_INTROSPECT annotations (#776)
+  * Filter vote age before querying quorum (#777)
+  * Add progress meter to pop_blocks (#770)
+  * Use defer on scope exit to remove some repetitive code (#771)
+  * Bump Hefty Heimdall patch to 4
+  * Immutable checkpoint api update (#773)
+  * Fix off by one in deleting checkpoints on detach (#780)
+  * Remove boundary HF12 uptime proof code (#785)
+  * Handle multi state changes in the pool (#781)
+  * Make the rollback code for update_checkpoint be soft-forky on mainnet (#782)
+  * Make 4.0.4 service node blob backwards compatible (#786)
+  * Fix silly didn't try compile boo boo. nettype() not nettype (#790)
+
+  [ Jason Rhinelander ]
+  * Optimizations and simplifications
+  * Use shared_ptr storage for service_node_info
+  * Update seed nodes (#791)
+
+  [ moneromooo-monero ]
+  * p2p: add a few missing connection close calls
+  * cryptonote_protocol: drop peers we can't download from when syncing
+  * daemon: fix "never seen before" time span display for peers
+  * p2p: don't forget pruning seed or public RPC port when updating peers
+  * p2p: delay IGP probing on startup
+  * p2p: don't connect to more than one IP per class B if we can
+
+  [ Doyle ]
+  * Don't relay service node votes or uptime proof if synchronising (#779)
+
+  [ Jason Rhinelander ]
+  * Fix storage states over-reserved size
+
+  [ Doyle ]
+  * Regression core tests, missing txs on fork, segfault on detach
+  * Fix shared_ptr change to get_service_node_list_state API
+  * Fix checkpoint regression, must accept alt blocks if they are < the first checkpoint (#792)
+
+  [ moneromooo-monero ]
+  * p2p: propagate out peers limit to payload handler
+  * p2p: close the right number of connections on setting max in/out peers
+
+  [ Jason Rhinelander ]
+  * Make close() delete the connection
+  * Limit default p2p in-peers to 32
+  * Don't count pingback connections as outgoing connections
+
+  [ Doyle ]
+  * Lock blockchain when quorum cop attempts to update checkpoint
+
+  [ moneromooo-monero ]
+  * p2p: store network address directly in blocked host list
+  * allow blocking whole subnets
+  * remove obsolete save_graph skeleton code
+
+  [ Jason Rhinelander ]
+  * Add loki docs for new banned rpc command
+
+  [ Doyle ]
+  * Enforce ordering of votes in HF13
+
+  [ Thomas Winget ]
+  * Add IPv6 support
+
+  [ Jason Rhinelander ]
+  * Fix IPv6 addr parsing for boost <1.66
+
+  [ Doyle ]
+  * Assert should be after info.is_active() is true (#799)
+  * Early continue tx pool quorum query if state change is older than received block (#797)
+
+  [ Jason Rhinelander ]
+  * Print good/bad winners in incorrect winner error
+
+  [ Doyle ]
+  * Fix service node winner incorrect error
+  * Remove rollback code and old serialization method, mandate rescan
+
+  [ Jason Rhinelander ]
+  * Fix 4.0.4 uptime proof transmission after recomm
+  * Fix check for disconnecting peers when syncing
+
+  [ Doyle ]
+  * Fix service node winner incorrect error
+  * Don't version code because adding only_loaded_quorums breaks compat
+  * Serialize long term storage separate from short term
+
+  [ doyle ]
+  * Code review
+
+  [ Doyle ]
+  * Update ip to address param change for integration test
+  * Bump Hefty Heimdall patch to 5 (#804)
+
+  [ Maxim Shishmarev ]
+  * Fix decommissioned snodes not leaving swarms (#812)
+  * Enforce minimum storage server version since hardfork 13 (#811)
+
+  [ Jason Rhinelander ]
+  * Removed unused/always-obsolete macros
+  * Silence gcc 9 warnings
+  * Remove obsolete hard fork wallet code
+  * Switch to per-byte + per-output fees, reduce max multiplier
+  * Rename `result` -> `failure` to improve readability
+
+  [ Doyle ]
+  * Separate long term service node state into archive from recent history set (#815)
+
+  [ Jason Rhinelander ]
+  * Update testnet & stagenet seed nodes (#818)
+
+  [ Doyle ]
+  * make get_checkpoints_range faster by using lmdb cursor as iterator (#819)
+
+  [ Maxim Shishmarev ]
+  * Add storage server reachability field; test it with quorums (#820)
+
+  [ Doyle ]
+  * Add alt block added hook
+  * Incorporate checkpoint validation into syncing step
+  * Remove using select_winner twice in block reward check
+  * Remove Blockchain dependency in service_node_list::state_t
+  * Handle quorums needing to be stored in the previous state_t
+  * Revamp core_tests linear_chain_generator to support state_t
+  * Add migration code for service node state format updates
+  * Code review
+
+  [ Maxim Shishmarev ]
+  * Bump min SS version to 1.0.6 (#826)
+
+  [ Doyle ]
+  * Update soft-forking checks to be effective HF13 (#825)
+  * Only use greater pow alt chain if it has more checkpoints
+  * Fix race condition on querying get_info during a reorg
+  * Store alt checkpoints into the db to be applied on reorg
+  * Update for_alt_blocks to support checkpoint blobs
+  * Add static assert on blob_header to check for alignment
+  * Skip V1 txs when iterating through the blockchain
+  * Check checkpoints for all alt blocks along the alt chain (#829)
+  * Clean up core tests (#830)
+  * Don't allow duplicate ip changes for the same height (#831)
+
+  [ sachaaaaa ]
+  * New wallet rpc command `get_transfers_csv` (#749)
+
+  [ Doyle ]
+  * Check wallet is connected before entering trigger happy exception functions (#838)
+  * Don't verify checkpoints until after HF13 (#834)
+  * Rescan difficulty periodically, fix incorrect timestamps/difficulties in rescan (#835)
+  * Add hard fork date for testnet to v13 (#833)
+  * Don't constexpr operator< otherwise gitlab-ci complains (#839)
+  * Revert "Remove -Werror"
+  * Avoid VLA when array size known at compile time, ISO C90 compiler error
+
+  [ moneromooo-monero ]
+  * rpc: work around a GCC 7.4.0 (at least) bug
+
+  [ Doyle ]
+  * ifdef x86 CPUID to avoid 'cpuid' defined but not used error
+
+  [ Jason Rhinelander ]
+  * Silence gcc 9 warnings & fix potential unaligned access
+  * Silence gcc9 warning: remove unused function
+  * Fix unused variable warning
+
+  [ Doyle ]
+  * Add WARNINGS_AS_ERRORS flag for release builds
+  * Add message on receipt of your own uptime proof from network
+  * Relay proofs back to source, but don't relay your proof again
+
+  [ Jason Rhinelander ]
+  * Use pre-penalty base reward for non-miner block reward
+  * Renamed and reorganized fee calculations
+
+  [ Doyle ]
+  * Remove sychronization check on receipt of uptime
+  * Include the tip of the chain when recalculating difficulty (#847)
+  * Add +detail to print_sn|print_n_status, display checkpoint and reachability
+  * Report portential decomission and recommission for your node
+  * Add core test for service node reward dervied from unpenalized reward
+
+  [ moneromooo-monero ]
+  * p2p: fix bans taking port into account
+
+  [ Doyle ]
+  * Enforce checkpoint quorums min size and soft fork it for testnet (#842)
+  * Switch to using validators for checkpoints (#850)
+  * Add testnet checkpoint & enable checkpoints from json (#851)
+  * Only store block hashes for invalid blocks
+  * Don't form invalid BEI's by passing in empty checkpoints if not checkpointed
+  * Print the correct height in checkpoint quorum error
+  * Make empty quorum if height is checkpointable but insufficient nodes
+
+  [ moneromooo-monero ]
+  * Revert "Fix check for disconnecting peers when syncing"
+  * Revert "cryptonote_protocol: drop peers we can't download from when syncing"
+
+  [ Jason Rhinelander ]
+  * Show one-line SN summary in `status`
+  * Show "(never)" instead of 18163.1 days ago
+
+  [ Doyle ]
+  * Clarify some error message wording, don't print quorum failures early (#858)
+
+  [ moneromooo-monero ]
+  * epee: misc_log_ex.h can now be used in C code
+
+  [ Jason Rhinelander ]
+  * Update randomx external repository
+
+  [ Howard Chu ]
+  * Updated RandomX integration from upstream
+
+  [ Doyle ]
+  * 2 checkpointing fixes (#861)
+  * Update checkpoints votes UI earlier, tweak how we count votes (#860)
+  * Add immutable_height to get_info call
+  * Display checkpointedness of transactions in wallet
+
+  [ Jason Rhinelander ]
+  * Relax p2p connection restrictions for testnet/stagenet (#864)
+
+  [ Doyle ]
+  * Merge transfer_view and transfer_entry together
+
+  [ Howard Chu ]
+  * Fix randomx cache selection for RPCs
+
+  [ Jason Rhinelander ]
+  * Reward fudge factor (#867)
+
+  [ Doyle ]
+  * Fix the overflow test for fee and block_reward in blocks (#869)
+
+  [ Jason Rhinelander ]
+  * Remove POD_CLASS macro and pointless pack pragmas
+  * Remove crypto::crypto_ops
+  * Use perfect forwarding to set default serialize value
+  * Forward declaration updates
+  * Switch loki core to C++14
+  * Make quorum_type directly printable
+  * Add --dev-allow-local-ip flag for allowing local network public-ip
+  * Remove useless method.
+  * Add updated zmq c++ library
+  * Add helper function to memcpy multiple variables
+  * Code cleanup & minor reorganization
+  * Add unified key container
+  * Add SN ed25519/x25519 pubkeys + quorumnet port in proofs
+  * Simplify memcpy with offset using recently added memcpy_le helper
+
+  [ Howard Chu ]
+  * Update to RandomX v1.1.3, simplify
+  * Fix for miners on reorg
+
+  [ Doyle ]
+  * Print service node winner, cdifficulty and fix block_weight (#870)
+
+  [ Jason Rhinelander ]
+  * Delay SN info duplication
+  * Fix version_t count assert
+  * Wait for storage server (#874)
+
+  [ Doyle ]
+  * Update storage server minimum required patch to 7 (#876)
+  * Turn staking requirement into integer math variant, courtesy of Jagerman
+
+  [ Jason Rhinelander ]
+  * Change operator fee wording (#879)
+
+  [ Doyle ]
+  * Code review
+  * Set rounding mode back to default (TO_NEAREST) after randomx
+
+  [ Jason Rhinelander ]
+  * Increase maximum uptime credit to 48h (#882)
+
+  [ Doyle ]
+  * Set rounding mode explicitly where we need it
+  * Bump minor patch to 1 and enforce uptime proof minor version (#881)
+  * Add cfenv header for block reward calculation to set rounding
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 09 Oct 2019 01:21:37 -0300
+
 loki (4.0.3-5~ubuntu1604) xenial; urgency=medium
 
   * lmdb download script fixes
