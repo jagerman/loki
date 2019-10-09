@@ -18,7 +18,7 @@ Patch the loki cmake files to properly build and install shared libs.
  11 files changed, 76 insertions(+), 21 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d7e9642..3f46657 100644
+index ff0fd07..2441537 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -292,6 +292,8 @@ endif()
@@ -27,7 +27,7 @@ index d7e9642..3f46657 100644
  
 +include(Version)
 +
- include_directories(external/rapidjson/include external/easylogging++ src contrib/epee/include external)
+ include_directories(external/rapidjson/include external/easylogging++ src contrib/epee/include external/cppzmq external)
  
  if(APPLE)
 diff --git a/cmake/Version.cmake b/cmake/Version.cmake
@@ -161,10 +161,10 @@ index 72d007a..423a1a3 100644
 +    DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
 +    COMPONENT development)
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 92b7588..ad48f88 100644
+index 21e7a99..11e9855 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -41,13 +41,6 @@ function (loki_private_headers group)
+@@ -46,13 +46,6 @@ function (loki_private_headers group)
        ${ARGN})
  endfunction ()
  
@@ -178,7 +178,7 @@ index 92b7588..ad48f88 100644
  function (enable_stack_trace target)
    if(STACK_TRACE)
      set_property(TARGET ${target}
-@@ -83,7 +76,7 @@ function (loki_add_library name)
+@@ -88,7 +81,7 @@ function (loki_add_library name)
  endfunction()
  
  function (loki_add_library_with_deps)
@@ -187,7 +187,7 @@ index 92b7588..ad48f88 100644
    source_group("${LOKI_ADD_LIBRARY_NAME}" FILES ${LOKI_ADD_LIBRARY_SOURCES})
  
    # Define a ("virtual") object library and an actual library that links those
-@@ -99,9 +92,16 @@ function (loki_add_library_with_deps)
+@@ -104,9 +97,16 @@ function (loki_add_library_with_deps)
    set_property(TARGET "${LOKI_ADD_LIBRARY_NAME}" PROPERTY FOLDER "libs")
    target_compile_definitions(${objlib}
      PRIVATE $<TARGET_PROPERTY:${LOKI_ADD_LIBRARY_NAME},INTERFACE_COMPILE_DEFINITIONS>)
@@ -205,7 +205,7 @@ index 92b7588..ad48f88 100644
  loki_add_library(version SOURCES ${CMAKE_BINARY_DIR}/version.cpp DEPENDS genversion)
  
  add_subdirectory(common)
-@@ -143,3 +143,8 @@ endif()
+@@ -148,3 +148,8 @@ endif()
  
  add_subdirectory(device)
  add_subdirectory(device_trezor)
@@ -228,10 +228,10 @@ index c258330..08b63a8 100644
    ${blockchain_db_sources}
    ${blockchain_db_headers}
 diff --git a/src/common/CMakeLists.txt b/src/common/CMakeLists.txt
-index efb035e..c055c7c 100644
+index b6cdc68..925f93d 100644
 --- a/src/common/CMakeLists.txt
 +++ b/src/common/CMakeLists.txt
-@@ -113,9 +113,9 @@ target_link_libraries(common
+@@ -112,9 +112,9 @@ target_link_libraries(common
      ${Boost_THREAD_LIBRARY}
      ${Boost_REGEX_LIBRARY}
      ${Boost_CHRONO_LIBRARY}
