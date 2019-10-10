@@ -10,9 +10,9 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 7f4b198..ac7905e 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -125,7 +125,9 @@ if (NOT ARCH OR ARCH STREQUAL "" OR ARCH STREQUAL "native" OR ARCH STREQUAL "def
- else()
+@@ -127,7 +127,9 @@ else()
    set(ARCH_ID "${ARCH}")
+ endif()
  endif()
 -string(TOLOWER "${ARCH_ID}" ARM_ID)
 +if (NOT ARM_ID)
