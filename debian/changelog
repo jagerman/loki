@@ -1,3 +1,40 @@
+loki (5.1.1-1~ubuntu1604) xenial; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Add version requirement for loki-storage-server
+
+  [ Howard Chu ]
+  * Don't set ARCH_ID if it's already set
+
+  [ Jason Rhinelander ]
+  * Refresh patches
+  * Fix broken arch flags
+  * Fix version printing in info message
+
+  [ Doyle ]
+  * In openssl >1.1, SSL_CTX_set_ecdh_auto is macroed 1, cast to calm warnings
+  * dockerfile: Build Sodium before ZMQ for --with-libsodium for symbol decl conflicts
+
+  [ Jason Rhinelander ]
+  * Fixes xenial/gcc5 test suite build
+
+  [ Doyle ]
+  * Specify boost no system paths properly, fix type ambiguity in epee
+
+  [ Jason Rhinelander ]
+  * Simplified get_transfers and fixed sort segfault
+
+  [ Doyle ]
+  * Bump v5 patch to 1
+
+  [ Jason Rhinelander ]
+  * Fix compilation flags; add armhf flags
+  * Add -marm for armhf; without it parts of glibc fail
+  * Add cmake code to add -latomic (for armhf)
+  * Fix ARM_ID to make randomx happy on arm64
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 10 Oct 2019 01:35:59 -0300
+
 loki (5.1.0-1~ubuntu1604) xenial; urgency=medium
 
   [ Jason Rhinelander ]
