@@ -1,3 +1,19 @@
+loki (5.1.2-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Refresh arm patch
+
+  [ Doyle ]
+  * Fix wrong amount in number of blocks to unlock on boundary
+  * Fix main blockchain height wrong error in alt blocks
+  * Bump V5 patch to 2
+  * Demote logs for TXs in the txpool due to kept_by_block
+  * Distinguish pop_blocks from reorg in detach hook
+  * Guard against unexpected infinite loop, early out alt state cull (#896)
+  * Update blocks blob v5.1.1 to 321467 (#897)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 16 Oct 2019 12:37:49 -0300
+
 loki (5.1.1-1~ubuntu1804) bionic; urgency=medium
 
   [ Jason Rhinelander ]
