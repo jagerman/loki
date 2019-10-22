@@ -8,9 +8,6 @@ if [ "$1" = configure ]; then
     IP="$RET"
 
     for conf in loki.conf testnet.conf; do
-        # NB: also purge in postrm
-        ucfr loki-service-node /etc/loki/$conf
-
         dpkg-divert --package loki-service-node --add --rename --divert /etc/loki/$conf.no-service-node /etc/loki/$conf
     done
 
@@ -47,6 +44,11 @@ if [ "$1" = configure ]; then
     done
 
     rm -rf ${tmpdir}
+
+    for conf in loki.conf testnet.conf; do
+        # NB: also purge in postrm
+        ucfr loki-service-node /etc/loki/$conf
+    done
 fi
 
 #DEBHELPER#
