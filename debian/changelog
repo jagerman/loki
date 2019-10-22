@@ -1,3 +1,9 @@
+loki (5.1.2-2~deb9) stretch; urgency=medium
+
+  * Move ucfr to happen after merging
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 22 Oct 2019 09:43:46 -0300
+
 loki (5.1.2-1~deb9) stretch; urgency=medium
 
   [ Jason Rhinelander ]
