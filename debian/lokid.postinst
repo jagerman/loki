@@ -16,6 +16,9 @@ if [ "$1" = configure ]; then
         adduser --force-badname --quiet _loki _loki
     fi
 
+    mkdir -p /var/log/loki
+    chown _loki:_loki /var/log/loki
+
     mkdir -p /var/lib/loki
     su -s /bin/sh _loki -c "test -O /var/lib/loki &&
         test -G /var/lib/loki" || \
