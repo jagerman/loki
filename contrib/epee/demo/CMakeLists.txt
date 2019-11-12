@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 set(Boost_USE_MULTITHREADED ON)
 #set(Boost_DEBUG 1) 
-find_package(Boost COMPONENTS system filesystem thread date_time chrono regex )
+find_package(Boost COMPONENTS system filesystem thread date_time chrono )
 
 include_directories( ${Boost_INCLUDE_DIRS} )
 

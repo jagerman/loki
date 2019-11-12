@@ -25,10 +25,9 @@
 // 
 
 
-#include <boost/regex.hpp>
+#include <regex>
 #include <boost/lexical_cast.hpp>
 #include "http_protocol_handler.h"
-#include "reg_exp_definer.h"
 #include "string_tools.h"
 #include "file_io_utils.h"
 #include "net_parse_helpers.h"
@@ -59,10 +58,10 @@ namespace net_utils
 		inline
 			bool match_boundary(const std::string& content_type, std::string& boundary)
 		{
-			STATIC_REGEXP_EXPR_1(rexp_match_boundary, "boundary=(.*?)(($)|([;\\s,]))", boost::regex::icase | boost::regex::normal);
+            static std::regex rexp_match_boundary{"boundary=(.*?)(($)|([;\\s,]))", std::regex::icase};
 			//											        1
-			boost::smatch result;	
-			if(boost::regex_search(content_type, result, rexp_match_boundary, boost::match_default) && result[0].matched)
+			std::smatch result;	
+			if (std::regex_search(content_type, result, rexp_match_boundary))
 			{
 				boundary = result[1];
 				return true;
@@ -74,19 +73,19 @@ namespace net_utils
 		inline 
 			bool parse_header(std::string::const_iterator it_begin, std::string::const_iterator it_end, multipart_entry& entry)
 		{
-			STATIC_REGEXP_EXPR_1(rexp_mach_field, 
+			static std::regex rexp_mach_field{
 				"\n?((Content-Disposition)|(Content-Type)"
 				//  12                     3 
 				"|([\\w-]+?)) ?: ?((.*?)(\r?\n))[^\t ]",	
 				//4               56    7 
-				boost::regex::icase | boost::regex::normal);
+				std::regex::icase};
 
-			boost::smatch		result;
+			std::smatch		result;
 			std::string::const_iterator it_current_bound = it_begin;
 			std::string::const_iterator it_end_bound = it_end;
 
 			//lookup all fields and fill well-known fields
-			while( boost::regex_search( it_current_bound, it_end_bound, result, rexp_mach_field, boost::match_default) && result[0].matched) 
+			while (std::regex_search( it_current_bound, it_end_bound, result, rexp_mach_field))
 			{
 				const size_t field_val = 6;
 				const size_t field_etc_name = 4;
@@ -326,7 +325,7 @@ namespace net_utils
 		return true;
 	}
 	//--------------------------------------------------------------------------------------------
-	inline bool analize_http_method(const boost::smatch& result, http::http_method& method, int& http_ver_major, int& http_ver_minor)
+	inline bool analize_http_method(const std::smatch& result, http::http_method& method, int& http_ver_major, int& http_ver_minor)
 	{
 		CHECK_AND_ASSERT_MES(result[0].matched, false, "simple_http_connection_handler::analize_http_method() assert failed...");
 		if (!boost::conversion::try_lexical_convert<int>(result[11], http_ver_major))
@@ -354,11 +353,12 @@ namespace net_utils
   template<class t_connection_context>
 	bool simple_http_connection_handler<t_connection_context>::handle_invoke_query_line()
 	{ 
-		STATIC_REGEXP_EXPR_1(rexp_match_command_line, "^(((OPTIONS)|(GET)|(HEAD)|(POST)|(PUT)|(DELETE)|(TRACE)) (\\S+) HTTP/(\\d+)\\.(\\d+))\r?\n", boost::regex::icase | boost::regex::normal);
-		//											    123         4     5      6      7     8        9        10          11     12    
+        static std::regex rexp_match_command_line{
+            R"(^(((OPTIONS)|(GET)|(HEAD)|(POST)|(PUT)|(DELETE)|(TRACE)) (\S+) HTTP/(\d+)\.(\d+))\r?\n)", std::regex::icase};
+        //      123         4     5      6      7     8        9        10         11     12
 		//size_t match_len = 0;
-		boost::smatch result;	
-		if(boost::regex_search(m_cache, result, rexp_match_command_line, boost::match_default) && result[0].matched)
+		std::smatch result;	
+		if (std::regex_search(m_cache, result, rexp_match_command_line))
 		{
 			if (!analize_http_method(result, m_query_info.m_http_method, m_query_info.m_http_ver_hi, m_query_info.m_http_ver_hi))
 			{
@@ -501,21 +501,20 @@ namespace net_utils
   template<class t_connection_context>
 	bool simple_http_connection_handler<t_connection_context>::parse_cached_header(http_header_info& body_info, const std::string& m_cache_to_process, size_t pos)
 	{ 
-		STATIC_REGEXP_EXPR_1(rexp_mach_field, 
+        static std::regex rexp_mach_field{
 			"\n?((Connection)|(Referer)|(Content-Length)|(Content-Type)|(Transfer-Encoding)|(Content-Encoding)|(Host)|(Cookie)|(User-Agent)|(Origin)"
 			//  12            3         4                5              6                   7                  8      9        10           11
-			"|([\\w-]+?)) ?: ?((.*?)(\r?\n))[^\t ]",	
+			"|([\\w-]+?)) ?: ?((.*?)(\r?\n))[^\t ]", std::regex::icase};
 			//11             1213   14 
-			boost::regex::icase | boost::regex::normal);
 
-		boost::smatch		result;
+		std::smatch result;
 		std::string::const_iterator it_current_bound = m_cache_to_process.begin();
 		std::string::const_iterator it_end_bound = m_cache_to_process.begin()+pos;
 
 		body_info.clear();
 
 		//lookup all fields and fill well-known fields
-		while( boost::regex_search( it_current_bound, it_end_bound, result, rexp_mach_field, boost::match_default) && result[0].matched) 
+		while (std::regex_search( it_current_bound, it_end_bound, result, rexp_mach_field))
 		{
 			const size_t field_val = 14;
 			const size_t field_etc_name = 12;
@@ -556,10 +555,10 @@ namespace net_utils
   template<class t_connection_context>
 	bool simple_http_connection_handler<t_connection_context>::get_len_from_content_lenght(const std::string& str, size_t& OUT len)
 	{
-		STATIC_REGEXP_EXPR_1(rexp_mach_field, "\\d+", boost::regex::normal);
+        static std::regex rexp_mach_field{"\\d+"};
 		std::string res;
-		boost::smatch result;
-		if(!(boost::regex_search( str, result, rexp_mach_field, boost::match_default) && result[0].matched))
+		std::smatch result;
+		if(!std::regex_search( str, result, rexp_mach_field))
 			return false;
 
 		try { len = boost::lexical_cast<size_t>(result[0]); }

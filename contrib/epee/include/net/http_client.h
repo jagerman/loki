@@ -27,9 +27,7 @@
 
 
 #pragma once
-#include <ctype.h>
 #include <boost/shared_ptr.hpp>
-#include <boost/regex.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/utility/string_ref.hpp>
@@ -37,6 +35,7 @@
 #include <algorithm>
 #include <cctype>
 #include <functional>
+#include <regex>
 
 #include "net_helper.h"
 #include "http_client_base.h"
@@ -46,7 +45,6 @@
 #endif 
 
 #include "string_tools.h"
-#include "reg_exp_definer.h"
 #include "http_base.h" 
 #include "http_auth.h"
 #include "to_nonconst_iterator.h"
@@ -59,8 +57,6 @@
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "net.http"
-
-extern epee::critical_section gregexp_lock;
 
 
 namespace epee
@@ -885,9 +881,9 @@ namespace net_utils
 			inline
 				bool set_reply_content_encoder()
 			{
-				STATIC_REGEXP_EXPR_1(rexp_match_gzip, "^.*?((gzip)|(deflate))", boost::regex::icase | boost::regex::normal);
-				boost::smatch result;						//   12      3
-				if(boost::regex_search( m_response_info.m_header_info.m_content_encoding, result, rexp_match_gzip, boost::match_default) && result[0].matched)
+				static std::regex rexp_match_gzip{"^.*?((gzip)|(deflate))", std::regex::icase};
+				std::smatch result;               //   12      3
+				if (std::regex_search(m_response_info.m_header_info.m_content_encoding, result, rexp_match_gzip))
 				{
 #ifdef HTTP_ENABLE_GZIP
 					m_pcontent_encoding_handler.reset(new content_encoding_gzip(this, result[3].matched));
@@ -981,9 +977,9 @@ namespace net_utils
 			inline 
 				bool is_connection_close_field(const std::string& str)
 			{
-				STATIC_REGEXP_EXPR_1(rexp_match_close, "^\\s*close", boost::regex::icase | boost::regex::normal);
-				boost::smatch result;
-				if(boost::regex_search( str, result, rexp_match_close, boost::match_default) && result[0].matched)
+				static std::regex rexp_match_close{"^\\s*close", std::regex::icase};
+				std::smatch result;
+				if (std::regex_search( str, result, rexp_match_close))
 					return true;
 				else
 					return false;
@@ -992,9 +988,9 @@ namespace net_utils
 				bool is_multipart_body(const http_header_info& head_info, OUT std::string& boundary)
 			{
 				//Check whether this is multi part - if yes, capture boundary immediately
-				STATIC_REGEXP_EXPR_1(rexp_match_multipart_type, "^\\s*multipart/([\\w\\-]+); boundary=((\"(.*?)\")|(\\\\\"(.*?)\\\\\")|([^\\s;]*))", boost::regex::icase | boost::regex::normal);
-				boost::smatch result;
-				if(boost::regex_search(head_info.m_content_type, result, rexp_match_multipart_type, boost::match_default) && result[0].matched)
+				static std::regex rexp_match_multipart_type{R"re(^\s*multipart/([\w-]+); boundary=(("(.*?)")|(\\"(.*?)\\")|([^\s;]*)))re", std::regex::icase};
+				std::smatch result;
+				if (std::regex_search(head_info.m_content_type, result, rexp_match_multipart_type))
 				{
 					if(result[4].matched)
 						boundary = result[4];

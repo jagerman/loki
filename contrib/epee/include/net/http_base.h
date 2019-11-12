@@ -28,10 +28,11 @@
 
 #pragma once
 #include <boost/lexical_cast.hpp>
-#include <boost/regex.hpp>
 #include <boost/utility/string_ref.hpp>
+#include <regex>
 #include <string>
 #include <utility>
+#include <list>
 
 #include "string_tools.h"
 
@@ -83,11 +84,9 @@ namespace net_utils
 		inline
 			std::string get_value_from_uri_line(const std::string& param_name, const std::string& uri)
 		{
-			std::string buff = "([\\?|&])";
-			buff += param_name + "=([^&]*)";
-			boost::regex match_param(buff.c_str(), boost::regex::icase | boost::regex::normal);
-			boost::smatch	result;
-			if(boost::regex_search(uri, result, match_param, boost::match_default) && result[0].matched) 
+			std::regex match_param("([\\?|&])" + param_name + "=([^&]*)", std::regex::icase);
+			std::smatch result;
+			if (std::regex_search(uri, result, match_param))
 			{
 				return result[2];
 			}

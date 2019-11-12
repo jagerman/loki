@@ -28,7 +28,7 @@
 #ifndef _TINY_INI_H_
 #define _TINY_INI_H_
 
-#include <boost/regex.hpp>
+#include <regex>
 #include <boost/lexical_cast.hpp>
 #include "string_tools.h"
 
@@ -40,12 +40,11 @@ namespace tiny_ini
 	inline 
 		bool get_param_value(const std::string& param_name, const std::string& ini_entry, std::string& res)
 	{
-		std::string expr_str = std::string() + "^("+ param_name +") *=(.*?)$";
-		const boost::regex match_ini_entry( expr_str, boost::regex::icase | boost::regex::normal); 
-		boost::smatch result;	
-		if(!boost::regex_search(ini_entry, result, match_ini_entry, boost::match_default))
+		const std::regex match_ini_entry("^" + param_name + " *=", std::regex::icase);
+		std::smatch result;	
+		if(!std::regex_search(ini_entry, result, match_ini_entry))
 			return false;
-		res = result[2];
+		res = result.suffix();
 		string_tools::trim(res);
 		return true;
 	}

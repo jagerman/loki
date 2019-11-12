@@ -30,10 +30,10 @@
 #define _MUNIN_CONNECTION_HANDLER_H_
 
 #include <string>
+#include <regex>
 #include "net_utils_base.h"
 #include "to_nonconst_iterator.h"
 #include "http_base.h"
-#include "reg_exp_definer.h"
 
 #define MUNIN_ARGS_DEFAULT(vertial_lable_str) "graph_args --base 1000 -l 0 --vertical-label " vertial_lable_str " \n"
 #define MUNIN_ARGS_FORCE_AUPPER_LIMIT(vertial_lable_str, limit) "graph_args --base 1000 -l 0 --vertical-label " vertial_lable_str " --rigid --upper-limit " limit " \n"
@@ -198,11 +198,10 @@ namespace net_utils
 			bool handle_command(const std::string& command)
 			{
 				// list, nodes, config, fetch, version or quit
-				STATIC_REGEXP_EXPR_1(rexp_match_command_line, "^((list)|(nodes)|(config)|(fetch)|(version)|(quit))(\\s+(\\S+))?", boost::regex::icase | boost::regex::normal);
-				//											    12      3       4        5       6         7      8    9         
-				size_t match_len = 0;
-				boost::smatch result;	
-				if(boost::regex_search(command, result, rexp_match_command_line, boost::match_default) && result[0].matched)
+				static std::regex rexp_match_command_line{"^((list)|(nodes)|(config)|(fetch)|(version)|(quit))(\\s+(\\S+))?", std::regex::icase};
+				//											12      3       4        5       6         7      8    9
+				std::smatch result;	
+				if (std::regex_search(command, result, rexp_match_command_line))
 				{
 					if(result[2].matched)
 					{//list command
