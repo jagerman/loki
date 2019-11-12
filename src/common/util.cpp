@@ -996,16 +996,25 @@ std::string get_nix_version_display_string()
   std::string glob_to_regex(const std::string &val)
   {
     std::string newval;
+    newval.reserve(val.size() + 4);
 
     bool escape = false;
     for (char c: val)
     {
-      if (c == '*')
-        newval += escape ? "*" : ".*";
+      if (escape) {
+        newval += c;
+        escape = false;
+      }
+      else if (c == '*')
+        newval += ".*";
       else if (c == '?')
-        newval += escape ? "?" : ".";
-      else if (c == '\\')
-        newval += '\\', escape = !escape;
+        newval += '.';
+      else if (c == '.')
+        newval += "\\.";
+      else if (c == '\\') {
+        newval += '\\';
+        escape = true;
+      }
       else
         newval += c;
     }
