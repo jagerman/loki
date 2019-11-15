@@ -221,18 +221,18 @@ void mock_daemon::try_init_and_run(boost::optional<unsigned> initial_port)
 
 void mock_daemon::run()
 {
-  m_run_thread = boost::thread(boost::bind(&mock_daemon::run_main, this));
+  m_run_thread = std::thread([this]() { return run_main(); });
 }
 
 bool mock_daemon::run_main()
 {
   CHECK_AND_ASSERT_THROW_MES(!m_terminated, "Can't run stopped daemon");
   CHECK_AND_ASSERT_THROW_MES(!m_start_zmq || m_start_p2p, "ZMQ requires P2P");
-  boost::thread stop_thread = boost::thread([this] {
+  std::thread stop_thread{[this] {
     while (!this->m_stopped)
       epee::misc_utils::sleep_no_w(100);
     this->stop_p2p();
-  });
+  }};
 
   epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){
     m_stopped = true;

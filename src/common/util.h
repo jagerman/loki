@@ -30,8 +30,8 @@
 
 #pragma once 
 
-#include <boost/thread/locks.hpp>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
+#include <thread>
 #include <boost/optional.hpp>
 #include <boost/endian/conversion.hpp>
 #include <system_error>
@@ -212,8 +212,8 @@ namespace tools
     /*! \brief calles m_handler */
     static void handle_signal(int type)
     {
-      static boost::mutex m_mutex;
-      boost::unique_lock<boost::mutex> lock(m_mutex);
+      static std::mutex m_mutex;
+      std::unique_lock<std::mutex> lock(m_mutex);
       m_handler(type);
     }
 
@@ -244,6 +244,8 @@ namespace tools
 #endif
 
   void closefrom(int fd);
+
+  extern const std::chrono::system_clock::time_point null_time;
 
   std::string get_human_readable_timestamp(uint64_t ts);
   std::string get_human_readable_timespan(std::chrono::seconds seconds);

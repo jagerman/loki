@@ -31,7 +31,6 @@
 
 #include <sstream>
 #include <numeric>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/algorithm/string.hpp>
 #include "misc_language.h"
 #include "syncobj.h"
@@ -125,9 +124,7 @@ namespace cryptonote
     m_mining_target(BACKGROUND_MINING_DEFAULT_MINING_TARGET_PERCENTAGE),
     m_miner_extra_sleep(BACKGROUND_MINING_DEFAULT_MINER_EXTRA_SLEEP_MILLIS),
     m_block_reward(0)
-  {
-    m_attrs.set_stack_size(THREAD_STACK_SIZE);
-  }
+  {}
   //-----------------------------------------------------------------------------------------------------
   miner::~miner()
   {
@@ -215,9 +212,11 @@ namespace cryptonote
       {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), 0);
         float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size());
-        const auto flags = std::cout.flags();
-        const auto precision = std::cout.precision();
-        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << std::setiosflags(flags) << std::setprecision(precision) << ENDL;
+        const auto old_flags = std::cout.flags(std::ios_base::fixed);
+        const auto old_precision = std::cout.precision(4);
+        std::cout << "hashrate: " << hr << std::endl;
+        std::cout.flags(old_flags);
+        std::cout.precision(old_precision);
       }
     }
     m_last_hr_merge_time = misc_utils::get_tick_count();
@@ -266,16 +265,16 @@ namespace cryptonote
 
     // restart all threads
     {
+      m_stop = true;
       CRITICAL_REGION_LOCAL(m_threads_lock);
-      boost::interprocess::ipcdetail::atomic_write32(&m_stop, 1);
-      while (m_threads_active > 0)
-        misc_utils::sleep_no_w(100);
+      for (auto &t : m_threads)
+        t.join();
       m_threads.clear();
     }
-    boost::interprocess::ipcdetail::atomic_write32(&m_stop, 0);
-    boost::interprocess::ipcdetail::atomic_write32(&m_thread_index, 0);
+    m_stop = false;
+    m_thread_index = 0;
     for(size_t i = 0; i != m_threads_total; i++)
-      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this)));
+      m_threads.emplace_back(std::bind(&miner::worker_thread, this));
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::init_options(boost::program_options::options_description& desc)
@@ -390,14 +389,14 @@ namespace cryptonote
 
     request_block_template();//lets update block template
 
-    boost::interprocess::ipcdetail::atomic_write32(&m_stop, 0);
-    boost::interprocess::ipcdetail::atomic_write32(&m_thread_index, 0);
+    m_stop = false;
+    m_thread_index = 0;
     set_is_background_mining_enabled(do_background);
     set_ignore_battery(ignore_battery);
     
     for(size_t i = 0; i != m_threads_total; i++)
     {
-      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this)));
+      m_threads.emplace_back(std::bind(&miner::worker_thread, this));
     }
 
     if (threads_count == 0)
@@ -407,7 +406,7 @@ namespace cryptonote
 
     if( get_is_background_mining_enabled() )
     {
-      m_background_mining_thread = boost::thread(m_attrs, boost::bind(&miner::background_worker_thread, this));
+      m_background_mining_thread = std::thread(std::bind(&miner::background_worker_thread, this));
       LOG_PRINT_L0("Background mining controller thread started" );
     }
 
@@ -431,7 +430,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------------
   void miner::send_stop_signal()
   {
-    boost::interprocess::ipcdetail::atomic_write32(&m_stop, 1);
+    m_stop = true;
   }
   extern "C" void rx_stop_mining(void);
   //-----------------------------------------------------------------------------------------------------
@@ -459,7 +458,6 @@ namespace cryptonote
 
     // The background mining thread could be sleeping for a long time, so we
     // interrupt it just in case
-    m_background_mining_thread.interrupt();
     m_background_mining_thread.join();
     m_is_background_mining_enabled = false;
 
@@ -520,7 +518,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------------
   bool miner::worker_thread()
   {
-    uint32_t th_local_index = boost::interprocess::ipcdetail::atomic_inc32(&m_thread_index);
+    uint32_t th_local_index = m_thread_index++;
     MLOG_SET_THREAD_NAME(std::string("[miner ") + std::to_string(th_local_index) + "]");
     MGINFO("Miner thread was started ["<< th_local_index << "]");
     uint32_t nonce = m_starter_nonce + th_local_index;
@@ -543,7 +541,7 @@ namespace cryptonote
         while( !m_is_background_mining_started )
         {
           MGINFO("background mining is enabled, but not started, waiting until start triggers");
-          boost::unique_lock<boost::mutex> started_lock( m_is_background_mining_started_mutex );        
+          std::unique_lock<std::mutex> started_lock( m_is_background_mining_started_mutex );        
           m_is_background_mining_started_cond.wait( started_lock );
           if( m_stop ) break;
         }
@@ -693,7 +691,6 @@ namespace cryptonote
     while(!m_stop)
     {
         
-      try
       {
         // Commenting out the below since we're going with privatizing the bg mining enabled
         // function, but I'll leave the code/comments here for anyone that wants to modify the
@@ -713,7 +710,7 @@ namespace cryptonote
         while( !m_is_background_mining_enabled )
         {
           MGINFO("background mining is disabled, waiting until enabled!");
-          boost::unique_lock<boost::mutex> enabled_lock( m_is_background_mining_enabled_mutex );        
+          std::unique_lock<std::mutex> enabled_lock( m_is_background_mining_enabled_mutex );        
           m_is_background_mining_enabled_cond.wait( enabled_lock );
         } 
         */       
@@ -722,13 +719,11 @@ namespace cryptonote
         // If we're NOT mining, then sleep for the idle monitor interval
         uint64_t sleep_for_seconds = BACKGROUND_MINING_MINER_MONITOR_INVERVAL_IN_SECONDS;
         if( !m_is_background_mining_started ) sleep_for_seconds = get_min_idle_seconds();
-        boost::this_thread::sleep_for(boost::chrono::seconds(sleep_for_seconds));
+        std::this_thread::sleep_for(std::chrono::seconds(sleep_for_seconds));
       }
-      catch(const boost::thread_interrupted&)
-      {
-        MDEBUG("background miner thread interrupted ");
-        continue; // if interrupted because stop called, loop should end ..
-      }
+
+      if (m_stop)
+        break;
 
       bool on_ac_power = m_ignore_battery;
       if(!m_ignore_battery)
@@ -814,7 +809,7 @@ namespace cryptonote
           m_is_background_mining_started_cond.notify_all();
 
           // Wait for a little mining to happen ..
-          boost::this_thread::sleep_for(boost::chrono::seconds( 1 ));
+          std::this_thread::sleep_for(std::chrono::seconds( 1 ));
 
           // Starting data ...
           if(!get_process_time(previous_process_time))

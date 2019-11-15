@@ -38,6 +38,7 @@
 
 #include <boost/circular_buffer.hpp>
 #include "network_throttle.hpp"
+#include <cmath>
 
 namespace epee
 {

@@ -1029,7 +1029,9 @@ namespace cryptonote
     tx_memory_pool& m_tx_pool;
     service_nodes::service_node_list& m_service_node_list;
 
-    mutable epee::critical_section m_blockchain_lock; // TODO: add here reader/writer lock
+    mutable std::recursive_mutex m_blockchain_lock; // TODO: add here reader/writer lock
+
+    std::mutex m_store_blockchain_mutex;
 
     // main chain
     size_t m_current_block_cumul_weight_limit;
@@ -1064,12 +1066,12 @@ namespace cryptonote
     mutable crypto::hash m_long_term_block_weights_cache_tip_hash;
     mutable epee::misc_utils::rolling_median_t<uint64_t> m_long_term_block_weights_cache_rolling_median;
 
-    epee::critical_section m_difficulty_lock;
+    std::mutex m_difficulty_lock;
     crypto::hash m_difficulty_for_next_block_top_hash;
     difficulty_type m_difficulty_for_next_block;
 
     boost::asio::io_service m_async_service;
-    boost::thread_group m_async_pool;
+    std::thread m_asio_thread;
     std::unique_ptr<boost::asio::io_service::work> m_async_work_idle;
 
     // some invalid blocks

@@ -148,8 +148,6 @@ namespace debug
 
 
 
-#define ENDL std::endl
-
 #define TRY_ENTRY()   try {
 #define CATCH_ENTRY(location, return_val) } \
   catch(const std::exception& ex) \

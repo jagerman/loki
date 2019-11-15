@@ -346,12 +346,12 @@ bool t_rpc_command_executor::print_sn_state_changes(uint64_t start_height, uint6
 
   std::stringstream output;
 
-  output << "Service Node State Changes (blocks " << res.start_height << "-" << res.end_height << ")" << std::endl;
-  output << " Recommissions:\t\t" << res.total_recommission << std::endl;
-  output << " Unlocks:\t\t" << res.total_unlock << std::endl;
-  output << " Decommissions:\t\t" << res.total_decommission << std::endl;
-  output << " Deregistrations:\t" << res.total_deregister << std::endl;
-  output << " IP change penalties:\t" << res.total_ip_change_penalty << std::endl;
+  output << "Service Node State Changes (blocks " << res.start_height << "-" << res.end_height << ")\n";
+  output << " Recommissions:\t\t" << res.total_recommission << '\n';
+  output << " Unlocks:\t\t" << res.total_unlock << '\n';
+  output << " Decommissions:\t\t" << res.total_decommission << '\n';
+  output << " Deregistrations:\t" << res.total_deregister << '\n';
+  output << " IP change penalties:\t" << res.total_ip_change_penalty << '\n';
 
   tools::success_msg_writer() << output.str();
   return true;
@@ -423,7 +423,7 @@ bool t_rpc_command_executor::print_peer_list_stats() {
   }
 
   tools::msg_writer()
-    << "White list size: " << res.white_list.size() << "/" << P2P_LOCAL_WHITE_PEERLIST_LIMIT << " (" << res.white_list.size() *  100.0 / P2P_LOCAL_WHITE_PEERLIST_LIMIT << "%)" << std::endl
+    << "White list size: " << res.white_list.size() << "/" << P2P_LOCAL_WHITE_PEERLIST_LIMIT << " (" << res.white_list.size() *  100.0 / P2P_LOCAL_WHITE_PEERLIST_LIMIT << "%)\n"
     << "Gray list size: " << res.gray_list.size() << "/" << P2P_LOCAL_GRAY_PEERLIST_LIMIT << " (" << res.gray_list.size() *  100.0 / P2P_LOCAL_GRAY_PEERLIST_LIMIT << "%)";
 
   return true;
@@ -976,13 +976,13 @@ bool t_rpc_command_executor::print_blockchain_info(uint64_t start_block_index, u
   for (auto & header : res.headers)
   {
     if (!first)
-      tools::msg_writer() << "" << std::endl;
+      tools::msg_writer() << '\n';
     tools::msg_writer()
       << "height: " << header.height << ", timestamp: " << header.timestamp << " (" << tools::get_human_readable_timestamp(header.timestamp) << ")"
-      << ", size: " << header.block_size << ", weight: " << header.block_weight << " (long term " << header.long_term_weight << "), transactions: " << header.num_txes << std::endl
-      << "major version: " << (unsigned)header.major_version << ", minor version: " << (unsigned)header.minor_version << std::endl
-      << "block id: " << header.hash << ", previous block id: " << header.prev_hash << std::endl
-      << "difficulty: " << header.difficulty << ", nonce " << header.nonce << ", reward " << cryptonote::print_money(header.reward) << std::endl;
+      << ", size: " << header.block_size << ", weight: " << header.block_weight << " (long term " << header.long_term_weight << "), transactions: " << header.num_txes
+      << "\nmajor version: " << (unsigned)header.major_version << ", minor version: " << (unsigned)header.minor_version
+      << "\nblock id: " << header.hash << ", previous block id: " << header.prev_hash
+      << "\ndifficulty: " << header.difficulty << ", nonce " << header.nonce << ", reward " << cryptonote::print_money(header.reward) << '\n';
     first = false;
   }
 
@@ -1141,9 +1141,9 @@ bool t_rpc_command_executor::print_block_by_hash(crypto::hash block_hash, bool i
   }
 
   if (include_hex)
-    tools::success_msg_writer() << res.blob << std::endl;
+    tools::success_msg_writer() << res.blob << '\n';
   print_block_header(res.block_header);
-  tools::success_msg_writer() << res.json << ENDL;
+  tools::success_msg_writer() << res.json << std::endl;
 
   return true;
 }
@@ -1175,9 +1175,9 @@ bool t_rpc_command_executor::print_block_by_height(uint64_t height, bool include
   }
 
   if (include_hex)
-    tools::success_msg_writer() << res.blob << std::endl;
+    tools::success_msg_writer() << res.blob << '\n';
   print_block_header(res.block_header);
-  tools::success_msg_writer() << res.json << ENDL;
+  tools::success_msg_writer() << res.json << std::endl;
 
   return true;
 }
@@ -1344,24 +1344,24 @@ bool t_rpc_command_executor::print_transaction_pool_long() {
     tools::msg_writer() << "Transactions: ";
     for (auto & tx_info : res.transactions)
     {
-      tools::msg_writer() << "id: " << tx_info.id_hash << std::endl
-                          << tx_info.tx_json << std::endl
-                          << "blob_size: " << tx_info.blob_size << std::endl
-                          << "weight: " << tx_info.weight << std::endl
-                          << "fee: " << cryptonote::print_money(tx_info.fee) << std::endl
+      tools::msg_writer() << "id: " << tx_info.id_hash << '\n'
+                          << tx_info.tx_json << '\n'
+                          << "blob_size: " << tx_info.blob_size << '\n'
+                          << "weight: " << tx_info.weight << '\n'
+                          << "fee: " << cryptonote::print_money(tx_info.fee) << '\n'
                           /// NB(Loki): in v13 we have min_fee = per_out*outs + per_byte*bytes, only the total fee/byte matters for
                           /// the purpose of building a block template from the pool, so we still print the overall fee / byte here.
                           /// (we can't back out the individual per_out and per_byte that got used anyway).
-                          << "fee/byte: " << cryptonote::print_money(tx_info.fee / (double)tx_info.weight) << std::endl
-                          << "receive_time: " << tx_info.receive_time << " (" << get_human_time_ago(tx_info.receive_time, now) << ")" << std::endl
-                          << "relayed: " << [&](const cryptonote::tx_info &tx_info)->std::string { if (!tx_info.relayed) return "no"; return boost::lexical_cast<std::string>(tx_info.last_relayed_time) + " (" + get_human_time_ago(tx_info.last_relayed_time, now) + ")"; } (tx_info) << std::endl
-                          << "do_not_relay: " << (tx_info.do_not_relay ? 'T' : 'F')  << std::endl
-                          << "kept_by_block: " << (tx_info.kept_by_block ? 'T' : 'F') << std::endl
-                          << "double_spend_seen: " << (tx_info.double_spend_seen ? 'T' : 'F')  << std::endl
-                          << "max_used_block_height: " << tx_info.max_used_block_height << std::endl
-                          << "max_used_block_id: " << tx_info.max_used_block_id_hash << std::endl
-                          << "last_failed_height: " << tx_info.last_failed_height << std::endl
-                          << "last_failed_id: " << tx_info.last_failed_id_hash << std::endl;
+                          << "fee/byte: " << cryptonote::print_money(tx_info.fee / (double)tx_info.weight) << '\n'
+                          << "receive_time: " << tx_info.receive_time << " (" << get_human_time_ago(tx_info.receive_time, now) << ")" << '\n'
+                          << "relayed: " << [&](const cryptonote::tx_info &tx_info)->std::string { if (!tx_info.relayed) return "no"; return boost::lexical_cast<std::string>(tx_info.last_relayed_time) + " (" + get_human_time_ago(tx_info.last_relayed_time, now) + ")"; } (tx_info) << '\n'
+                          << "do_not_relay: " << (tx_info.do_not_relay ? 'T' : 'F')  << '\n'
+                          << "kept_by_block: " << (tx_info.kept_by_block ? 'T' : 'F') << '\n'
+                          << "double_spend_seen: " << (tx_info.double_spend_seen ? 'T' : 'F')  << '\n'
+                          << "max_used_block_height: " << tx_info.max_used_block_height << '\n'
+                          << "max_used_block_id: " << tx_info.max_used_block_id_hash << '\n'
+                          << "last_failed_height: " << tx_info.last_failed_height << '\n'
+                          << "last_failed_id: " << tx_info.last_failed_id_hash << '\n';
     }
     if (res.spent_key_images.empty())
     {
@@ -1432,20 +1432,20 @@ bool t_rpc_command_executor::print_transaction_pool_short() {
     const time_t now = time(NULL);
     for (auto & tx_info : res.transactions)
     {
-      tools::msg_writer() << "id: " << tx_info.id_hash << std::endl
-                          << "blob_size: " << tx_info.blob_size << std::endl
-                          << "weight: " << tx_info.weight << std::endl
-                          << "fee: " << cryptonote::print_money(tx_info.fee) << std::endl
-                          << "fee/byte: " << cryptonote::print_money(tx_info.fee / (double)tx_info.weight) << std::endl
-                          << "receive_time: " << tx_info.receive_time << " (" << get_human_time_ago(tx_info.receive_time, now) << ")" << std::endl
-                          << "relayed: " << [&](const cryptonote::tx_info &tx_info)->std::string { if (!tx_info.relayed) return "no"; return boost::lexical_cast<std::string>(tx_info.last_relayed_time) + " (" + get_human_time_ago(tx_info.last_relayed_time, now) + ")"; } (tx_info) << std::endl
-                          << "do_not_relay: " << (tx_info.do_not_relay ? 'T' : 'F')  << std::endl
-                          << "kept_by_block: " << (tx_info.kept_by_block ? 'T' : 'F') << std::endl
-                          << "double_spend_seen: " << (tx_info.double_spend_seen ? 'T' : 'F') << std::endl
-                          << "max_used_block_height: " << tx_info.max_used_block_height << std::endl
-                          << "max_used_block_id: " << tx_info.max_used_block_id_hash << std::endl
-                          << "last_failed_height: " << tx_info.last_failed_height << std::endl
-                          << "last_failed_id: " << tx_info.last_failed_id_hash << std::endl;
+      tools::msg_writer() << "id: " << tx_info.id_hash << '\n'
+                          << "blob_size: " << tx_info.blob_size << '\n'
+                          << "weight: " << tx_info.weight << '\n'
+                          << "fee: " << cryptonote::print_money(tx_info.fee) << '\n'
+                          << "fee/byte: " << cryptonote::print_money(tx_info.fee / (double)tx_info.weight) << '\n'
+                          << "receive_time: " << tx_info.receive_time << " (" << get_human_time_ago(tx_info.receive_time, now) << ")" << '\n'
+                          << "relayed: " << [&](const cryptonote::tx_info &tx_info)->std::string { if (!tx_info.relayed) return "no"; return boost::lexical_cast<std::string>(tx_info.last_relayed_time) + " (" + get_human_time_ago(tx_info.last_relayed_time, now) + ")"; } (tx_info) << '\n'
+                          << "do_not_relay: " << (tx_info.do_not_relay ? 'T' : 'F')  << '\n'
+                          << "kept_by_block: " << (tx_info.kept_by_block ? 'T' : 'F') << '\n'
+                          << "double_spend_seen: " << (tx_info.double_spend_seen ? 'T' : 'F') << '\n'
+                          << "max_used_block_height: " << tx_info.max_used_block_height << '\n'
+                          << "max_used_block_id: " << tx_info.max_used_block_id_hash << '\n'
+                          << "last_failed_height: " << tx_info.last_failed_height << '\n'
+                          << "last_failed_id: " << tx_info.last_failed_id_hash << '\n';
     }
   }
 
@@ -1502,8 +1502,8 @@ bool t_rpc_command_executor::print_transaction_pool_stats() {
     backlog_message = (boost::format("estimated %u block (%u minutes) backlog") % backlog % (backlog * DIFFICULTY_TARGET_V2 / 60)).str();
   }
 
-  tools::msg_writer() << n_transactions << " tx(es), " << res.pool_stats.bytes_total << " bytes total (min " << res.pool_stats.bytes_min << ", max " << res.pool_stats.bytes_max << ", avg " << avg_bytes << ", median " << res.pool_stats.bytes_med << ")" << std::endl
-      << "fees " << cryptonote::print_money(res.pool_stats.fee_total) << " (avg " << cryptonote::print_money(n_transactions ? res.pool_stats.fee_total / n_transactions : 0) << " per tx" << ", " << cryptonote::print_money(res.pool_stats.bytes_total ? res.pool_stats.fee_total / res.pool_stats.bytes_total : 0) << " per byte)" << std::endl
+  tools::msg_writer() << n_transactions << " tx(es), " << res.pool_stats.bytes_total << " bytes total (min " << res.pool_stats.bytes_min << ", max " << res.pool_stats.bytes_max << ", avg " << avg_bytes << ", median " << res.pool_stats.bytes_med << ")\n"
+      << "fees " << cryptonote::print_money(res.pool_stats.fee_total) << " (avg " << cryptonote::print_money(n_transactions ? res.pool_stats.fee_total / n_transactions : 0) << " per tx" << ", " << cryptonote::print_money(res.pool_stats.bytes_total ? res.pool_stats.fee_total / res.pool_stats.bytes_total : 0) << " per byte)\n"
       << res.pool_stats.num_double_spends << " double spends, " << res.pool_stats.num_not_relayed << " not relayed, " << res.pool_stats.num_failing << " failing, " << res.pool_stats.num_10m << " older than 10 minutes (oldest " << (res.pool_stats.oldest == 0 ? "-" : get_human_time_ago(res.pool_stats.oldest, now)) << "), " << backlog_message;
 
   if (n_transactions > 1 && res.pool_stats.histo.size())
@@ -3348,7 +3348,7 @@ bool t_rpc_command_executor::prepare_registration()
         std::cout << "Total staking contributions reserved: " << cryptonote::print_money(state.total_reserved_contributions) << " " << cryptonote::get_unit() << std::endl;
         if (amount_left > DUST)
         {
-          std::cout << "Your total reservations do not equal the staking requirement." << std::endl;
+          std::cout << "Your total reservations do not equal the staking requirement.\n";
           std::cout << "You will leave the remaining portion of " << cryptonote::print_money(amount_left) << " " << cryptonote::get_unit() << " open to contributions from anyone, and the Service Node will not activate until the full staking requirement is filled." << std::endl;
 
           last_input_result = input_line_yes_no_back_cancel("Is this ok?\n");
@@ -3374,7 +3374,7 @@ bool t_rpc_command_executor::prepare_registration()
         assert(state.addresses.size() == state.contributions.size());
         const uint64_t amount_left = staking_requirement - state.total_reserved_contributions;
 
-        std::cout << "Summary:" << std::endl;
+        std::cout << "Summary:\n";
         std::cout << "Operating costs as % of reward: " << (state.operator_fee_portions * 100.0 / STAKING_PORTIONS) << "%" << std::endl;
         printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution", "Contribution(%)");
         printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________", "_______________");
@@ -3394,13 +3394,13 @@ bool t_rpc_command_executor::prepare_registration()
         }
         else if (amount_left > 0)
         {
-          std::cout << "\nActual amounts may differ slightly from specification. This is due to\n" << std::endl;
-          std::cout << "limitations on the way fractions are represented internally.\n" << std::endl;
+          std::cout << "\nActual amounts may differ slightly from specification. This is due to\n";
+          std::cout << "limitations on the way fractions are represented internally.\n";
         }
 
         std::cout << "\nBecause the actual requirement will depend on the time that you register, the\n";
         std::cout << "amounts shown here are used as a guide only, and the percentages will remain\n";
-        std::cout << "the same." << std::endl << std::endl;
+        std::cout << "the same.\n" << std::endl;
 
         last_input_result = input_line_yes_no_back_cancel("Do you confirm the information above is correct?");
         if(last_input_result == input_line_result::no || last_input_result == input_line_result::cancel)

@@ -278,6 +278,6 @@ namespace tools
       bool m_restricted;
       const boost::program_options::variables_map *m_vm;
       uint32_t m_auto_refresh_period;
-      boost::posix_time::ptime m_last_auto_refresh_time;
+      std::chrono::system_clock::time_point m_last_auto_refresh_time;
   };
 }

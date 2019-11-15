@@ -35,7 +35,6 @@ set(blockchain_db_sources
 if (BERKELEY_DB)
   set(blockchain_db_sources
   ${blockchain_db_sources}
-  berkeleydb/db_bdb.cpp
   )
 endif()
 
@@ -50,7 +49,6 @@ set(blockchain_db_private_headers
 if (BERKELEY_DB)
   set(blockchain_db_private_headers
   ${blockchain_db_private_headers}
-  berkeleydb/db_bdb.h
   )
 endif()
 
@@ -68,6 +66,5 @@ target_link_libraries(blockchain_db
     ${LMDB_LIBRARY}
     ${BDB_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})

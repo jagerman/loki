@@ -353,7 +353,7 @@ namespace trezor {
       } catch(std::exception const& e) {
         MERROR("Ping failed, exception thrown " << e.what());
       } catch(...){
-        MERROR("Ping failed, general exception thrown" << boost::current_exception_diagnostic_information());
+        MERROR("Ping failed, unknown exception thrown");
       }
 
       return false;

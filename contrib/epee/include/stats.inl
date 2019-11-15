@@ -79,14 +79,15 @@ Tpod Stats<T, Tpod>::get_median() const
     sorted.reserve(values.size());
     for (const T &v: values)
       sorted.push_back(v);
-    std::sort(sorted.begin(), sorted.end());
+    size_t mid = sorted.size() / 2;
+    std::nth_element(sorted.begin(), sorted.begin() + mid, sorted.end());
     if (sorted.size() & 1)
     {
-      median = sorted[sorted.size() / 2];
+      median = sorted[mid];
     }
     else
     {
-      median = (sorted[(sorted.size() - 1) / 2] + sorted[sorted.size() / 2]) / 2;
+      median = (*std::max_element(sorted.begin(), sorted.begin() + mid) + sorted[mid]) / 2;
     }
     set_cached(bit_median);
   }

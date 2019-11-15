@@ -35,14 +35,12 @@
 #include "include_base_utils.h"
 #include "common/util.h"
 
-#include <boost/chrono/chrono.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/condition_variable.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/thread.hpp>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <iostream>
 #include <vector>
@@ -256,15 +254,15 @@ TEST_F(WalletManagerTest, WalletAmountFromString)
 
 }
 
-void open_wallet_helper(Monero::WalletManager *wmgr, Monero::Wallet **wallet, const std::string &pass, boost::mutex *mutex)
+void open_wallet_helper(Monero::WalletManager *wmgr, Monero::Wallet **wallet, const std::string &pass, std::mutex *mutex)
 {
     if (mutex)
         mutex->lock();
-    LOG_PRINT_L3("opening wallet in thread: " << boost::this_thread::get_id());
+    LOG_PRINT_L3("opening wallet in thread: " << std::this_thread::get_id());
     *wallet = wmgr->openWallet(WALLET_NAME, pass, Monero::NetworkType::TESTNET);
     LOG_PRINT_L3("wallet address: " << (*wallet)->mainAddress());
     LOG_PRINT_L3("wallet status: " << (*wallet)->status());
-    LOG_PRINT_L3("closing wallet in thread: " << boost::this_thread::get_id());
+    LOG_PRINT_L3("closing wallet in thread: " << std::this_thread::get_id());
     if (mutex)
         mutex->unlock();
 }
@@ -309,7 +307,7 @@ TEST_F(WalletManagerTest, WalletManagerOpensWalletWithPasswordAndReopen)
 
     Monero::Wallet *wallet2 = nullptr;
     Monero::Wallet *wallet3 = nullptr;
-    boost::mutex mutex;
+    std::mutex mutex;
 
     open_wallet_helper(wmgr, &wallet2, wrong_wallet_pass, nullptr);
     ASSERT_TRUE(wallet2 != nullptr);
@@ -791,12 +789,12 @@ struct MyWalletListener : public Monero::WalletListener
     Monero::Wallet * wallet;
     uint64_t total_tx;
     uint64_t total_rx;
-    boost::mutex  mutex;
-    boost::condition_variable cv_send;
-    boost::condition_variable cv_receive;
-    boost::condition_variable cv_update;
-    boost::condition_variable cv_refresh;
-    boost::condition_variable cv_newblock;
+    std::mutex  mutex;
+    std::condition_variable cv_send;
+    std::condition_variable cv_receive;
+    std::condition_variable cv_update;
+    std::condition_variable cv_refresh;
+    std::condition_variable cv_newblock;
     bool send_triggered;
     bool receive_triggered;
     bool newblock_triggered;
@@ -886,8 +884,8 @@ TEST_F(WalletTest2, WalletCallBackRefreshedSync)
     ASSERT_TRUE(wallet_src->init(TESTNET_DAEMON_ADDRESS, 0));
     ASSERT_TRUE(wallet_src_listener->refresh_triggered);
     ASSERT_TRUE(wallet_src->connected());
-    boost::chrono::seconds wait_for = boost::chrono::seconds(60*3);
-    boost::unique_lock<boost::mutex> lock (wallet_src_listener->mutex);
+    std::chrono::seconds wait_for{60*3};
+    std::unique_lock<std::mutex> lock (wallet_src_listener->mutex);
     wallet_src_listener->cv_refresh.wait_for(lock, wait_for);
     wmgr->closeWallet(wallet_src);
 }
@@ -901,8 +899,8 @@ TEST_F(WalletTest2, WalletCallBackRefreshedAsync)
     Monero::Wallet * wallet_src = wmgr->openWallet(CURRENT_SRC_WALLET, TESTNET_WALLET_PASS, Monero::NetworkType::TESTNET);
     MyWalletListener * wallet_src_listener = new MyWalletListener(wallet_src);
 
-    boost::chrono::seconds wait_for = boost::chrono::seconds(20);
-    boost::unique_lock<boost::mutex> lock (wallet_src_listener->mutex);
+    std::chrono::seconds wait_for{20};
+    std::unique_lock<std::mutex> lock (wallet_src_listener->mutex);
     wallet_src->init(MAINNET_DAEMON_ADDRESS, 0);
     wallet_src->startRefresh();
     std::cerr << "TEST: waiting on refresh lock...\n";
@@ -942,8 +940,8 @@ TEST_F(WalletTest2, WalletCallbackSent)
     ASSERT_TRUE(tx->status() == Monero::PendingTransaction::Status_Ok);
     ASSERT_TRUE(tx->commit());
 
-    boost::chrono::seconds wait_for = boost::chrono::seconds(60*3);
-    boost::unique_lock<boost::mutex> lock (wallet_src_listener->mutex);
+    std::chrono::seconds wait_for{60*3};
+    std::unique_lock<std::mutex> lock (wallet_src_listener->mutex);
     std::cerr << "TEST: waiting on send lock...\n";
     wallet_src_listener->cv_send.wait_for(lock, wait_for);
     std::cerr << "TEST: send lock acquired...\n";
@@ -984,8 +982,8 @@ TEST_F(WalletTest2, WalletCallbackReceived)
     ASSERT_TRUE(tx->status() == Monero::PendingTransaction::Status_Ok);
     ASSERT_TRUE(tx->commit());
 
-    boost::chrono::seconds wait_for = boost::chrono::seconds(60*4);
-    boost::unique_lock<boost::mutex> lock (wallet_dst_listener->mutex);
+    std::chrono::seconds wait_for{60*4};
+    std::unique_lock<std::mutex> lock (wallet_dst_listener->mutex);
     std::cerr << "TEST: waiting on receive lock...\n";
     wallet_dst_listener->cv_receive.wait_for(lock, wait_for);
     std::cerr << "TEST: receive lock acquired...\n";
@@ -1017,8 +1015,8 @@ TEST_F(WalletTest2, WalletCallbackNewBlock)
     std::unique_ptr<MyWalletListener> wallet_listener (new MyWalletListener(wallet_src));
 
     // wait max 4 min for new block
-    boost::chrono::seconds wait_for = boost::chrono::seconds(60*4);
-    boost::unique_lock<boost::mutex> lock (wallet_listener->mutex);
+    std::chrono::seconds wait_for{60*4};
+    std::unique_lock<std::mutex> lock (wallet_listener->mutex);
     std::cerr << "TEST: waiting on newblock lock...\n";
     wallet_listener->cv_newblock.wait_for(lock, wait_for);
     std::cerr << "TEST: newblock lock acquired...\n";
@@ -1055,8 +1053,8 @@ TEST_F(WalletManagerMainnetTest, CreateAndRefreshWalletMainNetAsync)
     Monero::Wallet * wallet = wmgr->createWallet(WALLET_NAME_MAINNET, "", WALLET_LANG, Monero::NetworkType::MAINNET);
     std::unique_ptr<MyWalletListener> wallet_listener (new MyWalletListener(wallet));
 
-    boost::chrono::seconds wait_for = boost::chrono::seconds(SECONDS_TO_REFRESH);
-    boost::unique_lock<boost::mutex> lock (wallet_listener->mutex);
+    std::chrono::seconds wait_for{SECONDS_TO_REFRESH};
+    std::unique_lock<std::mutex> lock (wallet_listener->mutex);
     wallet->init(MAINNET_DAEMON_ADDRESS, 0);
     wallet->startRefresh();
     std::cerr << "TEST: waiting on refresh lock...\n";
@@ -1081,8 +1079,8 @@ TEST_F(WalletManagerMainnetTest, OpenAndRefreshWalletMainNetAsync)
 
     std::unique_ptr<MyWalletListener> wallet_listener (new MyWalletListener(wallet));
 
-    boost::chrono::seconds wait_for = boost::chrono::seconds(SECONDS_TO_REFRESH);
-    boost::unique_lock<boost::mutex> lock (wallet_listener->mutex);
+    std::chrono::seconds wait_for{SECONDS_TO_REFRESH};
+    std::unique_lock<std::mutex> lock (wallet_listener->mutex);
     wallet->init(MAINNET_DAEMON_ADDRESS, 0);
     wallet->startRefresh();
     std::cerr << "TEST: waiting on refresh lock...\n";
@@ -1115,8 +1113,8 @@ TEST_F(WalletManagerMainnetTest, RecoverAndRefreshWalletMainNetAsync)
     ASSERT_TRUE(wallet->status() == Monero::Wallet::Status_Ok);
     ASSERT_TRUE(wallet->mainAddress() == address);
     std::unique_ptr<MyWalletListener> wallet_listener (new MyWalletListener(wallet));
-    boost::chrono::seconds wait_for = boost::chrono::seconds(SECONDS_TO_REFRESH);
-    boost::unique_lock<boost::mutex> lock (wallet_listener->mutex);
+    std::chrono::seconds wait_for{SECONDS_TO_REFRESH};
+    std::unique_lock<std::mutex> lock (wallet_listener->mutex);
     wallet->init(MAINNET_DAEMON_ADDRESS, 0);
     wallet->startRefresh();
     std::cerr << "TEST: waiting on refresh lock...\n";

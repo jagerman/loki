@@ -66,12 +66,9 @@ target_link_libraries(wallet
     device_trezor
     net
     ${LMDB_LIBRARY}
-    ${Boost_CHRONO_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
-    ${Boost_REGEX_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})
 
@@ -101,10 +98,8 @@ if (NOT LOKI_DAEMON_AND_WALLET_ONLY)
       version
       daemonizer
       ${EPEE_READLINE}
-      ${Boost_CHRONO_LIBRARY}
       ${Boost_PROGRAM_OPTIONS_LIBRARY}
       ${Boost_FILESYSTEM_LIBRARY}
-      ${Boost_THREAD_LIBRARY}
       ${CMAKE_THREAD_LIBS_INIT}
       ${EXTRA_LIBRARIES})
   set_property(TARGET wallet_rpc_server

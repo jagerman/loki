@@ -44,7 +44,6 @@
 
 #include "net/net_utils_base.h" 
 #include "misc_log_ex.h" 
-#include <boost/chrono.hpp>
 #include "misc_language.h"
 #include "pragma_comp_defs.h"
 #include <sstream>
@@ -86,7 +85,6 @@ class connection_basic_pimpl {
 		static int m_default_tos;
 
 		network_throttle_bw m_throttle; // per-perr
-    critical_section m_throttle_lock;
 
 		void _packet(size_t packet_size, int phase, int q_len); // execute a sleep ; phase is not really used now(?) could be used for different kinds of sleep e.g. direct/queue write
 };
@@ -221,9 +219,9 @@ network_time_seconds network_throttle::get_sleep_time_after_tick(size_t packet_s
 }
 
 void network_throttle::logger_handle_net(const std::string &filename, double time, size_t size) {
-    static boost::mutex mutex;
+    static std::mutex mutex;
 
-    boost::lock_guard<boost::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(mutex);
     {
         std::fstream file;
         file.open(filename.c_str(), std::ios::app | std::ios::out );

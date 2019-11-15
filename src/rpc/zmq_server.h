@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include <boost/thread/thread.hpp>
 #include <zmq.hpp>
 #include <string>
 #include <memory>
@@ -67,12 +66,11 @@ class ZmqServer
   private:
     RpcHandler& handler;
 
-    volatile bool stop_signal;
-    volatile bool running;
+    std::atomic<bool> stop_signal;
 
     zmq::context_t context;
 
-    boost::thread run_thread;
+    std::thread run_thread;
 
     std::unique_ptr<zmq::socket_t> rep_socket;
 };

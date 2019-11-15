@@ -32,7 +32,7 @@
 #include <chrono>
 #include <functional>
 #include <numeric>
-#include <boost/thread/thread.hpp>
+#include <thread>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -192,7 +192,7 @@ namespace
   protected:
     virtual void SetUp()
     {
-      m_thread_count = (std::max)(min_thread_count, boost::thread::hardware_concurrency() / 2);
+      m_thread_count = (std::max)(min_thread_count, std::thread::hardware_concurrency() / 2);
 
       m_tcp_server.get_config_object().set_handler(&m_commands_handler);
       m_tcp_server.get_config_object().m_invoke_timeout = CONNECTION_TIMEOUT;
@@ -233,7 +233,7 @@ namespace
     virtual void TearDown()
     {
       m_tcp_server.send_stop_signal();
-      ASSERT_TRUE(m_tcp_server.timed_wait_server_stop(DEFAULT_OPERATION_TIMEOUT));
+      ASSERT_TRUE(m_tcp_server.wait_server_stop());
     }
 
     static void TearDownTestCase()
@@ -280,10 +280,11 @@ namespace
     void parallel_exec(const Func& func)
     {
       unit_test::call_counter properly_finished_threads;
-      std::vector<boost::thread> threads(m_thread_count);
+      std::vector<std::thread> threads;
+      threads.reserve(m_thread_count);
       for (size_t i = 0; i < threads.size(); ++i)
       {
-        threads[i] = boost::thread([&, i] {
+        threads.emplace_back([&, i] {
           call_func(i, func, 0);
           properly_finished_threads.inc();
         });

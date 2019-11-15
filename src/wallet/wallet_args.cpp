@@ -153,10 +153,10 @@ namespace wallet_args
 
       if (command_line::get_arg(vm, command_line::arg_help))
       {
-        Print(print) << "Loki '" << LOKI_RELEASE_NAME << "' (v" << LOKI_VERSION_FULL << ")" << ENDL;
+        Print(print) << "Loki '" << LOKI_RELEASE_NAME << "' (v" << LOKI_VERSION_FULL << ")\n";
         Print(print) << wallet_args::tr("This is the command line loki wallet. It needs to connect to a loki\n"
-												  "daemon to work correctly.") << ENDL;
-        Print(print) << wallet_args::tr("Usage:") << ENDL << "  " << usage;
+												  "daemon to work correctly.\n");
+        Print(print) << wallet_args::tr("Usage:") << "\n  " << usage;
         Print(print) << desc_all;
         should_terminate = true;
         return true;
@@ -209,7 +209,7 @@ namespace wallet_args
     }
 
     if (notice)
-      Print(print) << notice << ENDL;
+      Print(print) << notice << '\n';
 
     if (!command_line::is_arg_defaulted(vm, arg_max_concurrency))
       tools::set_max_concurrency(command_line::get_arg(vm, arg_max_concurrency));

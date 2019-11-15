@@ -52,15 +52,16 @@ target_link_libraries(simplewallet
     mnemonics
     ${EPEE_READLINE}
     version
-    ${Boost_CHRONO_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_LOCALE_LIBRARY}
     ${ICU_LIBRARIES}
     ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${GNU_READLINE_LIBRARY}
     ${EXTRA_LIBRARIES})
+if (WIN32)
+  target_link_libraries(simplewallet PRIVATE ${Boost_LOCALE_LIBRARY})
+endif()
 set_property(TARGET simplewallet
   PROPERTY
     OUTPUT_NAME "loki-wallet-cli")

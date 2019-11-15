@@ -32,11 +32,8 @@
 // IP blocking adapted from Boolberry
 
 #include <algorithm>
-#include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/optional/optional.hpp>
-#include <boost/thread/thread.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <atomic>
 #include <functional>
@@ -638,64 +635,36 @@ namespace nodetool
       std::vector<std::vector<std::string>> dns_results;
       dns_results.resize(m_seed_nodes_list.size());
 
-      std::list<boost::thread> dns_threads;
+      std::list<std::thread> dns_threads;
       uint64_t result_index = 0;
       for (const std::string& addr_str : m_seed_nodes_list)
       {
-        boost::thread th = boost::thread([=, &dns_results, &addr_str]
+        dns_threads.emplace_back([=, &dns_results, &addr_str]
         {
           MDEBUG("dns_threads[" << result_index << "] created for: " << addr_str);
           // TODO: care about dnssec avail/valid
           bool avail, valid;
           std::vector<std::string> addr_list;
 
-          try
-          {
-            addr_list = tools::DNSResolver::instance().get_ipv4(addr_str, avail, valid);
-            MDEBUG("dns_threads[" << result_index << "] DNS resolve done");
-            boost::this_thread::interruption_point();
-          }
-          catch(const boost::thread_interrupted&)
-          {
-            // thread interruption request
-            // even if we now have results, finish thread without setting
-            // result variables, which are now out of scope in main thread
-            MWARNING("dns_threads[" << result_index << "] interrupted");
-            return;
-          }
+          addr_list = tools::DNSResolver::instance().get_ipv4(addr_str, avail, valid);
 
           MINFO("dns_threads[" << result_index << "] addr_str: " << addr_str << "  number of results: " << addr_list.size());
           dns_results[result_index] = addr_list;
         });
 
-        dns_threads.push_back(std::move(th));
         ++result_index;
       }
 
-      MDEBUG("dns_threads created, now waiting for completion or timeout of " << CRYPTONOTE_DNS_TIMEOUT_MS << "ms");
-      boost::chrono::system_clock::time_point deadline = boost::chrono::system_clock::now() + boost::chrono::milliseconds(CRYPTONOTE_DNS_TIMEOUT_MS);
-      uint64_t i = 0;
-      for (boost::thread& th : dns_threads)
-      {
-        if (! th.try_join_until(deadline))
-        {
-          MWARNING("dns_threads[" << i << "] timed out, sending interrupt");
-          th.interrupt();
-        }
-        ++i;
-      }
+      for (auto &t : dns_threads)
+        t.join();
 
-      i = 0;
-      for (const auto& result : dns_results)
+      for (size_t i = 0; i < dns_results.size(); i++)
       {
+        auto &result = dns_results[i];
         MDEBUG("DNS lookup for " << m_seed_nodes_list[i] << ": " << result.size() << " results");
         // if no results for node, thread's lookup likely timed out
-        if (result.size())
-        {
-          for (const auto& addr_string : result)
-            full_addrs.insert(addr_string + ":" + std::to_string(cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT));
-        }
-        ++i;
+        for (const auto& addr_string : result)
+          full_addrs.insert(addr_string + ":" + std::to_string(cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT));
       }
 
       // append the fallback nodes if we have too few seed nodes to start with
@@ -836,7 +805,7 @@ namespace nodetool
   bool node_server<t_payload_net_handler>::run()
   {
     // creating thread to log number of connections
-    mPeersLoggerThread.reset(new boost::thread([&]()
+    mPeersLoggerThread = std::thread([&]()
     {
       _note("Thread monitor number of peers - start");
       const network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
@@ -865,10 +834,10 @@ namespace nodetool
           zone.second.m_current_number_of_in_peers = number_of_in_peers;
           zone.second.m_current_number_of_out_peers = number_of_out_peers;
         }
-        boost::this_thread::sleep_for(boost::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
       } // main loop of thread
       _note("Thread monitor number of peers - done");
-    })); // lambda
+    }); // lambda
 
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
     public_zone.m_net_server.add_idle_handler(boost::bind(&node_server<t_payload_net_handler>::idle_worker, this), 1000);
@@ -876,11 +845,9 @@ namespace nodetool
 
     //here you can set worker threads count
     int thrds_count = 10;
-    boost::thread::attributes attrs;
-    attrs.set_stack_size(THREAD_STACK_SIZE);
     //go to loop
     MINFO("Run net_service loop( " << thrds_count << " threads)...");
-    if(!public_zone.m_net_server.run_server(thrds_count, true, attrs))
+    if(!public_zone.m_net_server.run_server(thrds_count, true))
     {
       LOG_ERROR("Failed to run net tcp server!");
     }
@@ -986,7 +953,7 @@ namespace nodetool
     bool r = epee::net_utils::async_invoke_remote_command2<typename COMMAND_HANDSHAKE::response>(context_.m_connection_id, COMMAND_HANDSHAKE::ID, arg, zone.m_net_server.get_config_object(),
       [this, &pi, &ev, &hsh_result, &just_take_peerlist, &context_](int code, const typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context)
     {
-      epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ev.raise();});
+      auto scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ev.raise();});
 
       if(code < 0)
       {
@@ -1595,7 +1562,7 @@ namespace nodetool
         {
           // we did not make any connection, sleep a bit to avoid a busy loop in case we don't have
           // any peers to try, then break so we will try seeds to get more peers
-          boost::this_thread::sleep_for(boost::chrono::seconds(1));
+          std::this_thread::sleep_for(std::chrono::seconds(1));
           break;
         }
         conn_count = new_conn_count;
@@ -2051,7 +2018,7 @@ namespace nodetool
     if(!zone.m_peerlist.is_host_allowed(context.m_remote_address))
       return false;
 
-    std::string port = epee::string_tools::num_to_string_fast(node_data.my_port);
+    std::string port = std::to_string(node_data.my_port);
 
     epee::net_utils::network_address address;
     if (is_ipv4)
@@ -2300,14 +2267,14 @@ namespace nodetool
     std::vector<peerlist_entry> pl_gray;
     for (auto& zone : m_network_zones)
       zone.second.m_peerlist.get_peerlist(pl_gray, pl_white);
-    MINFO(ENDL << "Peerlist white:" << ENDL << print_peerlist_to_string(pl_white) << ENDL << "Peerlist gray:" << ENDL << print_peerlist_to_string(pl_gray) );
+    MINFO("\nPeerlist white:\n" << print_peerlist_to_string(pl_white) << "\nPeerlist gray:\n" << print_peerlist_to_string(pl_gray) );
     return true;
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::log_connections()
   {
-    MINFO("Connections: \r\n" << print_connections_container() );
+    MINFO("Connections:\n" << print_connections_container() );
     return true;
   }
   //-----------------------------------------------------------------------------------
@@ -2323,7 +2290,7 @@ namespace nodetool
         ss << cntxt.m_remote_address.str()
           << " \t\tpeer_id " << cntxt.peer_id
           << " \t\tconn_id " << cntxt.m_connection_id << (cntxt.m_is_income ? " INC":" OUT")
-          << std::endl;
+          << '\n';
         return true;
       });
     }
@@ -2771,13 +2738,13 @@ namespace nodetool
     {
       const epee::net_utils::ipv4_network_address &ipv4 = na.as<const epee::net_utils::ipv4_network_address>();
       address = epee::string_tools::get_ip_string_from_int32(ipv4.ip());
-      port = epee::string_tools::num_to_string_fast(ipv4.port());
+      port = std::to_string(ipv4.port());
     }
     else if (is_ipv6)
     {
       const epee::net_utils::ipv6_network_address &ipv6 = na.as<const epee::net_utils::ipv6_network_address>();
       address = ipv6.ip().to_string();
-      port = epee::string_tools::num_to_string_fast(ipv6.port());
+      port = std::to_string(ipv6.port());
     }
     else
     {

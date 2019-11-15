@@ -33,6 +33,7 @@
 #include <boost/endian/conversion.hpp>
 #include <algorithm>
 #include <cstring>
+#include <shared_mutex>
 #include "include_base_utils.h"
 #include "string_tools.h"
 using namespace epee;
@@ -250,7 +251,7 @@ namespace cryptonote
       res.was_bootstrap_ever_used = false;
     else
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock<std::shared_timed_mutex> lock(m_bootstrap_daemon_mutex);
       res.was_bootstrap_ever_used = m_was_bootstrap_ever_used;
     }
     res.database_size = m_core.get_blockchain_storage().get_db().get_database_size();
@@ -898,7 +899,7 @@ namespace cryptonote
       return true;
     }
 
-    unsigned int concurrency_count = boost::thread::hardware_concurrency() * 4;
+    unsigned int concurrency_count = std::thread::hardware_concurrency() * 4;
 
     // if we couldn't detect threads, set it to a ridiculously high number
     if(concurrency_count == 0)
@@ -1177,7 +1178,7 @@ namespace cryptonote
   {
     PERF_TIMER(on_getblockcount);
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock<std::shared_timed_mutex> lock(m_bootstrap_daemon_mutex);
       if (m_should_use_bootstrap_daemon)
       {
         res.status = "This command is unsupported for bootstrap daemon";
@@ -1193,7 +1194,7 @@ namespace cryptonote
   {
     PERF_TIMER(on_getblockhash);
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock<std::shared_timed_mutex> lock(m_bootstrap_daemon_mutex);
       if (m_should_use_bootstrap_daemon)
       {
         res = "This command is unsupported for bootstrap daemon";
@@ -1345,7 +1346,7 @@ namespace cryptonote
   {
     PERF_TIMER(on_submitblock);
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock<std::shared_timed_mutex> lock(m_bootstrap_daemon_mutex);
       if (m_should_use_bootstrap_daemon)
       {
         res.status = "This command is unsupported for bootstrap daemon";
@@ -1505,7 +1506,7 @@ namespace cryptonote
     if (m_bootstrap_daemon_address.empty())
       return false;
 
-    boost::unique_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+    std::unique_lock<std::shared_timed_mutex> lock(m_bootstrap_daemon_mutex);
     if (!m_should_use_bootstrap_daemon)
     {
       MINFO("The local daemon is fully synced. Not switching back to the bootstrap daemon");
@@ -1661,7 +1662,7 @@ namespace cryptonote
       if (!have_block)
       {
         error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
-        error_resp.message = "Internal error: can't get block by height. Height = " + boost::lexical_cast<std::string>(h) + ". Hash = " + epee::string_tools::pod_to_hex(block_hash) + '.';
+        error_resp.message = "Internal error: can't get block by height. Height = " + std::to_string(h) + ". Hash = " + epee::string_tools::pod_to_hex(block_hash) + '.';
         return false;
       }
       if (blk.miner_tx.vin.size() != 1 || blk.miner_tx.vin.front().type() != typeid(txin_gen))

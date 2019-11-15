@@ -110,14 +110,15 @@ namespace tools
     m_net_server.add_idle_handler([this](){
       if (m_auto_refresh_period == 0) // disabled
         return true;
-      if (boost::posix_time::microsec_clock::universal_time() < m_last_auto_refresh_time + boost::posix_time::seconds(m_auto_refresh_period))
+      auto now = std::chrono::system_clock::now();
+      if (now < m_last_auto_refresh_time + std::chrono::seconds(m_auto_refresh_period))
         return true;
       try {
         if (m_wallet) m_wallet->refresh(m_wallet->is_trusted_daemon());
       } catch (const std::exception& ex) {
         LOG_ERROR("Exception at while refreshing, what=" << ex.what());
       }
-      m_last_auto_refresh_time = boost::posix_time::microsec_clock::universal_time();
+      m_last_auto_refresh_time = now;
       return true;
     }, 1000);
     m_net_server.add_idle_handler([this](){
@@ -228,7 +229,7 @@ namespace tools
     } // end auth enabled
 
     m_auto_refresh_period = DEFAULT_AUTO_REFRESH_PERIOD;
-    m_last_auto_refresh_time = boost::posix_time::min_date_time;
+    m_last_auto_refresh_time = std::chrono::system_clock::time_point::min();
 
     m_net_server.set_threads_prefix("RPC");
     auto rng = [](size_t len, uint8_t *ptr) { return crypto::rand(len, ptr); };

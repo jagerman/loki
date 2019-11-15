@@ -546,7 +546,7 @@ namespace cryptonote
      */
     typedef std::unordered_map<crypto::key_image, std::unordered_set<crypto::hash> > key_images_container;
 
-    mutable epee::critical_section m_transactions_lock;  //!< lock for the pool
+    mutable std::recursive_mutex m_transactions_lock;  //!< lock for the pool
 
     //! container for spent key images from the transactions in the pool
     key_images_container m_spent_key_images;  

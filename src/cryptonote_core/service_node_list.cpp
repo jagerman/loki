@@ -162,7 +162,7 @@ namespace service_nodes
 
   void service_node_list::init()
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     if (m_blockchain.get_current_hard_fork_version() < 9)
     {
       reset(true);
@@ -212,7 +212,7 @@ namespace service_nodes
   std::shared_ptr<const testing_quorum> service_node_list::get_testing_quorum(quorum_type type, uint64_t height, bool include_old, std::vector<std::shared_ptr<const testing_quorum>> *alt_quorums) const
   {
     height = offset_testing_quorum_height(type, height);
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     quorum_manager const *quorums = nullptr;
     if (height == m_state.height)
       quorums = &m_state.quorums;
@@ -297,7 +297,7 @@ namespace service_nodes
 
   std::vector<service_node_pubkey_info> service_node_list::get_service_node_list_state(const std::vector<crypto::public_key> &service_node_pubkeys) const
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     std::vector<service_node_pubkey_info> result;
 
     if (service_node_pubkeys.empty())
@@ -323,13 +323,13 @@ namespace service_nodes
 
   void service_node_list::set_db_pointer(cryptonote::BlockchainDB* db)
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     m_db = db;
   }
 
   void service_node_list::set_my_service_node_keys(std::shared_ptr<const service_node_keys> keys)
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     m_service_node_keys = std::move(keys);
   }
 
@@ -341,7 +341,7 @@ namespace service_nodes
 
   bool service_node_list::is_service_node(const crypto::public_key& pubkey, bool require_active) const
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     auto it = m_state.service_nodes_infos.find(pubkey);
     return it != m_state.service_nodes_infos.end() && (!require_active || it->second->is_active());
   }
@@ -1136,7 +1136,7 @@ namespace service_nodes
     if (block.major_version < cryptonote::network_version_9_service_nodes)
       return true;
 
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     process_block(block, txs);
 
     if (block.major_version >= cryptonote::network_version_13_enforce_checkpoints && checkpoint)
@@ -1461,7 +1461,7 @@ namespace service_nodes
 
   void service_node_list::blockchain_detached(uint64_t height, bool /*by_pop_blocks*/)
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
 
     uint64_t revert_to_height = height - 1;
     bool reinitialise         = false;
@@ -1631,7 +1631,7 @@ namespace service_nodes
 
   bool service_node_list::validate_miner_tx(const crypto::hash& prev_id, const cryptonote::transaction& miner_tx, uint64_t height, int hf_version, cryptonote::block_reward_parts const &reward_parts) const
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     if (hf_version < 9)
       return true;
 
@@ -1810,7 +1810,7 @@ namespace service_nodes
 
     data_for_serialization *data[] = {&m_cache_long_term_data, &m_cache_short_term_data};
     auto const serialize_version   = data_for_serialization::get_version(hf_version);
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
 
     for (data_for_serialization *serialize_entry : data)
     {
@@ -2012,7 +2012,7 @@ namespace service_nodes
         REJECT_PROOF("invalid ed25519 pubkey included in proof (x25519 derivation failed)");
     }
 
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     auto it = m_state.service_nodes_infos.find(proof.pubkey);
     if (it == m_state.service_nodes_infos.end())
       REJECT_PROOF("no such service node is currently registered");
@@ -2084,7 +2084,7 @@ namespace service_nodes
 
   void service_node_list::record_checkpoint_vote(crypto::public_key const &pubkey, uint64_t height, bool voted)
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
     auto it = m_state.service_nodes_infos.find(pubkey);
     if (it == m_state.service_nodes_infos.end())
       return;
@@ -2097,7 +2097,7 @@ namespace service_nodes
 
   bool service_node_list::set_storage_server_peer_reachable(crypto::public_key const &pubkey, bool value)
   {
-    std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
+    std::lock_guard<std::recursive_mutex> lock(m_sn_mutex);
 
     auto it = m_state.service_nodes_infos.find(pubkey);
     if (it == m_state.service_nodes_infos.end()) {

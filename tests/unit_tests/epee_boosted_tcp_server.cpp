@@ -28,9 +28,9 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <boost/chrono/chrono.hpp>
-#include <boost/thread/condition_variable.hpp>
-#include <boost/thread/mutex.hpp>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 
 #include "gtest/gtest.h"
 
@@ -87,13 +87,13 @@ TEST(boosted_tcp_server, worker_threads_are_exception_resistant)
   test_tcp_server srv(epee::net_utils::e_connection_type_RPC); // RPC disables network limit for unit tests
   ASSERT_TRUE(srv.init_server(test_server_port, test_server_host));
 
-  boost::mutex mtx;
-  boost::condition_variable cond;
+  std::mutex mtx;
+  std::condition_variable cond;
   int counter = 0;
 
   auto counter_incrementer = [&counter, &cond, &mtx]()
   {
-    boost::unique_lock<boost::mutex> lock(mtx);
+    std::unique_lock<std::mutex> lock(mtx);
     ++counter;
     if (4 <= counter)
     {
@@ -109,8 +109,8 @@ TEST(boosted_tcp_server, worker_threads_are_exception_resistant)
   ASSERT_TRUE(srv.async_call([&counter_incrementer]() { counter_incrementer(); throw 4; }));
 
   {
-    boost::unique_lock<boost::mutex> lock(mtx);
-    ASSERT_NE(boost::cv_status::timeout, cond.wait_for(lock, boost::chrono::seconds(5)));
+    std::unique_lock<std::mutex> lock(mtx);
+    ASSERT_NE(std::cv_status::timeout, cond.wait_for(lock, std::chrono::seconds(5)));
     ASSERT_EQ(4, counter);
   }
 
@@ -123,12 +123,12 @@ TEST(boosted_tcp_server, worker_threads_are_exception_resistant)
   ASSERT_TRUE(srv.async_call(counter_incrementer));
 
   {
-    boost::unique_lock<boost::mutex> lock(mtx);
-    ASSERT_NE(boost::cv_status::timeout, cond.wait_for(lock, boost::chrono::seconds(5)));
+    std::unique_lock<std::mutex> lock(mtx);
+    ASSERT_NE(std::cv_status::timeout, cond.wait_for(lock, std::chrono::seconds(5)));
     ASSERT_EQ(4, counter);
   }
 
   srv.send_stop_signal();
-  ASSERT_TRUE(srv.timed_wait_server_stop(5 * 1000));
+  ASSERT_TRUE(srv.wait_server_stop());
   ASSERT_TRUE(srv.deinit_server());
 }

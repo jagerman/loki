@@ -112,8 +112,6 @@ target_link_libraries(unit_tests
     wallet
     p2p
     version
-    ${Boost_CHRONO_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
     ${GTEST_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES})

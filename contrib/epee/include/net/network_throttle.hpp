@@ -37,48 +37,15 @@
 #ifndef INCLUDED_network_throttle_hpp
 #define INCLUDED_network_throttle_hpp
 
-#include <boost/asio.hpp>
 #include <string>
-#include <vector>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <atomic>
-
-#include <boost/asio.hpp>
-#include <boost/array.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
-#include <boost/thread/thread.hpp>
-
-#include "syncobj.h"
-
-#include "net/net_utils_base.h" 
-#include "misc_log_ex.h" 
-#include <boost/lambda/bind.hpp>
-#include <boost/lambda/lambda.hpp>
-#include <boost/uuid/random_generator.hpp>
-#include <boost/chrono.hpp>
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp> 
-#include "misc_language.h"
-#include "pragma_comp_defs.h"
-#include <sstream>
-#include <iomanip>
-#include <algorithm>
-
-#include <memory>
 #include <mutex>
-#include <fstream>
 
 namespace epee
 {
 namespace net_utils
 {
 
-// just typedefs to in code define the units used. TODO later it will be enforced that casts to other numericals are only explicit to avoid mistakes? use boost::chrono?
+// just typedefs to in code define the units used. TODO later it will be enforced that casts to other numericals are only explicit to avoid mistakes? use std::chrono?
 typedef double network_speed_kbps;   // externally, for parameters and return values, all defined in kilobytes per second
 typedef double network_speed_bps;    // throttle-internally, bytes per second
 typedef double network_time_seconds;
@@ -110,9 +77,9 @@ class network_throttle_manager {
 	//protected:
 	public: // XXX
 
-    static boost::mutex m_lock_get_global_throttle_in;
-    static boost::mutex m_lock_get_global_throttle_inreq;
-    static boost::mutex m_lock_get_global_throttle_out;
+    static std::mutex m_lock_get_global_throttle_in;
+    static std::mutex m_lock_get_global_throttle_inreq;
+    static std::mutex m_lock_get_global_throttle_out;
 
 		friend class connection_basic; // FRIEND - to directly access global throttle-s. !! REMEMBER TO USE LOCKS!
 		friend class connection_basic_pimpl; // ditto

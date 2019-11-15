@@ -101,8 +101,6 @@ target_link_libraries(rpc_base
   PUBLIC
     common
     epee
-    ${Boost_REGEX_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})
@@ -115,8 +113,6 @@ target_link_libraries(rpc
     cryptonote_protocol
     net
     version
-    ${Boost_REGEX_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})
 
@@ -136,8 +132,6 @@ target_link_libraries(daemon_rpc_server
     version
     daemon_messages
     serialization
-    ${Boost_CHRONO_LIBRARY}
-    ${Boost_REGEX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
     ${ZMQ_LIB}

@@ -31,11 +31,11 @@
 // check local first (in the event of static or in-source compilation of libunbound)
 #include "unbound.h"
 
-#include <stdlib.h>
+#include <cstdlib>
+#include <mutex>
 #include "include_base_utils.h"
 #include "common/threadpool.h"
 #include "crypto/crypto.h"
-#include <boost/thread/mutex.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 using namespace epee;
@@ -43,7 +43,10 @@ using namespace epee;
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "net.dns"
 
-static const char *DEFAULT_DNS_PUBLIC_ADDR[] =
+namespace
+{
+
+const char *DEFAULT_DNS_PUBLIC_ADDR[] =
 {
   "194.150.168.168",    // CCC (Germany)
   "80.67.169.40",       // FDN (France)
@@ -53,10 +56,7 @@ static const char *DEFAULT_DNS_PUBLIC_ADDR[] =
   "193.58.251.251",     // SkyDNS (Russia)
 };
 
-static boost::mutex instance_lock;
-
-namespace
-{
+std::mutex instance_lock;
 
 /*
  * The following two functions were taken from unbound-anchor.c, from
@@ -98,7 +98,7 @@ get_builtin_cert(void)
 */
 
 /** return the built in root DS trust anchor */
-static const char* const*
+const char* const*
 get_builtin_ds(void)
 {
   static const char * const ds[] =
@@ -383,7 +383,7 @@ std::string DNSResolver::get_dns_format_from_oa_address(const std::string& oa_ad
 
 DNSResolver& DNSResolver::instance()
 {
-  boost::lock_guard<boost::mutex> lock(instance_lock);
+  std::lock_guard<std::mutex> lock(instance_lock);
 
   static DNSResolver staticInstance;
   return staticInstance;

@@ -559,8 +559,8 @@ namespace cryptonote
       CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, txin, false);
       std::unordered_set<crypto::hash>& kei_image_set = m_spent_key_images[txin.k_image];
       CHECK_AND_ASSERT_MES(kept_by_block || kei_image_set.size() == 0, false, "internal error: kept_by_block=" << kept_by_block
-                                          << ",  kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
-                                          << "tx_id=" << id );
+                                          << ",  kei_image_set.size()=" << kei_image_set.size() << "\ntxin.k_image=" << txin.k_image
+                                          << "\ntx_id=" << id );
       auto ins_res = kei_image_set.insert(id);
       CHECK_AND_ASSERT_MES(ins_res.second, false, "internal error: try to insert duplicate iterator in key_image set");
     }
@@ -580,15 +580,15 @@ namespace cryptonote
     {
       CHECKED_GET_SPECIFIC_VARIANT(vi, const txin_to_key, txin, false);
       auto it = m_spent_key_images.find(txin.k_image);
-      CHECK_AND_ASSERT_MES(it != m_spent_key_images.end(), false, "failed to find transaction input in key images. img=" << txin.k_image << ENDL
-                                    << "transaction id = " << actual_hash);
+      CHECK_AND_ASSERT_MES(it != m_spent_key_images.end(), false, "failed to find transaction input in key images. img=" << txin.k_image
+                                    << "\ntransaction id = " << actual_hash);
       std::unordered_set<crypto::hash>& key_image_set =  it->second;
-      CHECK_AND_ASSERT_MES(key_image_set.size(), false, "empty key_image set, img=" << txin.k_image << ENDL
-        << "transaction id = " << actual_hash);
+      CHECK_AND_ASSERT_MES(key_image_set.size(), false, "empty key_image set, img=" << txin.k_image
+        << "\ntransaction id = " << actual_hash);
 
       auto it_in_set = key_image_set.find(actual_hash);
-      CHECK_AND_ASSERT_MES(it_in_set != key_image_set.end(), false, "transaction id not found in key_image set, img=" << txin.k_image << ENDL
-        << "transaction id = " << actual_hash);
+      CHECK_AND_ASSERT_MES(it_in_set != key_image_set.end(), false, "transaction id not found in key_image set, img=" << txin.k_image
+        << "\ntransaction id = " << actual_hash);
       key_image_set.erase(it_in_set);
       if(!key_image_set.size())
       {
@@ -1372,7 +1372,7 @@ namespace cryptonote
     CRITICAL_REGION_LOCAL(m_transactions_lock);
     CRITICAL_REGION_LOCAL1(m_blockchain);
     m_blockchain.for_all_txpool_txes([&ss, short_format](const crypto::hash &txid, const txpool_tx_meta_t &meta, const cryptonote::blobdata *txblob) {
-      ss << "id: " << txid << std::endl;
+      ss << "id: " << txid << '\n';
       if (!short_format) {
         cryptonote::transaction tx;
         if (!parse_and_validate_tx_from_blob(*txblob, tx))
@@ -1380,17 +1380,17 @@ namespace cryptonote
           MERROR("Failed to parse tx from txpool");
           return true; // continue
         }
-        ss << obj_to_json_str(tx) << std::endl;
+        ss << obj_to_json_str(tx) << '\n';
       }
-      ss << "blob_size: " << (short_format ? "-" : std::to_string(txblob->size())) << std::endl
-        << "weight: " << meta.weight << std::endl
-        << "fee: " << print_money(meta.fee) << std::endl
-        << "kept_by_block: " << (meta.kept_by_block ? 'T' : 'F') << std::endl
-        << "double_spend_seen: " << (meta.double_spend_seen ? 'T' : 'F') << std::endl
-        << "max_used_block_height: " << meta.max_used_block_height << std::endl
-        << "max_used_block_id: " << meta.max_used_block_id << std::endl
-        << "last_failed_height: " << meta.last_failed_height << std::endl
-        << "last_failed_id: " << meta.last_failed_id << std::endl;
+      ss << "blob_size: " << (short_format ? "-" : std::to_string(txblob->size())) 
+        << "\nweight: " << meta.weight 
+        << "\nfee: " << print_money(meta.fee) 
+        << "\nkept_by_block: " << (meta.kept_by_block ? 'T' : 'F') 
+        << "\ndouble_spend_seen: " << (meta.double_spend_seen ? 'T' : 'F') 
+        << "\nmax_used_block_height: " << meta.max_used_block_height 
+        << "\nmax_used_block_id: " << meta.max_used_block_id 
+        << "\nlast_failed_height: " << meta.last_failed_height 
+        << "\nlast_failed_id: " << meta.last_failed_id << '\n';
       return true;
     }, !short_format);
 

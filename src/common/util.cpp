@@ -851,24 +851,19 @@ std::string get_nix_version_display_string()
 
   namespace
   {
-    boost::mutex max_concurrency_lock;
-    unsigned max_concurrency = boost::thread::hardware_concurrency();
+    std::atomic<unsigned> max_concurrency{std::thread::hardware_concurrency()};
   }
 
   void set_max_concurrency(unsigned n)
   {
-    if (n < 1)
-      n = boost::thread::hardware_concurrency();
-    unsigned hwc = boost::thread::hardware_concurrency();
-    if (n > hwc)
+    unsigned hwc = std::thread::hardware_concurrency();
+    if (n < 1 || n > hwc)
       n = hwc;
-    boost::lock_guard<boost::mutex> lock(max_concurrency_lock);
     max_concurrency = n;
   }
 
   unsigned get_max_concurrency()
   {
-    boost::lock_guard<boost::mutex> lock(max_concurrency_lock);
     return max_concurrency;
   }
 
@@ -1066,6 +1061,8 @@ std::string get_nix_version_display_string()
     }
 #endif
   }
+
+  const std::chrono::system_clock::time_point null_time = std::chrono::system_clock::from_time_t(0);
 
   std::string get_human_readable_timestamp(uint64_t ts)
   {

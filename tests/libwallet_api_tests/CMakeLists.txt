@@ -45,16 +45,16 @@ target_link_libraries(libwallet_api_tests
     wallet
     version
     epee
-    ${Boost_CHRONO_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
-    ${Boost_LOCALE_LIBRARY}
     ${ICU_LIBRARIES}
     ${GTEST_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES})
+if (WIN32)
+  target_link_libraries(libwallet_api_tests PRIVATE  ${Boost_LOCALE_LIBRARY})
+endif()
 
 set_property(TARGET libwallet_api_tests
   PROPERTY

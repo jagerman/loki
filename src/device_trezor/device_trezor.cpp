@@ -78,7 +78,7 @@ namespace trezor {
       if (r && !m_live_refresh_thread)
       {
         m_live_refresh_thread_running = true;
-        m_live_refresh_thread.reset(new boost::thread(boost::bind(&device_trezor::live_refresh_thread_main, this)));
+        m_live_refresh_thread = std::make_unique<std::thread>([this]() { live_refresh_thread_main(); });
       }
       return r;
     }
@@ -124,7 +124,7 @@ namespace trezor {
     {
       while(m_live_refresh_thread_running)
       {
-        boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if (!m_live_refresh_in_progress)
         {
           continue;
@@ -513,17 +513,17 @@ namespace trezor {
           throw exc::ProtocolException(std::string("Transaction verification failed: ") + e.what());
         }
 
-        std::string key_images;
+        std::ostringstream key_images;
         bool all_are_txin_to_key = std::all_of(cdata.tx.vin.begin(), cdata.tx.vin.end(), [&](const cryptonote::txin_v& s_e) -> bool
         {
           CHECKED_GET_SPECIFIC_VARIANT(s_e, const cryptonote::txin_to_key, in, false);
-          key_images += boost::to_string(in.k_image) + " ";
+          key_images << in.k_image << ' ';
           return true;
         });
         if(!all_are_txin_to_key) {
           throw std::invalid_argument("Not all are txin_to_key");
         }
-        cpend.key_images = key_images;
+        cpend.key_images = key_images.str();
 
         // KI sync
         for(size_t cidx=0, trans_max=unsigned_tx.transfers.second.size(); cidx < trans_max; ++cidx){

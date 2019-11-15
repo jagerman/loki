@@ -38,15 +38,9 @@
 #include "ringct/rctOps.h"
 
 #include "lmdb/db_lmdb.h"
-#ifdef BERKELEY_DB
-#include "berkeleydb/db_bdb.h"
-#endif
 
-static const char *db_types[] = {
+static constexpr const char *db_types[] = {
   "lmdb",
-#ifdef BERKELEY_DB
-  "berkeley",
-#endif
   NULL
 };
 
@@ -103,10 +97,6 @@ BlockchainDB *new_db(const std::string& db_type)
 {
   if (db_type == "lmdb")
     return new BlockchainLMDB();
-#if defined(BERKELEY_DB)
-  if (db_type == "berkeley")
-    return new BlockchainBDB();
-#endif
   return NULL;
 }
 
@@ -394,23 +384,15 @@ void BlockchainDB::reset_stats()
 
 void BlockchainDB::show_stats()
 {
-  LOG_PRINT_L1(ENDL
-    << "*********************************"
-    << ENDL
-    << "num_calls: " << num_calls
-    << ENDL
-    << "time_blk_hash: " << time_blk_hash << "ms"
-    << ENDL
-    << "time_tx_exists: " << time_tx_exists << "ms"
-    << ENDL
-    << "time_add_block1: " << time_add_block1 << "ms"
-    << ENDL
-    << "time_add_transaction: " << time_add_transaction << "ms"
-    << ENDL
-    << "time_commit1: " << time_commit1 << "ms"
-    << ENDL
-    << "*********************************"
-    << ENDL
+  LOG_PRINT_L1('\n'
+    << "*********************************\n"
+    << "num_calls: " << num_calls << '\n'
+    << "time_blk_hash: " << time_blk_hash << "ms\n"
+    << "time_tx_exists: " << time_tx_exists << "ms\n"
+    << "time_add_block1: " << time_add_block1 << "ms\n"
+    << "time_add_transaction: " << time_add_transaction << "ms\n"
+    << "time_commit1: " << time_commit1 << "ms\n"
+    << "*********************************\n"
   );
 }
 

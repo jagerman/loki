@@ -458,7 +458,7 @@ bool t_command_server::start_handling(std::function<void(void)> exit_handler)
       loki::fixed_buffer const input = loki::read_from_stdin_shared_mem();
       std::vector<std::string> args  = loki::separate_stdin_to_space_delim_args(&input);
       {
-        boost::unique_lock<boost::mutex> scoped_lock(loki::integration_test_mutex);
+        std::unique_lock<std::mutex> scoped_lock(loki::integration_test_mutex);
         loki::use_standard_cout();
         std::cout << input.data << std::endl;
         loki::use_redirected_cout();

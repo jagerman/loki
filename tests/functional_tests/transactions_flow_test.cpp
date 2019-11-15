@@ -152,9 +152,9 @@ bool transactions_flow_test(std::string& working_folder,
 
   w2.init(daemon_addr_b);
 
-  MGINFO_GREEN("Using wallets: " << ENDL
-    << "Source:  " << w1.get_account().get_public_address_str(MAINNET) << ENDL << "Path: " << working_folder + "/" + path_source_wallet << ENDL
-    << "Target:  " << w2.get_account().get_public_address_str(MAINNET) << ENDL << "Path: " << working_folder + "/" + path_target_wallet);
+  MGINFO_GREEN("Using wallets:"
+    << "\nSource:  " << w1.get_account().get_public_address_str(MAINNET) << "\nPath: " << working_folder + "/" + path_source_wallet
+    << "\nTarget:  " << w2.get_account().get_public_address_str(MAINNET) << "\nPath: " << working_folder + "/" + path_target_wallet);
 
   //lets do some money
   epee::net_utils::http::http_simple_client http_client;

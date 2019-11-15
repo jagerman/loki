@@ -36,9 +36,6 @@
 #ifdef WITH_DEVICE_TREZOR
 #include <cstddef>
 #include <string>
-#include <boost/scope_exit.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/recursive_mutex.hpp>
 
 #include "device/device_default.hpp"
 #include "device/device_cold.hpp"
@@ -62,7 +59,7 @@ namespace trezor {
     protected:
       std::atomic<bool> m_live_refresh_in_progress;
       std::chrono::steady_clock::time_point m_last_live_refresh_time;
-      std::unique_ptr<boost::thread> m_live_refresh_thread;
+      std::unique_ptr<std::thread> m_live_refresh_thread;
       std::atomic<bool> m_live_refresh_thread_running;
       bool m_live_refresh_enabled;
       size_t m_num_transations_to_sign;

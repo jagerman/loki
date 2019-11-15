@@ -31,7 +31,6 @@
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/blobdatatype.h" // for type blobdata
 #include "ringct/rctTypes.h"
-#include <boost/thread/tss.hpp>
 
 #include <lmdb.h>
 
@@ -125,14 +124,14 @@ typedef struct mdb_rflags
   bool m_rf_properties;
 } mdb_rflags;
 
-typedef struct mdb_threadinfo
+struct mdb_threadinfo
 {
   MDB_txn *m_ti_rtxn;	// per-thread read txn
   mdb_txn_cursors m_ti_rcursors;	// per-thread read cursors
   mdb_rflags m_ti_rflags;	// per-thread read state
 
   ~mdb_threadinfo();
-} mdb_threadinfo;
+};
 
 struct mdb_txn_safe
 {
@@ -430,7 +429,7 @@ private:
 
   std::vector<uint64_t> get_block_info_64bit_fields(uint64_t start_height, size_t count, off_t offset) const;
 
-  uint64_t get_max_block_size();
+  uint64_t get_max_block_size() override;
   void add_max_block_size(uint64_t sz) override;
 
   // fix up anything that may be wrong due to past bugs
@@ -491,13 +490,15 @@ private:
   std::string m_folder;
   mdb_txn_safe* m_write_txn; // may point to either a short-lived txn or a batch txn
   mdb_txn_safe* m_write_batch_txn; // persist batch txn outside of BlockchainLMDB
-  boost::thread::id m_writer;
+  std::thread::id m_writer;
 
   bool m_batch_transactions; // support for batch transactions
   bool m_batch_active; // whether batch transaction is in progress
 
   mdb_txn_cursors m_wcursors;
-  mutable boost::thread_specific_ptr<mdb_threadinfo> m_tinfo;
+  mdb_threadinfo &get_tinfo() const;
+
+  mutable std::mutex m_synchronization_lock;  //!< A lock, currently for when BlockchainLMDB needs to resize the backing db file
 
 #if defined(__arm__)
   // force a value so it can compile with 32-bit ARM

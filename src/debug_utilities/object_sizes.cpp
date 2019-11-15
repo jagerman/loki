@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 
   mlog_configure("", true);
 
-  SL(boost::thread);
+  SL(std::thread);
   SL(boost::asio::io_service);
   SL(boost::asio::io_service::work);
   SL(boost::asio::deadline_timer);

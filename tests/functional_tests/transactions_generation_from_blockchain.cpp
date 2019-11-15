@@ -142,7 +142,7 @@ bool make_tx(blockchain_storage& bch)
   CHECK_AND_ASSERT_MES(r, false, "failed to send transaction");
   if(daemon_send_resp.status != CORE_RPC_STATUS_OK)
   {
-    std::cout << "daemon failed to accept generated transaction" << ENDL;
+    std::cout << "daemon failed to accept generated transaction" << std::endl;
     return false;
   }
 

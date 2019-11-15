@@ -55,7 +55,7 @@ static std::string extra_nonce_to_string(const cryptonote::tx_extra_nonce &extra
 
 static void print_extra_fields(const std::vector<cryptonote::tx_extra_field> &fields)
 {
-  std::cout << "tx_extra has " << fields.size() << " field(s)" << std::endl;
+  std::cout << "tx_extra has " << fields.size() << " field(s)\n";
   for (size_t n = 0; n < fields.size(); ++n)
   {
     std::cout << "field " << n << ": ";
@@ -66,8 +66,9 @@ static void print_extra_fields(const std::vector<cryptonote::tx_extra_field> &fi
     else if (typeid(cryptonote::tx_extra_additional_pub_keys) == fields[n].type()) std::cout << "additional tx pubkeys: " << boost::join(boost::get<cryptonote::tx_extra_additional_pub_keys>(fields[n]).data | boost::adaptors::transformed([](const crypto::public_key &key){ return epee::string_tools::pod_to_hex(key); }), ", " );
     else if (typeid(cryptonote::tx_extra_mysterious_minergate) == fields[n].type()) std::cout << "extra minergate custom: " << epee::string_tools::buff_to_hex_nodelimer(boost::get<cryptonote::tx_extra_mysterious_minergate>(fields[n]).data);
     else std::cout << "unknown";
-    std::cout << std::endl;
+    std::cout << '\n';
   }
+  std::cout << std::flush;
 }
 
 int main(int argc, char* argv[])
@@ -104,7 +105,7 @@ int main(int argc, char* argv[])
 
   if (command_line::get_arg(vm, command_line::arg_help))
   {
-    std::cout << "Loki '" << LOKI_RELEASE_NAME << "' (v" << LOKI_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << "Loki '" << LOKI_RELEASE_NAME << "' (v" << LOKI_VERSION_FULL << ")\n\n";
     std::cout << desc_options << std::endl;
     return 1;
   }
@@ -132,20 +133,20 @@ int main(int argc, char* argv[])
   std::vector<cryptonote::tx_extra_field> fields;
   if (cryptonote::parse_and_validate_block_from_blob(blob, block))
   {
-    std::cout << "Parsed block:" << std::endl;
+    std::cout << "Parsed block:\n";
     std::cout << cryptonote::obj_to_json_str(block) << std::endl;
   }
   else if (cryptonote::parse_and_validate_tx_from_blob(blob, tx) || cryptonote::parse_and_validate_tx_base_from_blob(blob, tx))
   {
     if (tx.pruned)
-      std::cout << "Parsed pruned transaction:" << std::endl;
+      std::cout << "Parsed pruned transaction:\n";
     else
-      std::cout << "Parsed transaction:" << std::endl;
-    std::cout << cryptonote::obj_to_json_str(tx) << std::endl;
+      std::cout << "Parsed transaction:\n";
+    std::cout << cryptonote::obj_to_json_str(tx) << '\n';
 
     bool parsed = cryptonote::parse_tx_extra(tx.extra, fields);
     if (!parsed)
-      std::cout << "Failed to parse tx_extra" << std::endl;
+      std::cout << "Failed to parse tx_extra\n";
 
     if (!fields.empty())
     {
@@ -158,7 +159,7 @@ int main(int argc, char* argv[])
   }
   else if (((full = cryptonote::parse_tx_extra(std::vector<uint8_t>(blob.begin(), blob.end()), fields)) || true) && !fields.empty())
   {
-    std::cout << "Parsed" << (full ? "" : " partial") << " tx_extra:" << std::endl;
+    std::cout << "Parsed" << (full ? "" : " partial") << " tx_extra:\n";
     print_extra_fields(fields);
   }
   else

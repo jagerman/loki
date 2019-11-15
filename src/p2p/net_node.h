@@ -33,7 +33,6 @@
 #include <atomic>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/thread.hpp>
 #include <boost/optional/optional_fwd.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -284,17 +283,17 @@ namespace nodetool
     CHAIN_LEVIN_INVOKE_MAP2(p2p_connection_context); //move levin_commands_handler interface invoke(...) callbacks into invoke map
     CHAIN_LEVIN_NOTIFY_MAP2(p2p_connection_context); //move levin_commands_handler interface notify(...) callbacks into nothing
 
-    BEGIN_INVOKE_MAP2(node_server)
+    BEGIN_INVOKE_MAP2()
       if (is_filtered_command(context.m_remote_address, command))
         return LEVIN_ERROR_CONNECTION_HANDLER_NOT_DEFINED;
 
-      HANDLE_INVOKE_T2(COMMAND_HANDSHAKE, &node_server::handle_handshake)
-      HANDLE_INVOKE_T2(COMMAND_TIMED_SYNC, &node_server::handle_timed_sync)
-      HANDLE_INVOKE_T2(COMMAND_PING, &node_server::handle_ping)
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_STAT_INFO, &node_server::handle_get_stat_info)
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_NETWORK_STATE, &node_server::handle_get_network_state)
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_PEER_ID, &node_server::handle_get_peer_id)
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_SUPPORT_FLAGS, &node_server::handle_get_support_flags)
+      HANDLE_INVOKE_T2(COMMAND_HANDSHAKE, handle_handshake)
+      HANDLE_INVOKE_T2(COMMAND_TIMED_SYNC, handle_timed_sync)
+      HANDLE_INVOKE_T2(COMMAND_PING, handle_ping)
+      HANDLE_INVOKE_T2(COMMAND_REQUEST_STAT_INFO, handle_get_stat_info)
+      HANDLE_INVOKE_T2(COMMAND_REQUEST_NETWORK_STATE, handle_get_network_state)
+      HANDLE_INVOKE_T2(COMMAND_REQUEST_PEER_ID, handle_get_peer_id)
+      HANDLE_INVOKE_T2(COMMAND_REQUEST_SUPPORT_FLAGS, handle_get_support_flags)
       CHAIN_INVOKE_MAP_TO_OBJ_FORCE_CONTEXT(m_payload_handler, typename t_payload_net_handler::connection_context&)
     END_INVOKE_MAP2()
 
@@ -401,8 +400,8 @@ namespace nodetool
     void kill() { ///< will be called e.g. from deinit()
       _info("Killing the net_node");
       is_closing = true;
-      if(mPeersLoggerThread != nullptr)
-        mPeersLoggerThread->join(); // make sure the thread finishes
+      if(mPeersLoggerThread.joinable())
+        mPeersLoggerThread.join(); // make sure the thread finishes
       _info("Joined extra background net_node threads");
     }
 
@@ -433,9 +432,7 @@ namespace nodetool
     bool m_use_ipv6;
     bool m_require_ipv4;
     std::atomic<bool> is_closing;
-    std::unique_ptr<boost::thread> mPeersLoggerThread;
-    //critical_section m_connections_lock;
-    //connections_indexed_container m_connections;
+    std::thread mPeersLoggerThread;
 
     t_payload_net_handler& m_payload_handler;
     peerlist_storage m_peerlist_storage;
@@ -469,16 +466,16 @@ namespace nodetool
 
 
     std::map<std::string, time_t> m_conn_fails_cache;
-    epee::critical_section m_conn_fails_cache_lock;
+    std::mutex m_conn_fails_cache_lock;
 
-    epee::critical_section m_blocked_hosts_lock; // for both hosts and subnets
+    std::mutex m_blocked_hosts_lock; // for both hosts and subnets
     std::map<std::string, time_t> m_blocked_hosts;
     std::map<epee::net_utils::ipv4_network_subnet, time_t> m_blocked_subnets;
 
-    epee::critical_section m_host_fails_score_lock;
+    std::mutex m_host_fails_score_lock;
     std::map<std::string, uint64_t> m_host_fails_score;
 
-    boost::mutex m_used_stripe_peers_mutex;
+    std::mutex m_used_stripe_peers_mutex;
     std::array<std::list<epee::net_utils::network_address>, 1 << CRYPTONOTE_PRUNING_LOG_STRIPES> m_used_stripe_peers;
 
     boost::uuids::uuid m_network_id;

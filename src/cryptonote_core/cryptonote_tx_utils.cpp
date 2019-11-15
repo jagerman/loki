@@ -586,8 +586,8 @@ namespace cryptonote
       //check that derivated key is equal with real output key (if non multisig)
       if(!msout && !(in_ephemeral.pub == src_entr.outputs[src_entr.real_output].second.dest) )
       {
-        LOG_ERROR("derived public key mismatch with output public key at index " << idx << ", real out " << src_entr.real_output << "! "<< ENDL << "derived_key:"
-          << string_tools::pod_to_hex(in_ephemeral.pub) << ENDL << "real output_public_key:"
+        LOG_ERROR("derived public key mismatch with output public key at index " << idx << ", real out " << src_entr.real_output << "!\nderived_key:"
+          << string_tools::pod_to_hex(in_ephemeral.pub) << "\nreal output_public_key:"
           << string_tools::pod_to_hex(src_entr.outputs[src_entr.real_output].second.dest) );
         LOG_ERROR("amount " << src_entr.amount << ", rct " << src_entr.rct);
         LOG_ERROR("tx pubkey " << src_entr.real_out_tx_key << ", real_output_in_tx_index " << src_entr.real_output_in_tx_index);
@@ -764,7 +764,7 @@ namespace cryptonote
       size_t i = 0;
       for(const tx_source_entry& src_entr:  sources)
       {
-        ss_ring_s << "pub_keys:" << ENDL;
+        ss_ring_s << "pub_keys:\n";
         std::vector<const crypto::public_key*> keys_ptrs;
         std::vector<crypto::public_key> keys(src_entr.outputs.size());
         size_t ii = 0;
@@ -772,7 +772,7 @@ namespace cryptonote
         {
           keys[ii] = rct2pk(o.second.dest);
           keys_ptrs.push_back(&keys[ii]);
-          ss_ring_s << o.second.dest << ENDL;
+          ss_ring_s << o.second.dest << '\n';
           ++ii;
         }
 
@@ -781,13 +781,13 @@ namespace cryptonote
         sigs.resize(src_entr.outputs.size());
         if (!zero_secret_key)
           crypto::generate_ring_signature(tx_prefix_hash, boost::get<txin_to_key>(tx.vin[i]).k_image, keys_ptrs, in_contexts[i].in_ephemeral.sec, src_entr.real_output, sigs.data());
-        ss_ring_s << "signatures:" << ENDL;
-        std::for_each(sigs.begin(), sigs.end(), [&](const crypto::signature& s){ss_ring_s << s << ENDL;});
-        ss_ring_s << "prefix_hash:" << tx_prefix_hash << ENDL << "in_ephemeral_key: " << in_contexts[i].in_ephemeral.sec << ENDL << "real_output: " << src_entr.real_output << ENDL;
+        ss_ring_s << "signatures:\n";
+        std::for_each(sigs.begin(), sigs.end(), [&](const crypto::signature& s){ss_ring_s << s << '\n';});
+        ss_ring_s << "prefix_hash:" << tx_prefix_hash << "\nin_ephemeral_key: " << in_contexts[i].in_ephemeral.sec << "\nreal_output: " << src_entr.real_output << '\n';
         i++;
       }
 
-      MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << ENDL << obj_to_json_str(tx) << ENDL << ss_ring_s.str());
+      MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << '\n' << obj_to_json_str(tx) << '\n' << ss_ring_s.str());
     }
     else
     {
@@ -900,7 +900,7 @@ namespace cryptonote
 
       CHECK_AND_ASSERT_MES(tx.vout.size() == outSk.size(), false, "outSk size does not match vout");
 
-      MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << ENDL << obj_to_json_str(tx) << ENDL);
+      MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << '\n' << obj_to_json_str(tx) << '\n');
     }
 
     tx.invalidate_hashes();

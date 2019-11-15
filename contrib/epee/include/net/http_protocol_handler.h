@@ -32,8 +32,8 @@
 
 #include <boost/optional/optional.hpp>
 #include <string>
+#include <mutex>
 #include "net_utils_base.h"
-#include "to_nonconst_iterator.h"
 #include "http_auth.h"
 #include "http_base.h"
 
@@ -56,7 +56,7 @@ namespace net_utils
 			std::string m_folder;
 			std::vector<std::string> m_access_control_origins;
 			boost::optional<login> m_user;
-			critical_section m_lock;
+            std::recursive_mutex m_lock;
 		};
 
 		/************************************************************************/

@@ -96,7 +96,7 @@ public:
   std::atomic<bool> m_stopped;
   std::atomic<bool> m_terminated;
   std::atomic<bool> m_deinitalized;
-  boost::thread m_run_thread;
+  std::thread m_run_thread;
 
   mock_daemon(
       cryptonote::core * core,

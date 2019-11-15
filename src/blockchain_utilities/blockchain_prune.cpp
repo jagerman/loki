@@ -158,7 +158,7 @@ static void copy_table(MDB_env *env0, MDB_env *env1, const char *table, unsigned
 
   MINFO("Copying " << table);
 
-  epee::misc_utils::auto_scope_leave_caller txn_dtor = epee::misc_utils::create_scope_leave_handler([&](){
+  auto txn_dtor = epee::misc_utils::create_scope_leave_handler([&](){
     if (tx_active1) mdb_txn_abort(txn1);
     if (tx_active0) mdb_txn_abort(txn0);
   });
@@ -255,7 +255,7 @@ static void prune(MDB_env *env0, MDB_env *env1)
 
   MGINFO("Creating pruned txs_prunable");
 
-  epee::misc_utils::auto_scope_leave_caller txn_dtor = epee::misc_utils::create_scope_leave_handler([&](){
+  auto txn_dtor = epee::misc_utils::create_scope_leave_handler([&](){
     if (tx_active1) mdb_txn_abort(txn1);
     if (tx_active0) mdb_txn_abort(txn0);
   });
@@ -491,7 +491,7 @@ int main(int argc, char* argv[])
 
   if (command_line::get_arg(vm, command_line::arg_help))
   {
-    std::cout << "Loki '" << LOKI_RELEASE_NAME << "' (v" << LOKI_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << "Loki '" << LOKI_RELEASE_NAME << "' (v" << LOKI_VERSION_FULL << ")\n\n";
     std::cout << desc_options << std::endl;
     return 1;
   }
@@ -509,7 +509,7 @@ int main(int argc, char* argv[])
   network_type net_type = opt_testnet ? TESTNET : opt_stagenet ? STAGENET : MAINNET;
   bool opt_copy_pruned_database = command_line::get_arg(vm, arg_copy_pruned_database);
   std::string data_dir = command_line::get_arg(vm, cryptonote::arg_data_dir);
-  while (boost::ends_with(data_dir, "/") || boost::ends_with(data_dir, "\\"))
+  while (data_dir.size() && (data_dir.back() == '/' || data_dir.back() == '\\'))
     data_dir.pop_back();
 
   std::string db_type = command_line::get_arg(vm, arg_database);

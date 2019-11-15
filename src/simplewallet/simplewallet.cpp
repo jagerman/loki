@@ -109,9 +109,9 @@ typedef cryptonote::simple_wallet sw;
   m_auto_refresh_enabled.store(false, std::memory_order_relaxed); \
   /* stop any background refresh, and take over */ \
   m_wallet->stop(); \
-  boost::unique_lock<boost::mutex> lock(m_idle_mutex); \
+  std::unique_lock<std::mutex> lock(m_idle_mutex); \
   m_idle_cond.notify_all(); \
-  epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ \
+  auto scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ \
     m_auto_refresh_enabled.store(auto_refresh_enabled, std::memory_order_relaxed); \
   })
 
@@ -491,9 +491,9 @@ namespace
     }
     std::stringstream prompt;
     prompt << sw::tr("For URL: ") << url
-           << ", " << dnssec_str << std::endl
+           << ", " << dnssec_str << '\n'
            << sw::tr(" Loki Address = ") << addresses[0]
-           << std::endl
+           << '\n'
            << sw::tr("Is this OK?")
     ;
     // prompt the user for confirmation given the dns query and dnssec status
@@ -674,11 +674,11 @@ std::string join_priority_strings(const char *delimiter)
 std::string simple_wallet::get_commands_str()
 {
   std::stringstream ss;
-  ss << tr("Commands: ") << ENDL;
+  ss << tr("Commands: ") << '\n';
   std::string usage = m_cmd_binder.get_usage();
   boost::replace_all(usage, "\n", "\n  ");
   usage.insert(0, "  ");
-  ss << usage << ENDL;
+  ss << usage << '\n';
   return ss.str();
 }
 
@@ -695,10 +695,10 @@ std::string simple_wallet::get_command_usage(const std::vector<std::string> &arg
     std::string usage = documentation.second.empty() ? args.front() : documentation.first;
     std::string description = documentation.second.empty() ? documentation.first : documentation.second;
     usage.insert(0, "  ");
-    ss << tr("Command usage: ") << ENDL << usage << ENDL << ENDL;
+    ss << tr("Command usage: ") << '\n' << usage << "\n\n";
     boost::replace_all(description, "\n", "\n  ");
     description.insert(0, "  ");
-    ss << tr("Command description: ") << ENDL << description << ENDL;
+    ss << tr("Command description: ") << '\n' << description << '\n';
   }
   return ss.str();
 }
@@ -1332,7 +1332,7 @@ bool simple_wallet::import_multisig_main(const std::vector<std::string> &args, b
   try
   {
     m_in_manual_refresh.store(true, std::memory_order_relaxed);
-    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){m_in_manual_refresh.store(false, std::memory_order_relaxed);});
+    auto scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){m_in_manual_refresh.store(false, std::memory_order_relaxed);});
     size_t n_outputs = m_wallet->import_multisig(info);
     // Clear line "Height xxx of xxx"
     std::cout << "\r                                                                \r";
@@ -1553,7 +1553,7 @@ bool simple_wallet::submit_multisig_main(const std::vector<std::string> &args, b
     for (auto &ptx: txs.m_ptx)
     {
       m_wallet->commit_tx(ptx);
-      success_msg_writer(true) << tr("Transaction successfully submitted, transaction ") << get_transaction_hash(ptx.tx) << ENDL
+      success_msg_writer(true) << tr("Transaction successfully submitted, transaction ") << get_transaction_hash(ptx.tx) << '\n'
           << tr("You can check its status by using the `show_transfers` command.");
     }
   }
@@ -3474,7 +3474,7 @@ static bool datestr_to_int(const std::string &heightstr, uint16_t &year, uint8_t
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::init(const boost::program_options::variables_map& vm)
 {
-  epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){
+  auto scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){
     m_electrum_seed.wipe();
   });
 
@@ -4167,13 +4167,13 @@ std::string simple_wallet::get_mnemonic_language()
   int language_number = -1;
   crypto::ElectrumWords::get_language_list(language_list_self, false);
   crypto::ElectrumWords::get_language_list(language_list_english, true);
-  std::cout << tr("List of available languages for your wallet's seed:") << std::endl;
-  std::cout << tr("If your display freezes, exit blind with ^C, then run again with --use-english-language-names") << std::endl;
+  std::cout << tr("List of available languages for your wallet's seed:") << '\n';
+  std::cout << tr("If your display freezes, exit blind with ^C, then run again with --use-english-language-names") << '\n';
   int ii;
   std::vector<std::string>::const_iterator it;
   for (it = language_list.begin(), ii = 0; it != language_list.end(); it++, ii++)
   {
-    std::cout << ii << " : " << *it << std::endl;
+    std::cout << ii << " : " << *it << '\n';
   }
   while (language_number < 0)
   {
@@ -4556,7 +4556,7 @@ bool simple_wallet::close_wallet()
     m_idle_run.store(false, std::memory_order_relaxed);
     m_wallet->stop();
     {
-      boost::unique_lock<boost::mutex> lock(m_idle_mutex);
+      std::unique_lock<std::mutex> lock(m_idle_mutex);
       m_idle_cond.notify_one();
     }
     m_idle_thread.join();
@@ -5071,7 +5071,7 @@ bool simple_wallet::refresh_main(uint64_t start_height, enum ResetType reset, bo
   try
   {
     m_in_manual_refresh.store(true, std::memory_order_relaxed);
-    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){m_in_manual_refresh.store(false, std::memory_order_relaxed);});
+    auto scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){m_in_manual_refresh.store(false, std::memory_order_relaxed);});
     m_wallet->refresh(m_wallet->is_trusted_daemon(), start_height, fetched_blocks, received_money);
 
     if (reset == ResetSoftKeepKI)
@@ -5582,7 +5582,7 @@ bool simple_wallet::print_ring_members(const std::vector<tools::wallet2::pending
         << (are_keys_from_same_tx ? tr("the same transaction") : tr("blocks that are temporally very close"))
         << tr(", which can break the anonymity of ring signature. Make sure this is intentional!");
     }
-    ostr << ENDL;
+    ostr << '\n';
   }
   return true;
 }
@@ -5854,7 +5854,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
       }
       catch (const std::exception &e)
       {
-        prompt << tr("Failed to check for backlog: ") << e.what() << ENDL << tr("Is this okay anyway?");
+        prompt << tr("Failed to check for backlog: ") << e.what() << '\n' << tr("Is this okay anyway?");
       }
 
       std::string prompt_str = prompt.str();
@@ -5919,7 +5919,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
             print_money(total_fee);
         }
         if (dust_in_fee != 0) prompt << boost::format(tr(", of which %s is dust from change")) % print_money(dust_in_fee);
-        if (dust_not_in_fee != 0)  prompt << tr(".") << ENDL << boost::format(tr("A total of %s from dust change will be sent to dust address")) 
+        if (dust_not_in_fee != 0)  prompt << tr(".") << '\n' << boost::format(tr("A total of %s from dust change will be sent to dust address")) 
                                                    % print_money(dust_not_in_fee);
         if (transfer_type == TransferLocked)
         {
@@ -5948,7 +5948,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         {
           prompt << tr("WARNING: this is a non default ring size, which may harm your privacy. Default is recommended.");
         }
-        prompt << ENDL << tr("Is this okay?");
+        prompt << '\n' << tr("Is this okay?");
         
         std::string accepted = input_line(prompt.str(), true);
         if (std::cin.eof())
@@ -8225,7 +8225,7 @@ void simple_wallet::wallet_idle_thread()
 {
   while (true)
   {
-    boost::unique_lock<boost::mutex> lock(m_idle_mutex);
+    std::unique_lock<std::mutex> lock(m_idle_mutex);
     if (!m_idle_run.load(std::memory_order_relaxed))
       break;
 
@@ -8254,7 +8254,7 @@ void simple_wallet::wallet_idle_thread()
 
     if (!m_idle_run.load(std::memory_order_relaxed))
       break;
-    m_idle_cond.wait_for(lock, boost::chrono::seconds(90));
+    m_idle_cond.wait_for(lock, std::chrono::seconds(90));
   }
 }
 //----------------------------------------------------------------------------------------------------
@@ -8296,7 +8296,7 @@ bool simple_wallet::run()
   refresh_main(0, ResetNone, true);
 
   m_auto_refresh_enabled = m_wallet->auto_refresh();
-  m_idle_thread = boost::thread([&]{wallet_idle_thread();});
+  m_idle_thread = std::thread([&]{wallet_idle_thread();});
 
   message_writer(console_color_green, false) << "Background refresh thread started";
 
@@ -8306,7 +8306,7 @@ bool simple_wallet::run()
     loki::fixed_buffer const input = loki::read_from_stdin_shared_mem();
     std::vector<std::string> args  = loki::separate_stdin_to_space_delim_args(&input);
     {
-      boost::unique_lock<boost::mutex> scoped_lock(loki::integration_test_mutex);
+      std::unique_lock<std::mutex> scoped_lock(loki::integration_test_mutex);
       loki::use_standard_cout();
       std::cout << input.data << std::endl;
       loki::use_redirected_cout();

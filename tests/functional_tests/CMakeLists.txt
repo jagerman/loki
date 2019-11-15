@@ -45,7 +45,6 @@ target_link_libraries(functional_tests
     common
     cncrypto
     epee
-    ${Boost_REGEX_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES})

@@ -37,7 +37,6 @@ namespace rpc
 ZmqServer::ZmqServer(RpcHandler& h) :
     handler(h),
     stop_signal(false),
-    running(false),
     context(DEFAULT_NUM_ZMQ_THREADS) // TODO: make this configurable
 {
 }
@@ -49,7 +48,7 @@ ZmqServer::~ZmqServer()
 void ZmqServer::serve()
 {
 
-  while (1)
+  while (!stop_signal)
   {
     try
     {
@@ -75,15 +74,10 @@ void ZmqServer::serve()
 
       }
     }
-    catch (const boost::thread_interrupted& e)
-    {
-      MDEBUG("ZMQ Server thread interrupted.");
-    }
     catch (const zmq::error_t& e)
     {
       MERROR(std::string("ZMQ error: ") + e.what());
     }
-    boost::this_thread::interruption_point();
   }
 }
 
@@ -120,22 +114,19 @@ bool ZmqServer::addTCPSocket(std::string address, std::string port)
 
 void ZmqServer::run()
 {
-  running = true;
-  run_thread = boost::thread(boost::bind(&ZmqServer::serve, this));
+  if (run_thread.joinable())
+    return; // already running
+
+  stop_signal = false;
+  run_thread = std::thread{[this] { serve(); }};
 }
 
 void ZmqServer::stop()
 {
-  if (!running) return;
-
   stop_signal = true;
 
-  run_thread.interrupt();
-  run_thread.join();
-
-  running = false;
-
-  return;
+  if (run_thread.joinable())
+    run_thread.join();
 }
 
 

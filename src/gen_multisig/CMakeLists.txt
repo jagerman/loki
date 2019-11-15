@@ -40,10 +40,8 @@ target_link_libraries(gen_multisig
     common
     epee
     ${EPEE_READLINE}
-    ${Boost_CHRONO_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
     ${GNU_READLINE_LIBRARY}
     ${EXTRA_LIBRARIES})

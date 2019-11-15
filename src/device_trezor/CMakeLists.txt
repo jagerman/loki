@@ -89,7 +89,6 @@ if(DEVICE_TREZOR_READY)
             cryptonote_core
             common
             ${SODIUM_LIBRARY}
-            ${Boost_CHRONO_LIBRARY}
             ${Protobuf_LIBRARY}
             ${TREZOR_LIBUSB_LIBRARIES}
             PRIVATE

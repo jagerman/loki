@@ -184,7 +184,7 @@ namespace nodetool
     void trim_gray_peerlist();
 
     friend class boost::serialization::access;
-    epee::critical_section m_peerlist_lock;
+    std::recursive_mutex m_peerlist_lock;
     std::string m_config_folder;
     bool m_allow_local_ip;
 
@@ -233,7 +233,7 @@ namespace nodetool
       return false;
 
     peers_indexed::index<by_time>::type& by_time_index = m_peers_white.get<by_time>();
-    p = *epee::misc_utils::move_it_backward(std::prev(by_time_index.end()), i);
+    p = *std::prev(by_time_index.end(), 1 + i);
     return true;
   }
   //--------------------------------------------------------------------------------------------------
@@ -245,7 +245,7 @@ namespace nodetool
       return false;
 
     peers_indexed::index<by_time>::type& by_time_index = m_peers_gray.get<by_time>();
-    p = *epee::misc_utils::move_it_backward(std::prev(by_time_index.end()), i);
+    p = *std::prev(by_time_index.end(), 1 + i);
     return true;
   }
   //--------------------------------------------------------------------------------------------------
@@ -430,7 +430,7 @@ namespace nodetool
     size_t random_index = crypto::rand_idx(m_peers_gray.size());
 
     peers_indexed::index<by_time>::type& by_time_index = m_peers_gray.get<by_time>();
-    pe = *epee::misc_utils::move_it_backward(std::prev(by_time_index.end()), random_index);
+    pe = *std::prev(by_time_index.end(), 1 + random_index);
 
     return true;
 

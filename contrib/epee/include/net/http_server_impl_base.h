@@ -30,7 +30,6 @@
 #pragma once 
 
 
-#include <boost/thread.hpp>
 #include <boost/bind.hpp> 
 
 #include "net/abstract_tcp_server2.h"
@@ -109,9 +108,9 @@ namespace epee
       return m_net_server.deinit_server();
     }
 
-    bool timed_wait_server_stop(uint64_t ms)
+    bool wait_server_stop()
     {
-      return m_net_server.timed_wait_server_stop(ms);
+      return m_net_server.wait_server_stop();
     }
 
     bool send_stop_signal()

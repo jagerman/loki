@@ -46,7 +46,7 @@ template <typename lambda_t>
 struct defer
 {
   lambda_t lambda;
-  defer(lambda_t lambda) : lambda(lambda) {}
+  defer(lambda_t lambda) : lambda{std::move(lambda)} {}
   ~defer() { lambda(); }
 };
 

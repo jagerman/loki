@@ -199,14 +199,6 @@ POP_WARNINGS
     return true;
   }
 
-	inline std::string num_to_string_fast(int64_t val)
-	{
-		/*
-		char  buff[30] = {0};
-		i64toa_s(val, buff, sizeof(buff)-1, 10);
-		return buff;*/
-		return boost::lexical_cast<std::string>(val);
-	}
 	//----------------------------------------------------------------------------
 	inline std::string to_string_hex(uint32_t val)
 	{

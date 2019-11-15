@@ -137,11 +137,6 @@ namespace cryptonote
   , "Like test-drop-download but discards only after around certain height"
   , 0
   };
-  static const command_line::arg_descriptor<int> arg_test_dbg_lock_sleep = {
-    "test-dbg-lock-sleep"
-  , "Sleep time in ms, defaults to 0 (off), used to debug before/after locking mutex. Values 100 to 1000 are good for tests."
-  , 0
-  };
   static const command_line::arg_descriptor<uint64_t> arg_fast_block_sync = {
     "fast-block-sync"
   , "Sync up most of the way by using embedded, known block hashes."
@@ -299,7 +294,7 @@ namespace cryptonote
 
     tools::download_async_handle handle;
     {
-      boost::lock_guard<boost::mutex> lock(m_update_mutex);
+      std::lock_guard<std::mutex> lock(m_update_mutex);
       handle = m_update_download;
       m_update_download = 0;
     }
@@ -324,7 +319,6 @@ namespace cryptonote
     command_line::add_arg(desc, arg_show_time_stats);
     command_line::add_arg(desc, arg_block_sync_size);
     command_line::add_arg(desc, arg_check_updates);
-    command_line::add_arg(desc, arg_test_dbg_lock_sleep);
     command_line::add_arg(desc, arg_offline);
     command_line::add_arg(desc, arg_block_download_max_size);
     command_line::add_arg(desc, arg_max_txpool_weight);
@@ -416,8 +410,6 @@ namespace cryptonote
       MGINFO("Storage server endpoint is set to: "
              << (epee::net_utils::ipv4_network_address{ m_sn_public_ip, m_storage_port }).str());
     }
-
-    epee::debug::g_test_dbg_lock_sleep() = command_line::get_arg(vm, arg_test_dbg_lock_sleep);
 
     return true;
   }
@@ -1846,24 +1838,24 @@ namespace cryptonote
         main_message = "The daemon is running offline and will not attempt to sync to the Loki network.";
       else
         main_message = "The daemon will start synchronizing with the network. This may take a long time to complete.";
-      MGINFO_YELLOW(ENDL << "**********************************************************************" << ENDL
-        << main_message << ENDL
-        << ENDL
-        << "You can set the level of process detailization through \"set_log <level|categories>\" command," << ENDL
-        << "where <level> is between 0 (no details) and 4 (very verbose), or custom category based levels (eg, *:WARNING)." << ENDL
-        << ENDL
-        << "Use the \"help\" command to see the list of available commands." << ENDL
-        << "Use \"help <command>\" to see a command's documentation." << ENDL
-        << "**********************************************************************" << ENDL);
+      MGINFO_YELLOW("\n**********************************************************************\n"
+        << main_message << '\n'
+        << '\n'
+        << "You can set the level of process detailization through \"set_log <level|categories>\" command,\n"
+        << "where <level> is between 0 (no details) and 4 (very verbose), or custom category based levels (eg, *:WARNING).\n"
+        << '\n'
+        << "Use the \"help\" command to see the list of available commands.\n"
+        << "Use \"help <command>\" to see a command's documentation.\n"
+        << "**********************************************************************\n");
       m_starter_message_showed = true;
     }
 
-    m_fork_moaner.do_call(boost::bind(&core::check_fork_time, this));
-    m_txpool_auto_relayer.do_call(boost::bind(&core::relay_txpool_transactions, this));
-    m_service_node_vote_relayer.do_call(boost::bind(&core::relay_service_node_votes, this));
-    // m_check_updates_interval.do_call(boost::bind(&core::check_updates, this));
-    m_check_disk_space_interval.do_call(boost::bind(&core::check_disk_space, this));
-    m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));
+    m_fork_moaner.do_call([this]() { return check_fork_time(); });
+    m_txpool_auto_relayer.do_call([this]() { return relay_txpool_transactions(); });
+    m_service_node_vote_relayer.do_call([this]() { return relay_service_node_votes(); });
+    // m_check_updates_interval.do_call([this]() { return check_updates(); });
+    m_check_disk_space_interval.do_call([this]() { return check_disk_space(); });
+    m_block_rate_interval.do_call([this]() { return check_block_rate(); });
 
     time_t const lifetime = time(nullptr) - get_start_time();
     if (m_service_node_keys && lifetime > DIFFICULTY_TARGET_V2) // Give us some time to connect to peers before sending uptimes
@@ -1871,7 +1863,7 @@ namespace cryptonote
       do_uptime_proof_call();
     }
 
-    m_blockchain_pruning_interval.do_call(boost::bind(&core::update_blockchain_pruning, this));
+    m_blockchain_pruning_interval.do_call([this]() { return update_blockchain_pruning(); });
     m_miner.on_idle();
     m_mempool.on_idle();
 
@@ -1972,7 +1964,7 @@ namespace cryptonote
     boost::filesystem::path path(epee::string_tools::get_current_module_folder());
     path /= filename;
 
-    boost::unique_lock<boost::mutex> lock(m_update_mutex);
+    std::unique_lock<std::mutex> lock(m_update_mutex);
 
     if (m_update_download != 0)
     {
@@ -2013,7 +2005,7 @@ namespace cryptonote
           MCERROR("updates", "Failed to download " << uri);
           good = false;
         }
-        boost::unique_lock<boost::mutex> lock(m_update_mutex);
+        std::unique_lock<std::mutex> lock(m_update_mutex);
         m_update_download = 0;
         if (success && !remove)
         {

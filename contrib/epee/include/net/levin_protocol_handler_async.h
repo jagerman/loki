@@ -25,13 +25,8 @@
 // 
 
 #pragma once
-#include <boost/asio/deadline_timer.hpp>
 #include <boost/uuid/uuid_generators.hpp>
-#include <boost/unordered_map.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
-#include <boost/smart_ptr/make_shared.hpp>
-
-#include <atomic>
+#include <boost/asio/basic_waitable_timer.hpp>
 
 #include "levin_base.h"
 #include "buffer.h"
@@ -40,6 +35,8 @@
 #include "misc_os_dependent.h"
 #include "int-util.h"
 
+#include <unordered_map>
+#include <atomic>
 #include <random>
 #include <chrono>
 
@@ -55,17 +52,21 @@ namespace epee
 namespace levin
 {
 
+using asio_std_steady_timer = boost::asio::basic_waitable_timer<std::chrono::steady_clock>;
+
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
 template<class t_connection_context>
 class async_protocol_handler;
 
+struct uuid_hasher { size_t operator()(const boost::uuids::uuid &u) const { return boost::uuids::hash_value(u); } };
+
 template<class t_connection_context>
 class async_protocol_handler_config
 {
-  typedef boost::unordered_map<boost::uuids::uuid, async_protocol_handler<t_connection_context>* > connections_map;
-  critical_section m_connects_lock;
+  typedef std::unordered_map<boost::uuids::uuid, async_protocol_handler<t_connection_context>*, uuid_hasher > connections_map;
+  std::mutex m_connects_lock;
   connections_map m_connects;
 
   void add_connection(async_protocol_handler<t_connection_context>* pc);
@@ -129,18 +130,18 @@ public:
 
   std::atomic<bool> m_deletion_initiated;
   std::atomic<bool> m_protocol_released;
-  volatile uint32_t m_invoke_buf_ready;
+  std::atomic<bool> m_invoke_buf_ready;
 
   volatile int m_invoke_result_code;
 
-  critical_section m_local_inv_buff_lock;
+  std::mutex m_local_inv_buff_lock;
   std::string m_local_inv_buff;
 
-  critical_section m_send_lock;
-  critical_section m_call_lock;
+  std::mutex m_send_lock;
+  std::mutex m_call_lock;
 
-  volatile uint32_t m_wait_count;
-  volatile uint32_t m_close_called;
+  std::atomic<uint32_t> m_wait_count;
+  std::atomic<bool> m_close_called;
   bucket_head2 m_current_head;
   net_utils::i_service_endpoint* m_pservice_endpoint; 
   config_type& m_config;
@@ -170,7 +171,7 @@ public:
       if(m_con.start_outer_call())
       {
         MDEBUG(con.get_context_ref() << "anvoke_handler, timeout: " << timeout);
-        m_timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+        m_timer.expires_from_now(std::chrono::milliseconds(timeout));
         m_timer.async_wait([&con, command, cb, timeout](const boost::system::error_code& ec)
         {
           if(ec == boost::asio::error::operation_aborted)
@@ -188,7 +189,7 @@ public:
     {}
     callback_t m_cb;
     async_protocol_handler& m_con;
-    boost::asio::deadline_timer m_timer;
+    asio_std_steady_timer m_timer;
     bool m_timer_started;
     bool m_cancel_timer_called;
     bool m_timer_cancelled;
@@ -234,7 +235,7 @@ public:
         uint64_t timeout = m_timeout;
         async_protocol_handler& con = m_con;
         int command = m_command;
-        m_timer.expires_from_now(boost::posix_time::milliseconds(m_timeout));
+        m_timer.expires_from_now(std::chrono::milliseconds(m_timeout));
         m_timer.async_wait([&con, cb, command, timeout](const boost::system::error_code& ec)
         {
           if(ec == boost::asio::error::operation_aborted)
@@ -248,14 +249,14 @@ public:
       }
     }
   };
-  critical_section m_invoke_response_handlers_lock;
-  std::list<boost::shared_ptr<invoke_response_handler_base> > m_invoke_response_handlers;
+  std::mutex m_invoke_response_handlers_lock;
+  std::list<std::shared_ptr<invoke_response_handler_base> > m_invoke_response_handlers;
   
   template<class callback_t>
   bool add_invoke_response_handler(const callback_t &cb, uint64_t timeout,  async_protocol_handler& con, int command)
   {
     CRITICAL_REGION_LOCAL(m_invoke_response_handlers_lock);
-    boost::shared_ptr<invoke_response_handler_base> handler(boost::make_shared<anvoke_handler<callback_t>>(cb, timeout, con, command));
+    std::shared_ptr<invoke_response_handler_base> handler(std::make_shared<anvoke_handler<callback_t>>(cb, timeout, con, command));
     m_invoke_response_handlers.push_back(handler);
     return handler->is_timer_started();
   }
@@ -271,13 +272,13 @@ public:
             m_cache_in_buffer(4 * 1024),
             m_state(stream_state_head)
   {
-    m_close_called = 0;
+    m_close_called = false;
     m_deletion_initiated = false;
     m_protocol_released = false;
     m_wait_count = 0;
     m_oponent_protocol_ver = 0;
     m_connection_initialized = false;
-    m_invoke_buf_ready = 0;
+    m_invoke_buf_ready = false;
     m_invoke_result_code = LEVIN_ERROR_CONNECTION;
   }
   virtual ~async_protocol_handler()
@@ -291,11 +292,11 @@ public:
       m_config.del_connection(this);
     }
 
-    for (size_t i = 0; i < 60 * 1000 / 100 && 0 != boost::interprocess::ipcdetail::atomic_read32(&m_wait_count); ++i)
+    for (size_t i = 0; i < 60 * 1000 / 100 && 0 != m_wait_count; ++i)
     {
       misc_utils::sleep_no_w(100);
     }
-    CHECK_AND_ASSERT_MES_NO_RET(0 == boost::interprocess::ipcdetail::atomic_read32(&m_wait_count), "Failed to wait for operation completion. m_wait_count = " << m_wait_count);
+    CHECK_AND_ASSERT_MES_NO_RET(0 == m_wait_count, "Failed to wait for operation completion. m_wait_count = " << (uint32_t) m_wait_count);
 
     MTRACE(m_connection_context << "~async_protocol_handler()");
 
@@ -311,13 +312,13 @@ public:
       MERROR(m_connection_context << "[levin_protocol] -->> start_outer_call failed");
       return false;
     }
-    boost::interprocess::ipcdetail::atomic_inc32(&m_wait_count);
+    ++m_wait_count;
     return true;
   }
   bool finish_outer_call()
   {
     MTRACE(m_connection_context << "[levin_protocol] <<-- finish_outer_call");
-    boost::interprocess::ipcdetail::atomic_dec32(&m_wait_count);
+    ++m_wait_count;
     m_pservice_endpoint->release();
     return true;
   }
@@ -332,7 +333,7 @@ public:
 
     // Never call callback inside critical section, that can cause deadlock. Callback can be called when
     // invoke_response_handler_base is cancelled
-    std::for_each(local_invoke_response_handlers.begin(), local_invoke_response_handlers.end(), [](const boost::shared_ptr<invoke_response_handler_base>& pinv_resp_hndlr) {
+    std::for_each(local_invoke_response_handlers.begin(), local_invoke_response_handlers.end(), [](const std::shared_ptr<invoke_response_handler_base>& pinv_resp_hndlr) {
       pinv_resp_hndlr->cancel();
     });
 
@@ -340,8 +341,8 @@ public:
   }
   
   bool close()
-  {    
-    boost::interprocess::ipcdetail::atomic_inc32(&m_close_called);
+  {
+    m_close_called = true;
 
     m_pservice_endpoint->close();
     return true;
@@ -354,8 +355,7 @@ public:
 
   void request_callback()
   {
-    misc_utils::auto_scope_leave_caller scope_exit_handler = misc_utils::create_scope_leave_handler(
-      boost::bind(&async_protocol_handler::finish_outer_call, this));
+    auto scope_exit_handler = misc_utils::create_scope_leave_handler([this]() { finish_outer_call(); });
 
     m_pservice_endpoint->request_callback();
   }
@@ -367,7 +367,7 @@ public:
 
   virtual bool handle_recv(const void* ptr, size_t cb)
   {
-    if(boost::interprocess::ipcdetail::atomic_read32(&m_close_called))
+    if(m_close_called)
       return false; //closing connections
 
     if(!m_config.m_pcommands_handler)
@@ -401,7 +401,7 @@ public:
             if (!m_invoke_response_handlers.empty())
             {
               //async call scenario
-              boost::shared_ptr<invoke_response_handler_base> response_handler = m_invoke_response_handlers.front();
+              std::shared_ptr<invoke_response_handler_base> response_handler = m_invoke_response_handlers.front();
               response_handler->reset_timer();
               MDEBUG(m_connection_context << "LEVIN_PACKET partial msg received. len=" << cb);
             }
@@ -422,10 +422,10 @@ public:
           if(is_response)
           {//response to some invoke 
 
-            epee::critical_region_t<decltype(m_invoke_response_handlers_lock)> invoke_response_handlers_guard(m_invoke_response_handlers_lock);
+            std::unique_lock<decltype(m_invoke_response_handlers_lock)> invoke_response_handlers_guard(m_invoke_response_handlers_lock);
             if(!m_invoke_response_handlers.empty())
             {//async call scenario
-              boost::shared_ptr<invoke_response_handler_base> response_handler = m_invoke_response_handlers.front();
+              std::shared_ptr<invoke_response_handler_base> response_handler = m_invoke_response_handlers.front();
               bool timer_cancelled = response_handler->cancel_timer();
                // Don't pop handler, to avoid destroying it
               if(timer_cancelled)
@@ -439,7 +439,7 @@ public:
             {
               invoke_response_handlers_guard.unlock();
               //use sync call scenario
-              if(!boost::interprocess::ipcdetail::atomic_read32(&m_wait_count) && !boost::interprocess::ipcdetail::atomic_read32(&m_close_called))
+              if(m_wait_count == 0 && !m_close_called)
               {
                 MERROR(m_connection_context << "no active invoke when response came, wtf?");
                 return false;
@@ -450,7 +450,7 @@ public:
                 buff_to_invoke = epee::span<const uint8_t>((const uint8_t*)NULL, 0);
                 m_invoke_result_code = m_current_head.m_return_code;
                 CRITICAL_REGION_END();
-                boost::interprocess::ipcdetail::atomic_write32(&m_invoke_buf_ready, 1);
+                m_invoke_buf_ready = true;
               }
             }
           }else
@@ -561,8 +561,7 @@ public:
   template<class callback_t>
   bool async_invoke(int command, const epee::span<const uint8_t> in_buff, const callback_t &cb, size_t timeout = LEVIN_DEFAULT_TIMEOUT_PRECONFIGURED)
   {
-    misc_utils::auto_scope_leave_caller scope_exit_handler = misc_utils::create_scope_leave_handler(
-      boost::bind(&async_protocol_handler::finish_outer_call, this));
+    auto scope_exit_handler = misc_utils::create_scope_leave_handler([this]() { finish_outer_call(); });
 
     if(timeout == LEVIN_DEFAULT_TIMEOUT_PRECONFIGURED)
       timeout = m_config.m_invoke_timeout;
@@ -593,7 +592,7 @@ public:
       head.m_command = SWAP32LE(command);
       head.m_protocol_version = SWAP32LE(LEVIN_PROTOCOL_VER_1);
 
-      boost::interprocess::ipcdetail::atomic_write32(&m_invoke_buf_ready, 0);
+      m_invoke_buf_ready = false;
       CRITICAL_REGION_BEGIN(m_send_lock);
       CRITICAL_REGION_LOCAL1(m_invoke_response_handlers_lock);
       if(!m_pservice_endpoint->do_send(&head, sizeof(head)))
@@ -631,8 +630,7 @@ public:
 
   int invoke(int command, const epee::span<const uint8_t> in_buff, std::string& buff_out)
   {
-    misc_utils::auto_scope_leave_caller scope_exit_handler = misc_utils::create_scope_leave_handler(
-                                      boost::bind(&async_protocol_handler::finish_outer_call, this));
+    auto scope_exit_handler = misc_utils::create_scope_leave_handler([this]() { finish_outer_call(); });
 
     if(m_deletion_initiated)
       return LEVIN_ERROR_CONNECTION_DESTROYED;
@@ -651,7 +649,7 @@ public:
     head.m_command = SWAP32LE(command);
     head.m_protocol_version = SWAP32LE(LEVIN_PROTOCOL_VER_1);
 
-    boost::interprocess::ipcdetail::atomic_write32(&m_invoke_buf_ready, 0);
+    m_invoke_buf_ready = false;
     CRITICAL_REGION_BEGIN(m_send_lock);
     if(!m_pservice_endpoint->do_send(&head, sizeof(head)))
     {
@@ -675,7 +673,7 @@ public:
     uint64_t ticks_start = misc_utils::get_tick_count();
     size_t prev_size = 0;
 
-    while(!boost::interprocess::ipcdetail::atomic_read32(&m_invoke_buf_ready) && !m_deletion_initiated && !m_protocol_released)
+    while(!m_invoke_buf_ready && !m_deletion_initiated && !m_protocol_released)
     {
       if(m_cache_in_buffer.size() - prev_size >= MIN_BYTES_WANTED)
       {
@@ -705,8 +703,7 @@ public:
 
   int notify(int command, const epee::span<const uint8_t> in_buff)
   {
-    misc_utils::auto_scope_leave_caller scope_exit_handler = misc_utils::create_scope_leave_handler(
-                          boost::bind(&async_protocol_handler::finish_outer_call, this));
+    auto scope_exit_handler = misc_utils::create_scope_leave_handler([this]() { finish_outer_call(); });
 
     if(m_deletion_initiated)
       return LEVIN_ERROR_CONNECTION_DESTROYED;

@@ -41,21 +41,12 @@
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "cn.block_queue"
 
-namespace std {
-  static_assert(sizeof(size_t) <= sizeof(boost::uuids::uuid), "boost::uuids::uuid too small");
-  template<> struct hash<boost::uuids::uuid> {
-    std::size_t operator()(const boost::uuids::uuid &_v) const {
-      return reinterpret_cast<const std::size_t &>(_v);
-    }
-  };
-}
-
 namespace cryptonote
 {
 
 void block_queue::add_blocks(uint64_t height, std::vector<cryptonote::block_complete_entry> bcel, const boost::uuids::uuid &connection_id, float rate, size_t size)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   std::vector<crypto::hash> hashes;
   bool has_hashes = remove_span(height, &hashes);
   blocks.emplace(height, std::move(bcel), connection_id, rate, size);
@@ -70,28 +61,26 @@ void block_queue::add_blocks(uint64_t height, std::vector<cryptonote::block_comp
   }
 }
 
-void block_queue::add_blocks(uint64_t height, uint64_t nblocks, const boost::uuids::uuid &connection_id, boost::posix_time::ptime time)
+void block_queue::add_blocks(uint64_t height, uint64_t nblocks, const boost::uuids::uuid &connection_id, std::chrono::system_clock::time_point time)
 {
   CHECK_AND_ASSERT_THROW_MES(nblocks > 0, "Empty span");
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   blocks.insert(span(height, nblocks, connection_id, time));
 }
 
 void block_queue::flush_spans(const boost::uuids::uuid &connection_id, bool all)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  block_map::iterator i = blocks.begin();
-  while (i != blocks.end())
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  for (auto i = blocks.begin(); i != blocks.end(); )
   {
-    block_map::iterator j = i++;
-    if (j->connection_id == connection_id && (all || j->blocks.size() == 0))
-    {
-      erase_block(j);
-    }
+    if (i->connection_id == connection_id && (all || i->blocks.size() == 0))
+      i = erase_block(i);
+    else
+      ++i;
   }
 }
 
-void block_queue::erase_block(block_map::iterator j)
+auto block_queue::erase_block(std::set<span>::iterator j) -> decltype(j)
 {
   CHECK_AND_ASSERT_THROW_MES(j != blocks.end(), "Invalid iterator");
   for (const crypto::hash &h: j->hashes)
@@ -99,27 +88,25 @@ void block_queue::erase_block(block_map::iterator j)
     requested_hashes.erase(h);
     have_blocks.erase(h);
   }
-  blocks.erase(j);
+  return blocks.erase(j);
 }
 
 void block_queue::flush_stale_spans(const std::set<boost::uuids::uuid> &live_connections)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  block_map::iterator i = blocks.begin();
-  while (i != blocks.end())
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  for (auto i = blocks.begin(); i != blocks.end(); )
   {
-    block_map::iterator j = i++;
-    if (j->blocks.empty() && live_connections.find(j->connection_id) == live_connections.end())
-    {
-      erase_block(j);
-    }
+    if (i->blocks.empty() && live_connections.find(i->connection_id) == live_connections.end())
+      i = erase_block(i);
+    else
+      ++i;
   }
 }
 
 bool block_queue::remove_span(uint64_t start_block_height, std::vector<crypto::hash> *hashes)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  for (block_map::iterator i = blocks.begin(); i != blocks.end(); ++i)
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  for (auto i = blocks.begin(); i != blocks.end(); ++i)
   {
     if (i->start_block_height == start_block_height)
     {
@@ -134,20 +121,19 @@ bool block_queue::remove_span(uint64_t start_block_height, std::vector<crypto::h
 
 void block_queue::remove_spans(const boost::uuids::uuid &connection_id, uint64_t start_block_height)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  for (block_map::iterator i = blocks.begin(); i != blocks.end(); )
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  for (auto i = blocks.begin(); i != blocks.end(); )
   {
-    block_map::iterator j = i++;
-    if (j->connection_id == connection_id && j->start_block_height <= start_block_height)
-    {
-      erase_block(j);
-    }
+    if (i->connection_id == connection_id && i->start_block_height <= start_block_height)
+      i = erase_block(i);
+    else
+      ++i;
   }
 }
 
 uint64_t block_queue::get_max_block_height() const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   uint64_t height = 0;
   for (const auto &span: blocks)
   {
@@ -160,7 +146,7 @@ uint64_t block_queue::get_max_block_height() const
 
 uint64_t block_queue::get_next_needed_height(uint64_t blockchain_height) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   if (blocks.empty())
     return blockchain_height;
   uint64_t last_needed_height = blockchain_height;
@@ -179,7 +165,7 @@ uint64_t block_queue::get_next_needed_height(uint64_t blockchain_height) const
 
 void block_queue::print() const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   MDEBUG("Block queue has " << blocks.size() << " spans");
   for (const auto &span: blocks)
     MDEBUG("  " << span.start_block_height << " - " << (span.start_block_height+span.nblocks-1) << " (" << span.nblocks << ") - " << (span.blocks.empty() ? "scheduled" : "filled    ") << "  " << span.connection_id << " (" << ((unsigned)(span.rate*10/1024.f))/10.f << " kB/s)");
@@ -187,28 +173,26 @@ void block_queue::print() const
 
 std::string block_queue::get_overview(uint64_t blockchain_height) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   if (blocks.empty())
     return "[]";
-  block_map::const_iterator i = blocks.begin();
-  std::string s = std::string("[");
+  std::string s{"["};
   uint64_t expected = blockchain_height;
-  while (i != blocks.end())
+  for (auto &i : blocks)
   {
-    if (expected > i->start_block_height)
+    if (expected > i.start_block_height)
     {
-      s += "<";
+      s += '<';
     }
     else
     {
-      if (expected < i->start_block_height)
-        s += std::string(std::max((uint64_t)1, (i->start_block_height - expected) / (i->nblocks ? i->nblocks : 1)), '_');
-      s += i->blocks.empty() ? "." : i->start_block_height == blockchain_height ? "m" : "o";
-      expected = i->start_block_height + i->nblocks;
+      if (expected < i.start_block_height)
+        s.resize(s.size() + std::max<uint64_t>(1, (i.start_block_height - expected) / (i.nblocks ? i.nblocks : 1)), '_');
+      s += i.blocks.empty() ? '.' : i.start_block_height == blockchain_height ? 'm' : 'o';
+      expected = i.start_block_height + i.nblocks;
     }
-    ++i;
   }
-  s += "]";
+  s += ']';
   return s;
 }
 
@@ -219,19 +203,19 @@ inline bool block_queue::requested_internal(const crypto::hash &hash) const
 
 bool block_queue::requested(const crypto::hash &hash) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   return requested_internal(hash);
 }
 
 bool block_queue::have(const crypto::hash &hash) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   return have_blocks.find(hash) != have_blocks.end();
 }
 
-std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_height, uint64_t last_block_height, uint64_t max_blocks, const boost::uuids::uuid &connection_id, uint32_t pruning_seed, uint64_t blockchain_height, const std::vector<crypto::hash> &block_hashes, boost::posix_time::ptime time)
+std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_height, uint64_t last_block_height, uint64_t max_blocks, const boost::uuids::uuid &connection_id, uint32_t pruning_seed, uint64_t blockchain_height, const std::vector<crypto::hash> &block_hashes, std::chrono::system_clock::time_point time)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
 
   MDEBUG("reserve_span: first_block_height " << first_block_height << ", last_block_height " << last_block_height
       << ", max " << max_blocks << ", seed " << epee::string_tools::to_string_hex(pruning_seed) << ", blockchain_height " <<
@@ -239,12 +223,12 @@ std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_hei
   if (last_block_height < first_block_height || max_blocks == 0)
   {
     MDEBUG("reserve_span: early out: first_block_height " << first_block_height << ", last_block_height " << last_block_height << ", max_blocks " << max_blocks);
-    return std::make_pair(0, 0);
+    return {0, 0};
   }
   if (block_hashes.size() > last_block_height)
   {
     MDEBUG("reserve_span: more block hashes than fit within last_block_height: " << block_hashes.size() << " and " << last_block_height);
-    return std::make_pair(0, 0);
+    return {0, 0};
   }
 
   // skip everything we've already requested
@@ -271,7 +255,7 @@ std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_hei
   if (span_start_height >= block_hashes.size() + block_hashes_start_height)
   {
     MDEBUG("Out of hashes, cannot reserve");
-    return std::make_pair(0, 0);
+    return {0, 0};
   }
 
   i = block_hashes.begin() + span_start_height - block_hashes_start_height;
@@ -292,48 +276,44 @@ std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_hei
   if (span_length == 0)
   {
     MDEBUG("span_length 0, cannot reserve");
-    return std::make_pair(0, 0);
+    return {0, 0};
   }
   MDEBUG("Reserving span " << span_start_height << " - " << (span_start_height + span_length - 1) << " for " << connection_id);
   add_blocks(span_start_height, span_length, connection_id, time);
   set_span_hashes(span_start_height, connection_id, hashes);
-  return std::make_pair(span_start_height, span_length);
+  return {span_start_height, span_length};
 }
 
-std::pair<uint64_t, uint64_t> block_queue::get_next_span_if_scheduled(std::vector<crypto::hash> &hashes, boost::uuids::uuid &connection_id, boost::posix_time::ptime &time) const
+std::pair<uint64_t, uint64_t> block_queue::get_next_span_if_scheduled(std::vector<crypto::hash> &hashes, boost::uuids::uuid &connection_id, std::chrono::system_clock::time_point &time) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  if (blocks.empty())
-    return std::make_pair(0, 0);
-  block_map::const_iterator i = blocks.begin();
-  if (i == blocks.end())
-    return std::make_pair(0, 0);
-  if (!i->blocks.empty())
-    return std::make_pair(0, 0);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  auto i = blocks.begin();
+  if (i == blocks.end() || i->blocks.empty())
+    return {0, 0};
   hashes = i->hashes;
   connection_id = i->connection_id;
   time = i->time;
-  return std::make_pair(i->start_block_height, i->nblocks);
+  return {i->start_block_height, i->nblocks};
 }
 
-void block_queue::reset_next_span_time(boost::posix_time::ptime t)
+void block_queue::reset_next_span_time(std::chrono::system_clock::time_point t)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   CHECK_AND_ASSERT_THROW_MES(!blocks.empty(), "No next span to reset time");
-  block_map::iterator i = blocks.begin();
+  auto i = blocks.begin();
   CHECK_AND_ASSERT_THROW_MES(i != blocks.end(), "No next span to reset time");
   CHECK_AND_ASSERT_THROW_MES(i->blocks.empty(), "Next span is not empty");
-  (boost::posix_time::ptime&)i->time = t; // sod off, time doesn't influence sorting
+  (std::chrono::system_clock::time_point&)i->time = t; // sod off, time doesn't influence sorting
 }
 
 void block_queue::set_span_hashes(uint64_t start_height, const boost::uuids::uuid &connection_id, std::vector<crypto::hash> hashes)
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  for (block_map::iterator i = blocks.begin(); i != blocks.end(); ++i)
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  for (auto i = blocks.begin(); i != blocks.end(); ++i)
   {
     if (i->start_block_height == start_height && i->connection_id == connection_id)
     {
-      span s = *i;
+      span s{std::move(*i)};
       erase_block(i);
       s.hashes = std::move(hashes);
       for (const crypto::hash &h: s.hashes)
@@ -346,47 +326,39 @@ void block_queue::set_span_hashes(uint64_t start_height, const boost::uuids::uui
 
 bool block_queue::get_next_span(uint64_t &height, std::vector<cryptonote::block_complete_entry> &bcel, boost::uuids::uuid &connection_id, bool filled) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   if (blocks.empty())
     return false;
-  block_map::const_iterator i = blocks.begin();
-  for (; i != blocks.end(); ++i)
+
+  for (auto &i : blocks)
   {
-    if (!filled || !i->blocks.empty())
+    if (!filled || !i.blocks.empty())
     {
-      height = i->start_block_height;
-      bcel = i->blocks;
-      connection_id = i->connection_id;
+      height = i.start_block_height;
+      bcel = i.blocks;
+      connection_id = i.connection_id;
       return true;
     }
   }
   return false;
 }
 
-bool block_queue::has_next_span(const boost::uuids::uuid &connection_id, bool &filled, boost::posix_time::ptime &time) const
+bool block_queue::has_next_span(const boost::uuids::uuid &connection_id, bool &filled, std::chrono::system_clock::time_point &time) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  if (blocks.empty())
-    return false;
-  block_map::const_iterator i = blocks.begin();
-  if (i == blocks.end())
-    return false;
-  if (i->connection_id != connection_id)
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  auto i = blocks.begin();
+  if (i == blocks.end() || i->connection_id != connection_id)
     return false;
   filled = !i->blocks.empty();
   time = i->time;
   return true;
 }
 
-bool block_queue::has_next_span(uint64_t height, bool &filled, boost::posix_time::ptime &time, boost::uuids::uuid &connection_id) const
+bool block_queue::has_next_span(uint64_t height, bool &filled, std::chrono::system_clock::time_point &time, boost::uuids::uuid &connection_id) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  if (blocks.empty())
-    return false;
-  block_map::const_iterator i = blocks.begin();
-  if (i == blocks.end())
-    return false;
-  if (i->start_block_height > height)
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  auto i = blocks.begin();
+  if (i == blocks.end() || i->start_block_height > height)
     return false;
   filled = !i->blocks.empty();
   time = i->time;
@@ -396,7 +368,7 @@ bool block_queue::has_next_span(uint64_t height, bool &filled, boost::posix_time
 
 size_t block_queue::get_data_size() const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   size_t size = 0;
   for (const auto &span: blocks)
     size += span.size;
@@ -405,15 +377,11 @@ size_t block_queue::get_data_size() const
 
 size_t block_queue::get_num_filled_spans_prefix() const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
 
-  if (blocks.empty())
-    return 0;
-  block_map::const_iterator i = blocks.begin();
   size_t size = 0;
-  while (i != blocks.end() && !i->blocks.empty())
+  for (auto i = blocks.begin(); i != blocks.end() && !i->blocks.empty(); ++i)
   {
-    ++i;
     ++size;
   }
   return size;
@@ -421,17 +389,13 @@ size_t block_queue::get_num_filled_spans_prefix() const
 
 size_t block_queue::get_num_filled_spans() const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  size_t size = 0;
-  for (const auto &span: blocks)
-  if (!span.blocks.empty())
-    ++size;
-  return size;
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  return std::count_if(blocks.begin(), blocks.end(), [](const auto &span) { return !span.blocks.empty(); });
 }
 
 crypto::hash block_queue::get_last_known_hash(const boost::uuids::uuid &connection_id) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   crypto::hash hash = crypto::null_hash;
   uint64_t highest_height = 0;
   for (const auto &span: blocks)
@@ -460,8 +424,8 @@ bool block_queue::has_spans(const boost::uuids::uuid &connection_id) const
 
 float block_queue::get_speed(const boost::uuids::uuid &connection_id) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  std::unordered_map<boost::uuids::uuid, float> speeds;
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  std::unordered_map<boost::uuids::uuid, float, boost::hash<boost::uuids::uuid>> speeds;
   for (const auto &span: blocks)
   {
     if (span.blocks.empty())
@@ -469,9 +433,9 @@ float block_queue::get_speed(const boost::uuids::uuid &connection_id) const
     // note that the average below does not average over the whole set, but over the
     // previous pseudo average and the latest rate: this gives much more importance
     // to the latest measurements, which is fine here
-    std::unordered_map<boost::uuids::uuid, float>::iterator i = speeds.find(span.connection_id);
+    auto i = speeds.find(span.connection_id);
     if (i == speeds.end())
-      speeds.insert(std::make_pair(span.connection_id, span.rate));
+      speeds.emplace(span.connection_id, span.rate);
     else
       i->second = (i->second + span.rate) / 2;
   }
@@ -496,7 +460,7 @@ float block_queue::get_speed(const boost::uuids::uuid &connection_id) const
 
 float block_queue::get_download_rate(const boost::uuids::uuid &connection_id) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
+  std::unique_lock<std::recursive_mutex> lock(mutex);
   float conn_rate = -1.f;
   for (const auto &span: blocks)
   {
@@ -521,10 +485,9 @@ float block_queue::get_download_rate(const boost::uuids::uuid &connection_id) co
 
 bool block_queue::foreach(std::function<bool(const span&)> f) const
 {
-  boost::unique_lock<boost::recursive_mutex> lock(mutex);
-  block_map::const_iterator i = blocks.begin();
-  while (i != blocks.end())
-    if (!f(*i++))
+  std::unique_lock<std::recursive_mutex> lock(mutex);
+  for (auto &s : blocks)
+    if (!f(s))
       return false;
   return true;
 }

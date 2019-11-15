@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <sstream>
 #include <iostream>
-#include <boost/thread/mutex.hpp>
+#include <mutex>
 #include "syncobj.h"
 
 #include "command_line.h"
@@ -38,7 +38,7 @@ std::vector<std::string> separate_stdin_to_space_delim_args   (fixed_buffer cons
 
 extern const command_line::arg_descriptor<std::string, false> arg_integration_test_hardforks_override;
 extern const command_line::arg_descriptor<std::string, false> arg_integration_test_shared_mem_name;
-extern boost::mutex integration_test_mutex;
+extern std::mutex integration_test_mutex;
 
 extern struct integration_test_t
 {
@@ -97,7 +97,7 @@ const command_line::arg_descriptor<std::string, false> arg_integration_test_shar
 , false
 };
 
-boost::mutex integration_test_mutex;
+std::mutex integration_test_mutex;
 
 } // namespace loki
 
@@ -240,7 +240,7 @@ std::vector<std::string> loki::separate_stdin_to_space_delim_args(loki::fixed_bu
 
 loki::fixed_buffer loki::read_from_stdin_shared_mem()
 {
-  boost::unique_lock<boost::mutex> scoped_lock(integration_test_mutex);
+  std::unique_lock<std::mutex> scoped_lock(integration_test_mutex);
 
   assert(global_stdin_shared_mem);
 
@@ -274,7 +274,7 @@ loki::fixed_buffer loki::read_from_stdin_shared_mem()
 
 void loki::write_redirected_stdout_to_shared_mem()
 {
-  boost::unique_lock<boost::mutex> scoped_lock(integration_test_mutex);
+  std::unique_lock<std::mutex> scoped_lock(integration_test_mutex);
 
   global_redirected_cout.flush();
   std::string output = global_redirected_cout.str();

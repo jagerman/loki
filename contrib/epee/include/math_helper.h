@@ -113,7 +113,7 @@ namespace math_helper
 		unsigned int m_base;
 		double m_last_avg_val;
 		std::list<value_type> m_list;
-		critical_section m_lock;
+        std::recursive_mutex m_lock;
 	};
 
 	
@@ -150,8 +150,6 @@ namespace math_helper
 	template<class t_timing>
 	timing_guard_base* create_timing_guard(t_timing&  timing){return new timing_guard<t_timing>(timing);}
 
-#define BEGIN_TIMING_ZONE(timing_var) {		boost::shared_ptr<math_helper::timing_guard_base> local_timing_guard_ptr(math_helper::create_timing_guard(timing_var));
-#define END_TIMING_ZONE()			  }
 #endif
 
 //#ifdef WINDOWS_PLATFORM_EX
@@ -211,7 +209,7 @@ namespace math_helper
 		std::list<uint64_t> m_chicks;
 		uint64_t m_time_window;
 		size_t m_last_speed_value;
-		critical_section m_lock;
+        std::recursive_mutex m_lock;
 	};
 //#endif
 

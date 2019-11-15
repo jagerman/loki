@@ -27,7 +27,6 @@
 
 
 #pragma once
-#include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/utility/string_ref.hpp>
@@ -36,6 +35,7 @@
 #include <cctype>
 #include <functional>
 #include <regex>
+#include <memory>
 
 #include "net_helper.h"
 #include "http_client_base.h"
@@ -47,7 +47,6 @@
 #include "string_tools.h"
 #include "http_base.h" 
 #include "http_auth.h"
-#include "to_nonconst_iterator.h"
 #include "net_parse_helpers.h"
 #include "syncobj.h"
 
@@ -266,12 +265,12 @@ namespace net_utils
 			size_t m_len_in_summary;
 			size_t m_len_in_remain;
 			//std::string* m_ptarget_buffer;
-			boost::shared_ptr<i_sub_handler> m_pcontent_encoding_handler;
+			std::shared_ptr<i_sub_handler> m_pcontent_encoding_handler;
 			reciev_machine_state m_state;
 			chunked_state m_chunked_state;
 			std::string m_chunked_cache;
 			bool m_auto_connect;
-			mutable critical_section m_lock;
+			mutable std::recursive_mutex m_lock;
 
 		public:
 			explicit http_simple_client_template()

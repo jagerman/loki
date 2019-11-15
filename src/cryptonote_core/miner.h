@@ -33,6 +33,8 @@
 #include <boost/program_options.hpp>
 #include <boost/logic/tribool_fwd.hpp>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/verification_context.h"
 #include "cryptonote_basic/difficulty.h"
@@ -131,21 +133,21 @@ namespace cryptonote
     };
 
 
-    volatile uint32_t m_stop;
-    epee::critical_section m_template_lock;
+    std::atomic<bool> m_stop;
+    std::mutex m_template_lock;
     block m_template;
     std::atomic<uint32_t> m_template_no;
     std::atomic<uint32_t> m_starter_nonce;
     difficulty_type m_diffic;
     uint64_t m_height;
-    volatile uint32_t m_thread_index; 
-    volatile uint32_t m_threads_total;
+    std::atomic<uint32_t> m_thread_index; 
+    std::atomic<uint32_t> m_threads_total;
     std::atomic<uint32_t> m_threads_active;
     std::atomic<int32_t> m_pausers_count;
-    epee::critical_section m_miners_count_lock;
+    std::mutex m_miners_count_lock;
 
-    std::list<boost::thread> m_threads;
-    epee::critical_section m_threads_lock;
+    std::list<std::thread> m_threads;
+    std::mutex m_threads_lock;
     i_miner_handler* m_phandler;
     Blockchain* m_pbc;
     account_public_address m_mine_address;
@@ -159,12 +161,11 @@ namespace cryptonote
     std::atomic<uint64_t> m_hashes;
     std::atomic<uint64_t> m_total_hashes;
     std::atomic<uint64_t> m_current_hash_rate;
-    epee::critical_section m_last_hash_rates_lock;
+    std::mutex m_last_hash_rates_lock;
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
     std::vector<std::pair<uint64_t, uint64_t>> m_threads_autodetect;
-    boost::thread::attributes m_attrs;
 
     // background mining stuffs ..
 
@@ -173,12 +174,12 @@ namespace cryptonote
     bool background_worker_thread();
     std::atomic<bool> m_is_background_mining_enabled;
     bool m_ignore_battery;
-    boost::mutex m_is_background_mining_enabled_mutex;
-    boost::condition_variable m_is_background_mining_enabled_cond;
+    std::mutex m_is_background_mining_enabled_mutex;
+    std::condition_variable m_is_background_mining_enabled_cond;
     std::atomic<bool> m_is_background_mining_started;
-    boost::mutex m_is_background_mining_started_mutex;
-    boost::condition_variable m_is_background_mining_started_cond;    
-    boost::thread m_background_mining_thread;
+    std::mutex m_is_background_mining_started_mutex;
+    std::condition_variable m_is_background_mining_started_cond;    
+    std::thread m_background_mining_thread;
     uint64_t m_min_idle_seconds;
     uint8_t m_idle_threshold;
     uint8_t m_mining_target;

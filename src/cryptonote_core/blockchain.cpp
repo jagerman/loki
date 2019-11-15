@@ -391,9 +391,9 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
 
   // create general purpose async service queue
 
-  m_async_work_idle = std::unique_ptr < boost::asio::io_service::work > (new boost::asio::io_service::work(m_async_service));
+  m_async_work_idle = std::make_unique<boost::asio::io_service::work>(m_async_service);
   // we only need 1
-  m_async_pool.create_thread(boost::bind(&boost::asio::io_service::run, &m_async_service));
+  m_asio_thread = std::thread{[this]() { m_async_service.run(); }};
 
 #if defined(PER_BLOCK_CHECKPOINT)
   if (m_nettype != FAKECHAIN)
@@ -485,7 +485,7 @@ bool Blockchain::store_blockchain()
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   // lock because the rpc_thread command handler also calls this
-  CRITICAL_REGION_LOCAL(m_db->m_synchronization_lock);
+  CRITICAL_REGION_LOCAL(m_store_blockchain_mutex);
 
   TIME_MEASURE_START(save);
   // TODO: make sure sync(if this throws that it is not simply ignored higher
@@ -519,7 +519,7 @@ bool Blockchain::deinit()
 
  // stop async service
   m_async_work_idle.reset();
-  m_async_pool.join_all();
+  m_asio_thread.join();
   m_async_service.stop();
 
   // as this should be called if handling a SIGSEGV, need to check
@@ -1386,8 +1386,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   uint64_t already_generated_coins;
   uint64_t pool_cookie;
 
-  m_tx_pool.lock();
-  const auto txpool_unlocker = epee::misc_utils::create_scope_leave_handler([&]() { m_tx_pool.unlock(); });
+  CRITICAL_REGION_LOCAL1(m_tx_pool);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
   if (m_btc_valid && !from_block) {
     // The pool cookie is atomic. The lack of locking is OK, as if it changes
@@ -4036,8 +4035,7 @@ leave:
 //------------------------------------------------------------------
 bool Blockchain::prune_blockchain(uint32_t pruning_seed)
 {
-  m_tx_pool.lock();
-  epee::misc_utils::auto_scope_leave_caller unlocker = epee::misc_utils::create_scope_leave_handler([&](){m_tx_pool.unlock();});
+  CRITICAL_REGION_LOCAL1(m_tx_pool);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
 
   return m_db->prune_blockchain(pruning_seed);
@@ -4045,8 +4043,7 @@ bool Blockchain::prune_blockchain(uint32_t pruning_seed)
 //------------------------------------------------------------------
 bool Blockchain::update_blockchain_pruning()
 {
-  m_tx_pool.lock();
-  epee::misc_utils::auto_scope_leave_caller unlocker = epee::misc_utils::create_scope_leave_handler([&](){m_tx_pool.unlock();});
+  CRITICAL_REGION_LOCAL1(m_tx_pool);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
 
   return m_db->update_pruning();
@@ -4054,8 +4051,7 @@ bool Blockchain::update_blockchain_pruning()
 //------------------------------------------------------------------
 bool Blockchain::check_blockchain_pruning()
 {
-  m_tx_pool.lock();
-  epee::misc_utils::auto_scope_leave_caller unlocker = epee::misc_utils::create_scope_leave_handler([&](){m_tx_pool.unlock();});
+  CRITICAL_REGION_LOCAL1(m_tx_pool);
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
 
   return m_db->check_pruning();
@@ -4346,7 +4342,7 @@ bool Blockchain::cleanup_handle_incoming_blocks(bool force_sync)
       {
         m_sync_counter = 0;
         m_bytes_to_sync = 0;
-        m_async_service.dispatch(boost::bind(&Blockchain::store_blockchain, this));
+        m_async_service.dispatch([this]() { store_blockchain(); });
       }
       else if(m_db_sync_mode == db_sync)
       {
@@ -4673,7 +4669,8 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
         unsigned nblocks = batches;
         if (i < extra)
           ++nblocks;
-        tpool.submit(&waiter, boost::bind(&Blockchain::block_longhash_worker, this, thread_height, epee::span<const block>(&blocks[thread_height - height], nblocks), std::ref(maps[i])), true);
+        tpool.submit(&waiter, [this, thread_height, nblocks, block=&blocks[thread_height - height], map=&maps[i]]() {
+                block_longhash_worker(thread_height, {block, nblocks}, *map); }, true);
         thread_height += nblocks;
       }
 
@@ -4817,7 +4814,8 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
     for (size_t i = 0; i < amounts.size(); i++)
     {
       uint64_t amount = amounts[i];
-      tpool.submit(&waiter, boost::bind(&Blockchain::output_scan_worker, this, amount, std::cref(offset_map[amount]), std::ref(tx_map[amount])), true);
+      tpool.submit(&waiter, [this, amount=amounts[i], offsets=&offset_map[amount], outputs=&tx_map[amount]]() {
+              output_scan_worker(amount, *offsets, *outputs); }, true);
     }
     waiter.wait(&tpool);
   }
