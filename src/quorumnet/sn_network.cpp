@@ -4,7 +4,9 @@
 #ifdef __cpp_lib_string_view
 #include <string_view>
 #endif
+extern "C" {
 #include <sodium.h>
+}
 #include <atomic>
 #include <queue>
 #include <map>
