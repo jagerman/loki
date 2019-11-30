@@ -311,6 +311,13 @@ set_property(TARGET blockchain_prune_known_spent_data
 	OUTPUT_NAME "loki-blockchain-prune-known-spent-data")
 install(TARGETS blockchain_prune_known_spent_data DESTINATION bin)
 
+
+loki_add_executable(generate_sn_key generate-service-key.cpp)
+set_property(TARGET generate_sn_key PROPERTY OUTPUT_NAME "loki-generate-sn-key")
+install(TARGETS generate_sn_key DESTINATION bin)
+target_link_libraries(generate_sn_key PRIVATE cryptonote_core)
+
+
 loki_add_executable(blockchain_prune
   ${blockchain_prune_sources}
   ${blockchain_prune_private_headers})
