@@ -1,5 +1,8 @@
 loki (6.0.0-1~deb9) stretch; urgency=medium
 
+  * Rediff patches
+  * Cherry-pick: Do txn handling via TXN_BLOCK_PREFIX macro
+
   [ Jason Rhinelander ]
   * iOS build fix (#903)
 
