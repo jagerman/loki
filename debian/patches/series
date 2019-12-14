@@ -1,5 +1,4 @@
 0001-shared-lib-fixes.patch
-0002-Use-system-libminiupnpc.patch
 0003-Allow-customized-version-tag.patch
 0004-randomx-x86-64-build-fix.patch
 0005-Version-and-install-librandomx.patch

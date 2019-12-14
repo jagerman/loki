@@ -7,10 +7,10 @@ Subject: Version and install librandomx
  1 file changed, 6 insertions(+)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index bbab85e..a6e3a62 100644
+index 2936388..6192870 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -74,6 +74,12 @@ if(ARCH_ID STREQUAL "westmere")
+@@ -98,6 +98,12 @@ if(ARCH_ID STREQUAL "westmere")
  endif()
  add_subdirectory(randomx EXCLUDE_FROM_ALL)
  
