@@ -9,23 +9,23 @@ Build-Depends: debhelper (>= 11), cmake, g++, libboost-dev (>= 1.58), libboost-f
 Standards-Version: 4.1.3
 Homepage: https://loki.network
 
-Package: libloki-core5.1.5
+Package: libloki-core6.0.0
 Architecture: any
 Depends: libminiupnpc17 (>= 2.1), ${shlibs:Depends}, ${misc:Depends}
 Description: Loki shared libraries
  This package contains the common Loki library code used by the various loki
  binaries.
 
-Package: libloki-core-wallet5.1.5
+Package: libloki-core-wallet6.0.0
 Architecture: any
-Depends: libloki-core5.1.5 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: libloki-core6.0.0 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Loki wallet shared libraries
  This package contains the common Loki library code used by the various loki
  wallet-related code.
 
 Package: lokid
 Architecture: any
-Depends: libloki-core5.1.5 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, debconf
+Depends: libloki-core6.0.0 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, debconf
 Suggests: loki-blockchain-tools, loki-wallet
 Description: Loki network daemon
  This package contains the loki network daemon, lokid, for running a loki node
@@ -33,7 +33,7 @@ Description: Loki network daemon
 
 Package: loki-wallet-cli
 Architecture: any
-Depends: libloki-core-wallet5.1.5 (= ${binary:Version}), libloki-core5.1.5 (= ${binary:Version}),
+Depends: libloki-core-wallet6.0.0 (= ${binary:Version}), libloki-core6.0.0 (= ${binary:Version}),
     ${shlibs:Depends}, ${misc:Depends}
 Suggests: lokid
 Description: Loki command-line wallet and JSON RPC wallet
@@ -46,7 +46,7 @@ Description: Loki command-line wallet and JSON RPC wallet
 
 Package: loki-wallet-rpc
 Architecture: any
-Depends: libloki-core-wallet5.1.5 (= ${binary:Version}), libloki-core5.1.5 (= ${binary:Version}),
+Depends: libloki-core-wallet6.0.0 (= ${binary:Version}), libloki-core6.0.0 (= ${binary:Version}),
     ${shlibs:Depends}, ${misc:Depends}
 Suggests: lokid
 Description: Loki RPC wallet
@@ -59,7 +59,7 @@ Description: Loki RPC wallet
 
 Package: loki-blockchain-tools
 Architecture: any
-Depends: libloki-core-wallet5.1.5 (= ${binary:Version}), libloki-core5.1.5 (= ${binary:Version}),
+Depends: libloki-core-wallet6.0.0 (= ${binary:Version}), libloki-core6.0.0 (= ${binary:Version}),
     ${shlibs:Depends}, ${misc:Depends}
 Recommends: lokid
 Description: Loki blockchain utilities
@@ -71,7 +71,7 @@ Package: libloki-core-dev
 Architecture: any
 Multi-Arch: same
 Section: libdevel
-Depends: libloki-core-wallet5.1.5 (= ${binary:Version}), libloki-core5.1.5 (= ${binary:Version}),
+Depends: libloki-core-wallet6.0.0 (= ${binary:Version}), libloki-core6.0.0 (= ${binary:Version}),
  libboost-dev (>= 1.58), libboost-filesystem-dev,libboost-thread-dev, libboost-date-time-dev, libboost-chrono-dev,
  libboost-regex-dev, libboost-serialization-dev, libboost-program-options-dev, libboost-locale-dev, libunbound-dev (>= 1.4.16),
  libminiupnpc-dev, libssl-dev, libsodium-dev, libreadline-dev, libhidapi-dev, libzmq3-dev, ${misc:Depends}
