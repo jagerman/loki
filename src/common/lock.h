@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019, The Monero Project
+// Copyright (c) 2019, The Loki Project
 //
 // All rights reserved.
 //
@@ -25,13 +25,36 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include "p2p/net_node.h"
-#include "p2p/net_node.inl"
-#include "cryptonote_protocol/cryptonote_protocol_handler.h"
-#include "cryptonote_protocol/cryptonote_protocol_handler.inl"
+#pragma once
 
-namespace nodetool { template class node_server<cryptonote::t_cryptonote_protocol_handler<cryptonote::core>>; }
-namespace cryptonote { template class t_cryptonote_protocol_handler<cryptonote::core>; }
+#include <mutex>
+#include <tuple>
+#include <boost/thread/lock_algorithms.hpp>
+
+namespace tools {
+
+/// Takes any number of lockable objects, locks them atomically, and returns a tuple of
+/// std::unique_lock holding the individual locks.
+template <typename... T>
+#ifdef __GNUG__
+[[gnu::warn_unused_result]]
+#endif
+std::tuple<std::unique_lock<T>...> unique_locks(T& ...lockables) {
+    boost::lock(lockables...);
+    auto locks = std::make_tuple(std::unique_lock<T>(lockables, std::adopt_lock)...);
+    return locks;
+}
+
+/// Shortcut around getting a std::unique_lock<T> without worrying about T.  The first argument is
+/// the mutex (or other Lockable object); it and any remaining args (such as `std::defer_lock`) are
+/// forwarded to the std::unique_lock<T> constructor.
+template <typename T, typename... Args>
+#ifdef __GNUG__
+[[gnu::warn_unused_result]]
+#endif
+std::unique_lock<T> unique_lock(T& lockable, Args&&... args) {
+    return std::unique_lock<T>(lockable, std::forward<Args>(args)...);
+}
+
+}
