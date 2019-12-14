@@ -1,3 +1,286 @@
+loki (6.0.0-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jason Rhinelander ]
+  * iOS build fix (#903)
+
+  [ Doyle ]
+  * Fix "__memcpy_chk" undefined on Windows target
+  * Add rpc markup for transfer_view and add no doc gen markers
+  * Disable pruning in Loki, it is not supported yet
+  * Remove check_tx_syntax unused since 2015
+  * Remove unused params in check_tx_input
+  * Remove hard-forking code on the boundary of 12 and 13 (#919)
+
+  [ Jason Rhinelander ]
+  * Simplification of ins/outs for pre-rct txes
+  * Move hash strings & improve sort order comment
+  * Remove unimplemented functions
+  * Remove dead code
+  * Add fee burning
+  * Remove boost::value_initialized and BOOST_FOREACH (#921)
+
+  [ Mikunj Varsani ]
+  * Fix iOS Build (#908)
+
+  [ Jason Rhinelander ]
+  * Remove unmaintained & fails-to-compile block template creation code
+  * Fix inverted logic on 0 confirmation check
+
+  [ Doyle ]
+  * Removed unused tx_details data structure
+
+  [ Jason Rhinelander ]
+  * Add optional get_n_sns RPC request; remove get_all_sn_pubkeys RPC
+  * Remove base32z encoding
+  * Add ed25519 and x25519 keys to get_sn_pubkey rpc
+
+  [ Doyle ]
+  * Don't define empty CPUID(..) if not x86-64, avoids unused func error
+  * Fix WARNING_AS_ERROR -> WARNINGS_AS_ERRORS typo (#929)
+
+  [ 1point21gigabytes ]
+  * explicitly specify UTC (#931)
+
+  [ Jason Rhinelander ]
+  * Teach epee to serialize std::array & simplify template code
+  * Add ability to retrieve private keys from lokid
+  * Add lokinet ping rpc endpoint
+  * Rename fields & doc generation fixes
+
+  [ Doyle ]
+  * Aggegrate init service node info instead of setting members individually (#934)
+
+  [ Jason Rhinelander ]
+  * Quorumnet network communication layer
+  * Add quorumnet comms
+  * Fix p2p and cryptonote_protocol CMakeLists.txt
+  * Remove C++11 compatibility backport for enable_if_t/remove_cv_t
+  * Add missing <map> header
+  * Remove unused sodium bits
+  * Rename `testing_quorum` class to just `quorum`
+  * Remove debugging
+  * Optimize control socket common case
+  * C++14 conditional_t simplification
+  * Avoid serialization copy for c strings and string literals
+  * Make warning message logic less confusing
+  * Set maximum message size on internet sockets
+  * Add quorum conn index iterator for incoming conns
+  * Move one_shot_read_buffer into own header
+  * one_shot_read_buffer to common & accept std::string
+  * Avoid copying when deserializing txes
+  * Add & use `tools::enum_count` to get _count as underlying type
+  * Reorganize size check to check before mutating
+  * Add "optional" send and improve send() API
+  * Reduce scope of rpc-specific value
+  * More optional handling, add keep-alive option
+  * Remove iostream debug, add istream
+  * Add bool operator on signatures
+  * Store loki version as std::array<u16,3> everywhere
+  * Add tx_blink to core build files
+  * Remove pointless check against already called
+  * Add blink quorums
+  * Add tmux color support
+  * Blink WIP
+  * Remove useless goto
+  * Make print_*_verification_context thread safe
+  * Replace utf8 small tilde (˜) with ascii tilde (~)
+  * Fix obviously broken unthrown wallet exceptions
+  * Fix register_service_node priority being ignored
+  * Uptime proof timer tweak + debug option
+  * Make crypto::signature hashable
+  * Make `block` movable
+  * Expose accessor for service_node_list in core/blockchain
+  * Switch service_node_keys to plain pointer instead of shared_ptr
+  * Fix reading uint64_ts
+  * Remove sweep_style
+  * Blink
+  * Add fee burning
+  * Remove boost::value_initialized and BOOST_FOREACH
+  * Allow epee async call response values to be moved
+  * epee serialization simplifications
+  * Align hashable data structures
+  * Remove useless templates
+  * Fix broken documentation
+  * Move randomness into new common/random.h
+  * Simplify tx padding by just adding random bytes
+  * Remove unused, obsolete `print_pool` method
+  * DRY pool printing
+  * LockedTXN fixes/simplifications
+  * Deconvolute code
+  * Removing unneeded (and possibly harmful) packing
+  * Minor: improve variable names
+  * Added ability to query just tx heights & immutable checkpoint height
+  * Expose pool reference from core
+  * Blink synchronization
+  * Test suite compilation updates
+  * Another test fix
+  * Simple review fixes
+  * Wallet fixes
+  * Avoid potential data race in delayed signature storage
+  * Fixed blink support work in wallet2 & simplewallet
+  * Don't shadow variable name
+  * Catch and propagate exceptions to promise
+  * Review fixes
+  * Review: Add more checks to wallet blink handling
+  * Remove default from get_{min,max}_version_for_hf
+  * Generic burn fee checking + blink burn fee checking
+  * Fix constant name in comment
+  * Removed unused fee code
+  * Simplify exceptions and inherit from std::runtime_error
+  * Remove dead code
+  * Simplify get_short_chain_history
+  * Remove pointless epee abstraction
+  * Add ability to fetch multiple tx heights at once
+  * Add tx synchronization
+  * Add blink HF version checks
+  * blink sync fixes
+  * Make debug messages unique
+  * Unbreak blink status via rpc
+  * Remove unused variable
+  * Correct Loki copyright years to include 2018
+  * Filter and clean up immutable blinks in get_blink_hashes_and_mined_heights
+  * Avoid string allocation
+  * Split up and DRY prune(); make Blockchain and tx_memory_pool Lockable
+  * Rename keep_missing -> keep_missing_blinks
+  * Don't prune blink txes
+  * Update get_transactions_heights to use added db multi-height call
+  * Add tx pool blink replacement
+  * Readd handle_incoming_txs & locking fixes
+  * Pruning fix
+  * Added needed stubs/changes to appease the test suite
+  * Properly support fee burning in the wallet
+  * Move burn application into construct_tx_with_tx_key
+  * Fix wallet_rpc and tests for new loki_construct_tx_params usage
+
+  [ Doyle ]
+  * Check blockchain init failure before r is overwritten (#937)
+
+  [ Jason Rhinelander ]
+  * Add compatibility fix for pre-4.3 zmq
+  * Fail if libsodium not present and add dep to quorumnet
+  * Fix for older libc++ (#938)
+  * Don't try forward declaring is_byte_spannable
+  * Testnet fork height
+  * Don't check popped-from-block txs for non-standard tx conflicts
+  * Bump version to 6.0.0
+  * Fix `print_sn` sort order
+  * Promote SN state change errors to MERROR
+
+  [ Doyle ]
+  * Don't check alt quorums when processing blocks on the mainchain
+
+  [ Jason Rhinelander ]
+  * Rewrite travis-ci code
+  * Use PkgConfig to properly find zmq/sodium
+  * Add required definition for pre-C++17
+  * Who knew there are more non-x86 architectures than just arm?
+  * older gcc and clang fixes
+  * big-endian fix - can't inplace convert a const value
+  * Switch deprecated random_shuffle to shuffle
+  * Avoid unused result warning
+  * Split up huge instanciations & header fixes
+  * Use pkg-config for unbound and miniupnpc
+  * Silence clang unknown pragma warnings
+  * clang doesn't link properly with -fcf-protection
+  * Make miniupnpc include/link dirs global
+  * Remove unused `this` capture
+  * Fix block ctors
+
+  [ iDunk5400 ]
+  * depends: fix monero binaries Boost linking errors
+
+  [ TheCharlatan ]
+  * Add ncurses package for linux and darwin readline
+
+  [ iDunk5400 ]
+  * depends: attempt to fix readline
+
+  [ Howard Chu ]
+  * Fix readline build
+
+  [ Jason Rhinelander ]
+  * Remove cppzmq build system dep
+  * Remove ccache from deps
+  * Update sodium to 1.0.18
+  * Update zeromq to 4.3.2 and enable sodium & curve
+  * Update hidapi to 0.9.0
+  * Update ldns to 1.7.1
+  * Update libusb to 1.0.23
+  * Update openssl to 1.1.1d
+  * Remove unused (and outdated) libunbound
+  * allow failures for windows
+  * Remove cppzmq from readme, since we vendor it
+
+  [ Doyle ]
+  * Build/core test fixes, incoporate staking changes from LNS
+  * Add test for insufficient staking contributions bypassing client tests
+  * Reduce some of the block counts for prepping tests
+  * core_tests: gen_block_invalid_binary_format = working
+  * core_tests: gen_bp* change to always test against the latest HF
+  * core_test: gen_double_spend_in_different_blocks = work
+  * core_tests: gen_double_spend_in_the_same_block = work
+  * Add an event marker type that can display user messages during tests
+  * core_tests: gen_double_spend_in_different_blocks = work
+  * core_tests: gen_double_spend_in_different_chains = work
+  * core_tests: gen_double-spend_in_alt_chain* = work
+  * Update core tests for Blink changes
+  * enum_top, use burn hf in sanity check, fill new construction data
+  * Don't query prune blockchain arg boost cast failure
+  * Prune alt chains that are too old to be considered (#918)
+
+  [ Jason Rhinelander ]
+  * Fix test suite compilation
+  * Fix burn tx construction; fix multi-tx overburning
+  * print_sn formatting tweaks & aux pubkeys
+  * Don't show +detail in not found message
+  * __thread -> thread_local (#951)
+  * Add lokinet ping to RPC and `status` + status message tweaks
+  * Remove broken timing "optimization"
+  * Actually set the retrieved state change value
+  * Fix variables names in .h to agree with .cpp
+  * Fix test suite compilation error
+  * Fix off-by-one error in remote-only quorumnet
+  * Reply to a tagged blinks arriving after approval/rejection
+  * Return success/rejection response on first blink quorum response
+
+  [ Doyle ]
+  * Store more quorums than just the immutable checkpoint
+
+  [ Jason Rhinelander ]
+  * LMDB - code improvements
+  * db_txn_guard: allow BlockchainDB passed by reference
+  * Eliminate state_t lookup temporaries (C++14)
+  * Store uptime proof data separately from states
+  * Don't reset proof data when rescanning
+  * Take mdb_block_info pointer in 64bit value helper
+  * Iterate directly on service node info map
+  * Log warning when ed25519 -> x25519 conversion fails
+  * Simplify service_node_proof_serialized ctor
+  * Clear our own proof timestamp when loading
+  * Split up handle_vote
+  * update_checkpoint logic
+  * Keep checkpoint votes over p2p
+  * Green alert loudly on first signicant ping
+  * Set minimum version for v14
+  * Simplify serialization code and drop unsupported versions
+  * Don't count unmined blink txes in unlocked balance
+  * Show mined, but uncheckpointed, blink txes as blinks
+
+  [ Doyle ]
+  * Add new missing relay vote testing functions
+  * Update service node info to v4, no data conversions necessary
+  * Fix GCC5.5 not being smart about evaluating dead branches
+
+  [ Jason Rhinelander ]
+  * Work around broken database interface
+  * Simplify and avoid uninitialized value warning (#976)
+  * Add helper header/func to obtain unique locks
+  * Fix deadlock
+  * Attempted fix to make macOS clang happy
+  * Admit defeat for now: use boost::lock
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sat, 14 Dec 2019 12:46:56 -0400
+
 loki (5.1.5-1~ubuntu1804) bionic; urgency=medium
 
   [ Doyle ]
