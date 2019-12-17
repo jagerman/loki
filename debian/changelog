@@ -1,3 +1,24 @@
+loki (6.0.0+git20191216-1~deb9) stretch; urgency=medium
+
+  [ Jason Rhinelander ]
+  * SNNetwork: make quorum commands tri-state
+
+  [ Doyle ]
+  * Guard against null ptr deref on quorumnet layer
+
+  [ Jason Rhinelander ]
+  * Abstract assert + reinterpret_cast
+  * register_command: switch arg order; drop std::function
+  * Add `is_service_node()`
+  * add libevent-dev build dep
+  * Add lokinet dep to loki-service-node metapackage
+  * Do txn handling via TXN_BLOCK_PREFIX macro (#982)
+  * Cleanup on block adding failure (#983)
+  * Sort `print_sn` checkpoint votes (#985)
+  * Vote serialization compatibility fix (#984)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 16 Dec 2019 21:02:51 -0400
+
 loki (6.0.0-1~deb9) stretch; urgency=medium
 
   * Rediff patches
