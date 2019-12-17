@@ -1,3 +1,9 @@
+loki (6.0.0+git20191216-3~ubuntu1904) disco; urgency=medium
+
+  * Add default quorumnet ports to ufw
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Dec 2019 02:17:50 -0400
+
 loki (6.0.0+git20191216-2~ubuntu1904) disco; urgency=medium
 
   * Rediff patches
