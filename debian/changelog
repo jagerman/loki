@@ -1,3 +1,10 @@
+loki (6.0.0+git20191216-2~ubuntu1604) xenial; urgency=medium
+
+  * Rediff patches
+  * Add ucf dependency
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 16 Dec 2019 23:57:28 -0400
+
 loki (6.0.0+git20191216-1~ubuntu1604) xenial; urgency=medium
 
   [ Jason Rhinelander ]
