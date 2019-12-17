@@ -1665,15 +1665,25 @@ namespace cryptonote
 
     auto quorum_votes = m_quorum_cop.get_relayable_votes(height, hf_version, true);
     auto p2p_votes    = m_quorum_cop.get_relayable_votes(height, hf_version, false);
-    if (!quorum_votes.empty())
+    if (!quorum_votes.empty() && m_quorumnet_obj && m_service_node_keys)
       quorumnet_relay_obligation_votes(m_quorumnet_obj, quorum_votes);
 
     if (!p2p_votes.empty())
     {
-      NOTIFY_NEW_SERVICE_NODE_VOTE::request req{};
-      req.votes = std::move(p2p_votes);
-      cryptonote_connection_context fake_context{};
-      get_protocol()->relay_service_node_votes(req, fake_context);
+      if (hf_version >= cryptonote::network_version_14_blink_lns)
+      {
+        NOTIFY_NEW_SERVICE_NODE_VOTE::request req{};
+        req.votes = std::move(p2p_votes);
+        cryptonote_connection_context fake_context{};
+        get_protocol()->relay_service_node_votes(req, fake_context);
+      }
+      else
+      {
+        NOTIFY_NEW_SERVICE_NODE_VOTE_OLD::request req{};
+        req.votes = std::move(p2p_votes);
+        cryptonote_connection_context fake_context{};
+        get_protocol()->relay_service_node_votes(req, fake_context);
+      }
     }
 
     return true;
