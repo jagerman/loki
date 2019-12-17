@@ -1,4 +1,4 @@
 [loki-daemon]
 title=Loki network daemon
 description=Loki daemon for running a local node or service node
-ports=22022,38156/tcp
+ports=22022,22025,38156,38159/tcp
