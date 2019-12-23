@@ -1,0 +1,23 @@
+From c71f099930a1a28493f802352cc805460be65d70 Mon Sep 17 00:00:00 2001
+From: Bernd Edlinger <bernd.edlinger@hotmail.de>
+Date: Tue, 24 Sep 2019 19:38:18 +0200
+Subject: [PATCH] Fix iOS simulator build
+
+Fixes #9999
+---
+ crypto/evp/e_aes.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/crypto/evp/e_aes.c b/crypto/evp/e_aes.c
+index 1db346fc864..3d88b7f65a7 100644
+--- a/crypto/evp/e_aes.c
++++ b/crypto/evp/e_aes.c
+@@ -176,7 +176,7 @@ static void ctr64_inc(unsigned char *counter)
+ # define HWAES_xts_decrypt aes_p8_xts_decrypt
+ #endif
+ 
+-#if     !defined(OPENSSL_NO_ASM) &&                     (  \
++#if     defined(OPENSSL_CPUID_OBJ) &&                   (  \
+         ((defined(__i386)       || defined(__i386__)    || \
+           defined(_M_IX86)) && defined(OPENSSL_IA32_SSE2))|| \
+         defined(__x86_64)       || defined(__x86_64__)  || \

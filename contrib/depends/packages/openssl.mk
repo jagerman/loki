@@ -43,6 +43,7 @@ endef
 
 # make reproducible - replace `time()` used in the build with a fixed timestamp:
 define $(package)_preprocess_cmds
+  patch -p1 < $($(package)_patch_dir)/c71f099930a1a28493f802352cc805460be65d70.patch && \
   sed -i.old 's/^\(my \$date = .*\) time()/\1 1575269735/' util/mkbuildinf.pl
 endef
 
