@@ -1,3 +1,62 @@
+loki (6.1.0-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Don't print worker_index when not an obligations vote (#987)
+
+  [ Doyle ]
+  * Update minor versrion to 1, set release name
+
+  [ Jason Rhinelander ]
+  * Fix contrib/depends library incompatibilities
+  * Fix type disagreement (size_t vs uint64_t)
+
+  [ TheCharlatan ]
+  * Add depends riscv 64 bit support
+
+  [ hyperreality ]
+  * Fix Travis build on Windows + Mac
+
+  [ Howard Chu ]
+  * Add Android support
+  * depends: Add FreeBSD support
+  * Add ARFLAGS
+  * Fixup sodium darwin
+  * Fix unwind library ordering
+  * "Fix" non-determinism in native_cctools build
+
+  [ Jason Rhinelander ]
+  * openssl depends makefile fix
+  * macos workaround: use boost::shared_mutex
+  * Remove unneeded patch
+  * Another macOS workaround
+  * Disambiguate write txn error message
+  * de-constexpr for xenial
+  * Avoid long-deprecated boost::sleep
+  * Blockchain/tx_pool/batch lock fix
+  * Replace once_a_time_seconds; send proofs faster
+  * Remove unused help message
+  * Fix missing blink bug
+  * Blink RPC updates & fixes
+  * Fix crash when receiving blocks for unknown quorum
+  * Check for tx pool conflicts for non-blocks, too
+  * Improve locking in mempool removal
+  * Wording fix for lock fix
+  * Blink-related debugging addition
+  * Give second chance to peers
+  * Blink blockchain rollback fixes
+  * Don't request too-high or fail on blinks while syncing
+  * --regtest fixes and mine n blocks ability
+  * test code: add ability to trigger p2p resync
+  * Add blink tests via pytest
+  * Add hardfork at height 442333
+  * Add compatibility lock calls to test suite
+  * Add ppc64le to allow_failures
+  * Update metapackage depends versions
+  * Send fake versions in fake ping
+  * Add blinks even if tx already known
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 26 Dec 2019 16:26:37 -0400
+
 loki (6.0.0+git20191216-3~ubuntu1804) bionic; urgency=medium
 
   * Add default quorumnet ports to ufw
