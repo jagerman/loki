@@ -2029,7 +2029,7 @@ namespace service_nodes
   };
 
   static constexpr proof_version hf_min_loki_versions[] = {
-    {cryptonote::network_version_14_blink_lns,            {6,0,0}},
+    {cryptonote::network_version_14_blink_lns,            {6,1,0}},
     {cryptonote::network_version_13_enforce_checkpoints,  {5,1,0}},
     {cryptonote::network_version_12_checkpointing,        {4,0,3}},
   };
@@ -2205,7 +2205,7 @@ namespace service_nodes
   }
 
   crypto::public_key service_node_list::get_pubkey_from_x25519(const crypto::x25519_public_key &x25519) const {
-    std::shared_lock<std::shared_timed_mutex> lock{m_x25519_map_mutex};
+    auto lock = tools::shared_lock(m_x25519_map_mutex);
     auto it = m_x25519_to_pub.find(x25519);
     if (it != m_x25519_to_pub.end())
       return it->second.first;
