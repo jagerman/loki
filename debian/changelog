@@ -1,3 +1,26 @@
+loki (6.1.1-1~ubuntu1910) eoan; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Add my private key; fix permissions/line endings
+  * Add my private key; fix permissions/line endings
+
+  [ Doyle ]
+  * Byte calc for signatures uses post-endian converted number (#997)
+  * Migrate old checkpoints to new aligned checkpoints data structure
+  * Detect unaligned entries via record size, static assert record sizes
+  * Add voter_to_signature padding for 32/64bit uniformity
+  * Add wallet long polling to wallet-cli
+  * Add long polling to wallet-rpc
+  * Rate limit long polling connections
+  * Stop endlessly asking the user for password after refreshing
+  * Don't update tx pool cache unless long poll succeeded
+  * Include <stack> in rpc_command_executor, macOSX10.13 failure (#999)
+  * Parameterize the number of long poll connections via rpc-long-poll-connections
+  * Add wait for condition to check tx pool count
+  * Update v6 patch to 1 (#1000)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 07 Jan 2020 13:34:31 -0400
+
 loki (6.1.0-1~ubuntu1910) eoan; urgency=medium
 
   [ Jason Rhinelander ]
