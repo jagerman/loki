@@ -3,6 +3,7 @@ loki (6.1.1-1~ubuntu1910) eoan; urgency=medium
   [ Jason Rhinelander ]
   * Add my private key; fix permissions/line endings
   * Add my private key; fix permissions/line endings
+  * Fix 6.1.1 compilation
 
   [ Doyle ]
   * Byte calc for signatures uses post-endian converted number (#997)
