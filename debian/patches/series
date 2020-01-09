@@ -4,4 +4,3 @@
 0005-Version-and-install-librandomx.patch
 0006-Add-check-for-latomic-needed-for-armhf-build.patch
 0007-dumb-ARM_ID-ARCH-logic-workaround.patch
-0007-Fix-6.1.1-compilation.patch
