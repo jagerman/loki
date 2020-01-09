@@ -1,0 +1,51 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Thu, 9 Jan 2020 15:04:57 -0400
+Subject: Hard-code libunbound for xenial
+
+Xenial's libunbound doesn't have a .pc file so can't be found via
+pkg-config; this just hard codes the values to what they should be for
+xenial.
+---
+ external/CMakeLists.txt | 29 ++++-------------------------
+ 1 file changed, 4 insertions(+), 25 deletions(-)
+
+diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
+index 0886cb6..908f467 100644
+--- a/external/CMakeLists.txt
++++ b/external/CMakeLists.txt
+@@ -64,31 +64,10 @@ else()
+ endif()
+ 
+ 
+-if(NOT UNBOUND_FOUND)
+-  # NOTE: If STATIC is true, CMAKE_FIND_LIBRARY_SUFFIXES has been reordered.
+-  # unbound has config tests which used OpenSSL libraries, so -ldl may need to
+-  # be set in this case.
+-  # The unbound CMakeLists.txt can set it, since it's also needed for the
+-  # static OpenSSL libraries set up there after with target_link_libraries.
+-  message(STATUS "Using in-tree unbound")
+-  add_subdirectory(unbound)
+-
+-  set(UNBOUND_STATIC true PARENT_SCOPE)
+-  set(UNBOUND_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/unbound/libunbound" PARENT_SCOPE)
+-  set(UNBOUND_LIBRARIES "unbound" PARENT_SCOPE)
+-  set(UNBOUND_LIBRARY_DIRS "${LIBEVENT2_LIBDIR}" PARENT_SCOPE)
+-else()
+-  message(STATUS "Found libunbound include (unbound.h) in ${UNBOUND_INCLUDE_DIRS}")
+-  if(UNBOUND_LIBRARIES)
+-    message(STATUS "Found libunbound shared library")
+-    set(UNBOUND_STATIC false PARENT_SCOPE)
+-    set(UNBOUND_INCLUDE_DIRS ${UNBOUND_INCLUDE_DIRS} PARENT_SCOPE)
+-    set(UNBOUND_LIBRARIES ${UNBOUND_LIBRARIES} PARENT_SCOPE)
+-    set(UNBOUND_LIBRARY_DIRS "${UNBOUND_LIBRARY_DIRS}" PARENT_SCOPE)
+-  else()
+-    die("Found libunbound includes, but could not find libunbound library. Please make sure you have installed libunbound or libunbound-dev or the equivalent")
+-  endif()
+-endif()
++set(UNBOUND_STATIC false PARENT_SCOPE)
++set(UNBOUND_INCLUDE_DIRS "" PARENT_SCOPE)
++set(UNBOUND_LIBRARIES "unbound;ssl;crypto" PARENT_SCOPE)
++set(UNBOUND_LIBRARY_DIRS "" PARENT_SCOPE)
+ 
+ add_subdirectory(db_drivers)
+ add_subdirectory(easylogging++)
