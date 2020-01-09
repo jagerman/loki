@@ -1,3 +1,9 @@
+loki (6.1.1-1~ubuntu1604.2) xenial; urgency=medium
+
+  * Hard-code libunbound for xenial
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 09 Jan 2020 15:10:26 -0400
+
 loki (6.1.1-1~ubuntu1604) xenial; urgency=medium
 
   [ Jason Rhinelander ]
