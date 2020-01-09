@@ -1,3 +1,23 @@
+loki (6.1.2-1~ubuntu1910) eoan; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Fix 6.1.1 compilation (#1002)
+
+  [ Doyle ]
+  * Fallback to old stream deserialization for mac targets
+  * Update v6 patch to 2
+  * Add workarounds for static initialization fiasco (#1005)
+  * Disable soidum shared, enable static explicitly to force static link in binary (#1003)
+
+  [ Jason Rhinelander ]
+  * Handle no blink quorum result gracefully (#1006)
+
+  [ Doyle ]
+  * Service Node List reset, should reset all transient fields (#953)
+  * Add missing initialiser for m_store_quorum_history (#1009)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 09 Jan 2020 15:21:52 -0400
+
 loki (6.1.1-1~ubuntu1910) eoan; urgency=medium
 
   [ Jason Rhinelander ]
