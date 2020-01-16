@@ -1,3 +1,30 @@
+loki (6.1.3-1~ubuntu1910) eoan; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+  [ Doyle ]
+  * Long polling QOL, handle errors gracefully avoid lock contention
+  * Update v6 patch to 3
+  * Regenerate the checkpoint table in lmdb
+  * Add a flag to disable long polling on wallets
+  * Delay checking the long poll disable flag until m_wallet is init
+
+  [ Jason Rhinelander ]
+  * Quorumnet - fix premature x25519 cache expiry
+  * Add public ping target to quorumnet
+  * Added quorumnet ping script
+
+  [ Doyle ]
+  * Handle blink param in WalletAPI
+  * Update virtual to override for wallet api
+  * Use old serialization for libc++ (android and apple)
+  * Add blink param for sending blobs to remote nodes for mobile
+  * Update blink priority to 5
+  * Enable long polling for mobile targets
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 15 Jan 2020 22:45:09 -0400
+
 loki (6.1.2-1~ubuntu1910) eoan; urgency=medium
 
   [ Jason Rhinelander ]
