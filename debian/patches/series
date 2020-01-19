@@ -6,3 +6,5 @@ shared-lib-fixes
 0006-Add-check-for-latomic-needed-for-armhf-build.patch
 0007-dumb-ARM_ID-ARCH-logic-workaround.patch
 0009-Hard-code-libunbound-for-xenial.patch
+0009-Don-t-use-pool-tx-list-from-long-polling.patch
+0010-blink-deadlock-fix.patch
