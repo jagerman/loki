@@ -1,0 +1,133 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Sat, 18 Jan 2020 16:02:03 -0400
+Subject: Don't use pool tx list from long polling
+
+set_daemon mutex fix and simplifications
+
+Disable long polling for blink tests
+---
+ src/wallet/wallet2.cpp         | 42 +++++++++++++++++++++++-------------------
+ src/wallet/wallet2.h           |  7 +++----
+ tests/network_tests/daemons.py |  3 ++-
+ 3 files changed, 28 insertions(+), 24 deletions(-)
+
+diff --git a/src/wallet/wallet2.cpp b/src/wallet/wallet2.cpp
+index 8754d41..f50a795 100644
+--- a/src/wallet/wallet2.cpp
++++ b/src/wallet/wallet2.cpp
+@@ -1196,21 +1196,17 @@ std::unique_ptr<wallet2> wallet2::make_dummy(const boost::program_options::varia
+ //----------------------------------------------------------------------------------------------------
+ bool wallet2::set_daemon(std::string daemon_address, boost::optional<epee::net_utils::http::login> daemon_login, bool trusted_daemon, epee::net_utils::ssl_options_t ssl_options)
+ {
++  std::lock_guard<std::recursive_mutex> daemon_mutex(m_daemon_rpc_mutex);
++
++  if(m_http_client.is_connected())
++    m_http_client.disconnect();
+   m_daemon_address        = std::move(daemon_address);
+   m_daemon_login          = std::move(daemon_login);
+   m_trusted_daemon        = trusted_daemon;
+-  MINFO("setting daemon to " << get_daemon_address());
+-
+-  bool result = true;
+-  {
+-    std::lock_guard<std::recursive_mutex> daemon_mutex(m_daemon_rpc_mutex);
+-    m_long_poll_ssl_options = ssl_options;
+-    if(m_http_client.is_connected())
+-      m_http_client.disconnect();
+-    result &= m_http_client.set_server(get_daemon_address(), get_daemon_login(), ssl_options);
+-  }
++  m_long_poll_ssl_options = ssl_options;
+ 
+-  return result;
++  MINFO("setting daemon to " << get_daemon_address());
++  return m_http_client.set_server(get_daemon_address(), get_daemon_login(), std::move(ssl_options));
+ }
+ //----------------------------------------------------------------------------------------------------
+ bool wallet2::init(std::string daemon_address, boost::optional<epee::net_utils::http::login> daemon_login, boost::asio::ip::tcp::endpoint proxy, uint64_t upper_transaction_weight_limit, bool trusted_daemon, epee::net_utils::ssl_options_t ssl_options)
+@@ -2887,7 +2883,7 @@ bool wallet2::long_poll_pool_state()
+   cryptonote::COMMAND_RPC_GET_TRANSACTION_POOL_HASHES_BIN::request req  = {};
+   cryptonote::COMMAND_RPC_GET_TRANSACTION_POOL_HASHES_BIN::response res = {};
+   req.long_poll        = true;
+-  req.tx_pool_checksum = m_long_poll_tx_pool_checksum;
++  req.tx_pool_checksum = get_long_poll_tx_pool_checksum();
+   bool r               = false;
+   {
+     std::lock_guard<decltype(m_long_poll_mutex)> lock(m_long_poll_mutex);
+@@ -2906,13 +2902,12 @@ bool wallet2::long_poll_pool_state()
+   THROW_WALLET_EXCEPTION_IF(res.status == CORE_RPC_STATUS_BUSY, error::daemon_busy, "get_transaction_pool_hashes.bin");
+   THROW_WALLET_EXCEPTION_IF(res.status != CORE_RPC_STATUS_OK, error::get_tx_pool_error, res.status);
+ 
+-  m_long_poll_tx_pool_checksum = {};
++  crypto::hash checksum = crypto::null_hash;
+   for (crypto::hash const &hash : res.tx_hashes)
+-    crypto::hash_xor(m_long_poll_tx_pool_checksum, hash);
+-
++    crypto::hash_xor(checksum, hash);
+   {
+-    std::lock_guard<decltype(m_long_poll_tx_pool_cache_mutex)> lock(m_long_poll_tx_pool_cache_mutex);
+-    m_long_poll_tx_pool_cache = std::move(res.tx_hashes);
++    std::lock_guard<decltype(m_long_poll_tx_pool_checksum_mutex)> lock(m_long_poll_tx_pool_checksum_mutex);
++    m_long_poll_tx_pool_checksum = std::move(checksum);
+   }
+   return true;
+ }
+@@ -2922,8 +2917,17 @@ void wallet2::update_pool_state(bool refreshed)
+   MTRACE("update_pool_state: take hashes from cache");
+   std::vector<crypto::hash> tx_hashes;
+   {
+-    std::lock_guard<decltype(m_long_poll_tx_pool_cache_mutex)> lock(m_long_poll_tx_pool_cache_mutex);
+-    tx_hashes = m_long_poll_tx_pool_cache;
++    // get the pool state
++    cryptonote::COMMAND_RPC_GET_TRANSACTION_POOL_HASHES_BIN::request req;
++    cryptonote::COMMAND_RPC_GET_TRANSACTION_POOL_HASHES_BIN::response res;
++    m_daemon_rpc_mutex.lock();
++    bool r = invoke_http_json("/get_transaction_pool_hashes.bin", req, res, rpc_timeout);
++    m_daemon_rpc_mutex.unlock();
++    THROW_WALLET_EXCEPTION_IF(!r, error::no_connection_to_daemon, "get_transaction_pool_hashes.bin");
++    THROW_WALLET_EXCEPTION_IF(res.status == CORE_RPC_STATUS_BUSY, error::daemon_busy, "get_transaction_pool_hashes.bin");
++    THROW_WALLET_EXCEPTION_IF(res.status != CORE_RPC_STATUS_OK, error::get_tx_pool_error);
++    MTRACE("update_pool_state got pool");
++    tx_hashes = std::move(res.tx_hashes);
+   }
+ 
+   auto keys_reencryptor = epee::misc_utils::create_scope_leave_handler([&, this]() {
+diff --git a/src/wallet/wallet2.h b/src/wallet/wallet2.h
+index b0e6c30..56c4b0f 100644
+--- a/src/wallet/wallet2.h
++++ b/src/wallet/wallet2.h
+@@ -1346,9 +1346,9 @@ private:
+ 
+     crypto::hash get_long_poll_tx_pool_checksum() const
+     {
+-      std::lock_guard<decltype(m_long_poll_tx_pool_cache_mutex)> lock(m_long_poll_tx_pool_cache_mutex);
++      std::lock_guard<decltype(m_long_poll_tx_pool_checksum_mutex)> lock(m_long_poll_tx_pool_checksum_mutex);
+       return m_long_poll_tx_pool_checksum;
+-    };
++    }
+ 
+     // long_poll_pool_state is blocking and does NOT return to the caller until
+     // the daemon detects a change in the contents of the txpool by comparing
+@@ -1688,8 +1688,7 @@ private:
+ 
+     std::recursive_mutex                      m_long_poll_mutex;
+     epee::net_utils::http::http_simple_client m_long_poll_client;
+-    mutable std::mutex                        m_long_poll_tx_pool_cache_mutex;
+-    std::vector<crypto::hash>                 m_long_poll_tx_pool_cache;
++    mutable std::mutex                        m_long_poll_tx_pool_checksum_mutex;
+     crypto::hash                              m_long_poll_tx_pool_checksum = {};
+     epee::net_utils::ssl_options_t            m_long_poll_ssl_options = epee::net_utils::ssl_support_t::e_ssl_support_autodetect;
+ 
+diff --git a/tests/network_tests/daemons.py b/tests/network_tests/daemons.py
+index 608a9c9..75748d5 100644
+--- a/tests/network_tests/daemons.py
++++ b/tests/network_tests/daemons.py
+@@ -229,7 +229,8 @@ class Daemon(RPCDaemon):
+ 
+ 
+ class Wallet(RPCDaemon):
+-    base_args = ('--disable-rpc-login', '--non-interactive', '--password','', '--regtest', '--rpc-ssl=disabled', '--daemon-ssl=disabled')
++    base_args = ('--disable-rpc-login', '--non-interactive', '--password','', '--regtest', '--disable-rpc-long-poll',
++                 '--rpc-ssl=disabled', '--daemon-ssl=disabled')
+ 
+     def __init__(
+             self,
