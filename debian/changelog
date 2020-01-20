@@ -1,3 +1,9 @@
+loki (6.1.4-3~ubuntu1604) xenial; urgency=medium
+
+  * Bump lokinet-router version for SN metapackage
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 20 Jan 2020 14:38:12 -0400
+
 loki (6.1.4-2~ubuntu1604) xenial; urgency=medium
 
   * add missing libsystem-dev dependency
