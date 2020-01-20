@@ -1,3 +1,23 @@
+loki (6.1.4-1~ubuntu1910) eoan; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Remove pre-HF14 p2p vote relaying command
+  * Remove pre-HF14 code
+  * set_daemon mutex fix and simplifications
+  * Disable long polling for blink tests
+  * Don't use pool tx list from long polling
+  * Fix rare blink pool deadlock
+  * Add systemd notify & watchdog support (#1022)
+
+  [ Doyle ]
+  * Update v6 patch to 4 (#1023)
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+  * Change systemd service files to notify & watchdog
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 20 Jan 2020 00:02:56 -0400
+
 loki (6.1.3-2~ubuntu1910) eoan; urgency=medium
 
   * Add upstream patches for blink deadlock (#1021) and wallet rpc (#1020)
