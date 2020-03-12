@@ -51,8 +51,8 @@ RUN set -ex \
     && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
     && cd boost_${BOOST_VERSION} \
     && ./bootstrap.sh \
-    && ./b2 --build-type=minimal link=static runtime-link=static --with-chrono --with-date_time --with-filesystem --with-program_options --with-regex --with-serialization --with-system --with-thread --with-locale threading=multi threadapi=pthread cflags="$CFLAGS" cxxflags="$CXXFLAGS" stage
-ENV BOOST_ROOT /usr/local/boost_${BOOST_VERSION}
+    && ./b2 --prefix=/usr/ --build-type=minimal link=static runtime-link=static --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-regex --with-serialization --with-system --with-thread --with-locale threading=multi threadapi=pthread cflags="$CFLAGS" cxxflags="$CXXFLAGS" install
+ENV BOOST_ROOT /usr
 
 # OpenSSL
 ARG OPENSSL_VERSION=1.1.1b
@@ -62,15 +62,14 @@ RUN set -ex \
     && echo "${OPENSSL_HASH}  openssl-${OPENSSL_VERSION}.tar.gz" | sha256sum -c \
     && tar -xzf openssl-${OPENSSL_VERSION}.tar.gz \
     && cd openssl-${OPENSSL_VERSION} \
-    && ./Configure linux-x86_64 no-shared --static "$CFLAGS" \
+    && ./Configure --prefix=/usr/ linux-x86_64 no-shared --static "$CFLAGS" \
     && make build_generated \
     && make libcrypto.a \
     && make install
-ENV OPENSSL_ROOT_DIR=/usr/local/openssl-${OPENSSL_VERSION}
+ENV OPENSSL_ROOT_DIR=/usr
 
-# Sodium
-ARG SODIUM_VERSION=1.0.17
-ARG SODIUM_HASH=b732443c442239c2e0184820e9b23cca0de0828c
+ARG SODIUM_VERSION=1.0.18-RELEASE
+ARG SODIUM_HASH=940ef42797baa0278df6b7fd9e67c7590f87744b
 RUN set -ex \
     && git clone https://github.com/jedisct1/libsodium.git -b ${SODIUM_VERSION} --depth=1 \
     && cd libsodium \
@@ -81,27 +80,17 @@ RUN set -ex \
     && make check \
     && make install
 
-# ZMQ
-ARG ZMQ_VERSION=v4.3.1
-ARG ZMQ_HASH=2cb1240db64ce1ea299e00474c646a2453a8435b
+ARG ZMQ_VERSION=v4.3.2
+ARG ZMQ_HASH=a84ffa12b2eb3569ced199660bac5ad128bff1f0
 RUN set -ex \
     && git clone https://github.com/zeromq/libzmq.git -b ${ZMQ_VERSION} --depth=1 \
     && cd libzmq \
     && test `git rev-parse HEAD` = ${ZMQ_HASH} || exit 1 \
     && ./autogen.sh \
-    && ./configure --with-libsodium --enable-static --disable-shared \
+    && ./configure --prefix=/usr/ --with-libsodium --enable-static --disable-shared \
     && make \
     && make install \
     && ldconfig
-
-# zmq.hpp
-ARG CPPZMQ_VERSION=v4.3.0
-ARG CPPZMQ_HASH=213da0b04ae3b4d846c9abc46bab87f86bfb9cf4
-RUN set -ex \
-    && git clone https://github.com/zeromq/cppzmq.git -b ${CPPZMQ_VERSION} --depth=1 \
-    && cd cppzmq \
-    && test `git rev-parse HEAD` = ${CPPZMQ_HASH} || exit 1 \
-    && mv *.hpp /usr/local/include
 
 # Readline
 # ARG READLINE_VERSION=8.0
@@ -116,54 +105,16 @@ RUN set -ex \
 #     && make install
 
 # Udev
-ARG UDEV_VERSION=v3.2.7
-ARG UDEV_HASH=4758e346a14126fc3a964de5831e411c27ebe487
-RUN set -ex \
-    && git clone https://github.com/gentoo/eudev -b ${UDEV_VERSION} \
-    && cd eudev \
-    && test `git rev-parse HEAD` = ${UDEV_HASH} || exit 1 \
-    && ./autogen.sh \
-    && ./configure --disable-gudev --disable-introspection --disable-hwdb --disable-manpages --disable-shared \
-    && make \
-    && make install
-
-# Libusb
-ARG USB_VERSION=v1.0.22
-ARG USB_HASH=0034b2afdcdb1614e78edaa2a9e22d5936aeae5d
-RUN set -ex \
-    && git clone https://github.com/libusb/libusb.git -b ${USB_VERSION} \
-    && cd libusb \
-    && test `git rev-parse HEAD` = ${USB_HASH} || exit 1 \
-    && ./autogen.sh \
-    && ./configure --disable-shared \
-    && make \
-    && make install
-
-# Hidapi
-ARG HIDAPI_VERSION=hidapi-0.8.0-rc1
-ARG HIDAPI_HASH=40cf516139b5b61e30d9403a48db23d8f915f52c
-RUN set -ex \
-    && git clone https://github.com/signal11/hidapi -b ${HIDAPI_VERSION} \
-    && cd hidapi \
-    && test `git rev-parse HEAD` = ${HIDAPI_HASH} || exit 1 \
-    && ./bootstrap \
-    && ./configure --enable-static --disable-shared \
-    && make \
-    && make install
-
-# Protobuf
-ARG PROTOBUF_VERSION=v3.7.0
-ARG PROTOBUF_HASH=582743bf40c5d3639a70f98f183914a2c0cd0680
-RUN set -ex \
-    && git clone https://github.com/protocolbuffers/protobuf -b ${PROTOBUF_VERSION} \
-    && cd protobuf \
-    && test `git rev-parse HEAD` = ${PROTOBUF_HASH} || exit 1 \
-    && git submodule update --init --recursive \
-    && ./autogen.sh \
-    && ./configure --enable-static --disable-shared \
-    && make \
-    && make install \
-    && ldconfig
+# ARG UDEV_VERSION=v3.2.7
+# ARG UDEV_HASH=4758e346a14126fc3a964de5831e411c27ebe487
+# RUN set -ex \
+#     && git clone https://github.com/gentoo/eudev -b ${UDEV_VERSION} \
+#     && cd eudev \
+#     && test `git rev-parse HEAD` = ${UDEV_HASH} || exit 1 \
+#     && ./autogen.sh \
+#     && ./configure --disable-gudev --disable-introspection --disable-hwdb --disable-manpages --disable-shared \
+#     && make \
+#     && make install
 
 # Sqlite3
 ARG SQLITE_VERSION=3310100
