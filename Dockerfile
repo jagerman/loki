@@ -3,9 +3,15 @@
 # builder stage
 FROM ubuntu:16.04 as builder
 
+ARG NPROC=$(nproc)
+
 RUN set -ex && \
     apt-get update && \
-    apt-get --no-install-recommends --yes install \
+    apt-get install -y curl apt-transport-https eatmydata && \
+    echo 'deb https://apt.kitware.com/ubuntu/ xenial main' >/etc/apt/sources.list.d/kitware-cmake.list && \
+    curl https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add - && \
+    apt-get update && \
+    eatmydata apt-get --no-install-recommends --yes install \
         ca-certificates \
         cmake \
         g++ \
@@ -14,59 +20,47 @@ RUN set -ex && \
         graphviz \
         doxygen \
         git \
-        curl \
         libtool-bin \
         autoconf \
         automake \
         bzip2 \
         xsltproc \
-        gperf \
-        unzip
+        gperf
 
-WORKDIR /usr/local
+WORKDIR /usr/local/src
 
-ENV CFLAGS='-fPIC'
-ENV CXXFLAGS='-fPIC'
-
-#Cmake
-ARG CMAKE_VERSION=3.14.0
-ARG CMAKE_VERSION_DOT=v3.14
-ARG CMAKE_HASH=aa76ba67b3c2af1946701f847073f4652af5cbd9f141f221c97af99127e75502
-RUN set -ex \
-    && curl -s -O https://cmake.org/files/${CMAKE_VERSION_DOT}/cmake-${CMAKE_VERSION}.tar.gz \
-    && echo "${CMAKE_HASH}  cmake-${CMAKE_VERSION}.tar.gz" | sha256sum -c \
-    && tar -xzf cmake-${CMAKE_VERSION}.tar.gz \
-    && cd cmake-${CMAKE_VERSION} \
-    && ./configure \
-    && make \
-    && make install
-
-## Boost
-ARG BOOST_VERSION=1_69_0
-ARG BOOST_VERSION_DOT=1.69.0
-ARG BOOST_HASH=8f32d4617390d1c2d16f26a27ab60d97807b35440d45891fa340fc2648b04406
-RUN set -ex \
-    && curl -s -L -o  boost_${BOOST_VERSION}.tar.bz2 https://dl.bintray.com/boostorg/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.bz2 \
-    && echo "${BOOST_HASH}  boost_${BOOST_VERSION}.tar.bz2" | sha256sum -c \
-    && tar -xvf boost_${BOOST_VERSION}.tar.bz2 \
-    && cd boost_${BOOST_VERSION} \
-    && ./bootstrap.sh \
-    && ./b2 --prefix=/usr/ --build-type=minimal link=static runtime-link=static --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options --with-regex --with-serialization --with-system --with-thread --with-locale threading=multi threadapi=pthread cflags="$CFLAGS" cxxflags="$CXXFLAGS" install
-ENV BOOST_ROOT /usr
+#ENV CFLAGS='-fPIC'
+#ENV CXXFLAGS='-fPIC'
 
 # OpenSSL
-ARG OPENSSL_VERSION=1.1.1b
-ARG OPENSSL_HASH=5c557b023230413dfb0756f3137a13e6d726838ccd1430888ad15bfb2b43ea4b
+ARG OPENSSL_VERSION=1.1.1d
+ARG OPENSSL_HASH=1e3a91bc1f9dfce01af26026f856e064eab4c8ee0a8f457b5ae30b40b8b711f2
 RUN set -ex \
     && curl -s -O https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz \
     && echo "${OPENSSL_HASH}  openssl-${OPENSSL_VERSION}.tar.gz" | sha256sum -c \
-    && tar -xzf openssl-${OPENSSL_VERSION}.tar.gz \
+    && tar xf openssl-${OPENSSL_VERSION}.tar.gz \
     && cd openssl-${OPENSSL_VERSION} \
-    && ./Configure --prefix=/usr/ linux-x86_64 no-shared --static "$CFLAGS" \
-    && make build_generated \
-    && make libcrypto.a \
-    && make install
-ENV OPENSSL_ROOT_DIR=/usr
+    && ./Configure --prefix=/usr linux-x86_64 no-shared --static \
+    && make build_generated -j$NPROC \
+    && make libcrypto.a -j$NPROC \
+    && make install_sw -j$NPROC
+
+## Boost
+ARG BOOST_VERSION=1_72_0
+ARG BOOST_VERSION_DOT=1.72.0
+ARG BOOST_HASH=59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722
+RUN set -ex \
+    && curl -s -L -o  boost_${BOOST_VERSION}.tar.bz2 https://dl.bintray.com/boostorg/release/${BOOST_VERSION_DOT}/source/boost_${BOOST_VERSION}.tar.bz2 \
+    && echo "${BOOST_HASH}  boost_${BOOST_VERSION}.tar.bz2" | sha256sum -c \
+    && tar xf boost_${BOOST_VERSION}.tar.bz2 \
+    && cd boost_${BOOST_VERSION} \
+    && ./bootstrap.sh \
+    && ./b2 --prefix=/usr --build-type=minimal link=static runtime-link=static \
+        --with-atomic --with-chrono --with-date_time --with-filesystem --with-program_options \
+        --with-regex --with-serialization --with-system --with-thread --with-locale \
+        threading=multi threadapi=pthread cxxflags=-fPIC \
+        -j$NPROC install
+
 
 ARG SODIUM_VERSION=1.0.18-RELEASE
 ARG SODIUM_HASH=940ef42797baa0278df6b7fd9e67c7590f87744b
@@ -75,22 +69,10 @@ RUN set -ex \
     && cd libsodium \
     && test `git rev-parse HEAD` = ${SODIUM_HASH} || exit 1 \
     && ./autogen.sh \
-    && ./configure --enable-static --disable-shared \
-    && make \
+    && ./configure --enable-static --disable-shared --prefix=/usr \
+    && make -j$NPROC \
     && make check \
     && make install
-
-ARG ZMQ_VERSION=v4.3.2
-ARG ZMQ_HASH=a84ffa12b2eb3569ced199660bac5ad128bff1f0
-RUN set -ex \
-    && git clone https://github.com/zeromq/libzmq.git -b ${ZMQ_VERSION} --depth=1 \
-    && cd libzmq \
-    && test `git rev-parse HEAD` = ${ZMQ_HASH} || exit 1 \
-    && ./autogen.sh \
-    && ./configure --prefix=/usr/ --with-libsodium --enable-static --disable-shared \
-    && make \
-    && make install \
-    && ldconfig
 
 # Readline
 # ARG READLINE_VERSION=8.0
@@ -98,22 +80,10 @@ RUN set -ex \
 # RUN set -ex \
 #     && curl -s -O https://ftp.gnu.org/gnu/readline/readline-${READLINE_VERSION}.tar.gz \
 #     && echo "${READLINE_HASH}  readline-${READLINE_VERSION}.tar.gz" | sha256sum -c \
-#     && tar -xzf readline-${READLINE_VERSION}.tar.gz \
+#     && tar xf readline-${READLINE_VERSION}.tar.gz \
 #     && cd readline-${READLINE_VERSION} \
-#     && ./configure \
-#     && make \
-#     && make install
-
-# Udev
-# ARG UDEV_VERSION=v3.2.7
-# ARG UDEV_HASH=4758e346a14126fc3a964de5831e411c27ebe487
-# RUN set -ex \
-#     && git clone https://github.com/gentoo/eudev -b ${UDEV_VERSION} \
-#     && cd eudev \
-#     && test `git rev-parse HEAD` = ${UDEV_HASH} || exit 1 \
-#     && ./autogen.sh \
-#     && ./configure --disable-gudev --disable-introspection --disable-hwdb --disable-manpages --disable-shared \
-#     && make \
+#     && ./configure --prefix=/usr --disable-shared \
+#     && make -j$NPROC \
 #     && make install
 
 # Sqlite3
@@ -122,24 +92,20 @@ ARG SQLITE_HASH=62284efebc05a76f909c580ffa5c008a7d22a1287285d68b7825a2b6b51949ae
 RUN set -ex \
     && curl -s -O https://sqlite.org/2020/sqlite-autoconf-${SQLITE_VERSION}.tar.gz \
     && echo "${SQLITE_HASH}  sqlite-autoconf-${SQLITE_VERSION}.tar.gz" | sha256sum -c \
-    && tar -xzf sqlite-autoconf-${SQLITE_VERSION}.tar.gz \
+    && tar xf sqlite-autoconf-${SQLITE_VERSION}.tar.gz \
     && cd sqlite-autoconf-${SQLITE_VERSION} \
-    && ./configure --disable-shared \
-    && make \
+    && ./configure --disable-shared --prefix=/usr --with-pic \
+    && make -j$NPROC \
     && make install
 
 WORKDIR /src
 COPY . .
 
-ENV USE_SINGLE_BUILDDIR=1
-ARG NPROC
 RUN set -ex && \
-    git submodule init && git submodule update && \
-    rm -rf build && \
-    if [ -z "$NPROC" ] ; \
-    then make -j$(nproc) release-static ; \
-    else make -j$NPROC release-static ; \
-    fi
+    git submodule update --init --recursive && \
+    rm -rf build/release && mkdir -p build/release && cd build/release && \
+    cmake -DSTATIC=ON -DARCH=x86-64 -DCMAKE_BUILD_TYPE=Release ../.. && \
+    make -j${NPROC:-$(nproc)} VERBOSE=1
 
 # runtime stage
 FROM ubuntu:16.04
