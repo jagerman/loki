@@ -70,6 +70,7 @@ function (add_linker_flag_if_supported flag var)
   endif()
 endfunction()
 
+add_definitions("-D HAVE_EVP_MD_CTX_NEW")
 function (add_definition_if_function_found function var)
   string(REPLACE "-" "_" supported ${function}_function)
   check_function_exists(${function} ${supported})
