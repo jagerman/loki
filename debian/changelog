@@ -1,3 +1,247 @@
+loki (7.0.0-1~deb9) stretch; urgency=medium
+
+  [ Sean Darcy ]
+  * modifies the print function so terminal bright mirrors the emphasis parameter
+
+  [ Doyle ]
+  * Fix testing in quorum check, find_index_in_quorum_group(..) >= 0 (#1029)
+
+  [ Sean ]
+  * Creates a default address for the sweep_all command in the cli wallet (#1031)
+
+  [ Jason Rhinelander ]
+  * Fix unit tests under updated gtest (#1035)
+
+  [ Doyle ]
+  * Distinguish staking transactions and revamp construct_tx
+  * Add sqlite 3.30.1
+  * Add support for Loki Name Service on the backend
+  * Implement expiration/renewal of lokinet entries
+  * Add logging macros, add IF NOT EXIST qualifier to unique index
+  * Start move away from hooks, combine rescanning of lns and snl to one function
+  * Update tests for rebasing on blink changes
+  * Add support for Loki Name Service on the backend
+  * Remove edkeys from account, wallet does something funky
+  * Don't check lns heights unless both begin/end requested
+  * Remove block indirection in chain gen, support null lns_db for tests
+  * Validate wallet addresses given in LNS txs
+  * Formatting: loki_name_system_db -> loki_name_system, cold_sign_tx arg const
+  * Add buy lns rpc wallet, and wallet cli commands
+  * Add lokinet domain name validation
+  * Verify LNS burn amounts and fix up tests to use burns
+  * Check duplicate LNS entries via the name not the value
+  * Initialise DB from the immutable checkpoint height
+  * Fix rebase onto dev (blink) error
+  * Remove extra LNS add_block call, incoporated into load_missing_blocks
+  * Handle duplicate LNS txs that are not checkpointed yet
+  * Update core tests for handling dupes
+  * LNS rpc get_lns_[owner|name]_mapping, stub get_mappings_by_user
+  * Implement rpc, get_mappings_by_user
+  * Add test for get_mappings_by_user
+  * Remove owner signature from loki name service tx extra
+  * Rebase fix, blink_lns -> blink, v15 and reserve types for protocol
+  * Remove unused function rescan_starting_from_curr..
+  * Add query LNS mappings to the CLI wallet
+  * Improve error messaging for LNS txes
+  * Force all incoming LNS txs to represent values as hex in the name->value mapping
+  * Remove and undo some changes for github diffs
+  * Update LNS burn to 15 loki, add tests to check burns
+  * Update unit tests using non-hex pubkeys
+  * Fix travis CI complaint about mapping_type not declared
+  * Send LNS values as blobs to the blockchain
+  * Fix requirement to 30, and actually do the atomic step
+  * Remove subsystems selection because we don't use it anymore
+  * Update txtype activation hardforks
+  * Be consistent with identifier quoting in SQLite
+  * Turn plain enums into enum-struct in loki name system
+  * Robustify sql transactions, formalise LNS values maximums
+  * Remove vendored SQLite, rely on system installed lib
+  * Ensure lns_value has sufficient size buffer, remove unused prototype
+  * Add txid/prev_txid into LNS db for rollbacks
+  * Support pop_blocks for LNS DB.
+  * Scope the DB transaction around the settings table update as well
+  * Avoid serializing the prev_txid in LNS extra if not needed
+  * Expose the wallet public ed25519 key in on_get_address and address cmd
+  * Add sqlite3 support for depends and dockerfile
+  * Cleanup pass 2 for github
+  * Add a constructor for tx_extra_loki_name_system and use it
+  * txid and prev_txid should be returning as a string in RPC
+  * Code review
+  * Add register_height to the serialized members for LNS owners to name RPC
+  * Make get_mappings execute in a single query, s/user/owner
+  * LNS: query owners by keys in a single sql query
+  * Fix subtle bugs that crept in
+  * Resolve enabled mapping types via hf aware function instead of via enum
+
+  [ Jason Rhinelander ]
+  * SQLITE_PREPARE_PERSISTENT requires sqlite >= 3.20.0
+
+  [ Doyle ]
+  * sqlite3_prepare_v3 prototype doesn't exist in some sql distributions
+  * Undo line deletes and make a copy of change_dts in transfer_selected_rct
+
+  [ Jason Rhinelander ]
+  * Fix `priority=5` not doing an actual blink submission (#1041)
+  * Simplify static_asserts
+  * Move hard-coded Monero donation address
+  * Remove wallet mixin code
+  * Remove confirm-missing-payment-id option
+  * Reformatted messy/broken multiline strings
+  * Lower blink fees, remove higher priorities and backlog checking
+  * Remove ring_size parameter from API
+  * Throw exception if using blink priority on non-blinkable tx type
+  * Remove ancient MSVC workaround; use perfect forwarding
+  * Allow get_staking_requirement to return current height (#1038)
+
+  [ Doyle ]
+  * Introduce LNS update transaction to update the underlying value mapping
+  * Prevent LNS TX updates, updating to the same value
+  * Add various LNS tests for updating record variants
+  * Generate a proper hash for signatures to prevent LNS update replays
+  * Prevent blink in update_lns_mapping in CLI wallet when confirm_and_send-ing
+  * Use tx/extra print helpers in loki_name_system.cpp
+  * Use enum_field for type to use lns::mapping_type
+
+  [ Jason Rhinelander ]
+  * Fix invalid_priority exception
+  * Remove mixin handling from wallet_api; fix create_transactions_2 call
+
+  [ Doyle ]
+  * Make LNS records print out a friendly name for the type
+  * Add RPC calls for updating lns tx
+  * Use operator<< for structs, adjust LNS wording, move command_t to lns::
+  * Use libsodium to hash the contents for signatures
+  * Rewrite the integration tests to use pipes (#1045)
+  * LNS: Allow multi-year registration for lokinet entries
+  * Move simple string view out to common/string_view.h (#1049)
+
+  [ Sean ]
+  * Add get_service_node_status rpc endpoint (#1050)
+
+  [ Doyle ]
+  * Revert debug testnet hardfork changes from LNS
+  * blink=<bool> is not part of transfer API, set rpc long poll threads to 0 in daemon
+  * Propagate error message to CLI wallet (#1047)
+  * LNS: Test all lokinet year expirations, take string by val in lowercase_string
+  * Move out economic related constants/functions to loki_economy
+
+  [ Jason Rhinelander ]
+  * cmake modernization
+  * Convert quorumnet to loki-mq
+  * Fix NO_AES definition
+
+  [ Doyle ]
+  * Mask the name by hashing using sodium's blake2b
+  * Remove generic LNS support, it is still early days
+  * Encrypt mapping values via libsodium, using the name as secret
+  * Add documentation for LNS prototypes
+  * Fix core tests and print out binary vals in hex
+  * Unit test LNS mapping value encryption/decryption
+  * Store base64 hashes into the LNS DB
+  * Update hex usage to lokimq::hex
+  * Ability to vendor libsodium 1.0.18 -D DOWNLOAD_SODIUM=[ON|OFF|FORCE]
+  * Download libsodium 1.0.18 on travis if not available
+
+  [ Jason Rhinelander ]
+  * Fix local sodium detection
+
+  [ Doyle ]
+  * Remove hardcoded checkpoint on testnet (#1059)
+  * Move Sodium detection above external submodules (#1060)
+
+  [ Jason Rhinelander ]
+  * Updated loki-mq for disconnect fixes
+  * Change block reward for HF15 & 16 as per LRC-6
+  * Update test suite & add test for LRC-6 rewards
+
+  [ Doyle ]
+  * Update documentation for LNS commands
+  * Add generic_[key|signature] to handle monero/ed25519 keys
+  * Make LNS take generic keys/sigs where it can for owner keys
+  * Verify owner/backup owner when validating LNS txs
+  * Make generic crypto be comparable
+  * Update SQL commands to handle backup owner keys
+  * DRY combining mapping and owner table together
+  * Bake SQL arguments into get_mappings sql
+  * Use helper function to verify LNS records in tests
+  * Check LNS record is loaded
+  * Update tests not using verify_lns_mapping_record
+  * Revise LNS documenation to reflect actual implementation
+  * Prefix LNS commands with lns, instead of <verb> lns <action>
+  * Add standalone LNS signature generator for CLI/RPC wallet
+  * Actually add make update signature to simplewallet interface
+  * Use prepare_tx_extra .. helper to gen signature
+  * SQL injection fix, index optimize, general code warts
+  * Make LNS take generic keys/sigs where it can for owner keys
+  * Update SQL commands to handle backup owner keys
+  * Add support for backup owners and allow updating LNS fields
+  * Rename data/entry -> lns_extra, bit_field_* -> field_*
+  * Move null checks to general validate section, use macro for error reporting
+  * Owner is optional, if not specified it will use the current wallet
+  * LNS s/row/column, was using row where column should be
+  * Support updating individual fields via LNS update txs
+  * Rewrite reorgs to handle LNS TX updates
+  * CoreTests: Updates to LNS records don't update register_height
+  * Remove constexpr on member functions due to gcc 5.* bug
+  * LNS: bitwise operators for extra_field, removing uneeded KV_*OPT
+  * Move sql_run_statement get_mappings into separate function
+  * Rewrite error reporting to use check_condition
+  * Fix rebase bugs
+
+  [ Maxim Shishmarev ]
+  * Add storage server lokimq port (#1056)
+
+  [ Jason Rhinelander ]
+  * Remove unused functions
+
+  [ Doyle ]
+  * Add type check to polymorphic keys/signatures
+
+  [ Jason Rhinelander ]
+  * Add HF16 miner fee = 1 sat temporary hack
+  * Add arm64 build to allow_failures (#1062)
+  * gcc is (correctly) throwing a misleading indent warning here (#1063)
+  * quorumnet blink fix: reply using a ConnectionID instead of pubkey
+  * Fix blink test coin generation
+
+  [ Maxim Shishmarev ]
+  * Bump min storage server version requirement to 2.0.0 (#1065)
+
+  [ Jason Rhinelander ]
+  * Add testnet HF-15 fork height (#1066)
+
+  [ Doyle ]
+  * Bulletproof tests fixes for changed block reward
+  * Add workaround for non-existent miner fee in HF16
+  * LNS: Print name hash when requesting names to owners
+
+  [ doyle ]
+  * Move operator<<(stream, tx_extra_loki_name_system) above check_condition
+
+  [ Doyle ]
+  * Update version name and value to 7.0.0
+  * Min uptime version=7.0.0, centralise defn to other version vars
+  * Remove unused gpg_keys (#1068)
+  * Accept wallet address for LNS buy/querying for type safety
+  * LNS size check after eating all arguments (potential null ptr deref)
+  * Display (none) correctly for empty owners and prev_txid
+  * Avoid serializing hashes if null, add null operator to crypto::hash
+  * LNS: Remove the wallet's ed25519 key, we support wallet addresses
+  * LNS: Update client side name validation
+  * LNS: Disconnect rpc query if name is invalid for type
+  * LNS: Remove parse_lns_name from CLI wallet
+  * LNS: Disable localhost.loki, disallow '_'s in lokinet
+  * Docker static build hacks/fixes for Valiant Vidar
+  * Replace ARG NPROC with invoke $(nproc) directly, remove unbound hack
+  * Update loki-mq submodule
+  * LNS: Lowercase names at the boundary between LNS and user code
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Fri, 13 Mar 2020 02:03:15 -0300
+
 loki (6.1.4-3~deb9) stretch; urgency=medium
 
   * Bump lokinet-router version for SN metapackage
