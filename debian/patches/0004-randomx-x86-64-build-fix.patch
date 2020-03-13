@@ -9,10 +9,10 @@ override it to x86-64 when compiled with the deb default `westmere`.
  1 file changed, 4 insertions(+)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 63a7e1e..2936388 100644
+index b30f29f..effcea3 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -92,6 +92,10 @@ endif()
+@@ -88,6 +88,10 @@ endif()
  
  add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
@@ -21,5 +21,5 @@ index 63a7e1e..2936388 100644
 +  set(ARCH_ID "x86-64")  # deb workaround: randomx doesn't like ARCH_ID=westmere
 +endif()
  add_subdirectory(randomx EXCLUDE_FROM_ALL)
+ add_subdirectory(loki-mq)
  
- install(

@@ -4,32 +4,44 @@ Subject: Make loki build and install shared libs
 
 Patch the loki cmake files to properly build and install shared libs.
 ---
- CMakeLists.txt                             |  2 ++
- cmake/Version.cmake                        |  9 +++++++++
- contrib/epee/CMakeLists.txt                |  5 +++++
- contrib/epee/src/CMakeLists.txt            | 15 +++++++++++++--
- external/CMakeLists.txt                    |  6 ++++++
- external/db_drivers/liblmdb/CMakeLists.txt | 12 ++++++++++--
- external/easylogging++/CMakeLists.txt      | 10 ++++++++--
- src/CMakeLists.txt                         | 23 ++++++++++++++---------
- src/blockchain_db/CMakeLists.txt           |  2 +-
- src/common/CMakeLists.txt                  |  2 +-
- src/wallet/api/CMakeLists.txt              | 11 +++++++----
- 11 files changed, 76 insertions(+), 21 deletions(-)
+ CMakeLists.txt                  | 12 ++++++++++++
+ cmake/Version.cmake             |  9 +++++++++
+ contrib/epee/CMakeLists.txt     |  5 +++++
+ contrib/epee/src/CMakeLists.txt |  2 +-
+ external/CMakeLists.txt         |  6 ++++++
+ src/CMakeLists.txt              |  6 +++++-
+ 6 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 17b565d..60ba9bc 100644
+index b6975a6..096b47c 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -294,6 +294,8 @@ endif()
+@@ -286,6 +286,8 @@ endif()
  # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
  #   set(BSDI TRUE)
  
 +include(Version)
 +
- include_directories(external/rapidjson/include external/easylogging++ src contrib/epee/include external/cppzmq external)
+ include_directories(external/rapidjson/include src contrib/epee/include external)
  
  if(APPLE)
+@@ -932,6 +934,16 @@ if(BUILD_DOCUMENTATION)
+   endif()
+ endif()
+ 
++set(lokilibs epee epee_readline blockchain_db checkpoints common cncrypto cryptonote_basic
++        cryptonote_core cryptonote_protocol daemonizer device device_trezor lmdb_lib mnemonics
++        multisig net p2p ringct_basic ringct rpc_base rpc daemon_messages daemon_rpc_server
++        serialization wallet easylogging lmdb)
++install(TARGETS ${lokilibs}
++    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
++    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
++set_target_properties(${lokilibs} PROPERTIES
++    VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
++
+ # when ON - will install libwallet_merged into "lib"
+ option(BUILD_GUI_DEPS "Build GUI dependencies." OFF)
+ 
 diff --git a/cmake/Version.cmake b/cmake/Version.cmake
 index 4042bc6..9e4ad65 100644
 --- a/cmake/Version.cmake
@@ -61,10 +73,10 @@ index 035b24b..357984d 100644
 +    COMPONENT development
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
 diff --git a/contrib/epee/src/CMakeLists.txt b/contrib/epee/src/CMakeLists.txt
-index 46eb911..4392e8a 100644
+index 34fd18c..3dc355e 100644
 --- a/contrib/epee/src/CMakeLists.txt
 +++ b/contrib/epee/src/CMakeLists.txt
-@@ -26,11 +26,22 @@
+@@ -26,7 +26,7 @@
  # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
  # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
@@ -72,142 +84,34 @@ index 46eb911..4392e8a 100644
 +add_library(epee hex.cpp http_auth.cpp mlog.cpp net_helper.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
      connection_basic.cpp network_throttle.cpp network_throttle-detail.cpp mlocker.cpp buffer.cpp net_ssl.cpp)
  
-+install(TARGETS epee
-+    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
-+    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
-+set_target_properties(epee PROPERTIES
-+  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
-+
- if (USE_READLINE AND (GNU_READLINE_FOUND OR DEPENDS AND NOT MINGW))
--  add_library(epee_readline STATIC readline_buffer.cpp)
-+  add_library(epee_readline readline_buffer.cpp)
-+  install(TARGETS epee_readline
-+    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
-+    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
-+  set_target_properties(epee_readline PROPERTIES
-+    VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
- endif()
- 
- if(HAVE_C11)
+ if (USE_READLINE AND (GNU_READLINE_FOUND OR (DEPENDS AND NOT MINGW)))
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index f4c6067..63a7e1e 100644
+index 75fbae8..b30f29f 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -93,3 +93,9 @@ endif()
- add_subdirectory(db_drivers)
+@@ -90,3 +90,9 @@ add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
  add_subdirectory(randomx EXCLUDE_FROM_ALL)
+ add_subdirectory(loki-mq)
 +
 +install(
 +  DIRECTORY boost
 +  DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
 +  COMPONENT   development
 +  FILES_MATCHING PATTERN "*.hpp")
-diff --git a/external/db_drivers/liblmdb/CMakeLists.txt b/external/db_drivers/liblmdb/CMakeLists.txt
-index 2e8822f..0f5b01c 100644
---- a/external/db_drivers/liblmdb/CMakeLists.txt
-+++ b/external/db_drivers/liblmdb/CMakeLists.txt
-@@ -52,14 +52,22 @@ if(${ARCH_WIDTH} EQUAL 32)
- endif()
- 
- # GUI/libwallet install target
--if (BUILD_GUI_DEPS)
-+if (BUILD_GUI_DEPS OR BUILD_SHARED_LIBS)
-     if(IOS)
-         set(lib_folder lib-${ARCH})
-     else()
--        set(lib_folder lib)
-+        set(lib_folder lib${LOKI_INSTALL_LIBDIR_SUFFIX})
-     endif()
-     install(TARGETS lmdb
-         ARCHIVE DESTINATION ${lib_folder}
-         LIBRARY DESTINATION ${lib_folder})
- endif()
- set_property(TARGET lmdb APPEND PROPERTY COMPILE_FLAGS "-fPIC")
-+
-+set_target_properties(lmdb PROPERTIES
-+  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
-+install(
-+  DIRECTORY .
-+  DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}/liblmdb
-+  COMPONENT   development
-+  FILES_MATCHING PATTERN "*.h")
-diff --git a/external/easylogging++/CMakeLists.txt b/external/easylogging++/CMakeLists.txt
-index da7e0c6..4cc2831 100644
---- a/external/easylogging++/CMakeLists.txt
-+++ b/external/easylogging++/CMakeLists.txt
-@@ -47,13 +47,13 @@ target_link_libraries(easylogging
-     ${Backtrace_LIBRARIES})
- 
- # GUI/libwallet install target
--if (BUILD_GUI_DEPS)
-+if (BUILD_GUI_DEPS OR BUILD_SHARED_LIBS)
-     if(IOS)
-         set(lib_folder lib-${ARCH})
-         set(flags "${flags} -fno-stack-check")
-         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
-     else()
--        set(lib_folder lib)
-+        set(lib_folder lib${LOKI_INSTALL_LIBDIR_SUFFIX})
-     endif()
-     install(TARGETS easylogging
-         ARCHIVE DESTINATION ${lib_folder}
-@@ -61,3 +61,9 @@ if (BUILD_GUI_DEPS)
- endif()
- set_property(TARGET easylogging APPEND PROPERTY COMPILE_FLAGS "${flags}")
- 
-+set_target_properties(easylogging PROPERTIES
-+  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
-+install(
-+    FILES easylogging++.h ea_config.h
-+    DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
-+    COMPONENT development)
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index eaca703..8ff44e9 100644
+index 339d7ab..57fe031 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -46,13 +46,6 @@ function (loki_private_headers group)
-       ${ARGN})
- endfunction ()
- 
--function (loki_install_headers subdir)
--  install(
--    FILES       ${ARGN}
--    DESTINATION "include/${subdir}"
--    COMPONENT   development)
--endfunction ()
--
- function (enable_stack_trace target)
-   if(STACK_TRACE)
-     set_property(TARGET ${target}
-@@ -88,7 +81,7 @@ function (loki_add_library name)
- endfunction()
- 
- function (loki_add_library_with_deps)
--  cmake_parse_arguments(LOKI_ADD_LIBRARY "" "NAME" "DEPENDS;SOURCES" ${ARGN})
-+  cmake_parse_arguments(LOKI_ADD_LIBRARY "NO_INSTALL" "NAME" "DEPENDS;SOURCES" ${ARGN})
-   source_group("${LOKI_ADD_LIBRARY_NAME}" FILES ${LOKI_ADD_LIBRARY_SOURCES})
- 
-   # Define a ("virtual") object library and an actual library that links those
-@@ -104,9 +97,16 @@ function (loki_add_library_with_deps)
-   set_property(TARGET "${LOKI_ADD_LIBRARY_NAME}" PROPERTY FOLDER "libs")
-   target_compile_definitions(${objlib}
-     PRIVATE $<TARGET_PROPERTY:${LOKI_ADD_LIBRARY_NAME},INTERFACE_COMPILE_DEFINITIONS>)
-+
-+  set_target_properties("${LOKI_ADD_LIBRARY_NAME}" PROPERTIES
-+    VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
-+  if(NOT LOKI_ADD_LIBRARY_NO_INSTALL)
-+    install(TARGETS "${LOKI_ADD_LIBRARY_NAME}"
-+      ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
-+      LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
-+  endif()
+@@ -54,7 +54,6 @@ function (loki_add_executable target binary)
+   install(TARGETS "${target}" DESTINATION bin)
  endfunction ()
  
 -include(Version)
- loki_add_library(version SOURCES ${CMAKE_BINARY_DIR}/version.cpp DEPENDS genversion)
+ add_library(version ${CMAKE_BINARY_DIR}/version.cpp)
+ add_dependencies(version genversion)
  
- add_subdirectory(common)
-@@ -149,3 +149,8 @@ endif()
+@@ -97,3 +96,8 @@ endif()
  
  add_subdirectory(device)
  add_subdirectory(device_trezor)
@@ -216,59 +120,3 @@ index eaca703..8ff44e9 100644
 +    DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/"
 +    DESTINATION "include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}"
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
-diff --git a/src/blockchain_db/CMakeLists.txt b/src/blockchain_db/CMakeLists.txt
-index c258330..08b63a8 100644
---- a/src/blockchain_db/CMakeLists.txt
-+++ b/src/blockchain_db/CMakeLists.txt
-@@ -55,7 +55,7 @@ if (BERKELEY_DB)
- endif()
- 
- loki_private_headers(blockchain_db
--  ${crypto_private_headers})
-+  ${blockchain_db_private_headers})
- loki_add_library(blockchain_db
-   ${blockchain_db_sources}
-   ${blockchain_db_headers}
-diff --git a/src/common/CMakeLists.txt b/src/common/CMakeLists.txt
-index fdbf4aa..12572f0 100644
---- a/src/common/CMakeLists.txt
-+++ b/src/common/CMakeLists.txt
-@@ -115,9 +115,9 @@ target_link_libraries(common
-     ${Boost_THREAD_LIBRARY}
-     ${Boost_REGEX_LIBRARY}
-     ${Boost_CHRONO_LIBRARY}
--  PRIVATE
-     ${OPENSSL_LIBRARIES}
-     ${EPEE_READLINE}
-+  PRIVATE
-     ${EXTRA_LIBRARIES})
- 
- #monero_install_headers(common
-diff --git a/src/wallet/api/CMakeLists.txt b/src/wallet/api/CMakeLists.txt
-index d88f0c9..e5ea262 100644
---- a/src/wallet/api/CMakeLists.txt
-+++ b/src/wallet/api/CMakeLists.txt
-@@ -63,7 +63,8 @@ loki_private_headers(wallet_api
- loki_add_library(wallet_api
-   ${wallet_api_sources}
-   ${wallet_api_headers}
--  ${wallet_api_private_headers})
-+  ${wallet_api_private_headers}
-+  NO_INSTALL)
- target_link_libraries(wallet_api
-   PUBLIC
-     wallet
-@@ -86,8 +87,10 @@ set_property(TARGET obj_wallet_api PROPERTY EXCLUDE_FROM_ALL TRUE)
- if(IOS)
-     set(lib_folder lib-${ARCH})
- else()
--    set(lib_folder lib)
-+    set(lib_folder lib${LOKI_INSTALL_LIBDIR_SUFFIX})
- endif()
- 
--install(FILES ${wallet_api_headers}
--    DESTINATION include/wallet/api)
-+install(TARGETS wallet_api
-+  ARCHIVE DESTINATION ${lib_folder}
-+  LIBRARY DESTINATION ${lib_folder}
-+  EXCLUDE_FROM_ALL)
