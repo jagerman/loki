@@ -8,12 +8,12 @@ Patch the loki cmake files to properly build and install shared libs.
  cmake/Version.cmake             |  9 +++++++++
  contrib/epee/CMakeLists.txt     |  5 +++++
  contrib/epee/src/CMakeLists.txt |  2 +-
- external/CMakeLists.txt         |  6 ++++++
+ external/CMakeLists.txt         | 15 ++++++++++++++-
  src/CMakeLists.txt              |  6 +++++-
- 6 files changed, 38 insertions(+), 2 deletions(-)
+ 6 files changed, 46 insertions(+), 3 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index b6975a6..096b47c 100644
+index b6975a6..29a64cc 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -286,6 +286,8 @@ endif()
@@ -32,7 +32,7 @@ index b6975a6..096b47c 100644
 +set(lokilibs epee epee_readline blockchain_db checkpoints common cncrypto cryptonote_basic
 +        cryptonote_core cryptonote_protocol daemonizer device device_trezor lmdb_lib mnemonics
 +        multisig net p2p ringct_basic ringct rpc_base rpc daemon_messages daemon_rpc_server
-+        serialization wallet easylogging lmdb)
++        serialization wallet easylogging lmdb randomx lokimq::lokimq)
 +install(TARGETS ${lokilibs}
 +    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
 +    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
@@ -86,13 +86,23 @@ index 34fd18c..3dc355e 100644
  
  if (USE_READLINE AND (GNU_READLINE_FOUND OR (DEPENDS AND NOT MINGW)))
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 75fbae8..b30f29f 100644
+index 75fbae8..e744a7a 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -90,3 +90,9 @@ add_subdirectory(db_drivers)
+@@ -88,5 +88,18 @@ endif()
+ 
+ add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
- add_subdirectory(randomx EXCLUDE_FROM_ALL)
+-add_subdirectory(randomx EXCLUDE_FROM_ALL)
++
++if(ARCH_ID STREQUAL "westmere")
++  set(ARCH_ID "x86-64")  # deb workaround: randomx doesn't like ARCH_ID=westmere
++endif()
++add_subdirectory(randomx)
  add_subdirectory(loki-mq)
++
++set_target_properties(randomx-tests randomx-benchmark randomx-codegen
++  PROPERTIES EXCLUDE_FROM_ALL TRUE)
 +
 +install(
 +  DIRECTORY boost
