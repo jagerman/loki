@@ -7,12 +7,12 @@ Subject: Version and install librandomx
  1 file changed, 6 insertions(+)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 2936388..6192870 100644
+index effcea3..a247bef 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -98,6 +98,12 @@ if(ARCH_ID STREQUAL "westmere")
- endif()
+@@ -95,6 +95,12 @@ endif()
  add_subdirectory(randomx EXCLUDE_FROM_ALL)
+ add_subdirectory(loki-mq)
  
 +set_target_properties(randomx PROPERTIES
 +  VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
