@@ -7,10 +7,10 @@ Subject: Disable wallet/api from build
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/wallet/CMakeLists.txt b/src/wallet/CMakeLists.txt
-index 4b052ec..2cfcc83 100644
+index 7568ddc..6c83790 100644
 --- a/src/wallet/CMakeLists.txt
 +++ b/src/wallet/CMakeLists.txt
-@@ -152,4 +152,4 @@ if (BUILD_GUI_DEPS)
+@@ -121,4 +121,4 @@ if (BUILD_GUI_DEPS AND STATIC)
              DESTINATION ${lib_folder})
  endif()
  
