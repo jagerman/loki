@@ -31,7 +31,7 @@ index fa73be7..dfd1cbb 100644
 +set(lokilibs epee epee_readline blockchain_db checkpoints common cncrypto cryptonote_basic
 +        cryptonote_core cryptonote_protocol daemonizer device device_trezor lmdb_lib mnemonics
 +        multisig net p2p ringct_basic ringct rpc_base rpc daemon_messages daemon_rpc_server
-+        serialization wallet easylogging lmdb randomx lokimq::lokimq)
++        serialization wallet easylogging lmdb randomx)
 +install(TARGETS ${lokilibs}
 +    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
 +    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
