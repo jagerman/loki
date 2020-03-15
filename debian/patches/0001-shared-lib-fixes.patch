@@ -4,16 +4,15 @@ Subject: Make loki build and install shared libs
 
 Patch the loki cmake files to properly build and install shared libs.
 ---
- CMakeLists.txt                  | 12 ++++++++++++
- cmake/Version.cmake             |  9 +++++++++
- contrib/epee/CMakeLists.txt     |  5 +++++
- contrib/epee/src/CMakeLists.txt |  2 +-
- external/CMakeLists.txt         |  6 ++++++
- src/CMakeLists.txt              |  6 +++++-
- 6 files changed, 38 insertions(+), 2 deletions(-)
+ CMakeLists.txt              | 12 ++++++++++++
+ cmake/Version.cmake         |  9 +++++++++
+ contrib/epee/CMakeLists.txt |  5 +++++
+ external/CMakeLists.txt     |  6 ++++++
+ src/CMakeLists.txt          |  6 +++++-
+ 5 files changed, 37 insertions(+), 1 deletion(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index b6975a6..29a64cc 100644
+index fa73be7..dfd1cbb 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -286,6 +286,8 @@ endif()
@@ -25,7 +24,7 @@ index b6975a6..29a64cc 100644
  include_directories(external/rapidjson/include src contrib/epee/include external)
  
  if(APPLE)
-@@ -932,6 +934,16 @@ if(BUILD_DOCUMENTATION)
+@@ -920,6 +922,16 @@ if(BUILD_DOCUMENTATION)
    endif()
  endif()
  
@@ -72,27 +71,14 @@ index 035b24b..357984d 100644
 +    DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
 +    COMPONENT development
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
-diff --git a/contrib/epee/src/CMakeLists.txt b/contrib/epee/src/CMakeLists.txt
-index 34fd18c..3dc355e 100644
---- a/contrib/epee/src/CMakeLists.txt
-+++ b/contrib/epee/src/CMakeLists.txt
-@@ -26,7 +26,7 @@
- # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
- # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
--add_library(epee STATIC hex.cpp http_auth.cpp mlog.cpp net_helper.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
-+add_library(epee hex.cpp http_auth.cpp mlog.cpp net_helper.cpp net_utils_base.cpp string_tools.cpp wipeable_string.cpp memwipe.c
-     connection_basic.cpp network_throttle.cpp network_throttle-detail.cpp mlocker.cpp buffer.cpp net_ssl.cpp)
- 
- if (USE_READLINE AND (GNU_READLINE_FOUND OR (DEPENDS AND NOT MINGW)))
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 75fbae8..b30f29f 100644
+index d7aa11b..0c6b22b 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -90,3 +90,9 @@ add_subdirectory(db_drivers)
+@@ -119,3 +119,9 @@ endif()
+ add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
  add_subdirectory(randomx EXCLUDE_FROM_ALL)
- add_subdirectory(loki-mq)
 +
 +install(
 +  DIRECTORY boost
