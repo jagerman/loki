@@ -1,0 +1,108 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Sun, 5 May 2019 01:27:17 -0300
+Subject: Make loki build and install shared libs
+
+Patch the loki cmake files to properly build and install shared libs.
+---
+ CMakeLists.txt              | 12 ++++++++++++
+ cmake/Version.cmake         |  9 +++++++++
+ contrib/epee/CMakeLists.txt |  5 +++++
+ external/CMakeLists.txt     |  6 ++++++
+ src/CMakeLists.txt          |  6 +++++-
+ 5 files changed, 37 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fa73be7..be6da94 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -286,6 +286,8 @@ endif()
+ # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
+ #   set(BSDI TRUE)
+ 
++include(Version)
++
+ include_directories(external/rapidjson/include src contrib/epee/include external)
+ 
+ if(APPLE)
+@@ -920,6 +922,16 @@ if(BUILD_DOCUMENTATION)
+   endif()
+ endif()
+ 
++set(lokilibs epee epee_readline blockchain_db checkpoints common cncrypto cryptonote_basic
++        cryptonote_core cryptonote_protocol daemonizer device device_trezor lmdb_lib mnemonics
++        multisig net p2p ringct_basic ringct rpc_base rpc daemon_messages daemon_rpc_server
++        serialization wallet easylogging lmdb)
++install(TARGETS ${lokilibs}
++    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
++    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
++set_target_properties(${lokilibs} PROPERTIES
++    VERSION "${LOKI_VERSION_MAJOR}.${LOKI_VERSION_MINOR}.${LOKI_VERSION_PATCH}")
++
+ # when ON - will install libwallet_merged into "lib"
+ option(BUILD_GUI_DEPS "Build GUI dependencies." OFF)
+ 
+diff --git a/cmake/Version.cmake b/cmake/Version.cmake
+index 4042bc6..9e4ad65 100644
+--- a/cmake/Version.cmake
++++ b/cmake/Version.cmake
+@@ -51,3 +51,12 @@ else()
+ endif ()
+ add_custom_target(genversion ALL
+   DEPENDS "${CMAKE_BINARY_DIR}/version.cpp")
++
++
++file(STRINGS "${CMAKE_SOURCE_DIR}/src/version.cpp.in" loki_version_defines
++    REGEX "#define DEF_LOKI_VERSION_(MAJOR|MINOR|PATCH) ")
++foreach(ver ${loki_version_defines})
++  if(ver MATCHES "#define DEF_LOKI_VERSION_(MAJOR|MINOR|PATCH) +([0-9]+)$")
++    set(LOKI_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
++  endif()
++endforeach()
+diff --git a/contrib/epee/CMakeLists.txt b/contrib/epee/CMakeLists.txt
+index 035b24b..357984d 100644
+--- a/contrib/epee/CMakeLists.txt
++++ b/contrib/epee/CMakeLists.txt
+@@ -28,3 +28,8 @@
+ 
+ add_subdirectory(src)
+ 
++install(
++    DIRECTORY include/
++    DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
++    COMPONENT development
++    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
+diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
+index d7aa11b..0c6b22b 100644
+--- a/external/CMakeLists.txt
++++ b/external/CMakeLists.txt
+@@ -119,3 +119,9 @@ endif()
+ add_subdirectory(db_drivers)
+ add_subdirectory(easylogging++)
+ add_subdirectory(randomx EXCLUDE_FROM_ALL)
++
++install(
++  DIRECTORY boost
++  DESTINATION include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}
++  COMPONENT   development
++  FILES_MATCHING PATTERN "*.hpp")
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 339d7ab..57fe031 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -54,7 +54,6 @@ function (loki_add_executable target binary)
+   install(TARGETS "${target}" DESTINATION bin)
+ endfunction ()
+ 
+-include(Version)
+ add_library(version ${CMAKE_BINARY_DIR}/version.cpp)
+ add_dependencies(version genversion)
+ 
+@@ -97,3 +96,8 @@ endif()
+ 
+ add_subdirectory(device)
+ add_subdirectory(device_trezor)
++
++install(
++    DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}/"
++    DESTINATION "include${LOKI_INSTALL_INCLUDEDIR_SUFFIX}"
++    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp")
