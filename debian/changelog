@@ -24,7 +24,7 @@ loki (7.0.0-2~ubuntu2004) focal; urgency=medium
   * Allow linking to a system-installed lokimq
   * Various linking and build fixes
 
- -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Mar 2020 16:10:36 -0300
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Mar 2020 16:21:12 -0300
 
 loki (7.0.0-1) unstable; urgency=medium
 
