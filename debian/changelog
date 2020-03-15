@@ -1,3 +1,29 @@
+loki (7.0.0-2) unstable; urgency=medium
+
+  [ Sean Darcy ]
+  * Calculate total burnt loki
+  * Add burn amount to rpc get_coinbase_tx_sum
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+  * Rediff patches
+  * Fix missing dep
+  * Add missing checkpoints dep to cryptonote_core (#1074)
+  * Rediff patches
+
+  [ Sean Darcy ]
+  * serialize the response
+
+  [ Jason Rhinelander ]
+  * Update qnet-ping to support direct port pings
+  * Fix C-ism causing warning
+  * Eliminate warnings from unknown warning flags on apple clang
+  * Set OPENSSL_LIBRARIES hack for bundled libunbound
+  * Allow linking to a system-installed lokimq
+  * Various linking and build fixes
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Mar 2020 16:10:36 -0300
+
 loki (7.0.0-1) unstable; urgency=medium
 
   [ Sean Darcy ]
