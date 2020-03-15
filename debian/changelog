@@ -1,4 +1,6 @@
-loki (7.0.0-2) unstable; urgency=medium
+loki (7.0.0-2~ubuntu2004) focal; urgency=medium
+
+  * Focal build
 
   [ Sean Darcy ]
   * Calculate total burnt loki
