@@ -1,0 +1,20 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Sun, 15 Mar 2020 21:09:34 -0300
+Subject: Wallet needs to link to SSL
+
+---
+ src/wallet/CMakeLists.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/wallet/CMakeLists.txt b/src/wallet/CMakeLists.txt
+index 7568ddc..98e5a7e 100644
+--- a/src/wallet/CMakeLists.txt
++++ b/src/wallet/CMakeLists.txt
+@@ -48,6 +48,7 @@ target_link_libraries(wallet
+     Boost::serialization
+     Boost::filesystem
+     Boost::thread
++    OpenSSL::SSL
+   PRIVATE
+     extra)
+ 
