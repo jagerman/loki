@@ -1,3 +1,30 @@
+loki (7.0.0-3~deb9) stretch; urgency=medium
+
+  [ Doyle ]
+  * LNS: Store wallet addresses to DB
+  * LNS: Update documentation to say wallet addresses are valid for owners
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+  * Fix patch: don't install lokimq anymore
+
+  [ Doyle ]
+  * LNS: s/owner/address, we now store wallet addresses or ed keys
+  * LNS: Print out owners using the to_string() instead of operator bool()
+  * LNS: Serialize owner if not specified, use subaddress keys if possible
+  * LNS: Use hex_to_pod on crypto primitive instead of generic_signature
+
+  [ Jason Rhinelander ]
+  * Loki zmq.hpp indirectly through lokimq.h
+  * Bump cmake version
+  * Wallet needs to link to SSL
+  * libwallet needs to link to openssl
+  * add sqlite3-dev dep to -dev package
+  * drop ssl patch; applied upstream
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Mar 2020 22:12:38 -0300
+
 loki (7.0.0-2~deb9) stretch; urgency=medium
 
   [ Sean Darcy ]
