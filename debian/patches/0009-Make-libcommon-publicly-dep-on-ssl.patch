@@ -1,0 +1,28 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Sun, 15 Mar 2020 22:30:16 -0300
+Subject: Make libcommon publicly dep on ssl
+
+Stretch gets linking errors in some places for unknown reasons; promote
+the SSL deps to deal with it.
+---
+ src/common/CMakeLists.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/common/CMakeLists.txt b/src/common/CMakeLists.txt
+index 19cf953..417a19c 100644
+--- a/src/common/CMakeLists.txt
++++ b/src/common/CMakeLists.txt
+@@ -69,11 +69,11 @@ target_link_libraries(common
+   PUBLIC
+     cncrypto
+     lokimq::lokimq
++    OpenSSL::SSL
++    OpenSSL::Crypto
+   PRIVATE
+     libunbound
+     Boost::regex
+-    OpenSSL::SSL
+-    OpenSSL::Crypto
+     epee_readline
+     extra)
+ 
