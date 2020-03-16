@@ -1,3 +1,26 @@
+loki (7.0.0-3~ubuntu1604) xenial; urgency=medium
+
+  [ Doyle ]
+  * LNS: Store wallet addresses to DB
+  * LNS: Update documentation to say wallet addresses are valid for owners
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+  [ Doyle ]
+  * LNS: s/owner/address, we now store wallet addresses or ed keys
+  * LNS: Print out owners using the to_string() instead of operator bool()
+  * LNS: Serialize owner if not specified, use subaddress keys if possible
+  * LNS: Use hex_to_pod on crypto primitive instead of generic_signature
+
+  [ Jason Rhinelander ]
+  * Loki zmq.hpp indirectly through lokimq.h
+  * libwallet needs to link to openssl
+  * libzmq3-dev -> liblokimq-dev & add libsqlite3-dev dep
+  * Rediff patches
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 15 Mar 2020 22:12:48 -0300
+
 loki (7.0.0-2~ubuntu1604) xenial; urgency=medium
 
   [ Sean Darcy ]
