@@ -6,14 +6,14 @@ Xenial's libunbound doesn't have a .pc file so can't be found via
 pkg-config; this just hard codes the values to what they should be for
 xenial.
 ---
- external/CMakeLists.txt | 29 ++++-------------------------
- 1 file changed, 4 insertions(+), 25 deletions(-)
+ external/CMakeLists.txt | 26 +-------------------------
+ 1 file changed, 1 insertion(+), 25 deletions(-)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 53b82b2..7ab5b1e 100644
+index 53b82b2..512680a 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -71,31 +71,10 @@ else()
+@@ -71,31 +71,7 @@ else()
    target_link_libraries(miniupnpc INTERFACE libminiupnpc-static)
  endif()
  
@@ -42,10 +42,7 @@ index 53b82b2..7ab5b1e 100644
 -  link_dep_libs(libunbound INTERFACE "${UNBOUND_LIBRARY_DIRS}" ${UNBOUND_LIBRARIES})
 -  target_include_directories(libunbound INTERFACE ${UNBOUND_INCLUDE_DIRS})
 -endif()
-+set(UNBOUND_STATIC false PARENT_SCOPE)
-+set(UNBOUND_INCLUDE_DIRS "" PARENT_SCOPE)
-+set(UNBOUND_LIBRARIES "unbound;ssl;crypto" PARENT_SCOPE)
-+set(UNBOUND_LIBRARY_DIRS "" PARENT_SCOPE)
++target_link_libraries(libunbound INTERFACE unbound OpenSSL::SSL OpenSSL::Crypto)
  
  if(NOT LOKIMQ_FOUND)
    message(STATUS "Using in-tree lokimq")
