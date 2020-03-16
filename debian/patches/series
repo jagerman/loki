@@ -2,4 +2,3 @@
 0003-Allow-customized-version-tag.patch
 0006-Add-check-for-latomic-needed-for-armhf-build.patch
 0007-dumb-ARM_ID-ARCH-logic-workaround.patch
-0005-Wallet-needs-to-link-to-SSL.patch
