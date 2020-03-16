@@ -4,17 +4,26 @@ Subject: Make loki build and install shared libs
 
 Patch the loki cmake files to properly build and install shared libs.
 ---
- CMakeLists.txt              | 12 ++++++++++++
+ CMakeLists.txt              | 14 +++++++++++++-
  cmake/Version.cmake         |  9 +++++++++
  contrib/epee/CMakeLists.txt |  5 +++++
  external/CMakeLists.txt     |  6 ++++++
  src/CMakeLists.txt          |  6 +++++-
- 5 files changed, 37 insertions(+), 1 deletion(-)
+ 5 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fa73be7..dfd1cbb 100644
+index fa73be7..9b1e897 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -40,7 +40,7 @@ if (IOS)
+     INCLUDE(CmakeLists_IOS.txt)
+ endif()
+ 
+-cmake_minimum_required(VERSION 3.7)
++cmake_minimum_required(VERSION 3.13)
+ message(STATUS "CMake version ${CMAKE_VERSION}")
+ 
+ project(loki)
 @@ -286,6 +286,8 @@ endif()
  # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
  #   set(BSDI TRUE)
@@ -31,7 +40,7 @@ index fa73be7..dfd1cbb 100644
 +set(lokilibs epee epee_readline blockchain_db checkpoints common cncrypto cryptonote_basic
 +        cryptonote_core cryptonote_protocol daemonizer device device_trezor lmdb_lib mnemonics
 +        multisig net p2p ringct_basic ringct rpc_base rpc daemon_messages daemon_rpc_server
-+        serialization wallet easylogging lmdb randomx)
++        serialization wallet easylogging lmdb randomx blocks version)
 +install(TARGETS ${lokilibs}
 +    ARCHIVE DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX}
 +    LIBRARY DESTINATION lib${LOKI_INSTALL_LIBDIR_SUFFIX})
