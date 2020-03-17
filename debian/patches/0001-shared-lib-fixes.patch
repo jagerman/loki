@@ -12,7 +12,7 @@ Patch the loki cmake files to properly build and install shared libs.
  5 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fa73be7..9b1e897 100644
+index 6a85aa7..beb1990 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -40,7 +40,7 @@ if (IOS)
@@ -24,7 +24,7 @@ index fa73be7..9b1e897 100644
  message(STATUS "CMake version ${CMAKE_VERSION}")
  
  project(loki)
-@@ -286,6 +286,8 @@ endif()
+@@ -300,6 +300,8 @@ endif()
  # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
  #   set(BSDI TRUE)
  
@@ -33,7 +33,7 @@ index fa73be7..9b1e897 100644
  include_directories(external/rapidjson/include src contrib/epee/include external)
  
  if(APPLE)
-@@ -920,6 +922,16 @@ if(BUILD_DOCUMENTATION)
+@@ -938,6 +940,16 @@ if(BUILD_DOCUMENTATION)
    endif()
  endif()
  
@@ -81,10 +81,10 @@ index 035b24b..357984d 100644
 +    COMPONENT development
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index d7aa11b..0c6b22b 100644
+index e9110aa..66e8c40 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -119,3 +119,9 @@ endif()
+@@ -120,3 +120,9 @@ endif()
  add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
  add_subdirectory(randomx EXCLUDE_FROM_ALL)
