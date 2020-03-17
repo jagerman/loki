@@ -1,3 +1,23 @@
+loki (7.1.0-1~ubuntu1804) bionic; urgency=medium
+
+  [ Jason Rhinelander ]
+  * libwallet needs to link to openssl
+  * Add option to allow explicitly disabling systemd
+  * Various contrib/depends fixes
+  * Eliminate superfluous new top block info logs (#1079)
+  * Bump version to 7.1.0 for final release (#1082)
+
+  [ Doyle ]
+  * Fix warnings on Mac, evaluation order and uninit var (#1080)
+
+  [ Jason Rhinelander ]
+  * Add status & startup timer delay during blockchain scanning (#1084)
+
+  [ Doyle ]
+  * LNS: Fix register_height uint16_t truncation (#1085)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Mar 2020 01:47:53 -0300
+
 loki (7.0.0-3~ubuntu1804) bionic; urgency=medium
 
   [ Doyle ]
