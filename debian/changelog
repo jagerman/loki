@@ -1,5 +1,8 @@
 loki (7.1.0-1~ubuntu2004) focal; urgency=medium
 
+  [ Sean Darcy ]
+  * modifies the print function so terminal bright mirrors the emphasis parameter
+
   [ Jason Rhinelander ]
   * Update required SN component versions
   * Add option to allow explicitly disabling systemd
@@ -16,7 +19,7 @@ loki (7.1.0-1~ubuntu2004) focal; urgency=medium
   [ Doyle ]
   * LNS: Fix register_height uint16_t truncation (#1085)
 
- -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Mar 2020 01:47:38 -0300
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Mar 2020 01:50:14 -0300
 
 loki (7.0.0-3~ubuntu2004) focal; urgency=medium
 
