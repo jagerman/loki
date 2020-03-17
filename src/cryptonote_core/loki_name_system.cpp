@@ -99,7 +99,7 @@ static std::string lns_extra_string(cryptonote::network_type nettype, cryptonote
   if (data.is_buying())
   {
     stream << "owner=" << data.owner.to_string(nettype);
-    stream << ", backup_owner=" << data.backup_owner ? data.backup_owner.to_string(nettype) : "(none)";
+    stream << ", backup_owner=" << (data.backup_owner ? data.backup_owner.to_string(nettype) : "(none)");
   }
   else
     stream << "signature=" << epee::string_tools::pod_to_hex(data.signature.data);
@@ -131,7 +131,7 @@ static mapping_record sql_get_mapping_from_statement(sqlite3_stmt *statement)
     return result;
 
   result.type            = static_cast<mapping_type>(type_int);
-  result.register_height = static_cast<uint16_t>(sqlite3_column_int(statement, static_cast<int>(mapping_record_column::register_height)));
+  result.register_height = static_cast<uint64_t>(sqlite3_column_int(statement, static_cast<int>(mapping_record_column::register_height)));
   result.owner_id        = sqlite3_column_int(statement, static_cast<int>(mapping_record_column::owner_id));
   result.backup_owner_id = sqlite3_column_int(statement, static_cast<int>(mapping_record_column::backup_owner_id));
 
