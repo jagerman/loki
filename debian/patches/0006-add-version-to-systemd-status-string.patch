@@ -1,0 +1,22 @@
+From: Jason Rhinelander <jason@imaginary.ca>
+Date: Tue, 17 Mar 2020 13:55:03 -0300
+Subject: add version to systemd status string
+
+---
+ src/cryptonote_core/cryptonote_core.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
+index 39db5fd..579576a 100644
+--- a/src/cryptonote_core/cryptonote_core.cpp
++++ b/src/cryptonote_core/cryptonote_core.cpp
+@@ -543,7 +543,8 @@ namespace cryptonote
+   {
+     std::string s;
+     s.reserve(128);
+-    s += "Height: ";
++    s += 'v'; s += LOKI_VERSION_STR;
++    s += "; Height: ";
+     s += std::to_string(c.get_blockchain_storage().get_current_blockchain_height());
+     s += ", SN: ";
+     auto keys = c.get_service_node_keys();
