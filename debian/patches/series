@@ -3,3 +3,4 @@
 0006-Add-check-for-latomic-needed-for-armhf-build.patch
 0007-dumb-ARM_ID-ARCH-logic-workaround.patch
 0005-Make-libcommon-publicly-dep-on-ssl.patch
+0006-add-version-to-systemd-status-string.patch
