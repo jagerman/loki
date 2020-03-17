@@ -6,14 +6,14 @@ Xenial's libunbound doesn't have a .pc file so can't be found via
 pkg-config; this just hard codes the values to what they should be for
 xenial.
 ---
- external/CMakeLists.txt | 26 +-------------------------
- 1 file changed, 1 insertion(+), 25 deletions(-)
+ external/CMakeLists.txt | 28 +---------------------------
+ 1 file changed, 1 insertion(+), 27 deletions(-)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 53b82b2..512680a 100644
+index 38513a3..319f690 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -71,31 +71,7 @@ else()
+@@ -62,33 +62,7 @@ else()
    target_link_libraries(miniupnpc INTERFACE libminiupnpc-static)
  endif()
  
@@ -28,6 +28,8 @@ index 53b82b2..512680a 100644
 -  if(STATIC AND NOT IOS)
 -    if(UNIX)
 -      set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};${CMAKE_DL_LIBS};${CMAKE_THREAD_LIBS_INIT}")
+-    elseif(MINGW)
+-      set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};extra")
 -    endif()
 -  endif()
 -  add_subdirectory(unbound)
