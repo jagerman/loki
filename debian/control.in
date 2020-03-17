@@ -82,7 +82,7 @@ Description: Loki development files
 Package: loki-service-node
 Architecture: all
 Pre-Depends: curl
-Depends: lokid (=${binary:Version}), loki-storage-server (>= 2.0.0), lokinet-router (>= 0.7.0), ucf
+Depends: lokid (=${binary:Version}), loki-storage-server (>= 2.0.1), lokinet-router (>= 0.7.0), ucf
 Description: Loki service node metapackage
  This package depends on the necessary components to run a loki service node
  and updates the lokid configuration to operate as a service node instead of a
