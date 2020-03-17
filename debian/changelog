@@ -1,3 +1,10 @@
+loki (7.1.0-2~ubuntu1804) bionic; urgency=medium
+
+  * add version to systemd status string
+  * update ss dep to 2.0.1
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Mar 2020 14:01:16 -0300
+
 loki (7.1.0-1~ubuntu1804.1) bionic; urgency=medium
 
   * Fix wrong deps on bionic metapackage
