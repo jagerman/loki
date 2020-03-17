@@ -9,10 +9,10 @@ override it to x86-64 when compiled with the deb default `westmere`.
  1 file changed, 4 insertions(+)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 0c6b22b..2850807 100644
+index 66e8c40..0849285 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -118,6 +118,10 @@ endif()
+@@ -119,6 +119,10 @@ endif()
  
  add_subdirectory(db_drivers)
  add_subdirectory(easylogging++)
