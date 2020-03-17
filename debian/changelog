@@ -1,5 +1,8 @@
 loki (7.1.0-1~ubuntu1804) bionic; urgency=medium
 
+  [ Sean Darcy ]
+  * modifies the print function so terminal bright mirrors the emphasis parameter
+
   [ Jason Rhinelander ]
   * libwallet needs to link to openssl
   * Add option to allow explicitly disabling systemd
@@ -16,7 +19,7 @@ loki (7.1.0-1~ubuntu1804) bionic; urgency=medium
   [ Doyle ]
   * LNS: Fix register_height uint16_t truncation (#1085)
 
- -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Mar 2020 01:47:53 -0300
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 17 Mar 2020 01:50:42 -0300
 
 loki (7.0.0-3~ubuntu1804) bionic; urgency=medium
 
