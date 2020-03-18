@@ -1,3 +1,11 @@
+loki (7.1.2-1~ubuntu1604) xenial; urgency=medium
+
+  [ Doyle ]
+  * LNS: Include prev_txid into signature hash
+  * Update patch to v7.1.2 and enforce prev_txid in signature hashes
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 18 Mar 2020 03:47:48 -0300
+
 loki (7.1.1-1~ubuntu1604) xenial; urgency=medium
 
   [ Jason Rhinelander ]
