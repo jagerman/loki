@@ -1,3 +1,10 @@
+loki (7.1.2-1~ubuntu2004.1) focal; urgency=medium
+
+  * Build with ninja
+  * Rebuild for broken focal deps
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 24 Mar 2020 12:23:24 -0300
+
 loki (7.1.2-1~ubuntu2004) focal; urgency=medium
 
   [ Doyle ]
