@@ -1,3 +1,9 @@
+loki (7.1.2-2~ubuntu1604) xenial; urgency=medium
+
+  * Rebuild for versioned liblokimq
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sat, 28 Mar 2020 13:13:27 -0300
+
 loki (7.1.2-1~ubuntu1604) xenial; urgency=medium
 
   [ Doyle ]
