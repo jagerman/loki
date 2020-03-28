@@ -1,3 +1,9 @@
+loki (7.1.2-2~deb9) stretch; urgency=medium
+
+  * Rebuild for versioned liblokimq
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sat, 28 Mar 2020 13:13:06 -0300
+
 loki (7.1.2-1~deb9) stretch; urgency=medium
 
   [ Doyle ]
