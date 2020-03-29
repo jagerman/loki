@@ -1,3 +1,9 @@
+loki (7.1.2-3~deb10) buster; urgency=medium
+
+  * Rebuild against lokimq 1.0.4
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 29 Mar 2020 19:12:59 -0300
+
 loki (7.1.2-2~deb10) buster; urgency=medium
 
   * Build with ninja
