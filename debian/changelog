@@ -1,3 +1,9 @@
+loki (7.1.2-4~ubuntu2004) focal; urgency=medium
+
+  * Actually rebuild against lokimq 1.0.4
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 30 Mar 2020 13:04:23 -0300
+
 loki (7.1.2-3~ubuntu2004) focal; urgency=medium
 
   * Rebuild against lokimq 1.0.4
