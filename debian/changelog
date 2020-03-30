@@ -1,3 +1,9 @@
+loki (7.1.2-4~ubuntu1604) xenial; urgency=medium
+
+  * Actually rebuild against lokimq 1.0.4
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 30 Mar 2020 13:04:34 -0300
+
 loki (7.1.2-3~ubuntu1604) xenial; urgency=medium
 
   * Rebuild against lokimq 1.0.4
