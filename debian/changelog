@@ -1,3 +1,9 @@
+loki (7.1.2-4~ubuntu1804) bionic; urgency=medium
+
+  * Actually rebuild against lokimq 1.0.4
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 30 Mar 2020 13:04:30 -0300
+
 loki (7.1.2-3~ubuntu1804) bionic; urgency=medium
 
   * Rebuild against lokimq 1.0.4
