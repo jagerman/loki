@@ -1,3 +1,47 @@
+loki (7.1.3-1~ubuntu1604) xenial; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Add version to beginning of systemd status string (#1092)
+
+  [ Doyle ]
+  * LNS: Support all subaddresses in the wallet
+  * Enable Boost::locale for Windows only
+  * LNS: Add lns_hash_name endpoint for wallet_rpc
+  * LNS: Add value decryption for wallet_rpc
+  * LNS: Pretty print mapping value, fix base32z::encode bug
+  * LNS: Use pretty values in responses, fix rpc not serializing
+  * LNS: Fix generic_owner std::map preferring operator bool()
+  * Don't add checkpoints to DB in read only mode
+  * Remove un-needed testnet checkpoint
+  * Don't load blocks (essentially rescanning) in read only mode
+  * LNS: Update LNS query to use all subaddresses of the account
+  * Change std::map<lns::generic_owner -> unordered_map
+  * Android: Remove mixin functions from exported API
+  * Handle transfer exceptions in RPC (#1097)
+
+  [ Jason Rhinelander ]
+  * Remove NO_AES option (#1099)
+
+  [ Doyle ]
+  * Blink: Remap the priority on wallet_rpc properly
+  * Display subsystem starting heights
+  * Valiant Vidar increment patch to 3
+  * LNS: Add update_height field for LNS reorgs
+  * LNS: Update version to match whats stored in the DB
+  * LNS: Make loading db more robust
+  * Tests: Update core tests to check update_height
+  * LNS: Update DB last_process_height after reorg
+
+  [ Jason Rhinelander ]
+  * Update bundled & required lokimq to 1.0.4 (#1104)
+  * Fix upgrade, memory leak, abstract sqlite3 interface
+  * Fix compilation failure on old gcc, avoid compiler warnings
+  * Review updates
+  * Test suite fixes
+  * sqlite3_close from name_system_db destructor
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 31 Mar 2020 21:25:37 -0300
+
 loki (7.1.2-4~ubuntu1604) xenial; urgency=medium
 
   * Actually rebuild against lokimq 1.0.4
