@@ -1,3 +1,10 @@
+loki (7.1.3-2~deb10) buster; urgency=medium
+
+  * Remove systemd version patch applied upstream
+  * Rebuild against lokimq 1.0.5
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 06 Apr 2020 20:35:01 -0300
+
 loki (7.1.3-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
