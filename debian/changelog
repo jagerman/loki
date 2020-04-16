@@ -1,3 +1,20 @@
+loki (7.1.4-1~ubuntu1804) bionic; urgency=medium
+
+  [ Doyle ]
+  * Ensure serialize_default prefers default rvalues when deserializing
+  * s/varialble/variable typos have a development cost as well
+
+  [ Jason Rhinelander ]
+  * Warn and refuse to submit proofs if we detect duplicate ed/x25519 keys (#1121)
+  * Update for LokiMQ 1.1.0's changes (#1122)
+  * Update to latest lokimq for automatic heartbeating
+
+  [ Doyle ]
+  * get_service_node_status: Handle when SN but not staked (#1124)
+  * Update version 7.1 patch to 4 (#1125)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 16 Apr 2020 11:02:24 -0300
+
 loki (7.1.3-2~ubuntu1804) bionic; urgency=medium
 
   * Remove systemd version patch applied upstream
