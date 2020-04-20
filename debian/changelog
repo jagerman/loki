@@ -1,3 +1,18 @@
+loki (7.1.5-1~ubuntu1604) xenial; urgency=medium
+
+  [ Doyle ]
+  * Update LokiMQ to v1.1.1 (#1128)
+
+  [ cryptonote.social ]
+  * fix segfault when exiting cli wallet due to running long poll thread (#1127)
+
+  [ Doyle ]
+  * LongPoll: Reduce connection timeout duration on local addresses (#1129)
+  * Bump version 7.1 patch to 5 (#1130)
+  * Use std::atomic for mingw build+avoid boost (#1131)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 20 Apr 2020 00:38:06 -0300
+
 loki (7.1.4-2~ubuntu1604) xenial; urgency=medium
 
   * Rebuild against lokimq 1.1.1 prerelease
