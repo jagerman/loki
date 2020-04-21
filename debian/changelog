@@ -1,3 +1,9 @@
+loki (7.1.5-2~deb10) buster; urgency=medium
+
+  * Rebuild for lokimq 1.1.2
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 21 Apr 2020 17:19:36 -0300
+
 loki (7.1.5-1~deb10) buster; urgency=medium
 
   [ Doyle ]
