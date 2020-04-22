@@ -10,7 +10,7 @@ xenial.
  1 file changed, 1 insertion(+), 27 deletions(-)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 38513a3..319f690 100644
+index 1b70a80..2572d47 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
 @@ -62,33 +62,7 @@ else()
