@@ -1,3 +1,11 @@
+loki (7.1.6-1~deb10) buster; urgency=medium
+
+  [ Doyle ]
+  * Update LokiMQ to 1.1.2 (#1134)
+  * Bump version 7.1 patch to 6 (#1135)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Wed, 22 Apr 2020 00:51:06 -0300
+
 loki (7.1.5-2~deb10) buster; urgency=medium
 
   * Rebuild for lokimq 1.1.2
