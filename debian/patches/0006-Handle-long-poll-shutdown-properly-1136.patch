@@ -1,0 +1,261 @@
+From: Doyle <Doy-lee@users.noreply.github.com>
+Date: Wed, 22 Apr 2020 16:50:08 +1000
+Subject: Handle long poll shutdown properly (#1136)
+
+Wait for thread to end before terminating wallet_rpc
+
+- In RPC wallet, we need to track long polling shutting down separately
+from the wallet as the RPC wallet can start up without instantiating
+a wallet2 instance. If this is the case, shutting down the RPC wallet
+will hang the long polling thread as the terminating variable can never
+be retrieved from wallet2.
+
+- Simplify RAII of the long polling thread by putting it into the
+simple_wallet destructor
+
+- Fix long poll thread constantly resetting the host. set_server() was
+currently parsing host = "localhost:38157" such that get_host()
+= "localhost" and port() = 38157 so that host != get_host().
+---
+ src/simplewallet/simplewallet.cpp | 25 +++++++++++++++++++++++--
+ src/simplewallet/simplewallet.h   | 36 ++----------------------------------
+ src/wallet/wallet2.cpp            | 13 +++++++++++--
+ src/wallet/wallet2.h              |  3 ++-
+ src/wallet/wallet_rpc_server.cpp  | 20 +++++++++++---------
+ src/wallet/wallet_rpc_server.h    |  1 +
+ 6 files changed, 50 insertions(+), 48 deletions(-)
+
+diff --git a/src/simplewallet/simplewallet.cpp b/src/simplewallet/simplewallet.cpp
+index d55300c..2be1164 100644
+--- a/src/simplewallet/simplewallet.cpp
++++ b/src/simplewallet/simplewallet.cpp
+@@ -3121,6 +3121,14 @@ Pending or Failed: "failed"|"pending",  "out", Time, Amount*, Transaction Hash,
+                            tr(USAGE_LNS_MAKE_UPDATE_MAPPING_SIGNATURE),
+                            tr(tools::wallet_rpc::COMMAND_RPC_LNS_MAKE_UPDATE_SIGNATURE::description));
+ }
++
++simple_wallet::~simple_wallet()
++{
++  if (m_wallet) m_wallet->m_long_poll_disabled = true;
++  if (m_long_poll_thread.joinable())
++      m_long_poll_thread.join();
++}
++
+ //----------------------------------------------------------------------------------------------------
+ bool simple_wallet::set_variable(const std::vector<std::string> &args)
+ {
+@@ -8499,8 +8507,21 @@ bool simple_wallet::run()
+   m_auto_refresh_enabled = m_wallet->auto_refresh();
+   m_idle_thread          = boost::thread([&] { wallet_idle_thread(); });
+ 
+-  long_poll_thread_t long_poll_thread(*this);
+-  if (!m_wallet->m_long_poll_disabled) long_poll_thread.start();
++  m_long_poll_thread = boost::thread([&] {
++    for (;;)
++    {
++      if (m_wallet->m_long_poll_disabled)
++        return true;
++      try
++      {
++        if (m_auto_refresh_enabled && m_wallet->long_poll_pool_state())
++          m_idle_cond.notify_one();
++      }
++      catch (...)
++      {
++      }
++    }
++  });
+ 
+   message_writer(console_color_green, false) << "Background refresh thread started";
+ 
+diff --git a/src/simplewallet/simplewallet.h b/src/simplewallet/simplewallet.h
+index 604a19e..4c762fc 100644
+--- a/src/simplewallet/simplewallet.h
++++ b/src/simplewallet/simplewallet.h
+@@ -76,6 +76,7 @@ namespace cryptonote
+     typedef std::vector<std::string> command_type;
+ 
+     simple_wallet();
++    ~simple_wallet();
+     bool init(const boost::program_options::variables_map& vm);
+     bool deinit();
+     bool run();
+@@ -337,40 +338,6 @@ namespace cryptonote
+     virtual boost::optional<epee::wipeable_string> on_device_passphrase_request(bool on_device);
+     //----------------------------------------------------------
+ 
+-    class long_poll_thread_t
+-    {
+-    public:
+-      long_poll_thread_t(cryptonote::simple_wallet& simple_wallet)
+-        : m_simple_wallet(simple_wallet), m_polling_done(true) { }
+-      ~long_poll_thread_t()
+-      {
+-        if (m_polling_done || !m_long_poll_thread.joinable()) return;
+-        m_polling_done = true;
+-        m_long_poll_thread.join();
+-      }
+-
+-      void start()
+-      {
+-        m_polling_done = false;
+-        m_long_poll_thread = boost::thread([&] {
+-            while (!m_polling_done)
+-            {
+-              try
+-              {
+-                if (m_simple_wallet.m_auto_refresh_enabled && m_simple_wallet.m_wallet->long_poll_pool_state())
+-                  m_simple_wallet.m_idle_cond.notify_one();
+-              }
+-              catch (...) { }
+-            }
+-          });
+-      }
+-
+-    private:
+-      cryptonote::simple_wallet& m_simple_wallet;
+-      std::atomic<bool> m_polling_done;
+-      boost::thread m_long_poll_thread;
+-    };
+-
+     friend class refresh_progress_reporter_t;
+ 
+     class refresh_progress_reporter_t
+@@ -469,6 +436,7 @@ namespace cryptonote
+     bool m_long_payment_id_support;
+     std::atomic<uint64_t> m_password_asked_on_height;
+     crypto::hash          m_password_asked_on_checksum;
++    boost::thread         m_long_poll_thread;
+     
+     // MMS
+     mms::message_store& get_message_store() const { return m_wallet->get_message_store(); };
+diff --git a/src/wallet/wallet2.cpp b/src/wallet/wallet2.cpp
+index c5c8573..233f672 100644
+--- a/src/wallet/wallet2.cpp
++++ b/src/wallet/wallet2.cpp
+@@ -1106,6 +1106,11 @@ bool wallet2::has_testnet_option(const boost::program_options::variables_map& vm
+   return command_line::get_arg(vm, options().testnet);
+ }
+ 
++bool wallet2::has_disable_rpc_long_poll(const boost::program_options::variables_map& vm)
++{
++  return command_line::get_arg(vm, options().disable_rpc_long_poll);
++}
++
+ bool wallet2::has_stagenet_option(const boost::program_options::variables_map& vm)
+ {
+   return command_line::get_arg(vm, options().stagenet);
+@@ -2874,11 +2879,15 @@ bool wallet2::long_poll_pool_state()
+     }
+ 
+     std::lock_guard<std::recursive_mutex> long_poll_mutex(m_long_poll_mutex);
+-    if (new_host != m_long_poll_client.get_host())
++    epee::net_utils::http::url_content parsed{};
++    if (!epee::net_utils::parse_url(new_host, parsed))
++      return false;
++
++    if (parsed.host != m_long_poll_client.get_host())
+     {
+       if(m_long_poll_client.is_connected())
+         m_long_poll_client.disconnect();
+-      m_long_poll_client.set_server(new_host, login, m_long_poll_ssl_options);
++      m_long_poll_client.set_server(parsed.host, std::to_string(parsed.port), login, m_long_poll_ssl_options);
+       local_address = tools::is_local_address(new_host);
+     }
+   }
+diff --git a/src/wallet/wallet2.h b/src/wallet/wallet2.h
+index 4a253e8..3a6ef87 100644
+--- a/src/wallet/wallet2.h
++++ b/src/wallet/wallet2.h
+@@ -353,6 +353,7 @@ private:
+ 
+     static bool has_testnet_option(const boost::program_options::variables_map& vm);
+     static bool has_stagenet_option(const boost::program_options::variables_map& vm);
++    static bool has_disable_rpc_long_poll(const boost::program_options::variables_map& vm);
+     static std::string device_name_option(const boost::program_options::variables_map& vm);
+     static std::string device_derivation_path_option(const boost::program_options::variables_map &vm);
+     static void init_options(boost::program_options::options_description& desc_params);
+@@ -1580,7 +1581,7 @@ private:
+     void set_offline(bool offline = true);
+ 
+ 
+-    bool m_long_poll_disabled = false;
++    std::atomic<bool> m_long_poll_disabled;
+   private:
+     /*!
+      * \brief  Stores wallet information to wallet file.
+diff --git a/src/wallet/wallet_rpc_server.cpp b/src/wallet/wallet_rpc_server.cpp
+index 06e66d0..7d19548 100644
+--- a/src/wallet/wallet_rpc_server.cpp
++++ b/src/wallet/wallet_rpc_server.cpp
+@@ -91,14 +91,13 @@ namespace tools
+   }
+ 
+   //------------------------------------------------------------------------------------------------------------------------------
+-  wallet_rpc_server::wallet_rpc_server():m_wallet(NULL), rpc_login_file(), m_stop(false), m_restricted(false), m_vm(NULL)
++  wallet_rpc_server::wallet_rpc_server():m_wallet(NULL), rpc_login_file(), m_stop(false), m_restricted(false), m_vm(NULL), m_long_poll_disabled(true)
+   {
+   }
+   //------------------------------------------------------------------------------------------------------------------------------
+   wallet_rpc_server::~wallet_rpc_server()
+   {
+-    if (m_wallet)
+-      delete m_wallet;
++    stop();
+   }
+   //------------------------------------------------------------------------------------------------------------------------------
+   void wallet_rpc_server::set_wallet(wallet2 *cr)
+@@ -141,18 +140,16 @@ namespace tools
+     m_long_poll_thread = boost::thread([&] {
+       for (;;)
+       {
+-        if (m_auto_refresh_period == 0 || !m_wallet)
++        if (m_long_poll_disabled) return true;
++        if (m_auto_refresh_period == 0)
+         {
+-          std::this_thread::sleep_for(std::chrono::seconds(10));
++          std::this_thread::sleep_for(std::chrono::seconds(1));
+           continue;
+         }
+ 
+-        if (m_wallet->m_long_poll_disabled)
+-          return true;
+-
+         try
+         {
+-          if (m_wallet->long_poll_pool_state())
++          if (m_wallet && m_wallet->long_poll_pool_state())
+             m_long_poll_new_changes = true;
+         }
+         catch (...)
+@@ -168,6 +165,10 @@ namespace tools
+   //------------------------------------------------------------------------------------------------------------------------------
+   void wallet_rpc_server::stop()
+   {
++    m_long_poll_disabled = true;
++    if (m_long_poll_thread.joinable())
++        m_long_poll_thread.join();
++
+     if (m_wallet)
+     {
+       m_wallet->store();
+@@ -4637,6 +4638,7 @@ public:
+       return false;
+     }
+   just_dir:
++    wrpc->m_long_poll_disabled = tools::wallet2::has_disable_rpc_long_poll(vm);
+     if (wal) wrpc->set_wallet(wal.release());
+     bool r = wrpc->init(&vm);
+     CHECK_AND_ASSERT_MES(r, false, tools::wallet_rpc_server::tr("Failed to initialize wallet RPC server"));
+diff --git a/src/wallet/wallet_rpc_server.h b/src/wallet/wallet_rpc_server.h
+index 0afa584..7694958 100644
+--- a/src/wallet/wallet_rpc_server.h
++++ b/src/wallet/wallet_rpc_server.h
+@@ -62,6 +62,7 @@ namespace tools
+     bool run();
+     void stop();
+     void set_wallet(wallet2 *cr);
++    std::atomic<bool> m_long_poll_disabled;
+ 
+   private:
+ 

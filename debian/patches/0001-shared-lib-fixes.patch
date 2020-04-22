@@ -12,7 +12,7 @@ Patch the loki cmake files to properly build and install shared libs.
  5 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 6a85aa7..beb1990 100644
+index 1889044..78a047d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -40,7 +40,7 @@ if (IOS)
@@ -33,7 +33,7 @@ index 6a85aa7..beb1990 100644
  include_directories(external/rapidjson/include src contrib/epee/include external)
  
  if(APPLE)
-@@ -938,6 +940,16 @@ if(BUILD_DOCUMENTATION)
+@@ -943,6 +945,16 @@ if(BUILD_DOCUMENTATION)
    endif()
  endif()
  
@@ -81,7 +81,7 @@ index 035b24b..357984d 100644
 +    COMPONENT development
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index e9110aa..66e8c40 100644
+index 9f4aa92..0ad50fa 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
 @@ -120,3 +120,9 @@ endif()
