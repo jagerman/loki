@@ -1,3 +1,16 @@
+loki (7.1.7-1~ubuntu1604) xenial; urgency=medium
+
+  [ Doyle ]
+  * Handle long poll shutdown properly (#1136)
+
+  [ Jason Rhinelander ]
+  * Fix blink submission replies (#1142)
+
+  [ cryptonote.social ]
+  * show amount for blacklisted stakes (#1140)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Tue, 28 Apr 2020 23:29:13 -0300
+
 loki (7.1.6-2~ubuntu1604) xenial; urgency=medium
 
   * Handle long poll shutdown properly (#1136)
