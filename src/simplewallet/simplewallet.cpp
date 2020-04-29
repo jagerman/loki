@@ -3121,6 +3121,14 @@ Pending or Failed: "failed"|"pending",  "out", Time, Amount*, Transaction Hash, 
                            tr(USAGE_LNS_MAKE_UPDATE_MAPPING_SIGNATURE),
                            tr(tools::wallet_rpc::COMMAND_RPC_LNS_MAKE_UPDATE_SIGNATURE::description));
 }
+
+simple_wallet::~simple_wallet()
+{
+  if (m_wallet) m_wallet->m_long_poll_disabled = true;
+  if (m_long_poll_thread.joinable())
+      m_long_poll_thread.join();
+}
+
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::set_variable(const std::vector<std::string> &args)
 {
@@ -6316,6 +6324,12 @@ bool simple_wallet::query_locked_stakes(bool print_result)
       msg_buf.append("/");
       msg_buf.append(entry.key_image);
       msg_buf.append("\n");
+      if (entry.amount > 0) {
+        // version >= service_nodes::key_image_blacklist_entry::version_1_serialize_amount
+        msg_buf.append("  Total Locked: ");
+        msg_buf.append(cryptonote::print_money(entry.amount));
+        msg_buf.append("\n");
+      }
 
       if (i < (response.size() - 1))
         msg_buf.append("\n");
@@ -8499,8 +8513,21 @@ bool simple_wallet::run()
   m_auto_refresh_enabled = m_wallet->auto_refresh();
   m_idle_thread          = boost::thread([&] { wallet_idle_thread(); });
 
-  long_poll_thread_t long_poll_thread(*this);
-  if (!m_wallet->m_long_poll_disabled) long_poll_thread.start();
+  m_long_poll_thread = boost::thread([&] {
+    for (;;)
+    {
+      if (m_wallet->m_long_poll_disabled)
+        return true;
+      try
+      {
+        if (m_auto_refresh_enabled && m_wallet->long_poll_pool_state())
+          m_idle_cond.notify_one();
+      }
+      catch (...)
+      {
+      }
+    }
+  });
 
   message_writer(console_color_green, false) << "Background refresh thread started";
 
