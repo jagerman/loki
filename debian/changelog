@@ -1,3 +1,17 @@
+loki (7.1.8-1~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * drop already-applied long poll patch
+  * Fix inter-quorum relay
+  * Improve inter-quorum relay trace debugging
+  * Minor style changes
+  * Make blink signature parsing single-pass
+  * Deal with negative integer encodings
+  * Simplify and fix peer lookups
+  * Bump version to 7.1.8
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Sun, 03 May 2020 22:41:39 -0300
+
 loki (7.1.7-1~deb10) buster; urgency=medium
 
   [ Doyle ]
