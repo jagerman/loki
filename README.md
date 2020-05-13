@@ -41,36 +41,43 @@ sources are also used for statically-linked builds because distribution
 packages often include only shared library binaries (`.so`) but not static
 library archives (`.a`).
 
-| Dep          | Min. version  | Vendored | Debian/Ubuntu pkg    | Arch pkg     | Fedora              | Optional | Purpose          |
-| ------------ | ------------- | -------- | ------------------   | ------------ | -----------------   | -------- | ---------------- |
-| GCC          | 4.7.3         | NO       | `build-essential`    | `base-devel` | `gcc`               | NO       |                  |
-| CMake        | 3.5           | NO       | `cmake`              | `cmake`      | `cmake`             | NO       |                  |
-| pkg-config   | any           | NO       | `pkg-config`         | `base-devel` | `pkgconf`           | NO       |                  |
-| Boost        | 1.58          | NO       | `libboost-all-dev`   | `boost`      | `boost-devel`       | NO       | C++ libraries    |
-| OpenSSL      | basically any | NO       | `libssl-dev`         | `openssl`    | `openssl-devel`     | NO       | sha256 sum       |
-| libzmq       | 4.3.0         | YES      | `libzmq3-dev`        | `zeromq`     | `zeromq-devel`      | NO       | LokiMQ library   |
-| sqlite3      | ?             | NO       | `libsqlite3-dev`     | `sqlite`     | `sqlite-devel`      | NO       | Loki Name System |
-| libunbound   | 1.4.16        | NO       | `libunbound-dev`     | `unbound`    | `unbound-devel`     | NO       | DNS resolver     |
-| libsodium    | ?             | NO       | `libsodium-dev`      | `libsodium`  | `libsodium-devel`   | NO       | cryptography     |
-| libunwind    | any           | NO       | `libunwind8-dev`     | `libunwind`  | `libunwind-devel`   | YES      | Stack traces     |
-| liblzma      | any           | NO       | `liblzma-dev`        | `xz`         | `xz-devel`          | YES      | For libunwind    |
-| libreadline  | 6.3.0         | NO       | `libreadline-dev`    | `readline`   | `readline-devel`    | YES      | Input editing    |
-| ldns         | 1.6.17        | NO       | `libldns-dev`        | `ldns`       | `ldns-devel`        | YES      | SSL toolkit      |
-| expat        | 1.1           | NO       | `libexpat1-dev`      | `expat`      | `expat-devel`       | YES      | XML parsing      |
-| Doxygen      | any           | NO       | `doxygen`            | `doxygen`    | `doxygen`           | YES      | Documentation    |
-| Graphviz     | any           | NO       | `graphviz`           | `graphviz`   | `graphviz`          | YES      | Documentation    |
-| Qt tools     | 5.x           | NO       | `qttools5-dev`       | `qt5-tools`  | `qt5-linguist`      | YES      | Translations     |
-| libhidapi    | ?             | NO       | `libhidapi-dev`      | `hidapi`     | `hidapi-devel`      | YES      | Hardware wallet  |
-| libusb       | ?             | NO       | `libusb-dev`         | `libusb`     | `libusb-devel`      | YES      | Hardware wallet  |
-| libprotobuf  | ?             | NO       | `libprotobuf-dev`    | `protobuf`   | `protobuf-devel`    | YES      | Hardware wallet  |
-| protoc       | ?             | NO       | `protobuf-compiler`  | `protobuf`   | `protobuf-compiler` | YES      | Hardware wallet  |
+| Dep          | Min. version  | Vendored | Debian/Ubuntu pkg     | Arch pkg     | Fedora              | Optional | Purpose          |
+| ------------ | ------------- | -------- | --------------------- | ------------ | ------------------- | -------- | ---------------- |
+| GCC          | 7.1.0         | NO       | `g++`                 | `base-devel` | `gcc`               | NO       |                  |
+| CMake        | 3.10          | NO       | `cmake`               | `cmake`      | `cmake`             | NO       |                  |
+| pkg-config   | any           | NO       | `pkg-config`          | `base-devel` | `pkgconf`           | NO       |                  |
+| Boost        | 1.65          | NO       | `libboost-all-dev`[1] | `boost`      | `boost-devel`       | NO       | C++ libraries    |
+| OpenSSL      | basically any | NO       | `libssl-dev`          | `openssl`    | `openssl-devel`     | NO       | sha256 sum       |
+| libzmq       | 4.3.0         | YES      | `libzmq3-dev`         | `zeromq`     | `zeromq-devel`      | NO       | ZeroMQ library   |
+| sqlite3      | ?             | YES      | `libsqlite3-dev`      | `sqlite`     | `sqlite-devel`      | NO       | Loki Name System |
+| libunbound   | 1.4.16        | NO       | `libunbound-dev`      | `unbound`    | `unbound-devel`     | NO       | DNS resolver     |
+| libsodium    | 1.0.9         | YES      | `libsodium-dev`       | `libsodium`  | `libsodium-devel`   | NO       | cryptography     |
+| libunwind    | any           | NO       | `libunwind8-dev`      | `libunwind`  | `libunwind-devel`   | YES      | Stack traces     |
+| liblzma      | any           | NO       | `liblzma-dev`         | `xz`         | `xz-devel`          | YES      | For libunwind    |
+| libreadline  | 6.3.0         | NO       | `libreadline-dev`     | `readline`   | `readline-devel`    | YES      | Input editing    |
+| ldns         | 1.6.17        | NO       | `libldns-dev`         | `ldns`       | `ldns-devel`        | YES      | SSL toolkit      |
+| expat        | 1.1           | NO       | `libexpat1-dev`       | `expat`      | `expat-devel`       | YES      | XML parsing      |
+| Doxygen      | any           | NO       | `doxygen`             | `doxygen`    | `doxygen`           | YES      | Documentation    |
+| Graphviz     | any           | NO       | `graphviz`            | `graphviz`   | `graphviz`          | YES      | Documentation    |
+| Qt tools     | 5.x           | NO       | `qttools5-dev`        | `qt5-tools`  | `qt5-linguist`      | YES      | Translations     |
+| libhidapi    | ?             | NO       | `libhidapi-dev`       | `hidapi`     | `hidapi-devel`      | YES      | Hardware wallet  |
+| libusb       | ?             | NO       | `libusb-dev`          | `libusb`     | `libusb-devel`      | YES      | Hardware wallet  |
+| libprotobuf  | ?             | NO       | `libprotobuf-dev`     | `protobuf`   | `protobuf-devel`    | YES      | Hardware wallet  |
+| protoc       | ?             | NO       | `protobuf-compiler`   | `protobuf`   | `protobuf-compiler` | YES      | Hardware wallet  |
 
-[1] On Debian/Ubuntu `libgtest-dev` only includes sources and headers. You must
-build the library binary manually. This can be done with the following command ```sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake . && sudo make && sudo mv libg* /usr/lib/ ```
+
+[1] libboost-all-dev includes a lot of unnecessary packages; see the apt command below for a
+breakdown of the minimum set of required boost packages.
 
 Install all dependencies at once on Debian/Ubuntu:
 
-``` sudo apt update && sudo apt install build-essential cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline6-dev libldns-dev libexpat1-dev doxygen graphviz libpgm-dev libsqlite3-dev qttools5-dev libhidapi-dev libusb-dev libprotobuf-dev protobuf-compiler ```
+```
+sudo apt update && \
+sudo apt install g++ cmake pkg-config libboost-filesystem-dev libboost-thread-dev libboost-date-time-dev \
+    libboost-chrono-dev libboost-regex-dev libboost-serialization-dev libboost-program-options-dev \
+    libssl-dev libzmq3-dev libsqlite3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline-dev \
+    libldns-dev libexpat1-dev doxygen graphviz libsqlite3-dev
+```
 
 Install all dependencies at once on macOS with the provided Brewfile:
 ``` brew update && brew bundle --file=contrib/brew/Brewfile ```
@@ -86,12 +93,12 @@ Clone recursively to pull-in needed submodule(s):
 
 If you already have a repo cloned, initialize and update:
 
-`$ cd loki && git submodule init && git submodule update`
+`$ cd loki && git submodule update --init --recursive`
 
 ### Build instructions
 
-Loki uses the CMake build system and a top-level [Makefile](Makefile) that
-invokes cmake commands as needed.
+Loki uses the CMake build system and an optional top-level [Makefile](Makefile) that wraps cmake
+commands as needed (alternatively you may create a build directory and invoke cmake directly).
 
 #### On Linux and macOS
 
@@ -106,7 +113,7 @@ invokes cmake commands as needed.
 
     *Optional*: If your machine has several cores and enough memory, enable
     parallel build by running `make -j<number of threads>` instead of `make`. For
-    this to be worthwhile, the machine should have one core and about 2GB of RAM
+    this to be worthwhile, the machine should have one core and at least 2GB of RAM
     available per thread.
 
     *Note*: The instructions above will compile the most stable release of the
@@ -149,85 +156,20 @@ Dependencies need to be built with -fPIC. Static libraries usually aren't, so yo
     HAVE_DOT=YES doxygen Doxyfile
     ```
 
-#### On the Raspberry Pi
+#### On the Raspberry Pi (and similar ARM-based devices)
 
-Tested on a Raspberry Pi Zero with a clean install of minimal Raspbian Stretch (2017-09-07 or later) from https://www.raspberrypi.org/downloads/raspbian/. If you are using Raspian Jessie, [please see note in the following section](#note-for-raspbian-jessie-users).
+The build process is exactly the same, but note that some parts of the build require around 3GB of
+RAM which is more memory than most Raspberry Pi class devices have available.  You can work around
+this by enabling 2GB (or more) of swap, but this is not particularly recommended, particularly if
+the swap file is on the SD card: intensive writes to a swap file on an SD card can accelerate how
+quickly the SD card wears out.  Devices with 4GB of RAM (such as the 4GB model of the Pi 4B, and
+some other SBC ARM devices) can build without needing swap.
 
-* `apt-get update && apt-get upgrade` to install all of the latest software
-
-* Install the dependencies for Loki from the 'Debian' column in the table above.
-
-* Increase the system swap size:
-
-    ```bash
-    sudo /etc/init.d/dphys-swapfile stop  
-    sudo nano /etc/dphys-swapfile  
-    CONF_SWAPSIZE=2048
-    sudo /etc/init.d/dphys-swapfile start
-    ```
-
-* If using an external hard disk without an external power supply, ensure it gets enough power to avoid hardware issues when syncing, by adding the line "max_usb_current=1" to /boot/config.txt
-
-* Clone Loki and checkout the most recent release version:
-
-    ```bash
-    git clone https://github.com/loki-project/loki.git
-    cd loki
-    git checkout master
-    ```
-
-* Build:
-
-    ```bash
-    make release
-    ```
-
-* Wait 4-6 hours
-
-* The resulting executables can be found in `build/release/bin`
-
-* Add `PATH="$PATH:$HOME/loki/build/release/bin"` to `.profile`
-
-* Run Loki with `lokid --detach`
-
-* You may wish to reduce the size of the swap file after the build has finished, and delete the boost directory from your home directory
-
-#### *Note for Raspbian Jessie users:*
-
-If you are using the older Raspbian Jessie image, compiling Loki is a bit more complicated. The version of Boost available in the Debian Jessie repositories is too old to use with Loki, and thus you must compile a newer version yourself. The following explains the extra steps, and has been tested on a Raspberry Pi 2 with a clean install of minimal Raspbian Jessie.
-
-* As before, `apt-get update && apt-get upgrade` to install all of the latest software, and increase the system swap size
-
-    ```bash
-    sudo /etc/init.d/dphys-swapfile stop
-    sudo nano /etc/dphys-swapfile
-    CONF_SWAPSIZE=2048
-    sudo /etc/init.d/dphys-swapfile start
-    ```
-
-
-* Then, install the dependencies for Loki except `libunwind` and `libboost-all-dev`
-
-* Install the latest version of boost (this may first require invoking `apt-get remove --purge libboost*` to remove a previous version if you're not using a clean install):
-
-    ```bash
-    cd
-    wget https://sourceforge.net/projects/boost/files/boost/1.64.0/boost_1_64_0.tar.bz2
-    tar xvfo boost_1_64_0.tar.bz2
-    cd boost_1_64_0
-    ./bootstrap.sh
-    sudo ./b2
-    ```
-
-* Wait ~8 hours
-
-    ```bash    
-    sudo ./bjam cxxflags=-fPIC cflags=-fPIC -a install
-    ```
-
-* Wait ~4 hours
-
-* From here, follow the [general Raspberry Pi instructions](#on-the-raspberry-pi) from the "Clone loki and checkout most recent release version" step.
+As an alternative, pre-built loki debs are available for ARM32 and ARM64 for recent
+Debian/Raspbian/Ubuntu distributions and are often a much better alternative for SBC-class devices.
+If you still want to compile from source, ensure you have enough memory (or swap -- consult your OS
+documentation to learn how to enable or increase swap size) and follow the regular linux build
+instructions above.
 
 #### On Windows:
 
@@ -416,11 +358,12 @@ The produced binaries still link libc dynamically. If the binary is compiled on 
 
 ## Installing Loki from a package
 
-**DISCLAIMER: These packages are not part of this repository or maintained by this project's contributors, and as such, do not go through the same review process to ensure their trustworthiness and security.**
+Pre-built packages are available for recent Debian and Ubuntu systems (and are often usable on
+Debian or Ubuntu-derived Linux distributions).  For more details see https://deb.imaginary.stream
 
-Packages are available for
 
-* Docker
+
+You can also build a docker package using:
 
     ```bash
     # Build using all available cores
