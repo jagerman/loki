@@ -35,7 +35,6 @@
 #include "quorumnet_conn_matrix.h"
 #include "cryptonote_config.h"
 #include "common/random.h"
-#include "common/lock.h"
 
 #include <lokimq/lokimq.h>
 #include <lokimq/hex.h>
@@ -52,7 +51,6 @@ namespace {
 using namespace service_nodes;
 using namespace std::literals;
 using namespace lokimq;
-using namespace lokimq::literals;
 
 using blink_tx = cryptonote::blink_tx;
 
@@ -104,7 +102,7 @@ std::string get_data_as_string(const T &key) {
     return {reinterpret_cast<const char *>(&key), sizeof(key)};
 }
 
-crypto::x25519_public_key x25519_from_string(string_view pubkey) {
+crypto::x25519_public_key x25519_from_string(std::string_view pubkey) {
     crypto::x25519_public_key x25519_pub = crypto::x25519_public_key::null();
     if (pubkey.size() == sizeof(crypto::x25519_public_key))
         std::memcpy(x25519_pub.data, pubkey.data(), pubkey.size());
@@ -372,7 +370,7 @@ bt_dict serialize_vote(const quorum_vote_t &vote) {
     return result;
 }
 
-quorum_vote_t deserialize_vote(string_view v) {
+quorum_vote_t deserialize_vote(std::string_view v) {
     const auto &d = bt_deserialize<bt_dict>(v); // throws if not a bt_dict
     quorum_vote_t vote;
     vote.version = get_int<uint8_t>(d.at("v"));
@@ -759,7 +757,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     if (hf_version < HF_VERSION_BLINK) {
         MWARNING("Rejecting blink message: blink is not available for hardfork " << (int) hf_version);
         if (tag)
-            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"_sv}}));
+            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"sv}}));
         return;
     }
 
@@ -770,14 +768,14 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     if (blink_height < local_height - 2) {
         MINFO("Rejecting blink tx because blink auth height is too low (" << blink_height << " vs. " << local_height << ")");
         if (tag)
-            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"_sv}}));
+            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"sv}}));
         return;
     } else if (blink_height > local_height + 2) {
         // TODO: if within some threshold (maybe 5-10?) we could hold it and process it once we are
         // within 2.
         MINFO("Rejecting blink tx because blink auth height is too high (" << blink_height << " vs. " << local_height << ")");
         if (tag)
-            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"_sv}}));
+            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"sv}}));
         return;
     }
     MTRACE("Blink tx auth height " << blink_height << " is valid (local height is " << local_height << ")");
@@ -786,7 +784,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     if (t_it == data.end()) {
         MINFO("Rejecting blink tx: no tx data included in request");
         if (tag)
-            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "No transaction included in blink request"_sv}}));
+            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "No transaction included in blink request"sv}}));
         return;
     }
     const std::string &tx_data = t_it->second.get<std::string>();
@@ -801,7 +799,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     bool already_approved = false, already_rejected = false;
     if (tx_hash_str.size() == sizeof(crypto::hash)) {
         std::memcpy(tx_hash.data, tx_hash_str.data(), sizeof(crypto::hash));
-        auto lock = tools::shared_lock(qnet.mutex);
+        std::shared_lock lock{qnet.mutex};
         auto bit = qnet.blinks.find(blink_height);
         if (bit != qnet.blinks.end()) {
             auto &umap = bit->second;
@@ -864,7 +862,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     else {
         MINFO("Rejecting blink tx: this service node is not a member of the blink quorum!");
         if (tag)
-            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Blink tx relayed to non-blink quorum member"_sv}}));
+            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Blink tx relayed to non-blink quorum member"sv}}));
         return;
     }
 
@@ -881,7 +879,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
         if (!cryptonote::parse_and_validate_tx_from_blob(tx_data, tx, tx_hash_actual)) {
             MINFO("Rejecting blink tx: failed to parse transaction data");
             if (tag)
-                m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Failed to parse transaction data"_sv}}));
+                m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Failed to parse transaction data"sv}}));
             return;
         }
         MTRACE("Successfully parsed transaction data");
@@ -889,7 +887,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
         if (tx_hash != tx_hash_actual) {
             MINFO("Rejecting blink tx: submitted tx hash " << tx_hash << " did not match actual tx hash " << tx_hash_actual);
             if (tag)
-                m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid transaction hash"_sv}}));
+                m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid transaction hash"sv}}));
             return;
         } else {
             MTRACE("Pre-computed tx hash matches actual tx hash");
@@ -901,7 +899,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     if (!pinfo.strong_peers) {
         MWARNING("Could not find connection info for any blink quorum peers.  Aborting blink tx");
         if (tag)
-            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "No quorum peers are currently reachable"_sv}}));
+            m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "No quorum peers are currently reachable"sv}}));
         return;
     }
 
@@ -909,7 +907,7 @@ void handle_blink(lokimq::Message& m, QnetState& qnet) {
     // signatures for this blink tx that we received or processed before we got here with this tx.
     std::list<pending_signature> signatures;
     {
-        auto lock = tools::unique_lock(qnet.mutex);
+        std::unique_lock lock{qnet.mutex};
         auto &bl_info = qnet.blinks[blink_height][tx_hash];
         if (bl_info.btxptr) {
             MDEBUG("Already seen and forwarded this blink tx, ignoring it.");
@@ -1107,12 +1105,12 @@ void handle_blink_signature(Message& m, QnetState& qnet) {
         // Most of the time we'll already know about the blink and don't need a unique lock to
         // extract info we need.  If we fail, we'll stash the signature to be processed when we get
         // the blink tx itself.
-        auto lock = tools::shared_lock(qnet.mutex);
+        std::shared_lock lock{qnet.mutex};
         find_blink();
     }
 
     if (!btxptr) {
-        auto lock = tools::unique_lock(qnet.mutex);
+        std::unique_lock lock{qnet.mutex};
         // We probably don't have it, so want to stash the signature until we received it.  There's
         // a chance, however, that another thread processed it while we were waiting for this
         // exclusive mutex, so check it again before we stash a delayed signature.
@@ -1160,7 +1158,7 @@ std::future<std::pair<cryptonote::blink_result, std::string>> send_blink(crypton
     } else {
         auto now = std::chrono::high_resolution_clock::now();
         bool found = false;
-        auto lock = tools::unique_lock(pending_blink_result_mutex);
+        std::unique_lock lock{pending_blink_result_mutex};
         for (auto it = pending_blink_results.begin(); it != pending_blink_results.end(); ) {
             auto &b_results = it->second;
             if (b_results.expiry >= now) {
@@ -1254,7 +1252,7 @@ std::future<std::pair<cryptonote::blink_result, std::string>> send_blink(crypton
             core.get_lmq().send(get<0>(remotes[i]), "blink.submit", data, send_option::hint{get<1>(remotes[i])});
         }
     } catch (...) {
-        auto lock = tools::unique_lock(pending_blink_result_mutex);
+        std::unique_lock lock{pending_blink_result_mutex};
         auto it = pending_blink_results.find(blink_tag); // Look up again because `brd` might have been deleted
         if (it != pending_blink_results.end()) {
             try {
@@ -1269,7 +1267,7 @@ std::future<std::pair<cryptonote::blink_result, std::string>> send_blink(crypton
 void common_blink_response(uint64_t tag, cryptonote::blink_result res, std::string msg, bool nostart = false) {
     bool promise_set = false;
     {
-        auto lock = tools::shared_lock(pending_blink_result_mutex);
+        std::shared_lock lock{pending_blink_result_mutex};
         auto it = pending_blink_results.find(tag);
         if (it == pending_blink_results.end())
             return; // Already handled, or obsolete
@@ -1297,7 +1295,7 @@ void common_blink_response(uint64_t tag, cryptonote::blink_result res, std::stri
         }
     }
     if (promise_set) {
-        auto lock = tools::unique_lock(pending_blink_result_mutex);
+        std::unique_lock lock{pending_blink_result_mutex};
         pending_blink_results.erase(tag);
     }
 }

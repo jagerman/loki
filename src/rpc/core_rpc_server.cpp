@@ -45,7 +45,6 @@
 #include "common/util.h"
 #include "common/perf_timer.h"
 #include "common/random.h"
-#include "common/base32z.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
@@ -76,14 +75,12 @@ namespace cryptonote { namespace rpc {
 
       Request load(rpc_request& request) {
         Request req{};
-        if (request.body.is<string_view>()) {
-          // I hate that I have to copy this string_view into a string, but epee *ONLY* supports
-          // strings for json serialization. TODO: stop using epee.
-          if (!epee::serialization::load_t_from_json(req, std::string{request.body.get_unchecked<string_view>()}))
+        if (std::holds_alternative<std::string_view>(request.body)) {
+          if (!epee::serialization::load_t_from_json(req, std::get<std::string_view>(request.body)))
             throw parse_error{"Failed to parse JSON parameters"};
         } else {
           // This is nasty.  TODO: get rid of epee's horrible serialization code.
-          auto& epee_stuff = request.body.get_unchecked<jsonrpc_params>();
+          auto& epee_stuff = std::get<jsonrpc_params>(request.body);
           auto& storage_entry = epee_stuff.second;
           // For some reason epee calls a json object a "section" instead of something common like
           // dict, object, hash, map.  But okay, then it calls a pointer to a section a "hsection"
@@ -124,10 +121,10 @@ namespace cryptonote { namespace rpc {
       using Request = typename RPC::request;
       Request load(rpc_request& request) { 
         Request req{};
-        if (!request.body.is<string_view>())
+        if (!std::holds_alternative<std::string_view>(request.body))
           throw std::runtime_error{"Internal error: can't load binary a RPC command with non-string body"};
-        auto data = request.body.get_unchecked<string_view>();
-        if (!epee::serialization::load_t_from_binary(req, epee::span<const uint8_t>{reinterpret_cast<uint8_t const*>(&data[0]), data.size()}))
+        auto data = std::get<std::string_view>(request.body);
+        if (!epee::serialization::load_t_from_binary(req, data))
           throw parse_error{"Failed to parse binary data parameters"};
         return req;
       }
@@ -167,11 +164,7 @@ namespace cryptonote { namespace rpc {
     std::unordered_map<std::string, std::shared_ptr<const rpc_command>> register_rpc_commands(rpc::type_list<RPC...>) {
       std::unordered_map<std::string, std::shared_ptr<const rpc_command>> regs;
 
-#ifdef __cpp_fold_expressions // C++17
       (register_rpc_command<RPC>(regs), ...);
-#else
-      (void) std::initializer_list<bool>{(register_rpc_command<RPC>(regs), true)...};
-#endif
 
       return regs;
     }
@@ -3359,11 +3352,11 @@ namespace cryptonote { namespace rpc {
         entry.name_hash                                        = record.name_hash;
         entry.owner                                            = record.owner.to_string(nettype());
         if (record.backup_owner) entry.backup_owner            = record.backup_owner.to_string(nettype());
-        entry.encrypted_value                                  = epee::to_hex::string(record.encrypted_value.to_span());
+        entry.encrypted_value                                  = lokimq::to_hex(record.encrypted_value.to_view());
         entry.register_height                                  = record.register_height;
         entry.update_height                                    = record.update_height;
-        entry.txid                                             = epee::string_tools::pod_to_hex(record.txid);
-        if (record.prev_txid) entry.prev_txid                  = epee::string_tools::pod_to_hex(record.prev_txid);
+        entry.txid                                             = lokimq::to_hex(tools::view_guts(record.txid));
+        if (record.prev_txid) entry.prev_txid                  = lokimq::to_hex(tools::view_guts(record.prev_txid));
       }
     }
 
@@ -3415,11 +3408,11 @@ namespace cryptonote { namespace rpc {
       entry.name_hash       = std::move(record.name_hash);
       if (record.owner) entry.owner = record.owner.to_string(nettype());
       if (record.backup_owner) entry.backup_owner = record.backup_owner.to_string(nettype());
-      entry.encrypted_value = epee::to_hex::string(record.encrypted_value.to_span());
+      entry.encrypted_value = lokimq::to_hex(record.encrypted_value.to_view());
       entry.register_height = record.register_height;
       entry.update_height   = record.update_height;
-      entry.txid            = epee::string_tools::pod_to_hex(record.txid);
-      if (record.prev_txid) entry.prev_txid = epee::string_tools::pod_to_hex(record.prev_txid);
+      entry.txid            = lokimq::to_hex(tools::view_guts(record.txid));
+      if (record.prev_txid) entry.prev_txid = lokimq::to_hex(tools::view_guts(record.prev_txid));
     }
 
     res.status = STATUS_OK;

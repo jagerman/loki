@@ -247,7 +247,7 @@ namespace cryptonote
       uint64_t *blink_rollback_height)
   {
     // this should already be called with that lock, but let's make it explicit for clarity
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
 
     PERF_TIMER(add_tx);
     if (tx.version == txversion::v0)
@@ -396,9 +396,8 @@ namespace cryptonote
         memset(meta.padding, 0, sizeof(meta.padding));
         try
         {
-          if (opts.kept_by_block)
-            m_parsed_tx_cache.insert(std::make_pair(id, tx));
-          auto b_lock = tools::unique_lock(m_blockchain);
+          m_parsed_tx_cache.insert(std::make_pair(id, tx));
+          std::unique_lock b_lock{m_blockchain};
           LockedTXN lock(m_blockchain);
           m_blockchain.add_txpool_tx(id, blob, meta);
           if (!insert_key_images(tx, id, opts.kept_by_block))
@@ -443,7 +442,7 @@ namespace cryptonote
       {
         if (opts.kept_by_block)
           m_parsed_tx_cache.insert(std::make_pair(id, tx));
-        auto b_lock = tools::unique_lock(m_blockchain);
+        std::unique_lock b_lock{m_blockchain};
         LockedTXN lock(m_blockchain);
         m_blockchain.remove_txpool_tx(id);
         m_blockchain.add_txpool_tx(id, blob, meta);
@@ -493,7 +492,7 @@ namespace cryptonote
   bool tx_memory_pool::add_new_blink(const std::shared_ptr<blink_tx> &blink_ptr, tx_verification_context &tvc, bool &blink_exists)
   {
     assert((bool) blink_ptr);
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     auto &blink = *blink_ptr;
     auto &tx = boost::get<transaction>(blink.tx); // will throw if just a hash w/o a transaction
     auto txhash = get_transaction_hash(tx);
@@ -644,7 +643,7 @@ namespace cryptonote
   bool tx_memory_pool::remove_blink_conflicts(const crypto::hash &id, const std::vector<crypto::hash> &conflict_txs, uint64_t *blink_rollback_height)
   {
     auto bl_lock = blink_shared_lock(std::defer_lock);
-    auto bc_lock = tools::unique_lock(m_blockchain, std::defer_lock);
+    std::unique_lock bc_lock{m_blockchain, std::defer_lock};
     boost::lock(bl_lock, bc_lock);
 
     // Since this is a signed blink tx, we want to see if we can eject any existing mempool
@@ -711,13 +710,13 @@ namespace cryptonote
   //---------------------------------------------------------------------------------
   size_t tx_memory_pool::get_txpool_weight() const
   {
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     return m_txpool_weight;
   }
   //---------------------------------------------------------------------------------
   void tx_memory_pool::set_txpool_max_weight(size_t bytes)
   {
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     m_txpool_max_weight = bytes;
   }
   //---------------------------------------------------------------------------------
@@ -764,8 +763,8 @@ namespace cryptonote
   void tx_memory_pool::prune(const crypto::hash &skip)
   {
     auto blink_lock = blink_shared_lock(std::defer_lock);
-    std::unique_lock<tx_memory_pool> tx_lock{*this, std::defer_lock};
-    std::unique_lock<Blockchain> bc_lock{m_blockchain, std::defer_lock};
+    std::unique_lock tx_lock{*this, std::defer_lock};
+    std::unique_lock bc_lock{m_blockchain, std::defer_lock};
     // Breaks on macOS's broken SDK version 10.11 that we currently use:
     //std::lock(blink_lock, tx_lock, bc_lock);
     boost::lock(blink_lock, tx_lock, bc_lock);
@@ -945,7 +944,7 @@ namespace cryptonote
 
   void tx_memory_pool::add_notify(std::function<void(const crypto::hash&, const transaction&, const std::string&, const tx_pool_options&)> notify)
   {
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     m_tx_notify.push_back(std::move(notify));
   }
 
@@ -1262,8 +1261,8 @@ namespace cryptonote
   //TODO: investigate whether boolean return is appropriate
   bool tx_memory_pool::get_transactions_and_spent_keys_info(std::vector<rpc::tx_info>& tx_infos, std::vector<rpc::spent_key_image_info>& key_image_infos, bool include_sensitive_data) const
   {
-    auto tx_lock = tools::unique_lock(m_transactions_lock, std::defer_lock);
-    auto bc_lock = tools::unique_lock(m_blockchain, std::defer_lock);
+    std::unique_lock tx_lock{m_transactions_lock, std::defer_lock};
+    std::unique_lock bc_lock{m_blockchain, std::defer_lock};
     auto blink_lock = blink_shared_lock(std::defer_lock);
     boost::lock(tx_lock, bc_lock, blink_lock);
 
@@ -1434,7 +1433,7 @@ namespace cryptonote
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::on_blockchain_inc(block const &blk)
   {
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     m_input_cache.clear();
     m_parsed_tx_cache.clear();
 
@@ -1513,7 +1512,7 @@ namespace cryptonote
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::on_blockchain_dec()
   {
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     m_input_cache.clear();
     m_parsed_tx_cache.clear();
     return true;
@@ -1558,7 +1557,7 @@ namespace cryptonote
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::have_tx_keyimg_as_spent(const crypto::key_image& key_im) const
   {
-    auto lock = tools::unique_lock(m_transactions_lock);
+    std::unique_lock lock{m_transactions_lock};
     return m_spent_key_images.end() != m_spent_key_images.find(key_im);
   }
   //---------------------------------------------------------------------------------

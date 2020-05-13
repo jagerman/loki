@@ -4689,9 +4689,7 @@ int main(int argc, char **argv)
   po::options_description hidden_params("Hidden");
   daemonizer::init_options(hidden_params, desc_params);
 
-  boost::optional<po::variables_map> vm;
-  bool should_terminate = false;
-  std::tie(vm, should_terminate) = wallet_args::main(
+  auto [vm, should_terminate] = wallet_args::main(
     argc, argv,
     "loki-wallet-rpc [--wallet-file=<file>|--generate-from-json=<file>|--wallet-dir=<directory>] [--rpc-bind-port=<port>]",
     tools::wallet_rpc_server::tr("This is the RPC loki wallet. It needs to connect to a loki\ndaemon to work correctly."),

@@ -37,6 +37,7 @@
 #include <unordered_set>
 #include <iomanip>
 #include <lokimq/hex.h>
+#include <lokimq/base32z.h>
 
 extern "C" {
 #include <sodium.h>
@@ -49,7 +50,6 @@ extern "C" {
 
 #include "cryptonote_core.h"
 #include "common/util.h"
-#include "common/base32z.h"
 #include "common/updates.h"
 #include "common/download.h"
 #include "common/threadpool.h"
@@ -1014,17 +1014,15 @@ namespace cryptonote
 
     if (m_service_node) {
       MGINFO_YELLOW("Service node public keys:");
-      MGINFO_YELLOW("- primary: " << epee::string_tools::pod_to_hex(keys.pub));
-      MGINFO_YELLOW("- ed25519: " << epee::string_tools::pod_to_hex(keys.pub_ed25519));
-      // Same as ed25519, but encoded with base32z:
-      char b32z[52] = {};
-      base32z::encode(std::string{reinterpret_cast<const char*>(keys.pub_ed25519.data), 32}, b32z);
-      MGINFO_YELLOW("- lokinet: " << lokimq::string_view(b32z, sizeof(b32z)) << ".snode");
-      MGINFO_YELLOW("-  x25519: " << epee::string_tools::pod_to_hex(keys.pub_x25519));
+      MGINFO_YELLOW("- primary: " << lokimq::to_hex(tools::view_guts(keys.pub)));
+      MGINFO_YELLOW("- ed25519: " << lokimq::to_hex(tools::view_guts(keys.pub_ed25519)));
+      // .snode address is the ed25519 pubkey, encoded with base32z and with .snode appended:
+      MGINFO_YELLOW("- lokinet: " << lokimq::to_base32z(tools::view_guts(keys.pub_ed25519)) << ".snode");
+      MGINFO_YELLOW("-  x25519: " << lokimq::to_hex(tools::view_guts(keys.pub_x25519)));
     } else {
       // Only print the x25519 version because it's the only thing useful for a non-SN (for
       // encrypted LMQ RPC connections).
-      MGINFO_YELLOW("x25519 public key: " << epee::string_tools::pod_to_hex(keys.pub_x25519));
+      MGINFO_YELLOW("x25519 public key: " << lokimq::to_hex(tools::view_guts(keys.pub_x25519)));
     }
 
     return true;
@@ -1061,7 +1059,7 @@ namespace cryptonote
   // check_sn is whether we check an incoming key against known service nodes (and thus return
   // "true" for the service node access if it checks out).
   //
-  lokimq::AuthLevel core::lmq_allow(lokimq::string_view ip, lokimq::string_view x25519_pubkey_str, lokimq::AuthLevel default_auth) {
+  lokimq::AuthLevel core::lmq_allow(std::string_view ip, std::string_view x25519_pubkey_str, lokimq::AuthLevel default_auth) {
     using namespace lokimq;
     AuthLevel auth = default_auth;
     if (x25519_pubkey_str.size() == sizeof(crypto::x25519_public_key)) {
@@ -1089,7 +1087,7 @@ namespace cryptonote
         tools::copy_guts(m_service_keys.pub_x25519),
         tools::copy_guts(m_service_keys.key_x25519),
         m_service_node,
-        [this](string_view x25519_pk) { return m_service_node_list.remote_lookup(x25519_pk); },
+        [this](std::string_view x25519_pk) { return m_service_node_list.remote_lookup(x25519_pk); },
         [](LogLevel level, const char *file, int line, std::string msg) {
           // What a lovely interface (<-- sarcasm)
           if (ELPP->vRegistry()->allowed(easylogging_level(level), "lmq"))
@@ -1115,7 +1113,7 @@ namespace cryptonote
       std::string qnet_listen = "tcp://" + listen_ip + ":" + std::to_string(m_quorumnet_port);
       MGINFO("- listening on " << qnet_listen << " (quorumnet)");
       m_lmq->listen_curve(qnet_listen,
-          [this, public_=command_line::get_arg(vm, arg_lmq_quorumnet_public)](string_view ip, string_view pk, bool) {
+          [this, public_=command_line::get_arg(vm, arg_lmq_quorumnet_public)](std::string_view ip, std::string_view pk, bool) {
             return lmq_allow(ip, pk, public_ ? AuthLevel::basic : AuthLevel::none);
           });
 

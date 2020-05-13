@@ -2,22 +2,6 @@
 
 namespace cryptonote { namespace rpc {
 
-#if !(__cplusplus >= 201703L || (defined(_MSC_VER) && _MSVC_LANG > 201402L))
-// Static member definitions for pre-C++17 compiler.  Including these isn't required in C++17 and
-// will (depending on compiler flags) produce warnings.
-constexpr size_t GET_BLOCKS_FAST::MAX_COUNT;
-constexpr uint64_t GET_QUORUM_STATE::HEIGHT_SENTINEL_VALUE;
-constexpr uint8_t GET_QUORUM_STATE::ALL_QUORUMS_SENTINEL_VALUE;
-constexpr size_t GET_CHECKPOINTS::MAX_COUNT;
-constexpr uint32_t GET_CHECKPOINTS::NUM_CHECKPOINTS_TO_QUERY_BY_DEFAULT;
-constexpr uint64_t GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE;
-constexpr uint64_t GET_SN_STATE_CHANGES::HEIGHT_SENTINEL_VALUE;
-constexpr size_t LNS_NAMES_TO_OWNERS::MAX_REQUEST_ENTRIES;
-constexpr size_t LNS_NAMES_TO_OWNERS::MAX_TYPE_REQUEST_ENTRIES;
-constexpr size_t LNS_OWNERS_TO_NAMES::MAX_REQUEST_ENTRIES;
-#endif
-
-
 KV_SERIALIZE_MAP_CODE_BEGIN(STATUS)
   KV_SERIALIZE(status)
 KV_SERIALIZE_MAP_CODE_END()

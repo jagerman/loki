@@ -1134,7 +1134,7 @@ namespace cryptonote
      /**
       * Returns whether to allow the connection and, if so, at what authentication level.
       */
-     lokimq::AuthLevel lmq_allow(lokimq::string_view ip, lokimq::string_view x25519_pubkey, lokimq::AuthLevel default_auth);
+     lokimq::AuthLevel lmq_allow(std::string_view ip, std::string_view x25519_pubkey, lokimq::AuthLevel default_auth);
 
      /**
       * @brief Internal use only!

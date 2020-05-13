@@ -82,9 +82,9 @@ namespace epee
       //-------------------------------------------------------------------------------
       bool		store_to_binary(std::string& target);
       bool		load_from_binary(const epee::span<const uint8_t> target);
-      bool		load_from_binary(const std::string& target) { return load_from_binary(epee::strspan<uint8_t>(target)); }
+      bool		load_from_binary(std::string_view target) { return load_from_binary(epee::strspan<uint8_t>(target)); }
       bool		  dump_as_json(std::string& targetObj, size_t indent = 0, bool insert_newlines = true);
-      bool		  load_from_json(const std::string& source);
+      bool		  load_from_json(std::string_view source);
 
       /// Lets you store a pointer to some arbitrary context object; typically used to pass some
       /// context to dependent child objects.
@@ -132,7 +132,7 @@ namespace epee
       CATCH_ENTRY("portable_storage::dump_as_json", false)
     }
     inline
-    bool portable_storage::load_from_json(const std::string& source)
+    bool portable_storage::load_from_json(std::string_view source)
     {
       TRY_ENTRY();
       return json::load_from_json(source, *this);

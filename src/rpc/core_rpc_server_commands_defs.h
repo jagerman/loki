@@ -77,9 +77,6 @@ namespace rpc {
     return (uint32_t(version.first) << 16) | version.second;
   }
 
-  using lokimq::string_view;
-  using namespace lokimq::literals;
-
   const static std::string
     STATUS_OK = "OK",
     STATUS_FAILED = "FAILED",
@@ -94,9 +91,9 @@ namespace rpc {
     /// Used to specify RPC names as:
     /// static constexpr auto names() { return NAMES("primary_name", "some_alias"); }
     template <size_t... N>
-    constexpr std::array<string_view, sizeof...(N)> NAMES(const char (&...names)[N]) {
+    constexpr std::array<std::string_view, sizeof...(N)> NAMES(const char (&...names)[N]) {
       static_assert(sizeof...(N) > 0, "RPC command must have at least one name");
-      return {string_view{names, N-1}...};
+      return {std::string_view{names, N-1}...};
     }
   }
 

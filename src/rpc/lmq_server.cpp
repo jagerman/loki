@@ -1,14 +1,13 @@
 
 #include "lmq_server.h"
 #include "lokimq/lokimq.h"
-#include "common/lock.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "daemon.rpc"
 
 namespace cryptonote { namespace rpc {
 
-using namespace lokimq;
+using lokimq::AuthLevel;
 
 namespace {
 
@@ -40,7 +39,7 @@ const command_line::arg_descriptor<std::vector<std::string>> arg_lmq_local_contr
     "WARNING: Do not use this on a publicly accessible address!"};
 
 
-void check_lmq_listen_addr(lokimq::string_view addr) {
+void check_lmq_listen_addr(std::string_view addr) {
   // Crude check for basic validity; you can specify all sorts of invalid things, but at least
   // we can check the prefix for something that looks zmq-y.
   if (addr.size() < 7 || (addr.substr(0, 6) != "tcp://" && addr.substr(0, 6) != "ipc://"))
@@ -63,10 +62,10 @@ auto as_x_pubkeys(const std::vector<std::string>& pk_strings) {
 // LMQ RPC responses consist of [CODE, DATA] for code we (partially) mimic HTTP error codes: 200
 // means success, anything else means failure.  (We don't have codes for Forbidden or Not Found
 // because those happen at the LMQ protocol layer).
-constexpr string_view
-  LMQ_OK{"200"_sv},
-  LMQ_BAD_REQUEST{"400"_sv},
-  LMQ_ERROR{"500"_sv};
+constexpr std::string_view
+  LMQ_OK{"200"sv},
+  LMQ_BAD_REQUEST{"400"sv},
+  LMQ_ERROR{"500"sv};
 
 } // end anonymous namespace
 
@@ -93,28 +92,28 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
     check_lmq_listen_addr(addr);
     MGINFO("LMQ listening on " << addr << " (public unencrypted)");
     lmq.listen_plain(addr,
-        [&core](string_view ip, string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::basic); });
+        [&core](std::string_view ip, std::string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::basic); });
   }
 
   for (const auto &addr : command_line::get_arg(vm, arg_lmq_curve_public)) {
     check_lmq_listen_addr(addr);
     MGINFO("LMQ listening on " << addr << " (public curve)");
     lmq.listen_curve(addr,
-        [&core](string_view ip, string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::basic); });
+        [&core](std::string_view ip, std::string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::basic); });
   }
 
   for (const auto &addr : command_line::get_arg(vm, arg_lmq_curve)) {
     check_lmq_listen_addr(addr);
     MGINFO("LMQ listening on " << addr << " (curve restricted)");
     lmq.listen_curve(addr,
-        [&core](string_view ip, string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::denied); });
+        [&core](std::string_view ip, std::string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::denied); });
   }
 
   for (const auto &addr : command_line::get_arg(vm, arg_lmq_local_control)) {
     check_lmq_listen_addr(addr);
     MGINFO("LMQ listening on " << addr << " (unauthenticated local admin)");
     lmq.listen_plain(addr,
-        [&core](string_view ip, string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::admin); });
+        [&core](std::string_view ip, std::string_view pk, bool /*sn*/) { return core.lmq_allow(ip, pk, AuthLevel::admin); });
   }
 
 
@@ -142,7 +141,7 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
   lmq.add_category("admin", AuthLevel::admin, admin_reserved_threads);
   for (auto& cmd : rpc_commands) {
     lmq.add_request_command(cmd.second->is_public ? "rpc" : "admin", cmd.first,
-        [name=string_view{cmd.first}, &call=*cmd.second, this](Message& m) {
+        [name=std::string_view{cmd.first}, &call=*cmd.second, this](lokimq::Message& m) {
       if (m.data.size() > 1)
         m.send_reply(LMQ_BAD_REQUEST, "Bad request: RPC commands must have at most one data part "
             "(received " + std::to_string(m.data.size()) + ")");
@@ -151,7 +150,7 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
       request.context.admin = m.access.auth >= AuthLevel::admin;
       request.context.source = rpc_source::lmq;
       request.context.remote = m.remote;
-      request.body = m.data.empty() ? ""_sv : m.data[0];
+      request.body = m.data.empty() ? ""sv : m.data[0];
 
       try {
         m.send_reply(LMQ_OK, call.invoke(std::move(request), rpc_));
@@ -202,7 +201,7 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
   // such as txes that came from an existing block during a rollback).  Note that both txhash and
   // txblob are binary: in particular, txhash is *not* hex-encoded.
   //
-  lmq.add_request_command("sub", "mempool", [this](Message& m) {
+  lmq.add_request_command("sub", "mempool", [this](lokimq::Message& m) {
 
     if (m.data.size() != 1) {
       m.send_reply("Invalid subscription request: no subscription type given");
@@ -210,9 +209,9 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
     }
 
     mempool_sub_type sub_type;
-    if (m.data[0] == "blink"_sv)
+    if (m.data[0] == "blink"sv)
       sub_type = mempool_sub_type::blink;
-    else if (m.data[0] == "all"_sv)
+    else if (m.data[0] == "all"sv)
       sub_type = mempool_sub_type::all;
     else {
       m.send_reply("Invalid mempool subscription type '" + std::string{m.data[0]} + "'");
@@ -220,7 +219,7 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
     }
 
     {
-      auto lock = tools::unique_lock(subs_mutex_);
+      std::unique_lock lock{subs_mutex_};
       auto expiry = std::chrono::steady_clock::now() + 30min;
       auto result = mempool_subs_.emplace(m.conn, mempool_sub{expiry, sub_type});
       if (!result.second) {
@@ -248,8 +247,8 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
   // The block notification for new blocks consists of a message [notify.block, height, blockhash]
   // containing the latest height/hash.  (Note that blockhash is the hash in bytes, *not* the hex
   // encoded block hash).
-  lmq.add_request_command("sub", "block", [this](Message& m) {
-    auto lock = tools::unique_lock(subs_mutex_);
+  lmq.add_request_command("sub", "block", [this](lokimq::Message& m) {
+      std::unique_lock lock{subs_mutex_};
     auto expiry = std::chrono::steady_clock::now() + 30min;
     auto result = block_subs_.emplace(m.conn, block_sub{expiry});
     if (!result.second) {
@@ -270,9 +269,9 @@ lmq_rpc::lmq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
 
 template <typename Mutex, typename Subs, typename Call>
 static void send_notifies(Mutex& mutex, Subs& subs, const char* desc, Call call) {
-  std::vector<ConnectionID> remove;
+  std::vector<lokimq::ConnectionID> remove;
   {
-    auto lock = tools::shared_lock(mutex);
+    std::shared_lock lock{mutex};
 
     if (subs.empty())
       return;
@@ -293,7 +292,7 @@ static void send_notifies(Mutex& mutex, Subs& subs, const char* desc, Call call)
 
   if (remove.empty())
     return;
-  auto lock = tools::unique_lock(mutex);
+  std::unique_lock lock{mutex};
   auto now = std::chrono::steady_clock::now();
   for (auto& conn : remove) {
     auto it = subs.find(conn);
@@ -309,7 +308,7 @@ bool lmq_rpc::block_added(const block& block, const std::vector<transaction>& tx
   auto& lmq = core_.get_lmq();
   std::string height = std::to_string(get_block_height(block));
   send_notifies(subs_mutex_, block_subs_, "block", [&](auto& conn, auto& sub) {
-    lmq.send(conn, "notify.block", height, string_view{block.hash.data, sizeof(block.hash.data)});
+    lmq.send(conn, "notify.block", height, std::string_view{block.hash.data, sizeof(block.hash.data)});
   });
 
   return true;
@@ -320,7 +319,7 @@ void lmq_rpc::send_mempool_notifications(const crypto::hash& id, const transacti
   auto& lmq = core_.get_lmq();
   send_notifies(subs_mutex_, mempool_subs_, "mempool", [&](auto& conn, auto& sub) {
     if (sub.type == mempool_sub_type::all || opts.approved_blink)
-      lmq.send(conn, "notify.mempool", string_view{id.data, sizeof(id.data)}, blob);
+      lmq.send(conn, "notify.mempool", std::string_view{id.data, sizeof(id.data)}, blob);
   });
 }
 

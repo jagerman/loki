@@ -29,7 +29,6 @@
 
 add_library(common
   aligned.c
-  base32z.cpp
   base58.cpp
   combinator.cpp
   command_line.cpp

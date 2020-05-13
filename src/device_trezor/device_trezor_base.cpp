@@ -32,6 +32,7 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/regex.hpp>
+#include "common/lock.h"
 
 namespace hw {
 namespace trezor {
@@ -110,7 +111,7 @@ namespace trezor {
       disconnect();
 
       // Enumerate all available devices
-      TREZOR_AUTO_LOCK_DEVICE();
+      std::lock_guard lock{device_locker};
       try {
         hw::trezor::t_transport_vect trans;
 
@@ -151,7 +152,7 @@ namespace trezor {
     }
 
     bool device_trezor_base::disconnect() {
-      TREZOR_AUTO_LOCK_DEVICE();
+      std::lock_guard lock{device_locker};
       m_device_session_id.clear();
       m_features.reset();
 
@@ -343,7 +344,7 @@ namespace trezor {
     /* ======================================================================= */
 
     bool device_trezor_base::ping() {
-      TREZOR_AUTO_LOCK_CMD();
+      auto locks = tools::unique_locks(device_locker, command_locker);
       if (!m_transport){
         MINFO("Ping failed, device not connected");
         return false;
@@ -388,7 +389,7 @@ namespace trezor {
 
     void device_trezor_base::device_state_reset()
     {
-      TREZOR_AUTO_LOCK_CMD();
+      auto locks = tools::unique_locks(device_locker, command_locker);
       device_state_initialize_unsafe();
     }
 

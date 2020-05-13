@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include <mapbox/variant.hpp>
+#include <variant>
 #include <memory>
 
 #include <boost/program_options/options_description.hpp>
@@ -58,7 +58,6 @@ class variables_map;
 }}
 
 namespace cryptonote { namespace rpc {
-  using namespace lokimq::literals;
 
   static constexpr auto long_poll_timeout = 15s;
 
@@ -110,7 +109,7 @@ namespace cryptonote { namespace rpc {
 
     // A free-form identifier identifiying the remote address of the request; this might be IP:PORT,
     // or could contain a pubkey, or ...
-    lokimq::string_view remote;
+    std::string_view remote;
   };
 
   struct rpc_request {
@@ -124,7 +123,7 @@ namespace cryptonote { namespace rpc {
     // The returned value in either case is the serialized value to return.
     //
     // If sometimes goes wrong, throw.
-    mapbox::util::variant<string_view, jsonrpc_params> body;
+    std::variant<std::string_view, jsonrpc_params> body;
 
     // Values to pass through to the invoke() call
     rpc_context context;

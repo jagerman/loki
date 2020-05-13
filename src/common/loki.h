@@ -66,9 +66,7 @@ public:
 };
 
 template <typename lambda_t>
-#ifdef __GNUG__
-[[gnu::warn_unused_result]]
-#endif
+[[nodiscard]]
 deferred<lambda_t> defer(lambda_t lambda) { return lambda; }
 
 struct defer_helper

@@ -37,7 +37,7 @@
 
 namespace cryptonote { namespace rpc {
 
-  using http_response_code = std::pair<int, lokimq::string_view>;
+  using http_response_code = std::pair<int, std::string_view>;
 
   /************************************************************************/
   /* Core HTTP RPC server                                                 */

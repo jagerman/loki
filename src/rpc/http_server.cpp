@@ -6,8 +6,6 @@
 
 namespace cryptonote { namespace rpc {
 
-  using namespace lokimq::literals;
-
   const command_line::arg_descriptor<std::string, false, true, 2> http_server::arg_rpc_bind_port = {
       "rpc-bind-port"
     , "Port for RPC server"
@@ -90,11 +88,11 @@ namespace cryptonote { namespace rpc {
   }
 
   static constexpr http_response_code
-    HTTP_OK{200, "OK"_sv},
-    HTTP_BAD_REQUEST{400, "Bad Request"_sv},
-    HTTP_FORBIDDEN{403, "Forbidden"_sv},
-    HTTP_NOT_FOUND{404, "Not Found"_sv},
-    HTTP_ERROR{500, "Internal Server Error"_sv};
+    HTTP_OK{200, "OK"sv},
+    HTTP_BAD_REQUEST{400, "Bad Request"sv},
+    HTTP_FORBIDDEN{403, "Forbidden"sv},
+    HTTP_NOT_FOUND{404, "Not Found"sv},
+    HTTP_ERROR{500, "Internal Server Error"sv};
 
   bool http_server::handle_http_request(
       const epee::net_utils::http::http_request_info& query_info,
@@ -106,7 +104,7 @@ namespace cryptonote { namespace rpc {
     if (time_logging)
       start = std::chrono::steady_clock::now();
 
-    std::pair<int, lokimq::string_view> http_status = HTTP_ERROR;
+    std::pair<int, std::string_view> http_status = HTTP_ERROR;
     std::string exception;
     try {
       http_status = handle_http(query_info, response, context);
@@ -208,7 +206,7 @@ namespace cryptonote { namespace rpc {
     auto& body = response_info.m_body;
 
     request.body = jsonrpc_params{};
-    auto& epee_stuff = request.body.get_unchecked<jsonrpc_params>();
+    auto& epee_stuff = std::get<jsonrpc_params>(request.body);
     auto& ps = epee_stuff.first;
     if(!ps.load_from_json(query_info.m_body))
       return json_rpc_error(-32700, "Parse error", body);
@@ -237,7 +235,7 @@ namespace cryptonote { namespace rpc {
     // Try to load "params" into a generic epee value; if it fails (because there is no "params")
     // then we will replace it with an empty string to signal that no params were provided.
     if (!ps.get_value("params", epee_stuff.second, nullptr))
-      request.body = ""_sv;
+      request.body = ""sv;
 
     std::string result;
     try {
