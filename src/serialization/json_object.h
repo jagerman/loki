@@ -285,23 +285,23 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::rpc::output_distrib
 void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::output_distribution& dist);
 
 template <typename Map>
-typename std::enable_if<sfinae::is_map_like<Map>::value, void>::type toJsonValue(rapidjson::Document& doc, const Map& map, rapidjson::Value& val);
+std::enable_if_t<sfinae::is_map_like<Map>> toJsonValue(rapidjson::Document& doc, const Map& map, rapidjson::Value& val);
 
 template <typename Map>
-typename std::enable_if<sfinae::is_map_like<Map>::value, void>::type fromJsonValue(const rapidjson::Value& val, Map& map);
+std::enable_if_t<sfinae::is_map_like<Map>> fromJsonValue(const rapidjson::Value& val, Map& map);
 
 template <typename Vec>
-typename std::enable_if<sfinae::is_vector_like<Vec>::value, void>::type toJsonValue(rapidjson::Document& doc, const Vec &vec, rapidjson::Value& val);
+std::enable_if_t<sfinae::is_list_like<Vec>> toJsonValue(rapidjson::Document& doc, const Vec &vec, rapidjson::Value& val);
 
 template <typename Vec>
-typename std::enable_if<sfinae::is_vector_like<Vec>::value, void>::type fromJsonValue(const rapidjson::Value& val, Vec& vec);
+std::enable_if_t<sfinae::is_list_like<Vec>> fromJsonValue(const rapidjson::Value& val, Vec& vec);
 
 
 // ideally would like to have the below functions in the .cpp file, but
 // unfortunately because of how templates work they have to be here.
 
 template <typename Map>
-typename std::enable_if<sfinae::is_map_like<Map>::value, void>::type toJsonValue(rapidjson::Document& doc, const Map& map, rapidjson::Value& val)
+std::enable_if_t<sfinae::is_map_like<Map>> toJsonValue(rapidjson::Document& doc, const Map& map, rapidjson::Value& val)
 {
   val.SetObject();
 
@@ -318,7 +318,7 @@ typename std::enable_if<sfinae::is_map_like<Map>::value, void>::type toJsonValue
 }
 
 template <typename Map>
-typename std::enable_if<sfinae::is_map_like<Map>::value, void>::type fromJsonValue(const rapidjson::Value& val, Map& map)
+std::enable_if_t<sfinae::is_map_like<Map>> fromJsonValue(const rapidjson::Value& val, Map& map)
 {
   if (!val.IsObject())
   {
@@ -339,7 +339,7 @@ typename std::enable_if<sfinae::is_map_like<Map>::value, void>::type fromJsonVal
 }
 
 template <typename Vec>
-typename std::enable_if<sfinae::is_vector_like<Vec>::value, void>::type toJsonValue(rapidjson::Document& doc, const Vec &vec, rapidjson::Value& val)
+std::enable_if_t<sfinae::is_list_like<Vec>> toJsonValue(rapidjson::Document& doc, const Vec &vec, rapidjson::Value& val)
 {
   val.SetArray();
 
@@ -352,7 +352,7 @@ typename std::enable_if<sfinae::is_vector_like<Vec>::value, void>::type toJsonVa
 }
 
 template <typename Vec>
-typename std::enable_if<sfinae::is_vector_like<Vec>::value, void>::type fromJsonValue(const rapidjson::Value& val, Vec& vec)
+std::enable_if_t<sfinae::is_list_like<Vec>> fromJsonValue(const rapidjson::Value& val, Vec& vec)
 {
   if (!val.IsArray())
   {
