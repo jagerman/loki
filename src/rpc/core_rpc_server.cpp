@@ -2428,7 +2428,7 @@ namespace cryptonote { namespace rpc {
     }
 
     crypto::hash file_hash;
-    if (!tools::sha256sum(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
+    if (!tools::sha256sum_file(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
     {
       MDEBUG("We don't have that file already, downloading");
       if (!tools::download(path.string(), res.auto_uri))
@@ -2437,7 +2437,7 @@ namespace cryptonote { namespace rpc {
         res.status = "Failed to download";
         return res;
       }
-      if (!tools::sha256sum(path.string(), file_hash))
+      if (!tools::sha256sum_file(path.string(), file_hash))
       {
         MERROR("Failed to hash " << path);
         res.status = "Failed to hash";

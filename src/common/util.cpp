@@ -659,19 +659,19 @@ namespace tools
     return 0;
   }
 
-  bool sha256sum(const uint8_t *data, size_t len, crypto::hash &hash)
+  bool sha256sum_str(std::string_view data, crypto::hash &hash)
   {
     SHA256_CTX ctx;
     if (!SHA256_Init(&ctx))
       return false;
-    if (!SHA256_Update(&ctx, data, len))
+    if (!SHA256_Update(&ctx, data.data(), data.size()))
       return false;
-    if (!SHA256_Final((unsigned char*)hash.data, &ctx))
+    if (!SHA256_Final(reinterpret_cast<unsigned char*>(hash.data), &ctx))
       return false;
     return true;
   }
 
-  bool sha256sum(const std::string &filename, crypto::hash &hash)
+  bool sha256sum_file(const std::string &filename, crypto::hash &hash)
   {
     if (!epee::file_io_utils::is_file_exist(filename))
       return false;

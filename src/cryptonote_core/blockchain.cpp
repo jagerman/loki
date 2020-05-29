@@ -33,6 +33,7 @@
 #include <cstdio>
 #include <boost/filesystem.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+#include <boost/endian/conversion.hpp>
 
 #include "common/rules.h"
 #include "include_base_utils.h"
@@ -5353,11 +5354,11 @@ void Blockchain::cancel()
 static const char expected_block_hashes_hash[] = "8754309c4501f4b1c547c5c14d41dca30e0836a2942b09584ccc43b287040d07";
 void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get_checkpoints)
 {
-  if (get_checkpoints == nullptr || !m_fast_sync)
+  if (!get_checkpoints || !m_fast_sync)
   {
     return;
   }
-  const epee::span<const unsigned char> &checkpoints = get_checkpoints(m_nettype);
+  std::string_view checkpoints = get_checkpoints(m_nettype);
   if (!checkpoints.empty())
   {
     MINFO("Loading precomputed blocks (" << checkpoints.size() << " bytes)");
@@ -5365,7 +5366,7 @@ void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get
     {
       // first check hash
       crypto::hash hash;
-      if (!tools::sha256sum(checkpoints.data(), checkpoints.size(), hash))
+      if (!tools::sha256sum_str(checkpoints.data(), checkpoints.size(), hash))
       {
         MERROR("Failed to hash precomputed blocks data");
         return;
@@ -5387,8 +5388,9 @@ void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get
 
     if (checkpoints.size() > 4)
     {
-      const unsigned char *p = checkpoints.data();
-      const uint32_t nblocks = *p | ((*(p+1))<<8) | ((*(p+2))<<16) | ((*(p+3))<<24);
+      uint32_t nblocks;
+      std::memcpy(&nblocks, checkpoints.data(), 4);
+      boost::endian::little_to_native_inplace(nblocks);
       if (nblocks > (std::numeric_limits<uint32_t>::max() - 4) / sizeof(hash))
       {
         MERROR("Block hash data is too large");
@@ -5402,14 +5404,13 @@ void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get
       }
       else if(nblocks > 0 && nblocks > (m_db->height() + HASH_OF_HASHES_STEP - 1) / HASH_OF_HASHES_STEP)
       {
-        p += sizeof(uint32_t);
+        checkpoints.remove_prefix(4);
         m_blocks_hash_of_hashes.reserve(nblocks);
         for (uint32_t i = 0; i < nblocks; i++)
         {
-          crypto::hash hash;
-          memcpy(hash.data, p, sizeof(hash.data));
-          p += sizeof(hash.data);
-          m_blocks_hash_of_hashes.push_back(hash);
+          crypto::hash& hash = m_blocks_hash_of_hashes.emplace_back();
+          std::memcpy(hash.data, checkpoints.data(), sizeof(hash.data));
+          checkpoints.remove_prefix(sizeof(hash.data));
         }
         m_blocks_hash_check.resize(m_blocks_hash_of_hashes.size() * HASH_OF_HASHES_STEP, crypto::null_hash);
         MINFO(nblocks << " block hashes loaded");

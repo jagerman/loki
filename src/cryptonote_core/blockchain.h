@@ -94,7 +94,7 @@ namespace cryptonote
    * 
    * @return checkpoints data, empty span if there ain't any checkpoints for specific network type
    */
-  typedef std::function<const epee::span<const unsigned char>(cryptonote::network_type network)> GetCheckpointsCallback;
+  using GetCheckpointsCallback = std::function<std::string_view(cryptonote::network_type network)>;
 
   /************************************************************************/
   /*                                                                      */

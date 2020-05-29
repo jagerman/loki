@@ -2344,7 +2344,7 @@ namespace cryptonote
     }
 
     crypto::hash file_hash;
-    if (!tools::sha256sum(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
+    if (!tools::sha256sum_file(path.string(), file_hash) || (hash != epee::string_tools::pod_to_hex(file_hash)))
     {
       MCDEBUG("updates", "We don't have that file already, downloading");
       const std::string tmppath = path.string() + ".tmp";
@@ -2358,7 +2358,7 @@ namespace cryptonote
         if (success)
         {
           crypto::hash file_hash;
-          if (!tools::sha256sum(tmppath, file_hash))
+          if (!tools::sha256sum_file(tmppath, file_hash))
           {
             MCERROR("updates", "Failed to hash " << tmppath);
             remove = true;
