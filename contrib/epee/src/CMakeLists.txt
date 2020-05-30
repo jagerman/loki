@@ -56,3 +56,6 @@ target_link_libraries(epee
     OpenSSL::SSL
     OpenSSL::Crypto
     extra)
+
+target_include_directories(epee PUBLIC ../include)
+

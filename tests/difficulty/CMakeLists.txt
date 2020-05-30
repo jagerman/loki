@@ -31,6 +31,7 @@ add_executable(difficulty-tests
 target_link_libraries(difficulty-tests
   PRIVATE
     cncrypto
+    epee
     cryptonote_basic
     easylogging
     extra)
