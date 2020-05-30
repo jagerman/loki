@@ -45,7 +45,7 @@
 #include "cryptonote_protocol/quorumnet.h"
 
 #include "common/password.h"
-#include "common/util.h"
+#include "common/signal_handler.h"
 #include "daemon/command_server.h"
 #include "daemon/command_line_args.h"
 #include "net/parse.h"

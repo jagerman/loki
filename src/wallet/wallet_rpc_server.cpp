@@ -41,6 +41,7 @@
 #include "wallet/wallet_args.h"
 #include "common/command_line.h"
 #include "common/i18n.h"
+#include "common/signal_handler.h"
 #include "cryptonote_config.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"

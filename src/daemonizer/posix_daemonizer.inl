@@ -30,7 +30,7 @@
 #pragma once
 
 #include "common/scoped_message_writer.h"
-#include "common/util.h"
+#include "common/file.h"
 #include "common/command_line.h"
 
 #include <boost/filesystem/operations.hpp>

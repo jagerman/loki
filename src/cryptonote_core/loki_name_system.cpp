@@ -3,7 +3,7 @@
 
 #include "checkpoints/checkpoints.h"
 #include "common/loki.h"
-#include "common/util.h"
+#include "common/string_util.h"
 #include "crypto/hash.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"

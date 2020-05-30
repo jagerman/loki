@@ -40,6 +40,7 @@
 #include "common/unordered_containers_boost_serialization.h"
 #include "common/command_line.h"
 #include "common/varint.h"
+#include "common/signal_handler.h"
 #include "serialization/boost_std_variant.h"
 #include "cryptonote_basic/cryptonote_boost_serialization.h"
 #include "cryptonote_core/cryptonote_core.h"

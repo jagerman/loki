@@ -31,7 +31,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/filesystem.hpp>
-#include "common/util.h"
+#include "common/file.h"
 #include "misc_log_ex.h"
 #include "misc_language.h"
 #include "wallet_errors.h"

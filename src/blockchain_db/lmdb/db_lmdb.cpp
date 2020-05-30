@@ -32,12 +32,12 @@
 #include <boost/format.hpp>
 #include <boost/circular_buffer.hpp>
 #include <boost/endian/conversion.hpp>
-#include <memory>  // std::unique_ptr
-#include <cstring>  // memcpy
+#include <memory>
+#include <cstring>
 
 #include "string_tools.h"
 #include "file_io_utils.h"
-#include "common/util.h"
+#include "common/file.h"
 #include "common/pruning.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "crypto/crypto.h"

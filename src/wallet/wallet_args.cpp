@@ -33,6 +33,7 @@
 #include <boost/format.hpp>
 #include "common/i18n.h"
 #include "common/util.h"
+#include "common/file.h"
 #include "misc_log_ex.h"
 #include "string_tools.h"
 #include "version.h"

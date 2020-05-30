@@ -85,4 +85,6 @@ std::string copy_guts(const T& val) {
   return std::string{view_guts(val)};
 }
 
+std::string lowercase_ascii_string(std::string src);
+
 }

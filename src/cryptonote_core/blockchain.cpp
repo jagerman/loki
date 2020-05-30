@@ -62,6 +62,7 @@
 #include "common/pruning.h"
 #include "common/lock.h"
 #include "common/meta.h"
+#include "common/sha256sum.h"
 
 #ifdef ENABLE_SYSTEMD
 extern "C" {

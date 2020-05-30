@@ -47,7 +47,7 @@
 
 #include "version.h"
 #include "string_tools.h"
-#include "common/util.h"
+#include "common/file.h"
 #include "common/dns_utils.h"
 #include "common/pruning.h"
 #include "net/error.h"

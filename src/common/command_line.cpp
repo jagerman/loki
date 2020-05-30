@@ -31,6 +31,9 @@
 #include "command_line.h"
 #include "common/i18n.h"
 #include "common/string_util.h"
+#ifdef HAVE_READLINE
+#  include "readline_buffer.h"
+#endif
 
 namespace command_line
 {
@@ -73,5 +76,33 @@ std::pair<unsigned, unsigned> boost_option_sizes() {
 
   return result;
 }
+
+void clear_screen()
+{
+#ifdef HAVE_READLINE
+  rdln::clear_screen();
+#else
+  std::cout << "\033[2K"; // clear whole line
+  std::cout << "\033c";   // clear current screen and scrollback
+  std::cout << "\033[2J"; // clear current screen only, scrollback is still around
+  std::cout << "\033[3J"; // does nothing, should clear current screen and scrollback
+  std::cout << "\033[1;1H"; // move cursor top/left
+  std::cout << "\r                                                \r" << std::flush; // erase odd chars if the ANSI codes were printed raw
+  #ifdef _WIN32
+  COORD coord{0, 0};
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+  HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (GetConsoleScreenBufferInfo(h, &csbi))
+  {
+    DWORD cbConSize = csbi.dwSize.X * csbi.dwSize.Y, w;
+    FillConsoleOutputCharacter(h, (TCHAR)' ', cbConSize, coord, &w);
+    if (GetConsoleScreenBufferInfo(h, &csbi))
+      FillConsoleOutputAttribute(h, csbi.wAttributes, cbConSize, coord, &w);
+    SetConsoleCursorPosition(h, coord);
+  }
+  #endif
+#endif
+}
+
 
 }

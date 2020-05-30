@@ -49,7 +49,8 @@ extern "C" {
 #include <sqlite3.h>
 
 #include "cryptonote_core.h"
-#include "common/util.h"
+#include "common/file.h"
+#include "common/sha256sum.h"
 #include "common/updates.h"
 #include "common/download.h"
 #include "common/threadpool.h"

@@ -66,6 +66,7 @@
 #include "mnemonics/electrum-words.h"
 #include "common/i18n.h"
 #include "common/util.h"
+#include "common/file.h"
 #include "common/apply_permutation.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"

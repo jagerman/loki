@@ -52,7 +52,7 @@
 #include "cryptonote_core/cryptonote_tx_utils.h"
 #include "cryptonote_core/loki_name_system.h"
 #include "common/unordered_containers_boost_serialization.h"
-#include "common/util.h"
+#include "common/file.h"
 #include "crypto/chacha.h"
 #include "crypto/hash.h"
 #include "ringct/rctTypes.h"

@@ -320,4 +320,7 @@ namespace command_line
   /// boost::program_options::options_description, using the terminal width (if available).  Returns
   /// the boost defaults if terminal width isn't available.
   std::pair<unsigned, unsigned> boost_option_sizes();
+
+  // Clears the screen using readline, if available, otherwise trying some terminal escape hacks.
+  void clear_screen();
 }

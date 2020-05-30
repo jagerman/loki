@@ -36,6 +36,7 @@ add_library(common
   download.cpp
   error.cpp
   expect.cpp
+  file.cpp
   i18n.cpp
   loki.cpp
   notify.cpp
@@ -45,6 +46,7 @@ add_library(common
   random.cpp
   rules.cpp
   scoped_message_writer.cpp
+  sha256sum.cpp
   spawn.cpp
   string_util.cpp
   threadpool.cpp

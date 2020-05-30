@@ -50,4 +50,11 @@ std::vector<std::string_view> split_any(std::string_view str, const std::string_
   return results;
 }
 
+std::string lowercase_ascii_string(std::string src)
+{
+  for (char &ch : src)
+    if (ch >= 'A' && ch <= 'Z') ch = ch + ('a' - 'A');
+  return src;
+}
+
 }

@@ -43,7 +43,7 @@
 #include "common/updates.h"
 #include "common/download.h"
 #include "common/loki.h"
-#include "common/util.h"
+#include "common/sha256sum.h"
 #include "common/perf_timer.h"
 #include "common/random.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
