@@ -2322,45 +2322,6 @@ namespace tools
   namespace detail
   {
     //----------------------------------------------------------------------------------------------------
-    inline void digit_split_strategy(const std::vector<cryptonote::tx_destination_entry>& dsts,
-      const cryptonote::tx_destination_entry& change_dst, uint64_t dust_threshold,
-      std::vector<cryptonote::tx_destination_entry>& splitted_dsts, std::vector<cryptonote::tx_destination_entry> &dust_dsts)
-    {
-      splitted_dsts.clear();
-      dust_dsts.clear();
-
-      for(auto& de: dsts)
-      {
-        cryptonote::decompose_amount_into_digits(de.amount, 0,
-          [&](uint64_t chunk) { splitted_dsts.push_back(cryptonote::tx_destination_entry(chunk, de.addr, de.is_subaddress)); },
-          [&](uint64_t a_dust) { splitted_dsts.push_back(cryptonote::tx_destination_entry(a_dust, de.addr, de.is_subaddress)); } );
-      }
-
-      cryptonote::decompose_amount_into_digits(change_dst.amount, 0,
-        [&](uint64_t chunk) {
-          if (chunk <= dust_threshold)
-            dust_dsts.push_back(cryptonote::tx_destination_entry(chunk, change_dst.addr, false));
-          else
-            splitted_dsts.push_back(cryptonote::tx_destination_entry(chunk, change_dst.addr, false));
-        },
-        [&](uint64_t a_dust) { dust_dsts.push_back(cryptonote::tx_destination_entry(a_dust, change_dst.addr, false)); } );
-    }
-    //----------------------------------------------------------------------------------------------------
-    inline void null_split_strategy(const std::vector<cryptonote::tx_destination_entry>& dsts,
-      const cryptonote::tx_destination_entry& change_dst, uint64_t dust_threshold,
-      std::vector<cryptonote::tx_destination_entry>& splitted_dsts, std::vector<cryptonote::tx_destination_entry> &dust_dsts)
-    {
-      splitted_dsts = dsts;
-
-      dust_dsts.clear();
-      uint64_t change = change_dst.amount;
-
-      if (0 != change)
-      {
-        splitted_dsts.push_back(cryptonote::tx_destination_entry(change, change_dst.addr, false));
-      }
-    }
-    //----------------------------------------------------------------------------------------------------
     inline void print_source_entry(const cryptonote::tx_source_entry& src)
     {
       std::string indexes;

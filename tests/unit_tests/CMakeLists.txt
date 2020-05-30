@@ -39,7 +39,6 @@ add_executable(unit_tests
   checkpoints.cpp
   command_line.cpp
   crypto.cpp
-  decompose_amount_into_digits.cpp
   device.cpp
   dns_resolver.cpp
   epee_boosted_tcp_server.cpp
