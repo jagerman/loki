@@ -245,7 +245,25 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
       return false;
     }
 
-    starting_rct_tx_hashes.push_back(get_transaction_hash(rct_txes.back()));
+    // If we are constructing an invalid tx serialization may fail, in which case
+    // get_transaction_hash will throw (before Loki 8.x it returned a garbage hash made from the
+    // partially serialized transaction), but we still want to build a block with it, so if that
+    // happens just use a mostly random hash value.
+    crypto::hash tx_hash;
+    try {
+      tx_hash = get_transaction_hash(rct_txes.back());
+    } catch (...) {
+      // Serialization failed, so just make a random value.  We start it with 0123456789abcdef so
+      // that it looks obviously fake, then fill the rest with randomness (so that it is still
+      // unique).
+      for (size_t i = 0; i < 8; i++)
+        tx_hash.data[i] = 0x01 + (0x22 * i);
+      static std::mt19937_64 rng{std::random_device{}()};
+      std::uniform_int_distribution<char> unif{std::numeric_limits<char>::min()};
+      for (size_t i = 8; i < sizeof(tx_hash.data); i++)
+        tx_hash.data[i] = unif(rng);
+    }
+    starting_rct_tx_hashes.push_back(tx_hash);
     LOG_PRINT_L0("Test tx: " << obj_to_json_str(rct_txes.back()));
 
     uint64_t total_amount_encoded = 0;
