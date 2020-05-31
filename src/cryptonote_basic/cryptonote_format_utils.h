@@ -246,7 +246,8 @@ namespace cryptonote
     try {
       blob = serialization::dump_binary(const_cast<std::remove_const_t<T>&>(val));
       return true;
-    } catch (...) {
+    } catch (const std::exception& e) {
+      LOG_ERROR("Serialization of " << tools::type_name(typeid(T)) << " failed: " << e.what());
       return false;
     }
   }

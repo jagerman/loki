@@ -273,17 +273,24 @@ bool gen_tx_input_is_not_txin_to_key::generate(std::vector<test_event_entry>& ev
   DO_CALLBACK(events, "mark_invalid_tx");
   events.push_back(blk_tmp.miner_tx);
 
-  DO_CALLBACK(events, "mark_invalid_tx");
-  transaction tx = {};
-  loki_tx_builder(events, tx, blk_money_unlocked, miner_account, miner_account.get_keys().m_account_address, MK_COINS(1), cryptonote::network_version_7).build();
-  tx.vin.push_back(txin_to_script());
-  events.push_back(tx);
+  auto make_tx_with_input = [&](const txin_v& tx_input) -> transaction
+  {
+    std::vector<tx_source_entry> sources;
+    std::vector<tx_destination_entry> destinations;
+    fill_tx_sources_and_destinations(events, blk_money_unlocked, miner_account, miner_account.get_keys().m_account_address, MK_COINS(1), TESTS_DEFAULT_FEE, 0, sources, destinations);
+
+    tx_builder builder;
+    builder.step1_init();
+    builder.m_tx.vin.push_back(tx_input);
+    builder.step3_fill_outputs(destinations);
+    return builder.m_tx;
+  };
 
   DO_CALLBACK(events, "mark_invalid_tx");
-  tx = {};
-  loki_tx_builder(events, tx, blk_money_unlocked, miner_account, miner_account.get_keys().m_account_address, MK_COINS(1), cryptonote::network_version_7).build();
-  tx.vin.push_back(txin_to_scripthash());
-  events.push_back(tx);
+  events.push_back(make_tx_with_input(txin_to_script()));
+
+  DO_CALLBACK(events, "mark_invalid_tx");
+  events.push_back(make_tx_with_input(txin_to_scripthash()));
 
   return true;
 }

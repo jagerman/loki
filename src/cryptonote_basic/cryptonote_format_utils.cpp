@@ -1281,6 +1281,7 @@ namespace cryptonote
     get_transaction_prefix_hash(t, hashes[0]);
 
     const blobdata blob = tx_to_blob(t);
+    CHECK_AND_ASSERT_MES(!blob.empty(), false, "Failed to convert tx to blob");
 
     // TODO(loki): Not sure if this is the right fix, we may just want to set
     // unprunable size to the size of the prefix because technically that is
@@ -1291,7 +1292,8 @@ namespace cryptonote
       const unsigned int prefix_size = t.prefix_size;
 
       // base rct
-      CHECK_AND_ASSERT_MES(prefix_size <= unprunable_size && unprunable_size <= blob.size(), false, "Inconsistent transaction prefix, unprunable and blob sizes in: " << __func__);
+      CHECK_AND_ASSERT_MES(prefix_size <= unprunable_size && unprunable_size <= blob.size(), false,
+              "Inconsistent transaction prefix (" << prefix_size << "), unprunable (" << unprunable_size << ") and blob (" << blob.size() << ") sizes in: " << __func__);
       cryptonote::get_blob_hash(std::string_view{blob}.substr(prefix_size, unprunable_size - prefix_size), hashes[1]);
     }
     else

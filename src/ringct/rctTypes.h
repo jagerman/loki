@@ -365,7 +365,7 @@ namespace rct {
                   if constexpr (Archive::is_deserializer)
                     ss.resize(mg_ss2_elements);
                   else if (ss.size() != mg_ss2_elements)
-                    throw std::invalid_argument{"invalid mg_ss2 size"};
+                    throw std::invalid_argument{"invalid mg_ss2 size: have " + std::to_string(ss.size()) + ", expected " + std::to_string(mg_ss2_elements)};
 
                   for (auto& x : ss)
                     value(arr_ss2.element(), x);
