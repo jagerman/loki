@@ -97,5 +97,5 @@ set(enabled_tests
     fuzz
     unit_tests)
 
-add_custom_target(tests DEPENDS enabled_tests)
+add_custom_target(tests DEPENDS ${enabled_tests})
 set_property(TARGET tests PROPERTY FOLDER "${folder}")
