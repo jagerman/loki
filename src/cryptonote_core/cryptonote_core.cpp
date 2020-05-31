@@ -1185,7 +1185,7 @@ namespace cryptonote
       return;
     }
 
-    tx_info.parsed = parse_tx_from_blob(tx_info.tx, tx_info.tx_hash, *tx_info.blob);
+    tx_info.parsed = parse_and_validate_tx_from_blob(*tx_info.blob, tx_info.tx, tx_info.tx_hash);
     if(!tx_info.parsed)
     {
       LOG_PRINT_L1("WRONG TRANSACTION BLOB, Failed to parse, rejected");
@@ -2102,11 +2102,6 @@ namespace cryptonote
   bool core::have_block(const crypto::hash& id) const
   {
     return m_blockchain_storage.have_block(id);
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::parse_tx_from_blob(transaction& tx, crypto::hash& tx_hash, const blobdata& blob) const
-  {
-    return parse_and_validate_tx_from_blob(blob, tx, tx_hash);
   }
   //-----------------------------------------------------------------------------------------------
   crypto::hash core::get_block_id_by_height(uint64_t height) const

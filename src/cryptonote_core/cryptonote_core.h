@@ -1008,13 +1008,6 @@ namespace cryptonote
      bool add_new_block(const block& b, block_verification_context& bvc, checkpoint_t const *checkpoint);
 
      /**
-      * @copydoc parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
-      *
-      * @note see parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
-      */
-     bool parse_tx_from_blob(transaction& tx, crypto::hash& tx_hash, const blobdata& blob) const;
-
-     /**
       * @brief validates some simple properties of a transaction
       *
       * Currently checks: tx has inputs,
