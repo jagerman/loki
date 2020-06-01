@@ -2,58 +2,25 @@
 
 namespace epee {
   namespace serialization {
-    namespace {
-      struct array_entry_store_to_json_visitor: public boost::static_visitor<void>
-      {
-        std::ostream& m_strm;
-        size_t m_indent;
-        bool m_pretty; // If true: use 2-space indents, newlines, and spaces between elements.  If false, don't.
-        array_entry_store_to_json_visitor(std::ostream& strm, size_t indent,
-                                          bool pretty = true)
-          : m_strm(strm), m_indent(indent), m_pretty(pretty)
-        {}
-
-        template<class t_type>
-        void operator()(const array_entry_t<t_type>& a)
-        {
-          m_strm << '[';
-          for (auto it = a.m_array.begin(); it != a.m_array.end(); it++)
-          {
-            if (it != a.m_array.begin()) m_strm << ',';
-            dump_as_json(m_strm, *it, m_indent, m_pretty);
-          }
-          m_strm << "]";
-        }
-      };
-
-      struct storage_entry_store_to_json_visitor: public boost::static_visitor<void>
-      {
-          std::ostream& m_strm;
-        size_t m_indent;
-        bool m_pretty;
-        storage_entry_store_to_json_visitor(std::ostream& strm, size_t indent,
-                                            bool pretty = true)
-            : m_strm(strm), m_indent(indent), m_pretty(pretty)
-        {}
-        //section, array_entry
-        template<class visited_type>
-        void operator()(const visited_type& v)
-        { 
-          dump_as_json(m_strm, v, m_indent, m_pretty);
-        }
-      };
-    }
 
     void dump_as_json(std::ostream& strm, const array_entry& ae, size_t indent, bool pretty)
     {
-      array_entry_store_to_json_visitor aesv(strm, indent, pretty);
-      boost::apply_visitor(aesv, ae);
+      std::visit([&](const auto& a) {
+          strm << '[';
+          for (auto it = a.begin(); it != a.end(); ++it)
+          {
+            if (it != a.begin()) strm << ',';
+            dump_as_json(strm, *it, indent, pretty);
+          }
+          strm << ']';
+        }, ae);
     }
 
     void dump_as_json(std::ostream& strm, const storage_entry& se, size_t indent, bool pretty)
     {
-      storage_entry_store_to_json_visitor sv(strm, indent, pretty);
-      boost::apply_visitor(sv, se);
+      std::visit([&](const auto& v) {
+          dump_as_json(strm, v, indent, pretty);
+        }, se);
     }
 
     void dump_as_json(std::ostream& s, const std::string& v, size_t, bool)

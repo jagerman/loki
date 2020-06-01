@@ -194,7 +194,7 @@ namespace net_utils
 		static const uint8_t ID = 2;
 		BEGIN_KV_SERIALIZE_MAP()
 			boost::asio::ip::address_v6::bytes_type bytes = this_ref.m_address.to_bytes();
-			epee::serialization::selector<is_store>::serialize_t_val_as_blob(bytes, stg, hparent_section, "addr");
+			epee::serialization::perform_serialize_blob<is_store>(bytes, stg, parent_section, "addr");
 			const_cast<boost::asio::ip::address_v6&>(this_ref.m_address) = boost::asio::ip::address_v6(bytes);
 			KV_SERIALIZE(m_port)
 		END_KV_SERIALIZE_MAP()
@@ -275,20 +275,22 @@ namespace net_utils
 			return static_cast<implementation<Type_>*>(self_)->value;
 		}
 
+		// Const: we're serializing
 		template<typename T, typename t_storage>
-		bool serialize_addr(std::false_type, t_storage& stg, typename t_storage::hsection hparent)
+		bool serialize_addr(t_storage& stg, epee::serialization::section* parent) const
+		{
+		  return epee::serialization::perform_serialize<true>(as<T>(), stg, parent, "addr");
+		}
+
+		// Non-const: we're deserializing
+		template<typename T, typename t_storage>
+		bool serialize_addr(t_storage& stg, epee::serialization::section* parent)
 		{
 			T addr{};
-			if (!epee::serialization::selector<false>::serialize(addr, stg, hparent, "addr"))
+			if (!epee::serialization::perform_serialize<false>(addr, stg, parent, "addr"))
 				return false;
 			*this = std::move(addr);
 			return true;
-		}
-
-		template<typename T, typename t_storage>
-		bool serialize_addr(std::true_type, t_storage& stg, typename t_storage::hsection hparent) const
-		{
-			return epee::serialization::selector<true>::serialize(as<T>(), stg, hparent, "addr");
 		}
 
 	public:

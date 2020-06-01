@@ -265,7 +265,7 @@ namespace net_utils
 					break;
 				}
 
-				if(std::string::npos != m_cache.find('\n', 0))
+				if(m_cache.find('\n') != std::string::npos)
 					handle_invoke_query_line();
 				else
 				{
@@ -364,7 +364,7 @@ namespace net_utils
 			m_query_info.m_http_method_str = result[1];
 			m_query_info.m_full_request_str = result[0];
 
-			m_cache.erase(m_cache.begin(),  to_nonsonst_iterator(m_cache, result[0].second));
+            m_cache = result.suffix();
 
 			m_state = http_state_retriving_header;
 
@@ -489,7 +489,7 @@ namespace net_utils
 	inline const std::regex rexp_http_header{
 			"\n?(?:"
 				"(Connection)|(Referer)|(Content-Length)|(Content-Type)|(Transfer-Encoding)|(Content-Encoding)|(Host)|(Cookie)|(User-Agent)|(Origin)|([\\w-]+?)"
-			") ?: ?(.*?)\r?\n[^\t ]", std::regex::icase};
+			") ?: ?(.*?)\r?\n(?=[^\t ])", std::regex::icase};
 
 	//--------------------------------------------------------------------------------------------
   template<class t_connection_context>
@@ -532,8 +532,6 @@ namespace net_utils
 				assert(result[11].matched);
 				body_info.m_etc_fields.emplace_back(result[11], result[field_val]);
 			}
-
-			it_current_bound = result[(int)result.size()-1]. first;
 		}
 		return  true;
 	}

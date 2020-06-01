@@ -28,9 +28,10 @@
 
 #pragma once
 
-#include <time.h>
-#include <boost/lexical_cast.hpp>
+#include <iomanip>
 #include <regex>
+#include <type_traits>
+#include <charconv>
 
 #include "misc_language.h"
 #include "portable_storage_base.h"
@@ -43,55 +44,41 @@ namespace epee
   {
 #define ASSERT_AND_THROW_WRONG_CONVERSION() ASSERT_MES_AND_THROW("WRONG DATA CONVERSION @ " << __FILE__ << ":" << __LINE__ << ": " << typeid(from).name() << " to " << typeid(to).name())
 
-    template <typename from_type, typename to_type, std::enable_if_t<std::is_signed<from_type>::value && std::is_unsigned<to_type>::value, int> = 0>
-    void convert_int(const from_type& from, to_type& to)
-    {
-PUSH_WARNINGS
-DISABLE_VS_WARNINGS(4018)
-      CHECK_AND_ASSERT_THROW_MES(from >=0, "unexpected int value with signed storage value less than 0, and unsigned receiver value");
-DISABLE_GCC_AND_CLANG_WARNING(sign-compare)
-      CHECK_AND_ASSERT_THROW_MES(from <= std::numeric_limits<to_type>::max(), "int value overhead: try to set value " << from << " to type " << typeid(to_type).name() << " with max possible value = " << std::numeric_limits<to_type>::max());
-      to = static_cast<to_type>(from);
-POP_WARNINGS
-    }
-    template <typename from_type, typename to_type, std::enable_if_t<std::is_signed<from_type>::value && std::is_signed<to_type>::value, int> = 0>
-    void convert_int(const from_type& from, to_type& to)
-    {
-      CHECK_AND_ASSERT_THROW_MES(from >= boost::numeric::bounds<to_type>::lowest(), "int value overhead: try to set value " << from << " to type " << typeid(to_type).name() << " with lowest possible value = " << boost::numeric::bounds<to_type>::lowest());
-PUSH_WARNINGS
-DISABLE_CLANG_WARNING(tautological-constant-out-of-range-compare)
-      CHECK_AND_ASSERT_THROW_MES(from <= std::numeric_limits<to_type>::max(), "int value overhead: try to set value " << from << " to type " << typeid(to_type).name() << " with max possible value = " << std::numeric_limits<to_type>::max());
-POP_WARNINGS
-      to = static_cast<to_type>(from);
-    }
-    template<typename from_type, typename to_type, std::enable_if_t<std::is_unsigned<from_type>::value, int> = 0>
-    void convert_int(const from_type& from, to_type& to)
-    {
-PUSH_WARNINGS
-DISABLE_VS_WARNINGS(4018)
-DISABLE_CLANG_WARNING(tautological-constant-out-of-range-compare)
-        CHECK_AND_ASSERT_THROW_MES(from <= std::numeric_limits<to_type>::max(), "uint value overhead: try to set value " << from << " to type " << typeid(to_type).name() << " with max possible value = " << std::numeric_limits<to_type>::max());
-      to = static_cast<to_type>(from);
-POP_WARNINGS
-    }
-
-    template<typename from_type, typename to_type, typename SFINAE = void>
+    template<typename From, typename To, typename SFINAE = void>
     struct converter
     {
-      void operator()(const from_type& from, to_type& to)
+      void operator()(const From& from, To& to)
       {
         ASSERT_AND_THROW_WRONG_CONVERSION();
       }
     };
 
-    template<typename from_type, typename to_type>
-    struct converter<from_type, to_type, std::enable_if_t<!std::is_same<to_type, from_type>::value &&
-        std::is_integral<to_type>::value && std::is_integral<from_type>::value &&
-        !std::is_same<from_type, bool>::value && !std::is_same<to_type, bool>::value>>
+    template<typename From, typename To>
+    struct converter<From, To, std::enable_if_t<
+      !std::is_same_v<To, From> && std::is_integral_v<To> && std::is_integral_v<From> &&
+      !std::is_same_v<From, bool> && !std::is_same_v<To, bool>>>
     {
-      void operator()(const from_type& from, to_type& to)
+      void operator()(const From& from, To& to)
       {
-        convert_int(from, to);
+PUSH_WARNINGS
+DISABLE_VS_WARNINGS(4018)
+DISABLE_CLANG_WARNING(tautological-constant-out-of-range-compare)
+DISABLE_GCC_AND_CLANG_WARNING(sign-compare)
+
+        bool in_range;
+        if constexpr (std::is_signed_v<From> == std::is_signed_v<To>) // signed -> signed or unsigned -> unsigned
+          in_range = from >= std::numeric_limits<To>::min() && from <= std::numeric_limits<To>::max();
+        else if constexpr (std::is_signed_v<To>) // unsigned -> signed
+          in_range = from <= std::numeric_limits<To>::max();
+        else // signed -> unsigned
+          in_range = from >= 0 && from <= std::numeric_limits<To>::max();
+
+        CHECK_AND_ASSERT_THROW_MES(in_range,
+            "int value overflow: cannot convert value " << +from << " to integer type with range ["
+            << +std::numeric_limits<To>::min() << "," << +std::numeric_limits<To>::max() << "]");
+        to = static_cast<To>(from);
+
+POP_WARNINGS
       }
     };
 
@@ -107,40 +94,38 @@ POP_WARNINGS
       void operator()(const std::string& from, uint64_t& to)
       {
         MTRACE("Converting std::string to uint64_t. Source: " << from);
-        // String only contains digits
-        if(std::all_of(from.begin(), from.end(), epee::misc_utils::parse::isdigit))
-          to = boost::lexical_cast<uint64_t>(from);
-        else if (std::regex_match(from, mymonero_iso8061_timestamp))
+        const auto* strend = from.data() + from.size();
+        if (auto [p, ec] = std::from_chars(from.data(), strend, to); ec == std::errc{} && p == strend)
+          return; // Good: successfully consumed the whole string.
+
+        if (std::regex_match(from, mymonero_iso8061_timestamp))
         {
           // Convert to unix timestamp
-#ifdef HAVE_STRPTIME
-          struct tm tm;
-          if (strptime(from.c_str(), "%Y-%m-%dT%H:%M:%S", &tm))
-#else
-          std::tm tm = {};
-          std::istringstream ss(from);
+          std::tm tm{};
+          std::istringstream ss{from};
           if (ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S"))
-#endif
+          {
             to = std::mktime(&tm);
-        } else
-          ASSERT_AND_THROW_WRONG_CONVERSION();
+            return;
+          }
+        }
+        ASSERT_AND_THROW_WRONG_CONVERSION();
       }
     };
 
-    template<typename from_type, typename to_type>
-    struct converter<from_type, to_type, std::enable_if_t<std::is_same<to_type, from_type>::value>>
+    template<typename From, typename To>
+    struct converter<From, To, std::enable_if_t<std::is_same<To, From>::value>>
     {
-      void operator()(const from_type& from, to_type& to)
+      void operator()(const From& from, To& to)
       {
         to = from;
       }
     };
 
-
-    template<class from_type, class to_type>
-    void convert_t(const from_type& from, to_type& to)
+    template<class From, class To>
+    void convert_t(const From& from, To& to)
     {
-      converter<from_type, to_type>{}(from, to);
+      converter<From, To>{}(from, to);
     }
   }
 }

@@ -300,11 +300,11 @@ KV_SERIALIZE_MAP_CODE_END()
 
 bool GETBLOCKHASH::request::load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
 {
-  return epee::serialization::selector<false>::serialize(height, ps, hparent_section, "height");
+  return epee::serialization::perform_serialize<false>(height, ps, hparent_section, "height");
 }
 bool GETBLOCKHASH::request::store(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
 {
-  return epee::serialization::selector<true>::serialize(height, ps, hparent_section, "height");
+  return epee::serialization::perform_serialize<true>(height, ps, hparent_section, "height");
 }
 
 
@@ -333,11 +333,11 @@ KV_SERIALIZE_MAP_CODE_END()
 
 bool SUBMITBLOCK::request::load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
 {
-  return epee::serialization::selector<false>::serialize(blob, ps, hparent_section, "blob");
+  return epee::serialization::perform_serialize<false>(blob, ps, hparent_section, "blob");
 }
 bool SUBMITBLOCK::request::store(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
 {
-  return epee::serialization::selector<true>::serialize(blob, ps, hparent_section, "blob");
+  return epee::serialization::perform_serialize<true>(blob, ps, hparent_section, "blob");
 }
 
 

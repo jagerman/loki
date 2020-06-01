@@ -54,25 +54,25 @@ namespace epee
 /// KV_SERIALIZE_MAP_CODE_END()
 #define KV_MAP_SERIALIZABLE \
 public: \
-  bool store(epee::serialization::portable_storage& st, epee::serialization::section* hparent_section = nullptr) const; \
-  bool _load(epee::serialization::portable_storage& st, epee::serialization::section* hparent_section = nullptr); \
-  bool load(epee::serialization::portable_storage& st, epee::serialization::section* hparent_section = nullptr); \
-  template <bool is_store> bool _serialize_map(epee::serialization::portable_storage& stg, epee::serialization::section* hparent_section) const;
+  bool store(epee::serialization::portable_storage& st, epee::serialization::section* parent_section = nullptr) const; \
+  bool _load(epee::serialization::portable_storage& st, epee::serialization::section* parent_section = nullptr); \
+  bool load(epee::serialization::portable_storage& st, epee::serialization::section* parent_section = nullptr); \
+  template <bool is_store> bool _serialize_map(epee::serialization::portable_storage& stg, epee::serialization::section* parent_section) const;
 
 #define KV_SERIALIZE_MAP_CODE_BEGIN(Class) \
-  bool Class::store(epee::serialization::portable_storage& st, epee::serialization::section* hparent_section) const \
-  { return _serialize_map<true>(st, hparent_section); } \
-  bool Class::_load(epee::serialization::portable_storage& st, epee::serialization::section* hparent_section) \
-  { return _serialize_map<false>(st, hparent_section); } \
-  bool Class::load(epee::serialization::portable_storage& st, epee::serialization::section* hparent_section) \
+  bool Class::store(epee::serialization::portable_storage& st, epee::serialization::section* parent_section) const \
+  { return _serialize_map<true>(st, parent_section); } \
+  bool Class::_load(epee::serialization::portable_storage& st, epee::serialization::section* parent_section) \
+  { return _serialize_map<false>(st, parent_section); } \
+  bool Class::load(epee::serialization::portable_storage& st, epee::serialization::section* parent_section) \
   { \
-    try { return _load(st, hparent_section); } \
+    try { return _load(st, parent_section); } \
     catch (const std::exception& err) { LOG_ERROR("Deserialization exception: " << err.what()); } \
     catch (...) { LOG_ERROR("Unknown deserialization exception"); } \
     return false; \
   } \
   template <bool is_store> \
-  bool Class::_serialize_map(epee::serialization::portable_storage& stg, epee::serialization::section* hparent_section) const { \
+  bool Class::_serialize_map(epee::serialization::portable_storage& stg, epee::serialization::section* parent_section) const { \
     /* de-const if we're being called (from the above non-const _load method) to deserialize */ \
     auto& this_ref = const_cast<std::conditional_t<is_store, const Class, Class>&>(*this);
 
@@ -83,18 +83,18 @@ public: \
 /// are worried about having too much unused memory on your system.
 #define BEGIN_KV_SERIALIZE_MAP() \
 public: \
-  bool store( epee::serialization::portable_storage& st, epee::serialization::section* hparent_section = nullptr) const\
+  bool store( epee::serialization::portable_storage& st, epee::serialization::section* parent_section = nullptr) const\
   {\
-    return serialize_map<true>(*this, st, hparent_section);\
+    return serialize_map<true>(*this, st, parent_section);\
   }\
-  bool _load( epee::serialization::portable_storage& stg, epee::serialization::section* hparent_section = nullptr)\
+  bool _load( epee::serialization::portable_storage& stg, epee::serialization::section* parent_section = nullptr)\
   {\
-    return serialize_map<false>(*this, stg, hparent_section);\
+    return serialize_map<false>(*this, stg, parent_section);\
   }\
-  bool load( epee::serialization::portable_storage& stg, epee::serialization::section* hparent_section = nullptr)\
+  bool load( epee::serialization::portable_storage& stg, epee::serialization::section* parent_section = nullptr)\
   {\
     try{\
-    return serialize_map<false>(*this, stg, hparent_section);\
+    return serialize_map<false>(*this, stg, parent_section);\
     }\
     catch(const std::exception& err) \
     { \
@@ -104,14 +104,14 @@ public: \
     }\
   }\
   template<bool is_store, class this_type, class t_storage> \
-  static bool serialize_map(this_type& this_ref,  t_storage& stg, typename t_storage::hsection hparent_section) \
+  static bool serialize_map(this_type& this_ref,  t_storage& stg, epee::serialization::section* parent_section) \
   { 
 
 #define KV_SERIALIZE_VALUE(variable) \
-  epee::serialization::selector<is_store>::serialize(variable, stg, hparent_section, #variable);
+  epee::serialization::perform_serialize<is_store>(variable, stg, parent_section, #variable);
 
 #define KV_SERIALIZE_N(variable, val_name) \
-  epee::serialization::selector<is_store>::serialize(this_ref.variable, stg, hparent_section, val_name);
+  epee::serialization::perform_serialize<is_store>(this_ref.variable, stg, parent_section, val_name);
 
   template<typename T> inline void serialize_default(const T &t, T v) { }
   template<typename T, typename S> inline void serialize_default(T &t, S &&v) { t = std::forward<S>(v); }
@@ -120,27 +120,27 @@ public: \
   do { \
     if (is_store && this_ref.variable == default_value) \
       break; \
-    if (!epee::serialization::selector<is_store>::serialize(this_ref.variable, stg, hparent_section, val_name)) \
+    if (!epee::serialization::perform_serialize<is_store>(this_ref.variable, stg, parent_section, val_name)) \
       epee::serialize_default(this_ref.variable, default_value); \
   } while (0);
 
 #define KV_SERIALIZE_VAL_POD_AS_BLOB_FORCE_N(variable, val_name) \
-  epee::serialization::selector<is_store>::serialize_t_val_as_blob(this_ref.variable, stg, hparent_section, val_name); 
+  epee::serialization::perform_serialize_blob<is_store>(this_ref.variable, stg, parent_section, val_name); 
 
 #define KV_SERIALIZE_VAL_POD_AS_BLOB_N(variable, val_name) \
-  static_assert(std::is_pod<decltype(this_ref.variable)>::value, "t_type must be a POD type."); \
+  static_assert(std::has_unique_object_representations_v<decltype(this_ref.variable)>, "t_type must be a POD type."); \
   KV_SERIALIZE_VAL_POD_AS_BLOB_FORCE_N(variable, val_name)
 
 #define KV_SERIALIZE_VAL_POD_AS_BLOB_OPT_N(variable, val_name, default_value) \
   do { \
-    static_assert(std::is_pod<decltype(this_ref.variable)>::value, "t_type must be a POD type."); \
+    static_assert(std::has_unique_object_representations_v<decltype(this_ref.variable)>, "t_type must be a POD type."); \
     bool ret = KV_SERIALIZE_VAL_POD_AS_BLOB_FORCE_N(variable, val_name); \
     if (!ret) \
       epee::serialize_default(this_ref.variable, default_value); \
   } while(0);
 
 #define KV_SERIALIZE_CONTAINER_POD_AS_BLOB_N(variable, val_name) \
-  epee::serialization::selector<is_store>::serialize_stl_container_pod_val_as_blob(this_ref.variable, stg, hparent_section, val_name);
+  epee::serialization::perform_serialize_blob_container<is_store>(this_ref.variable, stg, parent_section, val_name);
 
 #define END_KV_SERIALIZE_MAP() return true;}
 
@@ -154,7 +154,7 @@ public: \
   using enum_t = std::remove_const_t<decltype(this_ref.enum_)>; \
   using int_t = std::underlying_type_t<enum_t>; \
   int_t int_value = is_store ? static_cast<int_t>(this_ref.enum_) : 0; \
-  epee::serialization::selector<is_store>::serialize(int_value, stg, hparent_section, #enum_); \
+  epee::serialization::perform_serialize<is_store>(int_value, stg, parent_section, #enum_); \
   if (!is_store) \
     const_cast<enum_t&>(this_ref.enum_) = static_cast<enum_t>(int_value); \
 } while(0);

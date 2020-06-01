@@ -82,19 +82,24 @@ namespace cryptonote { namespace rpc {
           // This is nasty.  TODO: get rid of epee's horrible serialization code.
           auto& epee_stuff = std::get<jsonrpc_params>(request.body);
           auto& storage_entry = epee_stuff.second;
-          // For some reason epee calls a json object a "section" instead of something common like
-          // dict, object, hash, map.  But okay, then it calls a pointer to a section a "hsection"
-          // because obfuscation is the epee way.  Then we have `array_entry` (and of course,
-          // `harray` to refer to an `array_entry*`), but array_entries are *only* allowed to be
-          // arrays of sections.  Meanwhile epee's author left comments telling us that XML is
-          // horrible.  Pot meet kettle.
-          if (storage_entry.type() == typeid(epee::serialization::section)) {
-            auto* section = &boost::get<epee::serialization::section>(storage_entry);
+          // Epee nomenclature translactions:
+          //
+          // - "storage_entry" is a variant over values (ints, doubles, string, storage_entries, or
+          // array_entry).
+          //
+          // - "array_entry" is a variant over vectors of all of those values.
+          //
+          // Epee's json serialization also has a metric ton of limitations: for example it can't
+          // properly deserialize signed integer (unless *all* values are negative), or doubles
+          // (unless *all* values do not look like ints), and for both serialization and
+          // deserialization doesn't support lists of lists, and any mixed types in lists (for
+          // example '[bool, 1, "hi"]`).
+          //
+          // Conclusion: it needs to go.
+          if (auto* section = std::get_if<epee::serialization::section>(&storage_entry))
             req.load(epee_stuff.first, section);
-          }
-          else if (storage_entry.type() == typeid(epee::serialization::array_entry)) {
-            throw std::runtime_error("FIXME 125157015");
-          }
+          else
+            throw std::runtime_error{"only top-level JSON object values are currently supported"};
         }
         return req;
       }
