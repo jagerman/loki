@@ -236,7 +236,7 @@ namespace cryptonote
     m_stop = false;
     m_thread_index = 0;
     for(size_t i = 0; i != m_threads_total; i++)
-      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this, false)));
+      m_threads.emplace_back(m_attrs, [this] { return worker_thread(false); });
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::init_options(boost::program_options::options_description& desc)
@@ -340,7 +340,7 @@ namespace cryptonote
     
     for(size_t i = 0; i != m_threads_total; i++)
     {
-      m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this, slow_mining)));
+      m_threads.emplace_back(m_attrs, [=] { return worker_thread(slow_mining); });
     }
 
     if (threads_count == 0)
