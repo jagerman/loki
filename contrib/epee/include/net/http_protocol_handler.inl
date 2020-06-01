@@ -554,7 +554,7 @@ namespace net_utils
 	}
 	//-----------------------------------------------------------------------------------
   template<class t_connection_context>
-	bool simple_http_connection_handler<t_connection_context>::get_len_from_content_lenght(const std::string& str, size_t& OUT len)
+	bool simple_http_connection_handler<t_connection_context>::get_len_from_content_length(const std::string& str, size_t& len)
 	{
 		STATIC_REGEXP_EXPR_1(rexp_mach_field, "\\d+", boost::regex::normal);
 		std::string res;

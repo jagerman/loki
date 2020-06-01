@@ -858,7 +858,7 @@ namespace net_utils
 					return false;
 			}
 			inline
-				bool is_multipart_body(const http_header_info& head_info, OUT std::string& boundary)
+				bool is_multipart_body(const http_header_info& head_info, std::string& boundary)
 			{
 				//Check whether this is multi part - if yes, capture boundary immediately
 				STATIC_REGEXP_EXPR_1(rexp_match_multipart_type, "^\\s*multipart/([\\w\\-]+); boundary=((\"(.*?)\")|(\\\\\"(.*?)\\\\\")|([^\\s;]*))", boost::regex::icase | boost::regex::normal);

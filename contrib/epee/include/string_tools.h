@@ -51,10 +51,6 @@
 #include "warnings.h"
 
 
-#ifndef OUT
-	#define OUT
-#endif
-
 #ifdef WINDOWS_PLATFORM
 #pragma comment (lib, "Rpcrt4.lib")
 #endif
@@ -102,7 +98,7 @@ namespace string_tools
 PUSH_WARNINGS
 DISABLE_GCC_WARNING(maybe-uninitialized)
   template<class XType>
-  inline bool get_xtype_from_string(OUT XType& val, const std::string& str_id)
+  inline bool get_xtype_from_string(XType& val, const std::string& str_id)
   {
     if (std::is_integral<XType>::value && !std::numeric_limits<XType>::is_signed && !std::is_same<XType, bool>::value)
     {
