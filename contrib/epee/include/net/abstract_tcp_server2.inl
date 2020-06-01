@@ -38,7 +38,6 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp> // TODO
 #include <boost/thread/condition_variable.hpp> // TODO
-#include <boost/make_shared.hpp>
 #include "warnings.h"
 #include "string_tools.h"
 #include "misc_language.h"
@@ -124,16 +123,16 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
-  boost::shared_ptr<connection<t_protocol_handler> > connection<t_protocol_handler>::safe_shared_from_this()
+  std::shared_ptr<connection<t_protocol_handler> > connection<t_protocol_handler>::safe_shared_from_this()
   {
     try
     {
       return connection<t_protocol_handler>::shared_from_this();
     }
-    catch (const boost::bad_weak_ptr&)
+    catch (const std::bad_weak_ptr&)
     {
       // It happens when the connection is being deleted
-      return boost::shared_ptr<connection<t_protocol_handler> >();
+      return nullptr;
     }
   }
   //---------------------------------------------------------------------------------
@@ -281,7 +280,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   bool connection<t_protocol_handler>::release()
   {
     TRY_ENTRY();
-    boost::shared_ptr<connection<t_protocol_handler> >  back_connection_copy;
+    std::shared_ptr<connection<t_protocol_handler> >  back_connection_copy;
     LOG_TRACE_CC(context, "[sock " << socket().native_handle() << "] release");
     CRITICAL_REGION_BEGIN(m_self_refs_lock);
     CHECK_AND_ASSERT_MES(m_reference_count, false, "[sock " << socket().native_handle() << "] m_reference_count already at 0 at connection<t_protocol_handler>::release() call");
@@ -1165,7 +1164,7 @@ POP_WARNINGS
       CRITICAL_REGION_BEGIN(m_threads_lock);
       for (std::size_t i = 0; i < threads_count; ++i)
       {
-        boost::shared_ptr<boost::thread> thread(new boost::thread(
+        std::shared_ptr<boost::thread> thread(new boost::thread(
           attrs, boost::bind(&boosted_tcp_server<t_protocol_handler>::worker_thread, this)));
           _note("Run server thread name: " << m_thread_name_prefix);
         m_threads.push_back(thread);
@@ -1395,10 +1394,10 @@ POP_WARNINGS
       boost::condition_variable cond;
     };
 
-    boost::shared_ptr<local_async_context> local_shared_context(new local_async_context());
+    std::shared_ptr<local_async_context> local_shared_context(new local_async_context());
     local_shared_context->ec = boost::asio::error::would_block;
     boost::unique_lock<boost::mutex> lock(local_shared_context->connect_mut);
-    auto connect_callback = [](boost::system::error_code ec_, boost::shared_ptr<local_async_context> shared_context)
+    auto connect_callback = [](boost::system::error_code ec_, std::shared_ptr<local_async_context> shared_context)
     {
       shared_context->connect_mut.lock(); shared_context->ec = ec_; shared_context->cond.notify_one(); shared_context->connect_mut.unlock();
     };
@@ -1668,7 +1667,7 @@ POP_WARNINGS
       }
     }
     
-    boost::shared_ptr<boost::asio::deadline_timer> sh_deadline(new boost::asio::deadline_timer(io_service_));
+    std::shared_ptr<boost::asio::deadline_timer> sh_deadline(new boost::asio::deadline_timer(io_service_));
     //start deadline
     sh_deadline->expires_from_now(boost::posix_time::milliseconds(conn_timeout));
     sh_deadline->async_wait([=](const boost::system::error_code& error)

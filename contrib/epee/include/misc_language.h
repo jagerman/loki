@@ -31,6 +31,8 @@
 #include <limits>
 #include <boost/thread.hpp>
 #include <boost/chrono/duration.hpp>
+#include <memory>
+
 namespace epee
 {
 #define STD_TRY_BEGIN() try {
@@ -130,7 +132,7 @@ namespace misc_utils
     virtual ~call_befor_die_base(){}
   };
 
-  typedef boost::shared_ptr<call_befor_die_base> auto_scope_leave_caller;
+  using auto_scope_leave_caller = std::shared_ptr<call_befor_die_base>;
 
 
   template<class t_scope_leave_handler>

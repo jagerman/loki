@@ -28,7 +28,6 @@
 
 #pragma once
 #include <ctype.h>
-#include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional.hpp>
 //#include <mbstring.h>
@@ -36,6 +35,7 @@
 #include <algorithm>
 #include <cctype>
 #include <functional>
+#include <memory>
 #include <string_view>
 
 #include "net_helper.h"
@@ -143,7 +143,7 @@ namespace net_utils
 			size_t m_len_in_summary;
 			size_t m_len_in_remain;
 			//std::string* m_ptarget_buffer;
-			boost::shared_ptr<i_sub_handler> m_pcontent_encoding_handler;
+			std::shared_ptr<i_sub_handler> m_pcontent_encoding_handler;
 			reciev_machine_state m_state;
 			chunked_state m_chunked_state;
 			std::string m_chunked_cache;

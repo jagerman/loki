@@ -38,8 +38,6 @@
 
 #include <string>
 #include <vector>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
 #include <atomic>
 #include <cassert>
 #include <map>
@@ -47,10 +45,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include <boost/array.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp> //! \TODO Convert to std::shared_ptr
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/interprocess/detail/atomic.hpp>
 #include <boost/thread/thread.hpp>
 #include <memory>
@@ -84,12 +78,14 @@ namespace net_utils
   /// Represents a single connection from a client.
   template<class t_protocol_handler>
   class connection
-    : public boost::enable_shared_from_this<connection<t_protocol_handler> >,
-    private boost::noncopyable, 
+    : public std::enable_shared_from_this<connection<t_protocol_handler>>,
     public i_service_endpoint,
     public connection_basic
   {
   public:
+    connection(const connection&) = delete;
+    connection& operator=(const connection&) = delete;
+
     typedef typename t_protocol_handler::connection_context t_connection_context;
 
     struct shared_state : connection_basic_shared_state, t_protocol_handler::config_type
@@ -147,7 +143,7 @@ namespace net_utils
     //------------------------------------------------------
     bool do_send_chunk(byte_slice chunk); ///< will send (or queue) a part of data. internal use only
 
-    boost::shared_ptr<connection<t_protocol_handler> > safe_shared_from_this();
+    std::shared_ptr<connection<t_protocol_handler> > safe_shared_from_this();
     bool shutdown();
     /// Handle completion of a receive operation.
     void handle_receive(const boost::system::error_code& e,
@@ -169,7 +165,7 @@ namespace net_utils
     unsigned int host_count(const std::string &host, int delta = 0);
 
     /// Buffer for incoming data.
-    boost::array<char, 8192> buffer_;
+    std::array<char, 8192> buffer_;
     size_t buffer_ssl_init_fill;
 
     t_connection_context context;
@@ -179,7 +175,7 @@ namespace net_utils
     t_protocol_handler m_protocol_handler;
     //typename t_protocol_handler::config_type m_dummy_config;
     size_t m_reference_count = 0; // reference count managed through add_ref/release support
-    boost::shared_ptr<connection<t_protocol_handler> > m_self_ref; // the reference to hold
+    std::shared_ptr<connection<t_protocol_handler> > m_self_ref; // the reference to hold
     critical_section m_self_refs_lock;
     critical_section m_chunking_lock; // held while we add small chunks of the big do_send() to small do_send_chunk()
     critical_section m_shutdown_lock; // held while shutting down
@@ -207,8 +203,10 @@ namespace net_utils
   /************************************************************************/
   template<class t_protocol_handler>
   class boosted_tcp_server
-    : private boost::noncopyable
   {
+    boosted_tcp_server(const boosted_tcp_server&) = delete;
+    boosted_tcp_server& operator=(const boosted_tcp_server&) = delete;
+
     enum try_connect_result_t
     {
       CONNECT_SUCCESS,
@@ -217,7 +215,7 @@ namespace net_utils
     };
 
   public:
-    typedef boost::shared_ptr<connection<t_protocol_handler> > connection_ptr;
+    typedef std::shared_ptr<connection<t_protocol_handler> > connection_ptr;
     typedef typename t_protocol_handler::connection_context t_connection_context;
     /// Construct the server to listen on the specified TCP address and port, and
     /// serve up files from the given directory.
@@ -323,7 +321,7 @@ namespace net_utils
     template<class t_handler>
     bool add_idle_handler(t_handler t_callback, uint64_t timeout_ms)
       {
-        boost::shared_ptr<idle_callback_conext<t_handler>> ptr(new idle_callback_conext<t_handler>(io_service_, t_callback, timeout_ms));
+        auto ptr = std::make_shared<idle_callback_conext<t_handler>>(io_service_, t_callback, timeout_ms);
         //needed call handler here ?...
         ptr->m_timer.expires_from_now(boost::posix_time::milliseconds(ptr->m_period));
         ptr->m_timer.async_wait(boost::bind(&boosted_tcp_server<t_protocol_handler>::global_timer_handler<t_handler>, this, ptr));
@@ -331,7 +329,7 @@ namespace net_utils
       }
 
     template<class t_handler>
-    bool global_timer_handler(/*const boost::system::error_code& err, */boost::shared_ptr<idle_callback_conext<t_handler>> ptr)
+    bool global_timer_handler(/*const boost::system::error_code& err, */std::shared_ptr<idle_callback_conext<t_handler>> ptr)
     {
       //if handler return false - he don't want to be called anymore
       if(!ptr->call_handler())
@@ -387,7 +385,7 @@ namespace net_utils
     bool m_require_ipv4;
     std::string m_thread_name_prefix; //TODO: change to enum server_type, now used
     size_t m_threads_count;
-    std::vector<boost::shared_ptr<boost::thread> > m_threads;
+    std::vector<std::shared_ptr<boost::thread> > m_threads;
     boost::thread::id m_main_thread_id;
     critical_section m_threads_lock;
     volatile uint32_t m_thread_index; // TODO change to std::atomic
