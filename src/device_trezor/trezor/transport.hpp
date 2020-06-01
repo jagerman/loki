@@ -34,8 +34,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/array.hpp>
-#include <boost/utility/string_ref.hpp>
 
+#include <string_view>
 #include <typeinfo>
 #include <type_traits>
 #include "net/http_client.h"
@@ -55,6 +55,7 @@
 
 namespace hw {
 namespace trezor {
+  using namespace std::literals;
 
   using json = rapidjson::Document;
   using json_val = rapidjson::Value;
@@ -76,7 +77,7 @@ namespace trezor {
 
   // Flexible json serialization. HTTP client tailored for bridge API
   template<class t_req, class t_res, class t_transport>
-  bool invoke_bridge_http(const boost::string_ref uri, const t_req & out_struct, t_res & result_struct, t_transport& transport, const boost::string_ref method = "POST", std::chrono::milliseconds timeout = std::chrono::seconds(180))
+  bool invoke_bridge_http(std::string_view uri, const t_req & out_struct, t_res & result_struct, t_transport& transport, std::string_view method = "POST"sv, std::chrono::milliseconds timeout = 180s)
   {
     std::string req_param;
     t_serialize(out_struct, req_param);

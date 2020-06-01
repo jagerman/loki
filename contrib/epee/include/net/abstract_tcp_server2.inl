@@ -454,7 +454,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     // detect SSL
     if (m_ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
     {
-      if (is_ssl((const unsigned char*)buffer_.data(), buffer_ssl_init_fill))
+      if (is_ssl({buffer_.data(), buffer_ssl_init_fill}))
       {
         MDEBUG("That looks like SSL");
         m_ssl_support = epee::net_utils::ssl_support_t::e_ssl_support_enabled; // read/write to the SSL socket

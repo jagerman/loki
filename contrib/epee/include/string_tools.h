@@ -39,6 +39,7 @@
 #include <locale>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -57,6 +58,9 @@
 
 namespace epee
 {
+
+using namespace std::literals;
+
 namespace string_tools
 {
   //----------------------------------------------------------------------------
@@ -98,9 +102,9 @@ namespace string_tools
 PUSH_WARNINGS
 DISABLE_GCC_WARNING(maybe-uninitialized)
   template<class XType>
-  inline bool get_xtype_from_string(XType& val, const std::string& str_id)
+  inline bool get_xtype_from_string(XType& val, std::string_view str_id)
   {
-    if (std::is_integral<XType>::value && !std::numeric_limits<XType>::is_signed && !std::is_same<XType, bool>::value)
+    if (std::is_integral_v<XType> && std::is_unsigned_v<XType> && !std::is_same_v<XType, bool>)
     {
       for (char c : str_id)
       {
@@ -111,7 +115,7 @@ DISABLE_GCC_WARNING(maybe-uninitialized)
 
     try
     {
-      val = boost::lexical_cast<XType>(str_id);
+      val = boost::lexical_cast<XType>(std::string{str_id});
       return true;
     }
     catch(const std::exception& /*e*/)
@@ -147,23 +151,23 @@ POP_WARNINGS
 	//----------------------------------------------------------------------------
 	bool get_ip_int32_from_string(uint32_t& ip, const std::string& ip_str);
   //----------------------------------------------------------------------------
-  inline bool parse_peer_from_string(uint32_t& ip, uint16_t& port, const std::string& addres)
+  inline bool parse_peer_from_string(uint32_t& ip, uint16_t& port, std::string_view address)
   {
     //parse ip and address
-    std::string::size_type p = addres.find(':');
-    std::string ip_str, port_str;
-    if(p == std::string::npos)
+    auto p = address.find(':');
+    std::string_view ip_str, port_str;
+    if(p == std::string_view::npos)
     {
       port = 0;
-      ip_str = addres;
+      ip_str = address;
     }
     else
     {
-      ip_str = addres.substr(0, p);
-      port_str = addres.substr(p+1, addres.size());
+      ip_str = address.substr(0, p);
+      port_str = address.substr(p+1);
     }
 
-    if(!get_ip_int32_from_string(ip, ip_str))
+    if(!get_ip_int32_from_string(ip, std::string{ip_str}))
     {
       return false;
     }

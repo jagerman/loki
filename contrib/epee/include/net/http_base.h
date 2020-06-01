@@ -28,8 +28,8 @@
 
 #pragma once
 #include <boost/lexical_cast.hpp>
-#include <boost/utility/string_ref.hpp>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "memwipe.h"
@@ -79,11 +79,9 @@ namespace net_utils
 			return it->second;
 		}
 
-
-		static inline void add_field(std::string& out, const boost::string_ref name, const boost::string_ref value)
+		static inline void add_field(std::string& out, std::string_view name, std::string_view value)
 		{
-			out.append(name.data(), name.size()).append(": ");
-			out.append(value.data(), value.size()).append("\r\n");
+			out.append(name).append(": "sv).append(value).append("\r\n"sv);
 		}
 		static inline void add_field(std::string& out, const std::pair<std::string, std::string>& field)
 		{

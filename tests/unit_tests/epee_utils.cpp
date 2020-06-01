@@ -1318,7 +1318,7 @@ TEST(parsing, isdigit)
 
 TEST(parsing, number)
 {
-  boost::string_ref val;
+  std::string_view val;
   std::string s;
 
   // the parser expects another character to end the number, and accepts things
