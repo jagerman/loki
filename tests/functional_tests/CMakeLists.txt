@@ -36,7 +36,6 @@ target_link_libraries(functional_tests
     wallet
     common
     epee
-    Boost::regex
     Boost::program_options
     extra)
 

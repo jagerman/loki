@@ -36,7 +36,6 @@ target_link_libraries(performance_tests
     epee
     Boost::chrono
     Boost::program_options
-    Boost::regex
     extra)
 set_property(TARGET performance_tests
   PROPERTY

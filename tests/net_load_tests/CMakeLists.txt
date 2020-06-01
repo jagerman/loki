@@ -37,7 +37,6 @@ target_link_libraries(net_load_tests_clt
     Boost::chrono
     Boost::date_time
     Boost::thread
-    Boost::regex
     extra)
 
 add_executable(net_load_tests_srv
@@ -50,7 +49,6 @@ target_link_libraries(net_load_tests_srv
     gtest
     Boost::chrono
     Boost::date_time
-    Boost::regex
     extra)
 
 set_property(TARGET net_load_tests_clt net_load_tests_srv
