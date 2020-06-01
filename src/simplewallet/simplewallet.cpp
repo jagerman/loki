@@ -46,11 +46,11 @@
 #include <fstream>
 #include <ctype.h>
 #include <string_view>
+#include <regex>
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/regex.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <lokimq/hex.h>
 #include "include_base_utils.h"
@@ -4716,23 +4716,18 @@ bool simple_wallet::set_daemon(const std::vector<std::string>& args)
     return true;
   }
 
-  boost::regex rgx("^(.*://)?([A-Za-z0-9\\-\\.]+)(:[0-9]+)?");
-  boost::cmatch match;
-  // If user input matches URL regex
-  if (boost::regex_match(args[0].c_str(), match, rgx))
+  std::regex rgx{R"((?:.*://)?(?:[A-Za-z0-9.-]+|\[[0-9a-fA-F:.]+\])(:[0-9]+)?)"};
+  //                 proto       hostname/ipv4       [ipv6]         :port
+  std::smatch match;
+  if (std::regex_match(args[0], match, rgx))
   {
-    if (match.length() < 4)
-    {
-      fail_msg_writer() << tr("Unexpected array length - Exited simple_wallet::set_daemon()");
-      return true;
-    }
-    // If no port has been provided, use the default from config
-    if (!match[3].length())
+    daemon_url = args[0];
+    // If no port has been provided append the default from config
+    if (!match[1].matched)
     {
       int daemon_port = get_config(m_wallet->nettype()).RPC_DEFAULT_PORT;
-      daemon_url = match[1] + match[2] + std::string(":") + std::to_string(daemon_port);
-    } else {
-      daemon_url = args[0];
+      daemon_url += ':';
+      daemon_url += std::to_string(daemon_port);
     }
     LOCK_IDLE_SCOPE();
     m_wallet->init(daemon_url);

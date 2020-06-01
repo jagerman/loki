@@ -29,11 +29,11 @@
 #pragma once
 #include <ctype.h>
 #include <boost/shared_ptr.hpp>
-#include <boost/regex.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/utility/string_ref.hpp>
 //#include <mbstring.h>
+#include <regex>
 #include <algorithm>
 #include <cctype>
 #include <functional>
@@ -46,8 +46,6 @@
 #endif 
 
 #include "string_tools.h"
-#include "reg_exp_definer.h"
-#include "abstract_http_client.h"
 #include "http_base.h" 
 #include "http_auth.h"
 #include "to_nonconst_iterator.h"
@@ -60,8 +58,6 @@
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "net.http"
-
-extern epee::critical_section gregexp_lock;
 
 
 namespace epee
@@ -108,6 +104,11 @@ namespace net_utils
 	//---------------------------------------------------------------------------
 	namespace http
 	{
+
+    inline const std::regex rexp_match_gzip{"gzip|(deflate)", std::regex::icase};
+    inline const std::regex rexp_match_close{"^\\s*close", std::regex::icase};
+    inline const std::regex rexp_match_multipart_type{
+      R"re(^\s*multipart/[\w-]+; boundary=(?:"(.*?)"|\\"(.*?)\\"|([^\s;]*)))re", std::regex::icase};
 
 		template<typename net_client_type>
     class http_simple_client_template : public i_target_handler, public abstract_http_client
@@ -754,12 +755,11 @@ namespace net_utils
 			inline
 				bool set_reply_content_encoder()
 			{
-				STATIC_REGEXP_EXPR_1(rexp_match_gzip, "^.*?((gzip)|(deflate))", boost::regex::icase | boost::regex::normal);
-				boost::smatch result;						//   12      3
-				if(boost::regex_search( m_response_info.m_header_info.m_content_encoding, result, rexp_match_gzip, boost::match_default) && result[0].matched)
+				std::smatch result;
+				if(std::regex_search(m_response_info.m_header_info.m_content_encoding, result, rexp_match_gzip))
 				{
 #ifdef HTTP_ENABLE_GZIP
-					m_pcontent_encoding_handler.reset(new content_encoding_gzip(this, result[3].matched));
+					m_pcontent_encoding_handler.reset(new content_encoding_gzip(this, result[1].matched));
 #else
           m_pcontent_encoding_handler.reset(new do_nothing_sub_handler(this));
           LOG_ERROR("GZIP encoding not supported in this build, please add zlib to your project and define HTTP_ENABLE_GZIP");
@@ -850,38 +850,25 @@ namespace net_utils
 			inline 
 				bool is_connection_close_field(const std::string& str)
 			{
-				STATIC_REGEXP_EXPR_1(rexp_match_close, "^\\s*close", boost::regex::icase | boost::regex::normal);
-				boost::smatch result;
-				if(boost::regex_search( str, result, rexp_match_close, boost::match_default) && result[0].matched)
-					return true;
-				else
-					return false;
+				std::smatch result;
+				return std::regex_search(str, result, rexp_match_close);
 			}
 			inline
 				bool is_multipart_body(const http_header_info& head_info, std::string& boundary)
 			{
 				//Check whether this is multi part - if yes, capture boundary immediately
-				STATIC_REGEXP_EXPR_1(rexp_match_multipart_type, "^\\s*multipart/([\\w\\-]+); boundary=((\"(.*?)\")|(\\\\\"(.*?)\\\\\")|([^\\s;]*))", boost::regex::icase | boost::regex::normal);
-				boost::smatch result;
-				if(boost::regex_search(head_info.m_content_type, result, rexp_match_multipart_type, boost::match_default) && result[0].matched)
+				std::smatch result;
+				if(std::regex_search(head_info.m_content_type, result, rexp_match_multipart_type))
 				{
-					if(result[4].matched)
-						boundary = result[4];
-					else if(result[6].matched)
-						boundary = result[6];
-					else if(result[7].matched)
-						boundary = result[7];
-					else 
-					{
-						LOG_ERROR("Failed to match boundary in content-type=" << head_info.m_content_type);
-						return false;
-					}
-					return true;
+					for (size_t i : {1, 2, 3})
+						if(result[i].matched)
+						{
+							boundary = result[i];
+							return true;
+						}
+					LOG_ERROR("Failed to match boundary in content-type=" << head_info.m_content_type);
 				}
-				else
-					return false;
-
-				return true;
+				return false;
 			}
 		};
 		typedef http_simple_client_template<blocked_mode_client> http_simple_client;

@@ -40,7 +40,6 @@ target_link_libraries(simplewallet
     Boost::chrono
     Boost::program_options
     Boost::filesystem
-    Boost::regex
     icu
     Boost::thread
     extra)

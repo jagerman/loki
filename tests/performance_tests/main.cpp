@@ -28,8 +28,6 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <boost/regex.hpp>
-
 #include "common/util.h"
 #include "common/command_line.h"
 #include "performance_tests.h"

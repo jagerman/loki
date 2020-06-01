@@ -64,7 +64,6 @@ target_link_libraries(wallet_rpc_server
     wallet
     daemonizer
     Boost::program_options
-    Boost::regex
     extra)
 
 

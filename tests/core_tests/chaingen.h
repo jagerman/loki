@@ -32,7 +32,8 @@
 
 #include <vector>
 #include <iostream>
-#include <stdint.h>
+#include <cstdint>
+#include <regex>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -1211,7 +1212,7 @@ inline bool do_replay_file(const std::string& filename)
 #define GENERATE_AND_PLAY(generator_class)                                                                             \
   if (list_tests)                                                                                                      \
     std::cout << #generator_class << std::endl;                                                                        \
-  else if (filter.empty() || boost::regex_match(std::string(#generator_class), match, boost::regex(filter)))           \
+  else if (std::cmatch m; filter.empty() || std::regex_match(#generator_class, m, std::regex(filter)))                 \
   {                                                                                                                    \
     std::vector<test_event_entry> events;                                                                              \
     ++tests_count;                                                                                                     \
@@ -1225,7 +1226,7 @@ inline bool do_replay_file(const std::string& filename)
   }
 
 #define GENERATE_AND_PLAY_INSTANCE(generator_class, generator_class_instance, CORE)                                    \
-  if (filter.empty() || boost::regex_match(std::string(#generator_class), match, boost::regex(filter)))                \
+  if (std::cmatch m; filter.empty() || std::regex_match(#generator_class, m, std::regex(filter)))                      \
   {                                                                                                                    \
     std::vector<test_event_entry> events;                                                                              \
     ++tests_count;                                                                                                     \

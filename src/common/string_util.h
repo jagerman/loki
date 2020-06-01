@@ -14,7 +14,17 @@ inline bool string_iequal(std::string_view s1, std::string_view s2) {
 /// must be string literals, std::string, or std::string_views
 template <typename S1, typename... S>
 bool string_iequal_any(const S1& s1, const S&... s) {
-  return (string_iequal(s1, s) || ...);
+  return (... || string_iequal(s1, s));
+}
+
+/// Returns true if the first argument begins with the second argument
+inline bool starts_with(std::string_view str, std::string_view prefix) {
+  return str.substr(0, prefix.size()) == prefix;
+}
+
+/// Returns true if the first argument ends with the second argument
+inline bool ends_with(std::string_view str, std::string_view suffix) {
+  return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
 }
 
 /// Returns a string_view that views the data of the given object; this is not something you want to

@@ -49,7 +49,6 @@ target_link_libraries(wallet_api
     Boost::serialization
     Boost::filesystem
     Boost::thread
-    Boost::regex
   PRIVATE
     extra)
 

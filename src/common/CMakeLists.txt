@@ -74,7 +74,6 @@ target_link_libraries(common
     lokimq::lokimq
   PRIVATE
     libunbound
-    Boost::regex
     OpenSSL::SSL
     OpenSSL::Crypto
     extra)

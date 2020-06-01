@@ -57,7 +57,6 @@ if(DEVICE_TREZOR_READY)
             common
             sodium
             Boost::chrono
-            Boost::regex
             libusb
             protobuf
             extra)

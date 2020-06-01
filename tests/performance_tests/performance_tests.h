@@ -31,10 +31,10 @@
 #pragma once
 
 #include <iostream>
-#include <stdint.h>
+#include <cstdint>
+#include <regex>
 
 #include <boost/chrono.hpp>
-#include <boost/regex.hpp>
 
 #include "misc_language.h"
 #include "stats.h"
@@ -164,8 +164,7 @@ private:
 template <typename T>
 void run_test(const std::string &filter, Params &params, const char* test_name)
 {
-  boost::smatch match;
-  if (!filter.empty() && !boost::regex_match(std::string(test_name), match, boost::regex(filter)))
+  if (std::cmatch m; !filter.empty() && !std::regex_match(test_name, m, std::regex(filter)))
     return;
 
   test_runner<T> runner(params);
