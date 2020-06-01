@@ -42,7 +42,6 @@
 #include <boost/thread/future.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/lambda/lambda.hpp>
-#include <boost/interprocess/detail/atomic.hpp>
 #include <boost/system/error_code.hpp>
 #include <functional>
 #include "net/net_utils_base.h"
@@ -109,7 +108,7 @@ namespace net_utils
 				m_initialized(true),
 				m_connected(false),
 				m_deadline(m_io_service, std::chrono::steady_clock::time_point::max()),
-				m_shutdowned(0),
+				m_shutdown(false),
 				m_bytes_sent(0),
 				m_bytes_received(0)
 		{
@@ -434,7 +433,7 @@ namespace net_utils
 				async_read(&buff[0], max_size, boost::asio::transfer_at_least(1), hndlr);
 
 				// Block until the asynchronous operation has completed.
-				while (ec == boost::asio::error::would_block && !boost::interprocess::ipcdetail::atomic_read32(&m_shutdowned))
+				while (ec == boost::asio::error::would_block && !m_shutdown)
 				{
 					m_io_service.reset();
 					m_io_service.run_one(); 
@@ -518,7 +517,7 @@ namespace net_utils
 				async_read((char*)buff.data(), buff.size(), boost::asio::transfer_at_least(buff.size()), hndlr);
 				
 				// Block until the asynchronous operation has completed.
-				while (ec == boost::asio::error::would_block && !boost::interprocess::ipcdetail::atomic_read32(&m_shutdowned))
+				while (ec == boost::asio::error::would_block && !m_shutdown)
 				{
 					m_io_service.run_one(); 
 				}
@@ -575,7 +574,7 @@ namespace net_utils
 			m_ssl_socket->next_layer().close(ec);
 			if(ec)
 				MDEBUG("Problems at close: " << ec.message());
-			boost::interprocess::ipcdetail::atomic_write32(&m_shutdowned, 1);
+      m_shutdown = true;
       m_connected = false;
 			return true;
 		}
@@ -684,7 +683,7 @@ namespace net_utils
 		bool m_initialized;
 		bool m_connected;
 		boost::asio::steady_timer m_deadline;
-		volatile uint32_t m_shutdowned;
+    std::atomic<bool> m_shutdown;
 		std::atomic<uint64_t> m_bytes_sent;
 		std::atomic<uint64_t> m_bytes_received;
 	};

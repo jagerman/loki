@@ -106,11 +106,11 @@ class connection_basic { // not-templated base class for rapid developmet of som
 		std::unique_ptr< connection_basic_pimpl > mI; // my Implementation
 
 		// moved here from orginal connecton<> - common member variables that do not depend on template in connection<>
-    volatile uint32_t m_want_close_connection;
+    std::atomic<bool> m_want_close_connection;
     std::atomic<bool> m_was_shutdown;
     critical_section m_send_que_lock;
     std::deque<byte_slice> m_send_que;
-    volatile bool m_is_multithreaded;
+    std::atomic<bool> m_is_multithreaded;
     /// Strand to ensure the connection's handlers are not called concurrently.
     boost::asio::io_service::strand strand_;
     /// Socket for the connection.
