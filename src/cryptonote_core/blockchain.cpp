@@ -5356,7 +5356,7 @@ void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get
     {
       // first check hash
       crypto::hash hash;
-      if (!tools::sha256sum_str(checkpoints.data(), checkpoints.size(), hash))
+      if (!tools::sha256sum_str(checkpoints, hash))
       {
         MERROR("Failed to hash precomputed blocks data");
         return;
