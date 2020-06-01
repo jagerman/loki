@@ -306,11 +306,11 @@ namespace tx {
     dst->set_commitment(key_to_string(src->mask));
   }
 
-  std::string hash_addr(const MoneroAccountPublicAddress * addr, boost::optional<uint64_t> amount, boost::optional<bool> is_subaddr){
+  std::string hash_addr(const MoneroAccountPublicAddress * addr, std::optional<uint64_t> amount, std::optional<bool> is_subaddr){
     return hash_addr(addr->spend_public_key(), addr->view_public_key(), amount, is_subaddr);
   }
 
-  std::string hash_addr(const std::string & spend_key, const std::string & view_key, boost::optional<uint64_t> amount, boost::optional<bool> is_subaddr){
+  std::string hash_addr(const std::string & spend_key, const std::string & view_key, std::optional<uint64_t> amount, std::optional<bool> is_subaddr){
     ::crypto::public_key spend{}, view{};
     if (spend_key.size() != 32 || view_key.size() != 32){
       throw std::invalid_argument("Public keys have invalid sizes");
@@ -321,7 +321,7 @@ namespace tx {
     return hash_addr(&spend, &view, amount, is_subaddr);
   }
 
-  std::string hash_addr(const ::crypto::public_key * spend_key, const ::crypto::public_key * view_key, boost::optional<uint64_t> amount, boost::optional<bool> is_subaddr){
+  std::string hash_addr(const ::crypto::public_key * spend_key, const ::crypto::public_key * view_key, std::optional<uint64_t> amount, std::optional<bool> is_subaddr){
     char buff[64+8+1];
     size_t offset = 0;
 
@@ -329,11 +329,13 @@ namespace tx {
     memcpy(buff + offset, view_key->data, 32); offset += 32;
 
     if (amount){
-      memcpy(buff + offset, (uint8_t*) &(amount.get()), sizeof(amount.get())); offset += sizeof(amount.get());
+      const auto& amt = *amount;
+      memcpy(buff + offset, &amt, sizeof(amt));
+      offset += sizeof(amt);
     }
 
     if (is_subaddr){
-      buff[offset] = is_subaddr.get();
+      buff[offset] = *is_subaddr;
       offset += 1;
     }
 
@@ -547,7 +549,7 @@ namespace tx {
 
     m_ct.tx.version = cryptonote::txversion::v2_ringct;
     m_ct.tx.unlock_time = tx.unlock_time;
-    m_client_version = (m_aux_data->client_version ? m_aux_data->client_version.get() : 1);
+    m_client_version = (m_aux_data->client_version ? *m_aux_data->client_version : 1);
 
     tsx_data.set_version(1);
     tsx_data.set_client_version(client_version());
@@ -556,7 +558,7 @@ namespace tx {
     tsx_data.set_mixin(static_cast<google::protobuf::uint32>(tx.sources[0].outputs.size() - 1));
     tsx_data.set_account(tx.subaddr_account);
     tsx_data.set_monero_version(std::string(LOKI_VERSION_STR) + "|" + LOKI_VERSION_TAG);
-    tsx_data.set_hard_fork(m_aux_data->hard_fork ? m_aux_data->hard_fork.get() : 0);
+    tsx_data.set_hard_fork(m_aux_data->hard_fork ? *m_aux_data->hard_fork : 0);
 
     if (client_version() <= 1){
       assign_to_repeatable(tsx_data.mutable_minor_indices(), tx.subaddr_indices.begin(), tx.subaddr_indices.end());
@@ -572,7 +574,7 @@ namespace tx {
     m_ct.rsig_type = get_rsig_type(tx.rct_config, tx.splitted_dsts.size());
     rsig_data->set_rsig_type(m_ct.rsig_type);
     if (tx.rct_config.range_proof_type != rct::RangeProofBorromean){
-      m_ct.bp_version = (m_aux_data->bp_version ? m_aux_data->bp_version.get() : 1);
+      m_ct.bp_version = (m_aux_data->bp_version ? *m_aux_data->bp_version : 1);
       rsig_data->set_bp_version((uint32_t) m_ct.bp_version);
     }
 
@@ -629,10 +631,8 @@ namespace tx {
   }
 
   void Signer::step_set_input_ack(std::shared_ptr<const messages::monero::MoneroTransactionSetInputAck> ack){
-    auto & vini_str = ack->vini();
-
     cryptonote::txin_v vini;
-    if (!cn_deserialize(vini_str.data(), vini_str.size(), vini)){
+    if (!cn_deserialize(ack->vini(), vini)){
       throw exc::ProtocolException("Cannot deserialize vin[i]");
     }
 

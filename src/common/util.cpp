@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <cstdio>
 #include <wchar.h>
+#include <optional>
 
 #ifdef __GLIBC__
 #include <gnu/libc-version.h>
@@ -539,7 +540,7 @@ namespace tools
 #endif
   }
 
-  boost::optional<bool> is_hdd(const char *file_path)
+  std::optional<bool> is_hdd(const char *file_path)
   {
 #ifdef __GLIBC__
     struct stat st;
@@ -552,7 +553,7 @@ namespace tools
     }
     else
     {
-      return boost::none;
+      return std::nullopt;
     }
     std::string attr_path = prefix + "/queue/rotational";
     std::ifstream f(attr_path, std::ios_base::in);
@@ -562,7 +563,7 @@ namespace tools
       f.open(attr_path, std::ios_base::in);
       if(not f.is_open())
       {
-          return boost::none;
+          return std::nullopt;
       }
     }
     unsigned short val = 0xdead;
@@ -571,10 +572,8 @@ namespace tools
     {
       return (val == 1);
     }
-    return boost::none;
-#else
-    return boost::none;
 #endif
+    return std::nullopt;
   }
 
   namespace
@@ -703,7 +702,7 @@ namespace tools
     return true;
   }
 
-  boost::optional<std::pair<uint32_t, uint32_t>> parse_subaddress_lookahead(const std::string& str)
+  std::optional<std::pair<uint32_t, uint32_t>> parse_subaddress_lookahead(const std::string& str)
   {
     auto pos = str.find(":");
     bool r = pos != std::string::npos;

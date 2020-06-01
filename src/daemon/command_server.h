@@ -29,7 +29,7 @@
 
 #pragma once
 
-#include <boost/optional/optional_fwd.hpp>
+#include <optional>
 #include "common/common_fwd.h"
 #include "console_handler.h"
 #include "daemon/command_parser_executor.h"
@@ -48,7 +48,7 @@ public:
   command_server(
       uint32_t ip
     , uint16_t port
-    , const boost::optional<tools::login>& login
+    , const std::optional<tools::login>& login
     , const epee::net_utils::ssl_options_t& ssl_options
     );
 

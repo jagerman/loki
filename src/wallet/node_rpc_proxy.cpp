@@ -72,10 +72,10 @@ void NodeRPCProxy::invalidate()
   m_height_time = 0;
 }
 
-boost::optional<std::string> NodeRPCProxy::get_rpc_version(rpc::version_t &rpc_version) const
+std::optional<std::string> NodeRPCProxy::get_rpc_version(rpc::version_t &rpc_version) const
 {
   if (m_offline)
-    return boost::optional<std::string>("offline");
+    return std::optional<std::string>("offline");
   if (m_rpc_version == rpc::version_t{0, 0})
   {
     cryptonote::rpc::GET_VERSION::request req_t{};
@@ -89,7 +89,7 @@ boost::optional<std::string> NodeRPCProxy::get_rpc_version(rpc::version_t &rpc_v
     m_rpc_version = rpc::make_version(resp_t.version);
   }
   rpc_version = m_rpc_version;
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
 void NodeRPCProxy::set_height(uint64_t h)
@@ -100,10 +100,10 @@ void NodeRPCProxy::set_height(uint64_t h)
   m_height_time = time(NULL);
 }
 
-boost::optional<std::string> NodeRPCProxy::get_info() const
+std::optional<std::string> NodeRPCProxy::get_info() const
 {
   if (m_offline)
-    return boost::optional<std::string>("offline");
+    return std::optional<std::string>("offline");
   const time_t now = time(NULL);
   if (now >= m_get_info_time + 30) // re-cache every 30 seconds
   {
@@ -124,10 +124,10 @@ boost::optional<std::string> NodeRPCProxy::get_info() const
     m_get_info_time = now;
     m_height_time = now;
   }
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
-boost::optional<std::string> NodeRPCProxy::get_height(uint64_t &height) const
+std::optional<std::string> NodeRPCProxy::get_height(uint64_t &height) const
 {
   const time_t now = time(NULL);
   if (now < m_height_time + 30) // re-cache every 30 seconds
@@ -140,40 +140,40 @@ boost::optional<std::string> NodeRPCProxy::get_height(uint64_t &height) const
   if (res)
     return res;
   height = m_height;
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
-boost::optional<std::string> NodeRPCProxy::get_target_height(uint64_t &height) const
+std::optional<std::string> NodeRPCProxy::get_target_height(uint64_t &height) const
 {
   auto res = get_info();
   if (res)
     return res;
   height = m_target_height;
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
-boost::optional<std::string> NodeRPCProxy::get_immutable_height(uint64_t &height) const
+std::optional<std::string> NodeRPCProxy::get_immutable_height(uint64_t &height) const
 {
   auto res = get_info();
   if (res)
     return res;
   height = m_immutable_height;
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
-boost::optional<std::string> NodeRPCProxy::get_block_weight_limit(uint64_t &block_weight_limit) const
+std::optional<std::string> NodeRPCProxy::get_block_weight_limit(uint64_t &block_weight_limit) const
 {
   auto res = get_info();
   if (res)
     return res;
   block_weight_limit = m_block_weight_limit;
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
-boost::optional<std::string> NodeRPCProxy::get_earliest_height(uint8_t version, uint64_t &earliest_height) const
+std::optional<std::string> NodeRPCProxy::get_earliest_height(uint8_t version, uint64_t &earliest_height) const
 {
   if (m_offline)
-    return boost::optional<std::string>("offline");
+    return std::optional<std::string>("offline");
   if (m_earliest_height[version] == 0)
   {
     cryptonote::rpc::HARD_FORK_INFO::request req_t{};
@@ -190,13 +190,13 @@ boost::optional<std::string> NodeRPCProxy::get_earliest_height(uint8_t version, 
   }
 
   earliest_height = m_earliest_height[version];
-  return boost::optional<std::string>();
+  return std::optional<std::string>();
 }
 
-boost::optional<uint8_t> NodeRPCProxy::get_hardfork_version() const
+std::optional<uint8_t> NodeRPCProxy::get_hardfork_version() const
 {
   if (m_offline)
-    return boost::none;
+    return std::nullopt;
 
   cryptonote::rpc::HARD_FORK_INFO::request req{};
   cryptonote::rpc::HARD_FORK_INFO::response resp{};
@@ -211,7 +211,7 @@ boost::optional<uint8_t> NodeRPCProxy::get_hardfork_version() const
   return resp.version;
 }
 
-boost::optional<std::string> NodeRPCProxy::refresh_dynamic_base_fee_cache(uint64_t grace_blocks) const
+std::optional<std::string> NodeRPCProxy::refresh_dynamic_base_fee_cache(uint64_t grace_blocks) const
 {
   uint64_t height;
 
@@ -241,7 +241,7 @@ boost::optional<std::string> NodeRPCProxy::refresh_dynamic_base_fee_cache(uint64
   return {};
 }
 
-boost::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate(uint64_t grace_blocks, cryptonote::byte_and_output_fees &fees) const
+std::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate(uint64_t grace_blocks, cryptonote::byte_and_output_fees &fees) const
 {
   if (auto error = refresh_dynamic_base_fee_cache(grace_blocks))
     return error;
@@ -249,7 +249,7 @@ boost::optional<std::string> NodeRPCProxy::get_dynamic_base_fee_estimate(uint64_
   return {};
 }
 
-boost::optional<std::string> NodeRPCProxy::get_fee_quantization_mask(uint64_t &fee_quantization_mask) const
+std::optional<std::string> NodeRPCProxy::get_fee_quantization_mask(uint64_t &fee_quantization_mask) const
 {
   if (auto error = refresh_dynamic_base_fee_cache(m_dynamic_base_fee_estimate_grace_blocks))
     return error;
@@ -264,7 +264,7 @@ boost::optional<std::string> NodeRPCProxy::get_fee_quantization_mask(uint64_t &f
 }
 
 template <typename T>
-static bool check_invoke(bool r, T &response, boost::optional<std::string> &failed)
+static bool check_invoke(bool r, T &response, std::optional<std::string> &failed)
 {
   if (!r)
   {
@@ -281,7 +281,7 @@ static bool check_invoke(bool r, T &response, boost::optional<std::string> &fail
   return true;
 }
 
-std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::get_service_nodes(std::vector<std::string> const &pubkeys, boost::optional<std::string> &failed) const
+std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::get_service_nodes(std::vector<std::string> const &pubkeys, std::optional<std::string> &failed) const
 {
   std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> result;
   if (m_offline)
@@ -305,7 +305,7 @@ std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::g
 }
 
 // Updates the cache of all service nodes; the mutex lock must be already held
-bool NodeRPCProxy::update_all_service_nodes_cache(uint64_t height, boost::optional<std::string> &failed) const {
+bool NodeRPCProxy::update_all_service_nodes_cache(uint64_t height, std::optional<std::string> &failed) const {
   if (m_offline)
   {
     failed = std::string("offline");
@@ -325,7 +325,7 @@ bool NodeRPCProxy::update_all_service_nodes_cache(uint64_t height, boost::option
 }
 
 
-std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::get_all_service_nodes(boost::optional<std::string> &failed) const
+std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::get_all_service_nodes(std::optional<std::string> &failed) const
 {
   std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> result{};
 
@@ -347,7 +347,7 @@ std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::g
 
 // Filtered version of the above that caches the filtered result as long as used on the same
 // contributor at the same height (which is very common, for example, for wallet balance lookups).
-std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::get_contributed_service_nodes(const std::string &contributor, boost::optional<std::string> &failed) const
+std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::get_contributed_service_nodes(const std::string &contributor, std::optional<std::string> &failed) const
 {
   std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> result{};
 
@@ -381,7 +381,7 @@ std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::g
   return result;
 }
 
-std::vector<cryptonote::rpc::GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry> NodeRPCProxy::get_service_node_blacklisted_key_images(boost::optional<std::string> &failed) const
+std::vector<cryptonote::rpc::GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry> NodeRPCProxy::get_service_node_blacklisted_key_images(std::optional<std::string> &failed) const
 {
   std::vector<cryptonote::rpc::GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry> result{};
   if (m_offline)
@@ -416,7 +416,7 @@ std::vector<cryptonote::rpc::GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry> Nod
   return result;
 }
 
-std::vector<cryptonote::rpc::LNS_OWNERS_TO_NAMES::response_entry> NodeRPCProxy::lns_owners_to_names(cryptonote::rpc::LNS_OWNERS_TO_NAMES::request const &request, boost::optional<std::string> &failed) const
+std::vector<cryptonote::rpc::LNS_OWNERS_TO_NAMES::response_entry> NodeRPCProxy::lns_owners_to_names(cryptonote::rpc::LNS_OWNERS_TO_NAMES::request const &request, std::optional<std::string> &failed) const
 {
   if (m_offline)
   {
@@ -435,7 +435,7 @@ std::vector<cryptonote::rpc::LNS_OWNERS_TO_NAMES::response_entry> NodeRPCProxy::
   return res.entries;
 }
 
-std::vector<cryptonote::rpc::LNS_NAMES_TO_OWNERS::response_entry> NodeRPCProxy::lns_names_to_owners(cryptonote::rpc::LNS_NAMES_TO_OWNERS::request const &request, boost::optional<std::string> &failed) const
+std::vector<cryptonote::rpc::LNS_NAMES_TO_OWNERS::response_entry> NodeRPCProxy::lns_names_to_owners(cryptonote::rpc::LNS_NAMES_TO_OWNERS::request const &request, std::optional<std::string> &failed) const
 {
   if (m_offline)
   {

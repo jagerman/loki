@@ -333,13 +333,13 @@ namespace trezor{
   const char * BridgeTransport::PATH_PREFIX = "bridge:";
 
   BridgeTransport::BridgeTransport(
-        boost::optional<std::string> device_path,
-        boost::optional<std::string> bridge_host):
+        std::optional<std::string> device_path,
+        std::optional<std::string> bridge_host):
     m_device_path(device_path),
-    m_bridge_host(bridge_host ? bridge_host.get() : DEFAULT_BRIDGE),
-    m_response(boost::none),
-    m_session(boost::none),
-    m_device_info(boost::none)
+    m_bridge_host(bridge_host.value_or(DEFAULT_BRIDGE)),
+    m_response(std::nullopt),
+    m_session(std::nullopt),
+    m_device_info(std::nullopt)
     {
       const char *env_bridge_port = nullptr;
       if (!bridge_host && (env_bridge_port = getenv("TREZOR_BRIDGE_PORT")) != nullptr)
@@ -352,7 +352,7 @@ namespace trezor{
         MDEBUG("Bridge host: " << m_bridge_host);
       }
 
-      m_http_client.set_server(m_bridge_host, boost::none, epee::net_utils::ssl_support_t::e_ssl_support_disabled);
+      m_http_client.set_server(m_bridge_host, std::nullopt, epee::net_utils::ssl_support_t::e_ssl_support_disabled);
     }
 
   std::string BridgeTransport::get_path() const {
@@ -360,8 +360,7 @@ namespace trezor{
       return "";
     }
 
-    std::string path(PATH_PREFIX);
-    return path + m_device_path.get();
+    return PATH_PREFIX + *m_device_path;
   }
 
   void BridgeTransport::enumerate(t_transport_vect & res) {
@@ -375,7 +374,7 @@ namespace trezor{
 
     for(rapidjson::Value::ConstValueIterator itr = bridge_res.Begin(); itr != bridge_res.End(); ++itr){
       auto element = itr->GetObject();
-      auto t = std::make_shared<BridgeTransport>(boost::make_optional(json_get_string(element["path"])));
+      auto t = std::make_shared<BridgeTransport>(std::make_optional(json_get_string(element["path"])));
 
       auto itr_vendor = element.FindMember("vendor");
       auto itr_product = element.FindMember("product");
@@ -409,7 +408,7 @@ namespace trezor{
       throw exc::CommunicationException("Coud not open, empty device path");
     }
 
-    std::string uri = "/acquire/" + m_device_path.get() + "/null";
+    std::string uri = "/acquire/" + *m_device_path + "/null";
     std::string req;
     json bridge_res;
     bool req_status = invoke_bridge_http(uri, req, bridge_res, m_http_client);
@@ -417,7 +416,7 @@ namespace trezor{
       throw exc::CommunicationException("Failed to acquire device");
     }
 
-    m_session = boost::make_optional(json_get_string(bridge_res["session"]));
+    m_session = std::make_optional(json_get_string(bridge_res["session"]));
     m_open_counter = 1;
   }
 
@@ -431,7 +430,7 @@ namespace trezor{
       throw exc::CommunicationException("Device not open");
     }
 
-    std::string uri = "/release/" + m_session.get();
+    std::string uri = "/release/" + *m_session;
     std::string req;
     json bridge_res;
     bool req_status = invoke_bridge_http(uri, req, bridge_res, m_http_client);
@@ -439,11 +438,11 @@ namespace trezor{
       throw exc::CommunicationException("Failed to release device");
     }
 
-    m_session = boost::none;
+    m_session = std::nullopt;
   }
 
   void BridgeTransport::write(const google::protobuf::Message &req) {
-    m_response = boost::none;
+    m_response = std::nullopt;
 
     const auto msg_size = message_size(req);
     const auto buff_size = serialize_message_buffer_size(msg_size);
@@ -454,7 +453,7 @@ namespace trezor{
 
     serialize_message(req, msg_size, req_buff_raw, buff_size);
 
-    std::string uri = "/call/" + m_session.get();
+    std::string uri = "/call/" + *m_session;
     epee::wipeable_string res_hex;
     epee::wipeable_string req_hex = epee::to_hex::wipeable_string(epee::span<const std::uint8_t>(req_buff_raw, buff_size));
 
@@ -471,7 +470,7 @@ namespace trezor{
       throw exc::CommunicationException("Could not read, no response stored");
     }
 
-    boost::optional<epee::wipeable_string> bin_data = m_response->parse_hexstr();
+    std::optional<epee::wipeable_string> bin_data = m_response->parse_hexstr();
     if (!bin_data){
       throw exc::CommunicationException("Response is not well hexcoded");
     }
@@ -494,14 +493,14 @@ namespace trezor{
     msg = msg_wrap;
   }
 
-  const boost::optional<json> & BridgeTransport::device_info() const {
+  const std::optional<json> & BridgeTransport::device_info() const {
     return m_device_info;
   }
 
   std::ostream& BridgeTransport::dump(std::ostream& o) const {
     return o << "BridgeTransport<path=" << (m_device_path ? get_path() : "None")
-             << ", info=" << (m_device_info ? t_serialize(m_device_info.get()) : "None")
-             << ", session=" << (m_session ? m_session.get() : "None")
+             << ", info=" << (m_device_info ? t_serialize(*m_device_info) : "None")
+             << ", session=" << m_session.value_or("None")
              << ">";
   }
 
@@ -528,8 +527,8 @@ namespace trezor{
     }
   }
 
-  UdpTransport::UdpTransport(boost::optional<std::string> device_path,
-                             boost::optional<std::shared_ptr<Protocol>> proto) :
+  UdpTransport::UdpTransport(std::optional<std::string> device_path,
+                             std::optional<std::shared_ptr<Protocol>> proto) :
       m_io_service(), m_deadline(m_io_service)
   {
     m_device_host = DEFAULT_HOST;
@@ -537,7 +536,7 @@ namespace trezor{
     const char *env_trezor_path = nullptr;
 
     if (device_path) {
-      parse_udp_path(m_device_host, m_device_port, device_path.get());
+      parse_udp_path(m_device_host, m_device_port, *device_path);
     } else if ((env_trezor_path = getenv("TREZOR_PATH")) != nullptr && boost::starts_with(env_trezor_path, UdpTransport::PATH_PREFIX)){
       parse_udp_path(m_device_host, m_device_port, std::string(env_trezor_path));
       MDEBUG("Applied TREZOR_PATH: " << m_device_host << ":" << m_device_port);
@@ -550,7 +549,7 @@ namespace trezor{
       throw std::invalid_argument("Local endpoint allowed only");
     }
 
-    m_proto = proto ? proto.get() : std::make_shared<ProtocolV1>();
+    m_proto = proto ? *proto : std::make_shared<ProtocolV1>();
   }
 
   std::string UdpTransport::get_path() const {
@@ -855,18 +854,18 @@ namespace trezor{
   const char * WebUsbTransport::PATH_PREFIX = "webusb:";
 
   WebUsbTransport::WebUsbTransport(
-      boost::optional<libusb_device_descriptor*> descriptor,
-      boost::optional<std::shared_ptr<Protocol>> proto
+      std::optional<libusb_device_descriptor*> descriptor,
+      std::optional<std::shared_ptr<Protocol>> proto
   ): m_usb_session(nullptr), m_usb_device(nullptr), m_usb_device_handle(nullptr),
      m_bus_id(-1), m_device_addr(-1)
   {
     if (descriptor){
       libusb_device_descriptor * desc = new libusb_device_descriptor;
-      memcpy(desc, descriptor.get(), sizeof(libusb_device_descriptor));
+      memcpy(desc, *descriptor, sizeof(libusb_device_descriptor));
       this->m_usb_device_desc.reset(desc);
     }
 
-    m_proto = proto ? proto.get() : std::make_shared<ProtocolV1>();
+    m_proto = proto ? *proto : std::make_shared<ProtocolV1>();
 
 #ifdef WITH_TREZOR_DEBUGGING
     m_debug_mode = false;
@@ -930,7 +929,7 @@ namespace trezor{
 
       MTRACE("Found Trezor device: " << desc.idVendor << ":" << desc.idProduct << " dev_idx " << (int)trezor_dev_idx);
 
-      auto t = std::make_shared<WebUsbTransport>(boost::make_optional(&desc));
+      auto t = std::make_shared<WebUsbTransport>(std::make_optional(&desc));
       t->m_bus_id = libusb_get_bus_number(devs[i]);
       t->m_device_addr = libusb_get_device_address(devs[i]);
 
@@ -1068,7 +1067,7 @@ namespace trezor{
   std::shared_ptr<Transport> WebUsbTransport::find_debug() {
 #ifdef WITH_TREZOR_DEBUGGING
     require_device();
-    auto t = std::make_shared<WebUsbTransport>(boost::make_optional(m_usb_device_desc.get()));
+    auto t = std::make_shared<WebUsbTransport>(std::make_optional(m_usb_device_desc.get()));
     t->m_bus_id = m_bus_id;
     t->m_device_addr = m_device_addr;
     t->m_port_numbers = m_port_numbers;
@@ -1240,8 +1239,8 @@ namespace trezor{
       throw std::invalid_argument("Failure message cannot be null");
     }
 
-    boost::optional<std::string> message = failure->has_message() ? boost::make_optional(failure->message()) : boost::none;
-    boost::optional<uint32_t> code = failure->has_code() ? boost::make_optional(static_cast<uint32_t>(failure->code())) : boost::none;
+    std::optional<std::string> message = failure->has_message() ? std::make_optional(failure->message()) : std::nullopt;
+    std::optional<uint32_t> code = failure->has_code() ? std::make_optional(static_cast<uint32_t>(failure->code())) : std::nullopt;
     if (!code){
       throw exc::proto::FailureException(code, message);
     }

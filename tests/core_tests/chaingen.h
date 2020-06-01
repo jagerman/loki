@@ -33,12 +33,12 @@
 #include <vector>
 #include <iostream>
 #include <cstdint>
+#include <optional>
 #include <regex>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/program_options.hpp>
-#include <boost/optional.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/variant.hpp>
 #include <boost/serialization/optional.hpp>
@@ -207,7 +207,7 @@ typedef std::vector<std::pair<uint8_t, uint64_t>> v_hardforks_t;
 struct event_replay_settings
 {
   event_replay_settings() = default;
-  boost::optional<v_hardforks_t> hard_forks;
+  std::optional<v_hardforks_t> hard_forks;
 
 private:
   friend class boost::serialization::access;
@@ -529,7 +529,7 @@ cryptonote::transaction construct_tx_with_fee(std::vector<test_event_entry>& eve
 bool construct_tx_rct(const cryptonote::account_keys& sender_account_keys,
     std::vector<cryptonote::tx_source_entry>& sources,
     const std::vector<cryptonote::tx_destination_entry>& destinations,
-    const boost::optional<cryptonote::tx_destination_entry>& change_addr,
+    const std::optional<cryptonote::tx_destination_entry>& change_addr,
     std::vector<uint8_t> extra, cryptonote::transaction& tx, uint64_t unlock_time,
     rct::RangeProofType range_proof_type=rct::RangeProofBorromean, int bp_version = 0);
 

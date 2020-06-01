@@ -201,7 +201,7 @@ namespace trezor {
       }
     }
 
-    void device_trezor::display_address(const cryptonote::subaddress_index& index, const boost::optional<crypto::hash8> &payment_id) {
+    void device_trezor::display_address(const cryptonote::subaddress_index& index, const std::optional<crypto::hash8> &payment_id) {
       get_address(index, payment_id, true);
     }
 
@@ -214,11 +214,11 @@ namespace trezor {
     /* ======================================================================= */
 
     std::shared_ptr<messages::monero::MoneroAddress> device_trezor::get_address(
-        const boost::optional<cryptonote::subaddress_index> & subaddress,
-        const boost::optional<crypto::hash8> & payment_id,
+        const std::optional<cryptonote::subaddress_index> & subaddress,
+        const std::optional<crypto::hash8> & payment_id,
         bool show_address,
-        const boost::optional<std::vector<uint32_t>> & path,
-        const boost::optional<cryptonote::network_type> & network_type){
+        const std::optional<std::vector<uint32_t>> & path,
+        const std::optional<cryptonote::network_type> & network_type){
       CHECK_AND_ASSERT_THROW_MES(!payment_id || !subaddress || subaddress->is_zero(), "Subaddress cannot be integrated");
       auto locks = tools::unique_locks(device_locker, command_locker);
       require_connected();
@@ -242,8 +242,8 @@ namespace trezor {
     }
 
     std::shared_ptr<messages::monero::MoneroWatchKey> device_trezor::get_view_key(
-        const boost::optional<std::vector<uint32_t>> & path,
-        const boost::optional<cryptonote::network_type> & network_type){
+        const std::optional<std::vector<uint32_t>> & path,
+        const std::optional<cryptonote::network_type> & network_type){
       auto locks = tools::unique_locks(device_locker, command_locker);
       require_connected();
       device_state_initialize_unsafe();
@@ -700,7 +700,7 @@ namespace trezor {
       unsigned cversion = client_version();
 
       if (aux_data.client_version){
-        auto wanted_client_version = aux_data.client_version.get();
+        auto wanted_client_version = *aux_data.client_version;
         if (wanted_client_version > cversion){
           throw exc::TrezorException("Trezor has too old firmware version. Please update.");
         } else {

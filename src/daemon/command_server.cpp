@@ -27,7 +27,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <boost/optional.hpp>
+#include <optional>
 #include "cryptonote_config.h"
 #include "version.h"
 #include "string_tools.h"
@@ -47,7 +47,7 @@ namespace daemonize {
 command_server::command_server(
     uint32_t ip
   , uint16_t port
-  , const boost::optional<tools::login>& login
+  , const std::optional<tools::login>& login
   , const epee::net_utils::ssl_options_t& ssl_options
   )
   : m_parser{ip, port, login, ssl_options}

@@ -74,7 +74,7 @@ namespace cryptonote { namespace rpc {
     if (!rpc_config)
       return false;
 
-    boost::optional<epee::net_utils::http::login> http_login{};
+    std::optional<epee::net_utils::http::login> http_login{};
 
     if (rpc_config->login)
       http_login.emplace(std::move(rpc_config->login->username), std::move(rpc_config->login->password).password());

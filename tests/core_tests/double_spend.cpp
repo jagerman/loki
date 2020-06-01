@@ -65,7 +65,7 @@ bool gen_double_spend_in_tx::generate(std::vector<test_event_entry>& events) con
     cryptonote::transaction tx_1;
     loki_construct_tx_params tx_params;
     tx_params.hf_version = gen.hf_version_;
-    if (!construct_tx(gen.first_miner_.get_keys(), sources, destinations, boost::none, std::vector<uint8_t>(), tx_1, 0, tx_params))
+    if (!construct_tx(gen.first_miner_.get_keys(), sources, destinations, std::nullopt, std::vector<uint8_t>(), tx_1, 0, tx_params))
       return false;
 
     uint64_t expected_height = gen.height();
@@ -90,7 +90,7 @@ bool gen_double_spend_in_tx::generate(std::vector<test_event_entry>& events) con
     cryptonote::transaction tx_1;
     loki_construct_tx_params tx_params;
     tx_params.hf_version = gen.hf_version_;
-    if (!construct_tx(gen.first_miner_.get_keys(), sources, destinations, boost::none, std::vector<uint8_t>(), tx_1, 0, tx_params))
+    if (!construct_tx(gen.first_miner_.get_keys(), sources, destinations, std::nullopt, std::vector<uint8_t>(), tx_1, 0, tx_params))
       return false;
 
     uint64_t expected_height    = gen.height();

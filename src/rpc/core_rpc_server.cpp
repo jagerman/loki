@@ -211,7 +211,7 @@ namespace cryptonote { namespace rpc {
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::set_bootstrap_daemon(const std::string &address, const std::string &username_password)
   {
-    boost::optional<epee::net_utils::http::login> credentials;
+    std::optional<epee::net_utils::http::login> credentials;
     const auto loc = username_password.find(':');
     if (loc != std::string::npos)
     {
@@ -220,7 +220,7 @@ namespace cryptonote { namespace rpc {
     return set_bootstrap_daemon(address, credentials);
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  boost::optional<std::string> core_rpc_server::get_random_public_node()
+  std::optional<std::string> core_rpc_server::get_random_public_node()
   {
     GET_PUBLIC_NODES::response response{};
     try
@@ -235,7 +235,7 @@ namespace cryptonote { namespace rpc {
     }
     catch(const std::exception &e)
     {
-      return boost::none;
+      return std::nullopt;
     }
 
     const auto get_random_node_address = [](const std::vector<public_node>& public_nodes) -> std::string {
@@ -257,10 +257,10 @@ namespace cryptonote { namespace rpc {
     }
 
     MERROR("Failed to find any suitable public node");
-    return boost::none;
+    return std::nullopt;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  bool core_rpc_server::set_bootstrap_daemon(const std::string &address, const boost::optional<epee::net_utils::http::login> &credentials)
+  bool core_rpc_server::set_bootstrap_daemon(const std::string &address, const std::optional<epee::net_utils::http::login> &credentials)
   {
     boost::unique_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
 
@@ -1403,7 +1403,7 @@ namespace cryptonote { namespace rpc {
   {
     PERF_TIMER(on_set_bootstrap_daemon);
 
-    boost::optional<epee::net_utils::http::login> credentials;
+    std::optional<epee::net_utils::http::login> credentials;
     if (!req.username.empty() || !req.password.empty())
     {
       credentials = epee::net_utils::http::login(req.username, req.password);
@@ -1734,7 +1734,7 @@ namespace cryptonote { namespace rpc {
         m_bootstrap_height_check_time = current_time;
       }
 
-      boost::optional<uint64_t> bootstrap_daemon_height = m_bootstrap_daemon->get_height();
+      std::optional<uint64_t> bootstrap_daemon_height = m_bootstrap_daemon->get_height();
       if (!bootstrap_daemon_height)
       {
         MERROR("Failed to fetch bootstrap daemon height");

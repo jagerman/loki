@@ -34,7 +34,6 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/thread.hpp>
-#include <boost/optional/optional_fwd.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -95,14 +94,14 @@ namespace nodetool
     epee::net_utils::network_address default_remote;
   };
 
-  boost::optional<std::vector<proxy>> get_proxies(const boost::program_options::variables_map& vm);
-  boost::optional<std::vector<anonymous_inbound>> get_anonymous_inbounds(const boost::program_options::variables_map& vm);
+  std::optional<std::vector<proxy>> get_proxies(const boost::program_options::variables_map& vm);
+  std::optional<std::vector<anonymous_inbound>> get_anonymous_inbounds(const boost::program_options::variables_map& vm);
 
   //! \return True if `commnd` is filtered (ignored/dropped) for `address`
   bool is_filtered_command(epee::net_utils::network_address const& address, int command);
 
   // hides boost::future and chrono stuff from mondo template file
-  boost::optional<boost::asio::ip::tcp::socket>
+  std::optional<boost::asio::ip::tcp::socket>
   socks_connect_internal(const std::atomic<bool>& stop_signal, boost::asio::io_service& service, const boost::asio::ip::tcp::endpoint& proxy, const epee::net_utils::network_address& remote);
 
 
@@ -134,7 +133,7 @@ namespace nodetool
     typedef epee::net_utils::boosted_tcp_server<epee::levin::async_protocol_handler<p2p_connection_context>> net_server;
 
     struct network_zone;
-    using connect_func = boost::optional<p2p_connection_context>(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
+    using connect_func = std::optional<p2p_connection_context>(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
 
     struct config
     {
@@ -456,8 +455,8 @@ namespace nodetool
     //keep connections to initiate some interactions
 
 
-    static boost::optional<p2p_connection_context> public_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
-    static boost::optional<p2p_connection_context> socks_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
+    static std::optional<p2p_connection_context> public_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
+    static std::optional<p2p_connection_context> socks_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
 
 
     /* A `std::map` provides constant iterators and key/value pointers even with

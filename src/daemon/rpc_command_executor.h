@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include <boost/optional/optional_fwd.hpp>
+#include <optional>
 
 #include "common/common_fwd.h"
 #include "common/rpc_client.h"
@@ -55,7 +55,7 @@ public:
   rpc_command_executor(
       uint32_t ip
     , uint16_t port
-    , const boost::optional<tools::login>& user
+    , const std::optional<tools::login>& user
     , const epee::net_utils::ssl_options_t& ssl_options
     );
   /// Executor for local daemon RPC

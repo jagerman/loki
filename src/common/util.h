@@ -32,8 +32,8 @@
 
 #include <boost/thread/locks.hpp>
 #include <boost/thread/mutex.hpp>
-#include <boost/optional.hpp>
 #include <boost/endian/conversion.hpp>
+#include <optional>
 #include <system_error>
 #include <csignal>
 #include <cstdio>
@@ -247,9 +247,9 @@ namespace tools
   // Opens the given file and calculates a sha256sum of its contents
   bool sha256sum_file(const std::string &filename, crypto::hash& hash);
 
-  boost::optional<bool> is_hdd(const char *path);
+  std::optional<bool> is_hdd(const char *path);
 
-  boost::optional<std::pair<uint32_t, uint32_t>> parse_subaddress_lookahead(const std::string& str);
+  std::optional<std::pair<uint32_t, uint32_t>> parse_subaddress_lookahead(const std::string& str);
 
 #ifdef _WIN32
   std::string input_line_win();

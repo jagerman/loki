@@ -65,6 +65,7 @@
 #include <limits>
 #include <tuple>
 #include <type_traits>
+#include <optional>
 #include <string_view>
 
 #include "hex.h"
@@ -382,7 +383,7 @@ namespace
       , username() {
     }
 
-    static boost::optional<auth_message> parse(const std::string_view request)
+    static std::optional<auth_message> parse(const std::string_view request)
     {
       struct parser
       {
@@ -459,7 +460,7 @@ namespace
           fields = field_table >> skip_whitespace >> u8'=' >> skip_whitespace;
         }
 
-        boost::optional<auth_message> operator()(const std::string_view request) const
+        std::optional<auth_message> operator()(const std::string_view request) const
         { 
           namespace qi = boost::spirit::qi;
            
@@ -468,7 +469,7 @@ namespace
 
           if (!qi::parse(current, end, header))
           {
-            return boost::none;
+            return std::nullopt;
           }
 
           auth_message info{};
@@ -479,11 +480,13 @@ namespace
           {
             if (!qi::parse(current, end, fields, field) || !field(*this, current, end, info))
             {
-              return boost::none;
+              return std::nullopt;
             }
             qi::parse(current, end, skip_whitespace);
           } while (qi::parse(current, end, qi::char_(u8',') >> skip_whitespace));
-          return boost::make_optional(current == end, info);
+          if (current == end)
+            return info;
+          return std::nullopt;
         }
 
       private:
@@ -553,13 +556,14 @@ namespace
       const std::string_view method;
     };
 
-    boost::optional<std::uint32_t> counter() const
+    std::optional<std::uint32_t> counter() const
     {
       namespace qi = boost::spirit::qi;
       using hex = qi::uint_parser<std::uint32_t, 16>;
       std::uint32_t value = 0;
       const bool converted = qi::parse(nc.begin(), nc.end(), hex{}, value);
-      return boost::make_optional(converted, value);
+      if (converted) return value;
+      return std::nullopt;
     }
 
     struct server_parameters
@@ -704,7 +708,7 @@ namespace epee
         : user(session{std::move(credentials)}), rng(std::move(r)) {
       }
 
-      boost::optional<http_response_info> http_server_auth::do_get_response(const http_request_info& request)
+      std::optional<http_response_info> http_server_auth::do_get_response(const http_request_info& request)
       {
         assert(user);
         using field = std::pair<std::string, std::string>;
@@ -721,7 +725,7 @@ namespace epee
           switch (auth_message::verify(request.m_http_method_str, auth->second, *user))
           {
           case auth_message::kPass:
-            return boost::none;
+            return std::nullopt;
 
           case auth_message::kStale:
             is_stale = true;
@@ -758,7 +762,7 @@ namespace epee
         return first_auth ? kParseFailure : kBadPassword;
       }
 
-      boost::optional<std::pair<std::string, std::string>> http_client_auth::do_get_auth_field(
+      std::optional<std::pair<std::string, std::string>> http_client_auth::do_get_auth_field(
         const std::string_view method, const std::string_view uri)
       {
         assert(user);
@@ -767,7 +771,7 @@ namespace epee
           ++(user->counter);
           return std::make_pair(std::string(client_auth_field), user->server.generator(*user, method, uri));
         }
-        return boost::none;
+        return std::nullopt;
       }
     }
   }

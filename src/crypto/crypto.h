@@ -32,7 +32,7 @@
 
 #include <cstddef>
 #include <iostream>
-#include <boost/optional.hpp>
+#include <optional>
 #include <type_traits>
 #include <vector>
 #include <random>
@@ -222,8 +222,8 @@ namespace crypto {
    * derivation D, the signature proves the knowledge of the tx secret key r such that R=r*G and D=r*A
    * When the recipient's address is a subaddress, the tx pubkey R is defined as R=r*B where B is the recipient's spend pubkey
    */
-  void generate_tx_proof(const hash &prefix_hash, const public_key &R, const public_key &A, const boost::optional<public_key> &B, const public_key &D, const secret_key &r, signature &sig);
-  bool check_tx_proof(const hash &prefix_hash, const public_key &R, const public_key &A, const boost::optional<public_key> &B, const public_key &D, const signature &sig);
+  void generate_tx_proof(const hash &prefix_hash, const public_key &R, const public_key &A, const std::optional<public_key> &B, const public_key &D, const secret_key &r, signature &sig);
+  bool check_tx_proof(const hash &prefix_hash, const public_key &R, const public_key &A, const std::optional<public_key> &B, const public_key &D, const signature &sig);
 
   /* To send money to a key:
    * * The sender generates an ephemeral key and includes it in transaction output.

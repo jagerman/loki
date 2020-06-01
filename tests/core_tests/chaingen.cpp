@@ -2003,7 +2003,7 @@ bool construct_tx_to_key(cryptonote::transaction& tx,
   return construct_tx_rct(from.get_keys(), sources, all_destinations, change_addr, std::vector<uint8_t>(), tx, 0, range_proof_type, bp_version);
 }
 
-bool construct_tx_rct(const cryptonote::account_keys& sender_account_keys, std::vector<cryptonote::tx_source_entry>& sources, const std::vector<cryptonote::tx_destination_entry>& destinations, const boost::optional<cryptonote::tx_destination_entry>& change_addr, std::vector<uint8_t> extra, cryptonote::transaction& tx, uint64_t unlock_time, rct::RangeProofType range_proof_type, int bp_version)
+bool construct_tx_rct(const cryptonote::account_keys& sender_account_keys, std::vector<cryptonote::tx_source_entry>& sources, const std::vector<cryptonote::tx_destination_entry>& destinations, const std::optional<cryptonote::tx_destination_entry>& change_addr, std::vector<uint8_t> extra, cryptonote::transaction& tx, uint64_t unlock_time, rct::RangeProofType range_proof_type, int bp_version)
 {
   std::unordered_map<crypto::public_key, cryptonote::subaddress_index> subaddresses;
   subaddresses[sender_account_keys.m_account_address.m_spend_public_key] = {0, 0};
@@ -2084,7 +2084,7 @@ bool extract_hard_forks(const std::vector<test_event_entry>& events, v_hardforks
       const auto & rep_settings = boost::get<event_replay_settings>(ev);
       if (rep_settings.hard_forks)
       {
-        const auto & hf = rep_settings.hard_forks.get();
+        const auto & hf = *rep_settings.hard_forks;
         std::copy(hf.begin(), hf.end(), std::back_inserter(hard_forks));
       }
     }

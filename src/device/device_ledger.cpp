@@ -1303,7 +1303,7 @@ namespace hw {
     /* ======================================================================= */
 
     void device_ledger::generate_tx_proof(const crypto::hash &prefix_hash, 
-                                          const crypto::public_key &R, const crypto::public_key &A, const boost::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r, 
+                                          const crypto::public_key &R, const crypto::public_key &A, const std::optional<crypto::public_key> &B, const crypto::public_key &D, const crypto::secret_key &r,
                                           crypto::signature &sig)  {
 
       auto locks = tools::unique_locks(device_locker, command_locker);
@@ -1312,7 +1312,7 @@ namespace hw {
       const crypto::hash prefix_hash_x = prefix_hash;
       const crypto::public_key R_x = R;
       const crypto::public_key A_x = A;
-      const boost::optional<crypto::public_key> B_x = B;
+      const std::optional<crypto::public_key> B_x = B;
       const crypto::public_key D_x = D;
       const crypto::secret_key r_x = hw::ledger::decrypt(r); 
       crypto::signature sig_x;
@@ -1518,7 +1518,7 @@ namespace hw {
 
 
     bool device_ledger::generate_output_ephemeral_keys(const size_t tx_version, bool &found_change, const cryptonote::account_keys &sender_account_keys, const crypto::public_key &txkey_pub,  const crypto::secret_key &tx_key,
-                                                       const cryptonote::tx_destination_entry &dst_entr, const boost::optional<cryptonote::tx_destination_entry> &change_addr, const size_t output_index,
+                                                       const cryptonote::tx_destination_entry &dst_entr, const std::optional<cryptonote::tx_destination_entry> &change_addr, const size_t output_index,
                                                        const bool &need_additional_txkeys,  const std::vector<crypto::secret_key> &additional_tx_keys,
                                                        std::vector<crypto::public_key> &additional_tx_public_keys,
                                                        std::vector<rct::key> &amount_keys,
@@ -1533,7 +1533,7 @@ namespace hw {
       const crypto::public_key                 txkey_pub_x                    = txkey_pub;
       const crypto::secret_key                 tx_key_x                       = hw::ledger::decrypt(tx_key);
       const cryptonote::tx_destination_entry   dst_entr_x                     = dst_entr;
-      const boost::optional<cryptonote::tx_destination_entry> change_addr_x   = change_addr;
+      const std::optional<cryptonote::tx_destination_entry> change_addr_x     = change_addr;
       const size_t                             output_index_x                 = output_index;
       const bool                               need_additional_txkeys_x       = need_additional_txkeys;
       

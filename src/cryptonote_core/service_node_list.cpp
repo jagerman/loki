@@ -2666,8 +2666,7 @@ namespace service_nodes
       const std::vector<std::string>& args,
       const service_node_keys &keys,
       std::string &cmd,
-      bool make_friendly,
-      boost::optional<std::string&> err_msg)
+      bool make_friendly)
   {
 
     contributor_args_t contributor_args = convert_registration_args(nettype, args, staking_requirement, hf_version);

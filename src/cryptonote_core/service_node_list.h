@@ -605,8 +605,7 @@ namespace service_nodes
       const std::vector<std::string>& args,
       const service_node_keys &keys,
       std::string &cmd,
-      bool make_friendly,
-      boost::optional<std::string&> err_msg);
+      bool make_friendly);
 
   const static std::vector<payout_entry> null_winner = {{cryptonote::null_address, STAKING_PORTIONS}};
   const static block_winner null_block_winner        = {crypto::null_pkey, {null_winner}};

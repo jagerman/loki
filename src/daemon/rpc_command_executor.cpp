@@ -218,11 +218,11 @@ namespace {
 rpc_command_executor::rpc_command_executor(
     uint32_t ip
   , uint16_t port
-  , const boost::optional<tools::login>& login
+  , const std::optional<tools::login>& login
   , const epee::net_utils::ssl_options_t& ssl_options
   )
 {
-  boost::optional<epee::net_utils::http::login> http_login{};
+  std::optional<epee::net_utils::http::login> http_login{};
   if (login)
     http_login.emplace(login->username, login->password.password());
   m_rpc_client = std::make_unique<tools::t_rpc_client>(ip, port, std::move(http_login), ssl_options);

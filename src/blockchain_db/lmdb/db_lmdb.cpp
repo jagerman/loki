@@ -1400,7 +1400,7 @@ void BlockchainLMDB::open(const std::string& filename, cryptonote::network_type 
     throw DB_ERROR("Database could not be opened");
   }
 
-  boost::optional<bool> is_hdd_result = tools::is_hdd(filename.c_str());
+  std::optional<bool> is_hdd_result = tools::is_hdd(filename.c_str());
   if (is_hdd_result)
   {
     if (is_hdd_result.value())

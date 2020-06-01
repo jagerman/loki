@@ -43,7 +43,7 @@ namespace daemonize {
 command_parser_executor::command_parser_executor(
     uint32_t ip
   , uint16_t port
-  , const boost::optional<tools::login>& login
+  , const std::optional<tools::login>& login
   , const epee::net_utils::ssl_options_t& ssl_options
   )
   : m_executor{ip, port, login, ssl_options}

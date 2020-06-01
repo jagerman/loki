@@ -168,7 +168,7 @@ bool transactions_flow_test(std::string& working_folder,
   epee::net_utils::http::http_simple_client http_client;
   rpc::STOP_MINING::request daemon1_req{};
   rpc::STOP_MINING::response daemon1_rsp{};
-  bool r = http_client.set_server(daemon_addr_a, boost::none) && net_utils::invoke_http_json("/stop_mine", daemon1_req, daemon1_rsp, http_client, std::chrono::seconds(10));
+  bool r = http_client.set_server(daemon_addr_a, std::nullopt) && epee::net_utils::invoke_http_json("/stop_mine", daemon1_req, daemon1_rsp, http_client, std::chrono::seconds(10));
   CHECK_AND_ASSERT_MES(r, false, "failed to stop mining");
 
   rpc::START_MINING::request daemon_req{};

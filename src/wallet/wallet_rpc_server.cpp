@@ -73,7 +73,7 @@ namespace
 
   constexpr const char default_rpc_username[] = "loki";
 
-  boost::optional<tools::password_container> password_prompter(const char *prompt, bool verify)
+  std::optional<tools::password_container> password_prompter(const char *prompt, bool verify)
   {
     auto pwd_container = tools::password_container::prompt(verify, prompt);
     if (!pwd_container)
@@ -181,7 +181,7 @@ namespace tools
     if (!rpc_config)
       return false;
 
-    boost::optional<epee::net_utils::http::login> http_login{};
+    std::optional<epee::net_utils::http::login> http_login{};
     std::string bind_port = command_line::get_arg(m_vm, arg_rpc_bind_port);
     const bool disable_auth = command_line::get_arg(m_vm, arg_disable_rpc_login);
     m_restricted = command_line::get_arg(m_vm, arg_restricted);
@@ -807,7 +807,7 @@ namespace tools
       if (req.blink || priority != tx_priority_unimportant)
         priority = tx_priority_blink;
 
-      boost::optional<uint8_t> hf_version = m_wallet->get_hard_fork_version();
+      std::optional<uint8_t> hf_version = m_wallet->get_hard_fork_version();
       if (!hf_version)
       {
         er.code    = WALLET_RPC_ERROR_CODE_HF_QUERY_FAILED;
@@ -869,7 +869,7 @@ namespace tools
       if (req.blink || priority != tx_priority_unimportant)
         priority = tx_priority_blink;
 
-      boost::optional<uint8_t> hf_version = m_wallet->get_hard_fork_version();
+      std::optional<uint8_t> hf_version = m_wallet->get_hard_fork_version();
       if (!hf_version)
       {
         er.code    = WALLET_RPC_ERROR_CODE_HF_QUERY_FAILED;
@@ -2235,7 +2235,7 @@ namespace tools
   {
     if (!m_wallet) return not_open(er);
 
-    boost::optional<std::pair<uint32_t, uint64_t>> account_minreserve;
+    std::optional<std::pair<uint32_t, uint64_t>> account_minreserve;
     if (!req.all)
     {
       if (req.account_index >= m_wallet->get_num_subaddress_accounts())
@@ -4096,7 +4096,7 @@ namespace tools
       return false;
     }
 
-    if (!m_wallet->set_daemon(req.address, boost::none, req.trusted, std::move(ssl_options)))
+    if (!m_wallet->set_daemon(req.address, std::nullopt, req.trusted, std::move(ssl_options)))
     {
       er.code = WALLET_RPC_ERROR_CODE_NO_DAEMON_CONNECTION;
       er.message = std::string("Unable to set daemon");
