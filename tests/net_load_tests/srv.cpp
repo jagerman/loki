@@ -28,7 +28,6 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <memory>
 
@@ -60,7 +59,7 @@ namespace
 
       //std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-      boost::unique_lock<boost::mutex> lock(m_open_close_test_mutex);
+      std::unique_lock lock{m_open_close_test_mutex};
       if (!m_open_close_test_conn_id.is_nil())
       {
         EXIT_ON_ERROR(m_open_close_test_helper->handle_new_connection(context.m_connection_id, true));
@@ -71,7 +70,7 @@ namespace
     {
       test_levin_commands_handler::on_connection_close(context);
 
-      boost::unique_lock<boost::mutex> lock(m_open_close_test_mutex);
+      std::unique_lock lock{m_open_close_test_mutex};
       if (context.m_connection_id == m_open_close_test_conn_id)
       {
         LOG_PRINT_L0("Stop open/close test");
@@ -117,7 +116,7 @@ namespace
 
     int handle_start_open_close_test(int command, const CMD_START_OPEN_CLOSE_TEST::request& req, CMD_START_OPEN_CLOSE_TEST::response&, test_connection_context& context)
     {
-      boost::unique_lock<boost::mutex> lock(m_open_close_test_mutex);
+      std::unique_lock lock{m_open_close_test_mutex};
       if (0 == m_open_close_test_helper.get())
       {
         LOG_PRINT_L0("Start open/close test (" << req.open_request_target << ", " << req.max_opened_conn_count << ")");
@@ -210,7 +209,7 @@ namespace
     test_tcp_server& m_tcp_server;
 
     boost::uuids::uuid m_open_close_test_conn_id;
-    boost::mutex m_open_close_test_mutex;
+    std::mutex m_open_close_test_mutex;
     std::unique_ptr<open_close_test_helper> m_open_close_test_helper;
   };
 }

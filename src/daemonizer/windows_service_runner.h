@@ -47,7 +47,7 @@ namespace windows {
   private:
     SERVICE_STATUS_HANDLE m_status_handle{nullptr};
     SERVICE_STATUS m_status{};
-    boost::mutex m_lock{};
+    std::mutex m_lock;
     std::string m_name;
     Application app;
 

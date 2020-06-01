@@ -28,14 +28,13 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+#include <mutex>
 #include <unistd.h>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
 
 #include "common/varint.h"
 #include "warnings.h"
@@ -87,21 +86,21 @@ namespace crypto {
     return &reinterpret_cast<const unsigned char &>(scalar);
   }
 
-  boost::mutex &get_random_lock()
+  static auto get_random_lock()
   {
-    static boost::mutex random_lock;
-    return random_lock;
+    static std::mutex random_mutex;
+    return std::lock_guard{random_mutex};
   }
 
   void generate_random_bytes_thread_safe(size_t N, uint8_t *bytes)
   {
-    boost::lock_guard<boost::mutex> lock(get_random_lock());
+    auto lock = get_random_lock();
     generate_random_bytes_not_thread_safe(N, bytes);
   }
 
   void add_extra_entropy_thread_safe(const void *ptr, size_t bytes)
   {
-    boost::lock_guard<boost::mutex> lock(get_random_lock());
+    auto lock = get_random_lock();
     add_extra_entropy_not_thread_safe(ptr, bytes);
   }
 

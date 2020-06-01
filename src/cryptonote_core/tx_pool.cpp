@@ -644,7 +644,7 @@ namespace cryptonote
   {
     auto bl_lock = blink_shared_lock(std::defer_lock);
     std::unique_lock bc_lock{m_blockchain, std::defer_lock};
-    boost::lock(bl_lock, bc_lock);
+    std::lock(bl_lock, bc_lock);
 
     // Since this is a signed blink tx, we want to see if we can eject any existing mempool
     // txes to make room.
@@ -765,9 +765,7 @@ namespace cryptonote
     auto blink_lock = blink_shared_lock(std::defer_lock);
     std::unique_lock tx_lock{*this, std::defer_lock};
     std::unique_lock bc_lock{m_blockchain, std::defer_lock};
-    // Breaks on macOS's broken SDK version 10.11 that we currently use:
-    //std::lock(blink_lock, tx_lock, bc_lock);
-    boost::lock(blink_lock, tx_lock, bc_lock);
+    std::lock(blink_lock, tx_lock, bc_lock);
     LockedTXN lock(m_blockchain);
     bool changed = false;
 
@@ -1264,7 +1262,7 @@ namespace cryptonote
     std::unique_lock tx_lock{m_transactions_lock, std::defer_lock};
     std::unique_lock bc_lock{m_blockchain, std::defer_lock};
     auto blink_lock = blink_shared_lock(std::defer_lock);
-    boost::lock(tx_lock, bc_lock, blink_lock);
+    std::lock(tx_lock, bc_lock, blink_lock);
 
     tx_infos.reserve(m_blockchain.get_txpool_tx_count());
     key_image_infos.reserve(m_blockchain.get_txpool_tx_count());

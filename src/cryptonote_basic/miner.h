@@ -32,6 +32,7 @@
 
 #include <boost/program_options.hpp>
 #include <boost/logic/tribool_fwd.hpp>
+#include <boost/thread/thread.hpp>
 #include <atomic>
 #include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/cryptonote_basic.h"

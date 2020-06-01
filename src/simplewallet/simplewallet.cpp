@@ -113,7 +113,7 @@ using sw = cryptonote::simple_wallet;
   m_auto_refresh_enabled.store(false, std::memory_order_relaxed); \
   /* stop any background refresh, and take over */ \
   m_wallet->stop(); \
-  boost::unique_lock<boost::mutex> lock(m_idle_mutex); \
+  std::unique_lock lock{m_idle_mutex}; \
   m_idle_cond.notify_all(); \
   LOKI_DEFER { \
       m_auto_refresh_enabled.store(auto_refresh_enabled, std::memory_order_relaxed); \
@@ -4563,7 +4563,7 @@ bool simple_wallet::close_wallet()
     m_idle_run.store(false, std::memory_order_relaxed);
     m_wallet->stop();
     {
-      boost::unique_lock<boost::mutex> lock(m_idle_mutex);
+      std::unique_lock lock{m_idle_mutex};
       m_idle_cond.notify_one();
     }
     m_idle_thread.join();
@@ -8579,7 +8579,7 @@ void simple_wallet::wallet_idle_thread()
   const boost::posix_time::ptime start_time = boost::posix_time::microsec_clock::universal_time();
   while (true)
   {
-    boost::unique_lock<boost::mutex> lock(m_idle_mutex);
+    std::unique_lock lock{m_idle_mutex};
     if (!m_idle_run.load(std::memory_order_relaxed))
       break;
 

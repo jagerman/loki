@@ -311,14 +311,14 @@ private:
     bool set_bootstrap_daemon(const std::string &address, const std::string &username_password);
     bool set_bootstrap_daemon(const std::string &address, const boost::optional<epee::net_utils::http::login> &credentials);
     void fill_block_header_response(const block& blk, bool orphan_status, uint64_t height, const crypto::hash& hash, block_header_response& response, bool fill_pow_hash);
-    boost::upgrade_lock<boost::shared_mutex> should_bootstrap_lock();
+    std::unique_lock<std::shared_mutex> should_bootstrap_lock();
 
     template <typename COMMAND_TYPE>
     bool use_bootstrap_daemon_if_necessary(const typename COMMAND_TYPE::request& req, typename COMMAND_TYPE::response& res);
     
     core& m_core;
     nodetool::node_server<cryptonote::t_cryptonote_protocol_handler<cryptonote::core> >& m_p2p;
-    boost::shared_mutex m_bootstrap_daemon_mutex;
+    std::shared_mutex m_bootstrap_daemon_mutex;
     std::atomic<bool> m_should_use_bootstrap_daemon;
     std::unique_ptr<bootstrap_daemon> m_bootstrap_daemon;
     std::chrono::system_clock::time_point m_bootstrap_height_check_time;

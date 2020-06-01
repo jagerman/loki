@@ -185,8 +185,8 @@ namespace net_utils
     // for calculate speed (last 60 sec)
     network_throttle m_throttle_speed_in;
     network_throttle m_throttle_speed_out;
-    boost::mutex m_throttle_speed_in_mutex;
-    boost::mutex m_throttle_speed_out_mutex;
+    std::mutex m_throttle_speed_in_mutex;
+    std::mutex m_throttle_speed_out_mutex;
 
     boost::asio::deadline_timer m_timer;
     bool m_local;
@@ -397,7 +397,7 @@ namespace net_utils
     connection_ptr new_connection_ipv6;
 
 
-    boost::mutex connections_mutex;
+    std::mutex connections_mutex;
     std::set<connection_ptr> connections_;
   }; // class <>boosted_tcp_server
 

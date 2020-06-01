@@ -35,8 +35,9 @@
 #include <vector>
 #include <set>
 #include <unordered_set>
-#include <boost/thread/recursive_mutex.hpp>
+#include <mutex>
 #include <boost/uuid/uuid.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "cn.block_queue"
@@ -104,7 +105,7 @@ namespace cryptonote
 
   private:
     block_map blocks;
-    mutable boost::recursive_mutex mutex;
+    mutable std::recursive_mutex mutex;
     std::unordered_set<crypto::hash> requested_hashes;
     std::unordered_set<crypto::hash> have_blocks;
   };

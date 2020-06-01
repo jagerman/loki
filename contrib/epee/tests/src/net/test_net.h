@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include <boost/thread.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/bind.hpp> 
 
 #include "net/abstract_tcp_server2.h"
@@ -316,7 +316,7 @@ namespace tests
   inline bool do_test2_work_with_srv(test_levin_server& srv, int port)
   {
     uint64_t i = 0;
-    boost::mutex wait_event;
+    std::mutex wait_event;
     wait_event.lock();
     while(true)
     {
@@ -328,14 +328,11 @@ namespace tests
         LOG_PRINT_L0("Invoking command 1 to " << port);
         COMMAND_EXAMPLE_1::request arg{};
         arg.example_id_data = i;
-        /*vc2010 workaround*/
-        int port_ = port;
-        boost::mutex& wait_event_ = wait_event;
-        int r = srv.invoke_async<COMMAND_EXAMPLE_1::request>(cntxt.m_connection_id, COMMAND_EXAMPLE_1::ID, arg, [port_, &wait_event_](int code, const COMMAND_EXAMPLE_1::request& rsp, const net_utils::connection_context_base& cntxt)
+        int r = srv.invoke_async<COMMAND_EXAMPLE_1::request>(cntxt.m_connection_id, COMMAND_EXAMPLE_1::ID, arg, [&port, &wait_event](int code, const COMMAND_EXAMPLE_1::request& rsp, const net_utils::connection_context_base& cntxt)
         {
             CHECK_AND_ASSERT_MES(code > 0, void(), "Failed to invoke"); 
-            LOG_PRINT_L0("command 1 invoke to " << port_ << " OK.");
-            wait_event_.unlock();
+            LOG_PRINT_L0("command 1 invoke to " << port << " OK.");
+            wait_event.unlock();
         });        
       });
       wait_event.lock();

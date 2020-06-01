@@ -262,7 +262,7 @@ namespace cryptonote { namespace rpc {
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::set_bootstrap_daemon(const std::string &address, const std::optional<epee::net_utils::http::login> &credentials)
   {
-    boost::unique_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+    std::unique_lock lock{m_bootstrap_daemon_mutex};
 
     if (address.empty())
     {
@@ -334,7 +334,7 @@ namespace cryptonote { namespace rpc {
     if (use_bootstrap_daemon_if_necessary<GET_INFO>(req, res))
     {
       {
-        boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+        std::shared_lock lock{m_bootstrap_daemon_mutex};
         if (m_bootstrap_daemon.get() != nullptr)
         {
           res.bootstrap_daemon_address = m_bootstrap_daemon->address();
@@ -410,7 +410,7 @@ namespace cryptonote { namespace rpc {
     }
     else
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_bootstrap_daemon.get() != nullptr)
       {
         res.bootstrap_daemon_address = m_bootstrap_daemon->address();
@@ -1080,7 +1080,7 @@ namespace cryptonote { namespace rpc {
       return res;
     }
 
-    unsigned int concurrency_count = boost::thread::hardware_concurrency() * 4;
+    unsigned int concurrency_count = std::thread::hardware_concurrency() * 4;
 
     // if we couldn't detect threads, set it to a ridiculously high number
     if(concurrency_count == 0)
@@ -1460,7 +1460,7 @@ namespace cryptonote { namespace rpc {
 
     PERF_TIMER(on_getblockcount);
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_should_use_bootstrap_daemon)
       {
         res.status = "This command is unsupported for bootstrap daemon";
@@ -1478,7 +1478,7 @@ namespace cryptonote { namespace rpc {
 
     PERF_TIMER(on_getblockhash);
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_should_use_bootstrap_daemon)
       {
         res = "This command is unsupported for bootstrap daemon";
@@ -1596,7 +1596,7 @@ namespace cryptonote { namespace rpc {
 
     PERF_TIMER(on_submitblock);
     {
-      boost::shared_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
+      std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_should_use_bootstrap_daemon)
       {
         res.status = "This command is unsupported for bootstrap daemon";
@@ -1715,24 +1715,20 @@ namespace cryptonote { namespace rpc {
 
   /// All the common (untemplated) code for use_bootstrap_daemon_if_necessary.  Returns a held lock
   /// if we need to bootstrap, an unheld one if we don't.
-  boost::upgrade_lock<boost::shared_mutex> core_rpc_server::should_bootstrap_lock()
+  std::unique_lock<std::shared_mutex> core_rpc_server::should_bootstrap_lock()
   {
     // TODO - support bootstrapping via a remote LMQ RPC; requires some argument fiddling
-    boost::upgrade_lock<boost::shared_mutex> lock(m_bootstrap_daemon_mutex);
-    if (!m_should_use_bootstrap_daemon || m_bootstrap_daemon.get() == nullptr)
-    {
-      lock.unlock();
-      return lock;
-    }
+
+    if (m_bootstrap_daemon_address.empty() || !m_should_use_bootstrap_daemon)
+      return {};
+
+    std::unique_lock<std::shared_mutex> lock{m_bootstrap_daemon_mutex};
 
     auto current_time = std::chrono::system_clock::now();
     if (!m_p2p.get_payload_object().no_sync() &&
         current_time - m_bootstrap_height_check_time > 30s)  // update every 30s
     {
-      {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> upgrade_lock(lock);
-        m_bootstrap_height_check_time = current_time;
-      }
+      m_bootstrap_height_check_time = current_time;
 
       std::optional<uint64_t> bootstrap_daemon_height = m_bootstrap_daemon->get_height();
       if (!bootstrap_daemon_height)
@@ -1804,10 +1800,7 @@ namespace cryptonote { namespace rpc {
     if (!success)
       throw std::runtime_error{"Bootstrap request failed"};
 
-    {
-      boost::upgrade_to_unique_lock<boost::shared_mutex> lock(bs_lock);
-      m_was_bootstrap_ever_used = true;
-    }
+    m_was_bootstrap_ever_used = true;
     res.untrusted = true;
     return true;
   }

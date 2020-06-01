@@ -2,14 +2,13 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <iostream>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
+#include <mutex>
 #include <boost/algorithm/string.hpp>
 
 static void install_line_handler();
 static void remove_line_handler();
 
-static boost::mutex sync_mutex;
+static std::mutex sync_mutex;
 static rdln::linestatus line_stat;
 static char *the_line;
 
@@ -69,7 +68,7 @@ void rdln::readline_buffer::stop()
 
 rdln::linestatus rdln::readline_buffer::get_line(std::string& line) const
 {
-  boost::lock_guard<boost::mutex> lock(sync_mutex);
+  std::lock_guard lock{sync_mutex};
   line_stat = rdln::partial;
   if (!m_cout_buf)
   {
@@ -90,7 +89,7 @@ void rdln::readline_buffer::set_prompt(const std::string& prompt)
 {
   if(m_cout_buf == NULL)
     return;
-  boost::lock_guard<boost::mutex> lock(sync_mutex);
+  std::lock_guard lock{sync_mutex};
   rl_set_prompt(std::string(m_prompt_length, ' ').c_str());
   rl_redisplay();
   rl_set_prompt(prompt.c_str());
@@ -112,7 +111,7 @@ const std::vector<std::string>& rdln::readline_buffer::get_completions()
 
 int rdln::readline_buffer::sync()
 {
-  boost::lock_guard<boost::mutex> lock(sync_mutex);
+  std::lock_guard lock{sync_mutex};
 #if RL_READLINE_VERSION < 0x0700
   char lbuf[2] = {0,0};
   char *line = NULL;

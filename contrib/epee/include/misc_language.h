@@ -29,8 +29,8 @@
 #pragma once
 
 #include <limits>
-#include <boost/thread.hpp>
-#include <boost/chrono/duration.hpp>
+#include <thread>
+#include <chrono>
 #include <memory>
 
 namespace epee
@@ -99,7 +99,7 @@ namespace misc_utils
 	inline
 	void sleep_no_w(long ms)
 	{
-		boost::this_thread::sleep_for(boost::chrono::milliseconds{ms});
+		std::this_thread::sleep_for(std::chrono::milliseconds{ms});
 	}
 
   template<class type_vec_type>

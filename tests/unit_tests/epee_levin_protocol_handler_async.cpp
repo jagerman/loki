@@ -28,7 +28,6 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <boost/thread/mutex.hpp>
 #include <boost/thread/thread.hpp>
 
 #include "gtest/gtest.h"
@@ -59,7 +58,7 @@ namespace
     virtual int invoke(int command, const epee::span<const uint8_t> in_buff, std::string& buff_out, test_levin_connection_context& context)
     {
       m_invoke_counter.inc();
-      boost::unique_lock<boost::mutex> lock(m_mutex);
+      std::unique_lock lock{m_mutex};
       m_last_command = command;
       m_last_in_buf = std::string((const char*)in_buff.data(), in_buff.size());
       buff_out = m_invoke_out_buf;
@@ -69,7 +68,7 @@ namespace
     virtual int notify(int command, const epee::span<const uint8_t> in_buff, test_levin_connection_context& context)
     {
       m_notify_counter.inc();
-      boost::unique_lock<boost::mutex> lock(m_mutex);
+      std::unique_lock lock{m_mutex};
       m_last_command = command;
       m_last_in_buf = std::string((const char*)in_buff.data(), in_buff.size());
       return m_return_code;
@@ -115,7 +114,7 @@ namespace
     unit_test::call_counter m_new_connection_counter;
     unit_test::call_counter m_close_connection_counter;
 
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 
     int m_return_code;
     std::string m_invoke_out_buf;
@@ -144,7 +143,7 @@ namespace
     {
       //std::cout << "test_connection::do_send()" << std::endl;
       m_send_counter.inc();
-      boost::unique_lock<boost::mutex> lock(m_mutex);
+      std::unique_lock lock{m_mutex};
       m_last_send_data.append(reinterpret_cast<const char*>(message.data()), message.size());
       return m_send_return;
     }
@@ -160,7 +159,7 @@ namespace
     size_t send_counter() const { return m_send_counter.get(); }
 
     const std::string& last_send_data() const { return m_last_send_data; }
-    void reset_last_send_data() { boost::unique_lock<boost::mutex> lock(m_mutex); m_last_send_data.clear(); }
+    void reset_last_send_data() { std::unique_lock lock{m_mutex}; m_last_send_data.clear(); }
 
     bool send_return() const { return m_send_return; }
     void send_return(bool v) { m_send_return = v; }
@@ -173,7 +172,7 @@ namespace
     test_levin_connection_context m_context;
 
     unit_test::call_counter m_send_counter;
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 
     std::string m_last_send_data;
 

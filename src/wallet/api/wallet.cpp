@@ -843,18 +843,18 @@ void WalletImpl::setSeedLanguage(const std::string &arg)
 
 int WalletImpl::status() const
 {
-    boost::lock_guard<boost::mutex> l(m_statusMutex);
+    std::lock_guard l{m_statusMutex};
     return m_status;
 }
 
 std::string WalletImpl::errorString() const
 {
-    boost::lock_guard<boost::mutex> l(m_statusMutex);
+    std::lock_guard l{m_statusMutex};
     return m_errorString;
 }
 
 void WalletImpl::statusWithErrorString(int& status, std::string& errorString) const {
-    boost::lock_guard<boost::mutex> l(m_statusMutex);
+    std::lock_guard l{m_statusMutex};
     status = m_status;
     errorString = m_errorString;
 }
@@ -2119,7 +2119,7 @@ bool WalletImpl::watchOnly() const
 
 void WalletImpl::clearStatus() const
 {
-    boost::lock_guard<boost::mutex> l(m_statusMutex);
+    std::lock_guard l{m_statusMutex};
     m_status = Status_Ok;
     m_errorString.clear();
 }
@@ -2136,7 +2136,7 @@ void WalletImpl::setStatusCritical(const std::string& message) const
 
 void WalletImpl::setStatus(int status, const std::string& message) const
 {
-    boost::lock_guard<boost::mutex> l(m_statusMutex);
+    std::lock_guard l{m_statusMutex};
     m_status = status;
     m_errorString = message;
 }
@@ -2146,7 +2146,7 @@ void WalletImpl::refreshThreadFunc()
     LOG_PRINT_L3(__FUNCTION__ << ": starting refresh thread");
 
     while (true) {
-        boost::mutex::scoped_lock lock(m_refreshMutex);
+        std::unique_lock lock{m_refreshMutex};
         if (m_refreshThreadDone) {
             break;
         }
@@ -2176,7 +2176,7 @@ void WalletImpl::doRefresh()
 {
     bool rescan = m_refreshShouldRescan.exchange(false);
     // synchronizing async and sync refresh calls
-    boost::lock_guard<boost::mutex> guarg(m_refreshMutex2);
+    std::lock_guard guard{m_refreshMutex2};
     do try {
         LOG_PRINT_L3(__FUNCTION__ << ": doRefresh, rescan = "<<rescan);
         // Syncing daemon and refreshing wallet simultaneously is very resource intensive.

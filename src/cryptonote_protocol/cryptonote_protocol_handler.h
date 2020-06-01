@@ -174,7 +174,7 @@ namespace cryptonote
     std::atomic<bool> m_synchronized;
     std::atomic<bool> m_stopping;
     std::atomic<bool> m_no_sync;
-    boost::mutex m_sync_lock;
+    std::mutex m_sync_lock;
     block_queue m_block_queue;
     tools::periodic_task m_idle_peer_kicker{30s};
     tools::periodic_task m_standby_checker{100ms};
@@ -194,7 +194,7 @@ namespace cryptonote
     uint64_t get_estimated_remaining_sync_seconds(uint64_t current_blockchain_height, uint64_t target_blockchain_height);
     std::string get_periodic_sync_estimate(uint64_t current_blockchain_height, uint64_t target_blockchain_height);
 
-    boost::mutex m_buffer_mutex;
+    std::mutex m_buffer_mutex;
     boost::circular_buffer<size_t> m_avg_buffer = boost::circular_buffer<size_t>(10);
 
     template<class t_parameter>

@@ -37,8 +37,7 @@
 #include <cstddef>
 #include <string>
 #include <boost/scope_exit.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/recursive_mutex.hpp>
+#include <mutex>
 
 #include "device/device_default.hpp"
 #include "device/device_cold.hpp"

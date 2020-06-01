@@ -74,7 +74,7 @@ struct QnetState {
     // Track submitted blink txes here; unlike the blinks stored in the mempool we store these ones
     // more liberally to track submitted blinks, even if unsigned/unacceptable, while the mempool
     // only stores approved blinks.
-    boost::shared_mutex mutex;
+    std::shared_mutex mutex;
 
     struct blink_metadata {
         std::shared_ptr<blink_tx> btxptr;
@@ -1139,7 +1139,7 @@ struct blink_result_data {
     std::atomic<int> nostart_count{0};
 };
 std::unordered_map<uint64_t, blink_result_data> pending_blink_results;
-boost::shared_mutex pending_blink_result_mutex;
+std::shared_mutex pending_blink_result_mutex;
 
 // Sanity check against runaway active pending blink submissions
 constexpr size_t MAX_ACTIVE_PROMISES = 1000;

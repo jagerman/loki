@@ -38,6 +38,8 @@
 
 #include <memory>
 #include <optional>
+#include <mutex>
+#include <condition_variable>
 
 #include <boost/program_options/variables_map.hpp>
 
@@ -432,8 +434,8 @@ namespace cryptonote
 
     std::atomic<bool> m_idle_run;
     boost::thread m_idle_thread;
-    boost::mutex m_idle_mutex;
-    boost::condition_variable m_idle_cond;
+    std::mutex m_idle_mutex;
+    std::condition_variable m_idle_cond;
 
     std::atomic<bool> m_auto_refresh_enabled;
     bool m_auto_refresh_refreshing;
