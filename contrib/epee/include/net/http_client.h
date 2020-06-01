@@ -422,7 +422,7 @@ namespace net_utils
 					recv_buff.assign(m_header_cache.begin()+pos+4, m_header_cache.end());
 					m_header_cache.erase(m_header_cache.begin()+pos+4, m_header_cache.end());
 
-					analize_cached_header_and_invoke_state();
+					analyze_cached_header_and_invoke_state();
           if (!on_header(m_response_info))
           {
             MDEBUG("Connection cancelled by on_header");
@@ -717,7 +717,7 @@ namespace net_utils
 				return true;
 			}
 			//---------------------------------------------------------------------------
-			inline bool analize_first_response_line()
+			inline bool analyze_first_response_line()
 			{
 				//First line response, look like this:	"HTTP/1.1 200 OK"
 				const char *ptr = m_header_cache.c_str();
@@ -775,14 +775,14 @@ namespace net_utils
 				return true;
 			}
 			inline	
-				bool analize_cached_header_and_invoke_state()
+				bool analyze_cached_header_and_invoke_state()
 			{
 				m_response_info.clear();
-				analize_first_response_line();
+				analyze_first_response_line();
 				std::string fake_str; //gcc error workaround
 
 				bool res = parse_header(m_response_info.m_header_info, m_header_cache);
-				CHECK_AND_ASSERT_MES(res, false, "http_stream_filter::analize_cached_reply_header_and_invoke_state(): failed to anilize reply header: " << m_header_cache);
+				CHECK_AND_ASSERT_MES(res, false, "http_stream_filter::analyze_cached_reply_header_and_invoke_state(): failed to analyze reply header: " << m_header_cache);
 
 				set_reply_content_encoder();
 
@@ -817,7 +817,7 @@ namespace net_utils
 					//In the response header the length was specified
 					if(!content_len_valid)
 					{
-						LOG_ERROR("http_stream_filter::analize_cached_reply_header_and_invoke_state(): Failed to get_len_from_content_lenght();, m_query_info.m_content_length="<<m_response_info.m_header_info.m_content_length);
+						LOG_ERROR("http_stream_filter::analyze_cached_reply_header_and_invoke_state(): Failed to get_len_from_content_length();, m_query_info.m_content_length="<<m_response_info.m_header_info.m_content_length);
 						m_state = reciev_machine_state_error;
 						return false;
 					}

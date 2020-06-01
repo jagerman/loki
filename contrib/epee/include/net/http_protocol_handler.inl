@@ -292,7 +292,7 @@ namespace net_utils
 						}	
 						break;
 					}
-					if (!analize_cached_request_header_and_invoke_state(pos))
+					if (!analyze_cached_request_header_and_invoke_state(pos))
 						return false;
 					break;
 				}
@@ -318,7 +318,7 @@ namespace net_utils
 	inline const std::regex rexp_http_request{R"(^((OPTIONS)|(GET)|(HEAD)|(POST)|(PUT)|DELETE|TRACE) (\S+) HTTP/(\d+)\.(\d+)\r?\n)", std::regex::icase};
 
 	//--------------------------------------------------------------------------------------------
-	inline bool analize_http_method(const std::smatch& result, http::http_method& method, int& http_ver_major, int& http_ver_minor)
+	inline bool analyze_http_method(const std::smatch& result, http::http_method& method, int& http_ver_major, int& http_ver_minor)
 	{
 		if (!boost::conversion::try_lexical_convert<int>(result[8], http_ver_major))
 			return false;
@@ -348,7 +348,7 @@ namespace net_utils
 		std::smatch result;
 		if(std::regex_search(m_cache, result, rexp_http_request))
 		{
-			if (!analize_http_method(result, m_query_info.m_http_method, m_query_info.m_http_ver_hi, m_query_info.m_http_ver_hi))
+			if (!analyze_http_method(result, m_query_info.m_http_method, m_query_info.m_http_ver_hi, m_query_info.m_http_ver_hi))
 			{
 				m_state = http_state_error;
 				MERROR("Failed to analyze method");
@@ -394,7 +394,7 @@ namespace net_utils
 	}
 	//--------------------------------------------------------------------------------------------
   template<class t_connection_context>
-	bool simple_http_connection_handler<t_connection_context>::analize_cached_request_header_and_invoke_state(size_t pos)
+	bool simple_http_connection_handler<t_connection_context>::analyze_cached_request_header_and_invoke_state(size_t pos)
 	{ 
 		LOG_PRINT_L3("HTTP HEAD:\r\n" << m_cache.substr(0, pos));
 
@@ -403,7 +403,7 @@ namespace net_utils
 
 		if(!parse_cached_header(m_query_info.m_header_info, m_cache, pos))
 		{
-			LOG_ERROR_CC(m_conn_context, "simple_http_connection_handler<t_connection_context>::analize_cached_request_header_and_invoke_state(): failed to anilize request header: " << m_cache);
+			LOG_ERROR_CC(m_conn_context, "simple_http_connection_handler<t_connection_context>::analyze_cached_request_header_and_invoke_state(): failed to anilize request header: " << m_cache);
 			m_state = http_state_error;
 			return false;
 		}
@@ -417,9 +417,9 @@ namespace net_utils
 		{
 			m_state = http_state_retriving_body;
 			m_body_transfer_type = http_body_transfer_measure;
-			if(!get_len_from_content_lenght(m_query_info.m_header_info.m_content_length, m_len_summary))
+			if(!get_len_from_content_length(m_query_info.m_header_info.m_content_length, m_len_summary))
 			{
-				LOG_ERROR_CC(m_conn_context, "simple_http_connection_handler<t_connection_context>::analize_cached_request_header_and_invoke_state(): Failed to get_len_from_content_lenght();, m_query_info.m_content_length="<<m_query_info.m_header_info.m_content_length);
+				LOG_ERROR_CC(m_conn_context, "simple_http_connection_handler<t_connection_context>::analyze_cached_request_header_and_invoke_state(): Failed to get_len_from_content_length();, m_query_info.m_content_length="<<m_query_info.m_header_info.m_content_length);
 				m_state = http_state_error;
 				return false;
 			}
