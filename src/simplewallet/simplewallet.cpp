@@ -62,7 +62,6 @@
 #include "common/base58.h"
 #include "common/scoped_message_writer.h"
 #include "common/loki_integration_test_hooks.h"
-#include "common/string_util.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler.h"
 #include "cryptonote_core/service_node_voting.h"
 #include "cryptonote_core/service_node_list.h"
@@ -666,8 +665,14 @@ std::string simple_wallet::get_command_usage(const std::vector<std::string> &arg
     std::string usage = documentation.second.empty() ? args.front() : documentation.first;
     std::string description = documentation.second.empty() ? documentation.first : documentation.second;
     ss << tr("Command usage: ") << "\n  " << usage << "\n\n";
-    boost::replace_all(description, "\n", "\n  ");
-    ss << tr("Command description: ") << "\n  " << description << "\n";
+    ss << tr("Command description: ") << "\n  ";
+    for (char c : description)
+    {
+      if (c == '\n')
+        ss << "\n  ";
+      else
+        ss << c;
+    }
   }
   return ss.str();
 }

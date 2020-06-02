@@ -29,10 +29,8 @@
 
 #include "device_trezor_base.hpp"
 #include "memwipe.h"
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <regex>
 #include "common/lock.h"
+#include "common/string_util.h"
 
 namespace hw {
 namespace trezor {
@@ -126,7 +124,7 @@ namespace trezor {
 
         for (auto &cur : trans) {
           std::string cur_path = cur->get_path();
-          if (boost::starts_with(cur_path, this->name)) {
+          if (tools::starts_with(cur_path, this->name)) {
             MDEBUG("Device Match: " << cur_path);
             m_transport = cur;
             break;
@@ -321,20 +319,20 @@ namespace trezor {
 
       CHECK_AND_ASSERT_THROW_MES(deriv_path.size() <= 255, "Derivation path is too long");
 
-      std::vector<std::string> fields;
-      boost::split(fields, deriv_path, boost::is_any_of("/"));
+      std::vector<std::string_view> fields = tools::split(deriv_path, "/");
       CHECK_AND_ASSERT_THROW_MES(fields.size() <= 10, "Derivation path is too long");
 
-      std::regex rgx("^([0-9]+)'?$");
-      std::smatch match;
-
       this->m_wallet_deriv_path.reserve(fields.size());
-      for(const std::string & cur : fields){
-        const bool ok = std::regex_match(cur, match, rgx);
+      for (auto& cur : fields) {
+        // Required pattern: [0-9]+'? but this is simple enough we can avoid using a regex
+        if (!cur.empty() && cur.back() == '\'') cur.remove_suffix(1);
+
+        unsigned int cidx;
+        bool ok = !cur.empty() && cur.find_first_not_of("0123456789"sv) == std::string_view::npos;
+        if (ok) ok = tools::parse_int(cur, cidx);
         CHECK_AND_ASSERT_THROW_MES(ok, "Invalid wallet code: " << deriv_path << ". Invalid path element: " << cur);
 
-        const unsigned long cidx = std::stoul(match[0].str()) | TREZOR_BIP44_HARDENED_ZERO;
-        this->m_wallet_deriv_path.push_back((unsigned int)cidx);
+        m_wallet_deriv_path.push_back(cidx | TREZOR_BIP44_HARDENED_ZERO);
       }
     }
 
@@ -356,7 +354,7 @@ namespace trezor {
       } catch(std::exception const& e) {
         MERROR("Ping failed, exception thrown " << e.what());
       } catch(...){
-        MERROR("Ping failed, general exception thrown" << boost::current_exception_diagnostic_information());
+        MERROR("Ping failed, general exception thrown");
       }
 
       return false;

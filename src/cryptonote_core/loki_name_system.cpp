@@ -816,7 +816,7 @@ bool validate_lns_name(mapping_type type, std::string name, std::string *reason)
 
     // Must end with .loki
     auto constexpr SUFFIX = ".loki"sv;
-    if (check_condition(name_view.substr(name_view.size() - SUFFIX.size()) == SUFFIX, reason, "LNS type=", type, ", specifies mapping from name->value where the name does not end with the domain .loki, name=", name))
+    if (check_condition(!tools::ends_with(name_view, SUFFIX), reason, "LNS type=", type, ", specifies mapping from name->value where the name does not end with the domain .loki, name=", name))
       return false;
 
     name_view.remove_suffix(SUFFIX.size());

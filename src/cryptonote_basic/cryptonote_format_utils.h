@@ -38,6 +38,7 @@
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "common/meta.h"
+#include "common/string_util.h"
 #include "serialization/binary_utils.h"
 #include <unordered_map>
 

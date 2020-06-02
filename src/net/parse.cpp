@@ -86,7 +86,7 @@ namespace net
         std::uint16_t port = default_port;
         if (port_str.size())
         {
-            if (!epee::string_tools::get_xtype_from_string(port, port_str))
+            if (!tools::parse_int(port_str, port))
                 return make_error_code(net::error::invalid_port);
         }
 
@@ -111,9 +111,7 @@ namespace net
         auto slash = address.find_first_of('/');
         if (slash != std::string_view::npos)
         {
-            if (!epee::string_tools::get_xtype_from_string(mask, std::string{address.substr(slash + 1)}))
-                return make_error_code(net::error::invalid_mask);
-            if (mask > 32)
+            if (!tools::parse_int(address.substr(slash+1), mask) || mask > 32)
                 return make_error_code(net::error::invalid_mask);
         }
         else if (!allow_implicit_32)

@@ -68,6 +68,7 @@
 #include "memwipe.h"
 #include "net/http_client.h"                        // epee::net_utils::...
 #include "readline_buffer.h"
+#include "string_util.h"
 
 #ifdef WIN32
 #ifndef STRSAFE_NO_DEPRECATE
@@ -602,7 +603,7 @@ namespace tools
   bool is_local_address(const std::string &address)
   {
     // always assume Tor/I2P addresses to be untrusted by default
-    if (boost::ends_with(address, ".onion") || boost::ends_with(address, ".i2p"))
+    if (tools::ends_with(address, ".onion") || tools::ends_with(address, ".i2p"))
     {
       MDEBUG("Address '" << address << "' is Tor/I2P, non local");
       return false;

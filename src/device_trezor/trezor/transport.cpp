@@ -348,7 +348,7 @@ namespace trezor{
         CHECK_AND_ASSERT_THROW_MES(epee::string_tools::get_xtype_from_string(bridge_port, env_bridge_port), "Invalid bridge port: " << env_bridge_port);
         assert_port_number(bridge_port);
 
-        m_bridge_host = std::string("127.0.0.1:") + boost::lexical_cast<std::string>(env_bridge_port);
+        m_bridge_host = "127.0.0.1:" + std::to_string(bridge_port);
         MDEBUG("Bridge host: " << m_bridge_host);
       }
 

@@ -170,18 +170,18 @@ std::vector<cryptonote::core::tx_verification_batch_info> tests::proxy_core::par
         if (opts.kept_by_block) {
             txi.result = txi.parsed = true;
         } else if (parse_and_validate_tx_from_blob(tx_blobs[i], txi.tx, txi.tx_hash, tx_prefix_hash)) {
-            cout << "TX " << endl << endl;
-            cout << txi.tx_hash << endl;
-            cout << tx_prefix_hash << endl;
-            cout << tx_blobs[i].size() << endl;
-            //cout << string_tools::buff_to_hex_nodelimer(tx_blob) << endl << endl;
-            cout << obj_to_json_str(txi.tx) << endl;
-            cout << endl << "ENDTX" << endl;
+            std::cout << "TX\n\n";
+            std::cout << txi.tx_hash << "\n";
+            std::cout << tx_prefix_hash << "\n";
+            std::cout << tx_blobs[i].size() << "\n";
+            //std::cout << string_tools::buff_to_hex_nodelimer(tx_blob) << "\n\n";
+            std::cout << obj_to_json_str(txi.tx) << "\n";
+            std::cout << "\nENDTX\n";
             txi.result = txi.parsed = true;
             txi.blob = &tx_blobs[i];
         } else {
             txi.tvc.m_verifivation_failed = true;
-            cerr << "WRONG TRANSACTION BLOB, Failed to parse, rejected" << endl;
+            std::cerr << "WRONG TRANSACTION BLOB, Failed to parse, rejected\n";
         }
     }
 
@@ -224,21 +224,19 @@ bool tests::proxy_core::handle_incoming_block(const cryptonote::blobdata& block_
     block b{};
 
     if(!parse_and_validate_block_from_blob(block_blob, b)) {
-        cerr << "Failed to parse and validate new block" << endl;
+        std::cerr << "Failed to parse and validate new block\n";
         return false;
     }
 
-    crypto::hash h;
-    crypto::hash lh;
-    cout << "BLOCK" << endl << endl;
-    cout << (h = get_block_hash(b)) << endl;
-    cout << (lh = get_block_longhash_w_blockchain(NULL, b, 0, 0)) << endl;
-    cout << get_transaction_hash(b.miner_tx) << endl;
-    cout << ::get_object_blobsize(b.miner_tx) << endl;
-    //cout << string_tools::buff_to_hex_nodelimer(block_blob) << endl;
-    cout << obj_to_json_str(b) << endl;
-
-    cout << endl << "ENDBLOCK" << endl << endl;
+    crypto::hash h = get_block_hash(b);
+    crypto::hash lh = get_block_longhash_w_blockchain(NULL, b, 0, 0);
+    std::cout << "BLOCK\n\n";
+    std::cout << h << '\n';
+    std::cout << lh << '\n';
+    std::cout << get_transaction_hash(b.miner_tx) << '\n';
+    std::cout << get_object_blobsize(b.miner_tx) << '\n';
+    std::cout << obj_to_json_str(b) << '\n';
+    std::cout << "\nENDBLOCK\n\n";
 
     if (!add_block(h, lh, b, block_blob, checkpoint))
         return false;
@@ -296,7 +294,7 @@ bool tests::proxy_core::add_block(const crypto::hash &_id, const crypto::hash &_
     if (crypto::null_hash != _blk.prev_id) {
         std::unordered_map<crypto::hash, tests::block_index>::const_iterator cit = m_hash2blkidx.find(_blk.prev_id);
         if (m_hash2blkidx.end() == cit) {
-            cerr << "ERROR: can't find previous block with id \"" << _blk.prev_id << "\"" << endl;
+            std::cerr << "ERROR: can't find previous block with id \"" << _blk.prev_id << "\"\n";
             return false;
         }
 

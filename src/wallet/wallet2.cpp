@@ -10039,7 +10039,13 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
     }
     else
       src.multisig_kLRki = rct::multisig_kLRki({rct::zero(), rct::zero(), rct::zero(), rct::zero()});
-    detail::print_source_entry(src);
+
+    {
+      std::string indexes;
+      for (auto& out: src.outputs) { indexes += ' '; indexes += std::to_string(out.first); }
+      LOG_PRINT_L0("amount=" << cryptonote::print_money(src.amount) << ", real_output=" <<src.real_output << ", real_output_in_tx_index=" << src.real_output_in_tx_index << ", indexes:" << indexes);
+    }
+
     ++out_index;
   }
   LOG_PRINT_L2("outputs prepared");

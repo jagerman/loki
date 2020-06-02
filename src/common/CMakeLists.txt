@@ -46,6 +46,7 @@ add_library(common
   rules.cpp
   scoped_message_writer.cpp
   spawn.cpp
+  string_util.cpp
   threadpool.cpp
   timings.cc
   updates.cpp
