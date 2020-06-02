@@ -205,15 +205,15 @@ int main(int argc, char* argv[])
         }
         for (size_t ring = 0; ring < tx.vin.size(); ++ring)
         {
-          if (tx.vin[ring].type() == typeid(cryptonote::txin_gen))
+          if (std::holds_alternative<cryptonote::txin_gen>(tx.vin[ring]))
           {
             MDEBUG(txid << " is a coinbase transaction");
             coinbase = true;
             goto done;
           }
-          if (tx.vin[ring].type() == typeid(cryptonote::txin_to_key))
+          if (std::holds_alternative<cryptonote::txin_to_key>(tx.vin[ring]))
           {
-            const cryptonote::txin_to_key &txin = boost::get<cryptonote::txin_to_key>(tx.vin[ring]);
+            const auto& txin = std::get<cryptonote::txin_to_key>(tx.vin[ring]);
             const uint64_t amount = txin.amount;
             auto absolute_offsets = cryptonote::relative_output_offsets_to_absolute(txin.key_offsets);
             for (uint64_t offset: absolute_offsets)
@@ -231,9 +231,9 @@ int main(int argc, char* argv[])
               bool found = false;
               for (size_t out = 0; out < b.miner_tx.vout.size(); ++out)
               {
-                if (b.miner_tx.vout[out].target.type() == typeid(cryptonote::txout_to_key))
+                if (std::holds_alternative<cryptonote::txout_to_key>(b.miner_tx.vout[out].target))
                 {
-                  const auto &txout = boost::get<cryptonote::txout_to_key>(b.miner_tx.vout[out].target);
+                  const auto& txout = std::get<cryptonote::txout_to_key>(b.miner_tx.vout[out].target);
                   if (txout.key == od.pubkey)
                   {
                     found = true;
@@ -265,9 +265,9 @@ int main(int argc, char* argv[])
                 }
                 for (size_t out = 0; out < tx2.vout.size(); ++out)
                 {
-                  if (tx2.vout[out].target.type() == typeid(cryptonote::txout_to_key))
+                  if (std::holds_alternative<cryptonote::txout_to_key>(tx2.vout[out].target))
                   {
-                    const auto &txout = boost::get<cryptonote::txout_to_key>(tx2.vout[out].target);
+                    const auto& txout = std::get<cryptonote::txout_to_key>(tx2.vout[out].target);
                     if (txout.key == od.pubkey)
                     {
                       found = true;

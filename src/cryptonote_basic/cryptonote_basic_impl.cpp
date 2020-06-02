@@ -196,13 +196,7 @@ namespace cryptonote {
   //-----------------------------------------------------------------------
   bool is_coinbase(const transaction& tx)
   {
-    if(tx.vin.size() != 1)
-      return false;
-
-    if(tx.vin[0].type() != typeid(txin_gen))
-      return false;
-
-    return true;
+    return tx.vin.size() == 1 && std::holds_alternative<txin_gen>(tx.vin[0]);
   }
   //-----------------------------------------------------------------------
   bool get_account_address_from_str(

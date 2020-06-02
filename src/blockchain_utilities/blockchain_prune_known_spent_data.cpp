@@ -197,12 +197,12 @@ int main(int argc, char* argv[])
 
     LOG_PRINT_L0("Scanning for known spent data...");
     db->for_all_transactions([&](const crypto::hash &txid, const cryptonote::transaction &tx){
-      const bool miner_tx = tx.vin.size() == 1 && tx.vin[0].type() == typeid(txin_gen);
+      const bool miner_tx = tx.vin.size() == 1 && std::holds_alternative<txin_gen>(tx.vin[0]);
       for (const auto &in: tx.vin)
       {
-        if (in.type() != typeid(txin_to_key))
+        if (!std::holds_alternative<txin_to_key>(in))
           continue;
-        const auto &txin = boost::get<txin_to_key>(in);
+        const auto& txin = std::get<txin_to_key>(in);
         if (txin.amount == 0)
           continue;
 
@@ -216,7 +216,7 @@ int main(int argc, char* argv[])
           amount = 0;
         if (amount == 0)
           continue;
-        if (out.target.type() != typeid(txout_to_key))
+        if (!std::holds_alternative<txout_to_key>(out.target))
           continue;
 
         outputs[amount].first++;

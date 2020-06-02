@@ -48,10 +48,7 @@ extern "C" {
 
 #include "hex.h"
 #include "span.h"
-#include "serialization/vector.h"
-#include "serialization/debug_archive.h"
-#include "serialization/binary_archive.h"
-#include "serialization/json_archive.h"
+#include "serialization/variant.h"
 
 
 //Define this flag when debugging to get additional info on the console

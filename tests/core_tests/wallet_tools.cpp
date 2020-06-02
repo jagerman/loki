@@ -180,7 +180,7 @@ void wallet_tools::gen_tx_src(size_t mixin, uint64_t cur_height, const tools::wa
 
   cryptonote::tx_source_entry::output_entry &real_oe = src.outputs[real_idx];
   real_oe.first = td.m_global_output_index;
-  real_oe.second.dest = rct::pk2rct(boost::get<txout_to_key>(td.m_tx.vout[td.m_internal_output_index].target).key);
+  real_oe.second.dest = rct::pk2rct(std::get<txout_to_key>(td.m_tx.vout[td.m_internal_output_index].target).key);
   real_oe.second.mask = rct::commit(td.amount(), td.m_mask);
 
   std::sort(src.outputs.begin(), src.outputs.end(), [&](const cryptonote::tx_source_entry::output_entry i0, const cryptonote::tx_source_entry::output_entry i1) {
@@ -205,7 +205,7 @@ void wallet_tools::gen_block_data(block_tracker &bt, const cryptonote::block *bl
 {
   vector<const transaction*> vtx;
   vtx.push_back(&(bl->miner_tx));
-  height = boost::get<txin_gen>(*bl->miner_tx.vin.begin()).height;
+  height = std::get<txin_gen>(*bl->miner_tx.vin.begin()).height;
 
   for (const auto &h : bl->tx_hashes) {
     const map_hash2tx_t::const_iterator cit = mtx.find(h);

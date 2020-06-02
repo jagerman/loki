@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <mutex>
 #include <shared_mutex>
 #include <string_view>

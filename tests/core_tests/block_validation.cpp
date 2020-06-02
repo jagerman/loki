@@ -119,7 +119,7 @@ bool gen_block_ts_in_past::generate(std::vector<test_event_entry>& events) const
   BLOCK_VALIDATION_INIT_GENERATE();
   REWIND_BLOCKS_N(events, blk_0r, blk_0, miner_account, BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW - 1);
 
-  uint64_t ts_below_median = boost::get<block>(events[BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW / 2 - 1]).timestamp;
+  uint64_t ts_below_median = std::get<block>(events[BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW / 2 - 1]).timestamp;
   block blk_1;
   generator.construct_block_manually(blk_1, blk_0r, miner_account, test_generator::bf_timestamp, 0, 0, ts_below_median);
   events.push_back(blk_1);
@@ -177,7 +177,7 @@ bool gen_block_invalid_nonce::generate(std::vector<test_event_entry>& events) co
   // Create invalid nonce
   difficulty_type diffic = next_difficulty_v2(timestamps, cummulative_difficulties,DIFFICULTY_TARGET_V2, false /*use_old_lwma*/, false);
   assert(1 < diffic);
-  const block& blk_last = boost::get<block>(events.back());
+  const block& blk_last = std::get<block>(events.back());
   uint64_t timestamp = blk_last.timestamp;
   block blk_3;
   do
@@ -280,7 +280,7 @@ bool gen_block_height_is_low::generate(std::vector<test_event_entry>& events) co
   BLOCK_VALIDATION_INIT_GENERATE();
 
   MAKE_MINER_TX_MANUALLY(miner_tx, blk_0);
-  boost::get<txin_gen>(miner_tx.vin[0]).height--;
+  std::get<txin_gen>(miner_tx.vin[0]).height--;
 
   block blk_1;
   generator.construct_block_manually(blk_1, blk_0, miner_account, test_generator::bf_miner_tx, 0, 0, 0, crypto::hash(), 0, miner_tx);
@@ -296,7 +296,7 @@ bool gen_block_height_is_high::generate(std::vector<test_event_entry>& events) c
   BLOCK_VALIDATION_INIT_GENERATE();
 
   MAKE_MINER_TX_MANUALLY(miner_tx, blk_0);
-  boost::get<txin_gen>(miner_tx.vin[0]).height++;
+  std::get<txin_gen>(miner_tx.vin[0]).height++;
 
   block blk_1;
   generator.construct_block_manually(blk_1, blk_0, miner_account, test_generator::bf_miner_tx, 0, 0, 0, crypto::hash(), 0, miner_tx);
@@ -638,7 +638,7 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
   difficulty_type diffic;
   do
   {
-    blk_last = boost::get<block>(events.back());
+    blk_last = std::get<block>(events.back());
     diffic = next_difficulty_v2(timestamps, cummulative_difficulties,DIFFICULTY_TARGET_V2, false /*use_old_lwma*/, false);
     if (!lift_up_difficulty(events, timestamps, cummulative_difficulties, generator, 1, blk_last, miner_account))
       return false;
@@ -646,8 +646,8 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
   }
   while (diffic < 1500);
 
-  blk_last = boost::get<block>(events.back());
-  MAKE_TX(events, tx_0, miner_account, miner_account, MK_COINS(30), boost::get<block>(events[1]));
+  blk_last = std::get<block>(events.back());
+  MAKE_TX(events, tx_0, miner_account, miner_account, MK_COINS(30), std::get<block>(events[1]));
   DO_CALLBACK(events, "corrupt_blocks_boundary");
 
   block blk_test;

@@ -37,6 +37,7 @@
 #include "include_base_utils.h"
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
+#include "common/meta.h"
 #include "serialization/binary_utils.h"
 #include <unordered_map>
 
@@ -72,13 +73,12 @@ namespace cryptonote
     if (skip_fields >= tx_extra_fields.size())
       return false;
 
-    for (tx_extra_field const &check_field : tx_extra_fields)
+    for (const auto& f : tx_extra_fields)
     {
-      if (typeid(T) != check_field.type()) continue;
-
+      if (!std::holds_alternative<T>(f)) continue;
       if (skip_fields == 0)
       {
-        field = boost::get<T>(check_field);
+        field = std::get<T>(f);
         return true;
       }
       skip_fields--;
@@ -123,7 +123,11 @@ namespace cryptonote
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const transaction_prefix& tx);
   bool add_additional_tx_pub_keys_to_extra(std::vector<uint8_t>& tx_extra, const std::vector<crypto::public_key>& additional_pub_keys);
   bool add_extra_nonce_to_tx_extra(std::vector<uint8_t>& tx_extra, const blobdata& extra_nonce);
-  bool remove_field_from_tx_extra(std::vector<uint8_t>& tx_extra, const std::type_info &type);
+  bool remove_field_from_tx_extra(std::vector<uint8_t>& tx_extra, size_t variant_index);
+  template <typename T>
+  bool remove_field_from_tx_extra(std::vector<uint8_t>& tx_extra) {
+    return remove_field_from_tx_extra(tx_extra, tools::template_index<T, tx_extra_field>);
+  }
   void set_payment_id_to_tx_extra_nonce(blobdata& extra_nonce, const crypto::hash& payment_id);
   void set_encrypted_payment_id_to_tx_extra_nonce(blobdata& extra_nonce, const crypto::hash8& payment_id);
   bool get_payment_id_from_tx_extra_nonce(const blobdata& extra_nonce, crypto::hash& payment_id);
@@ -275,6 +279,7 @@ namespace cryptonote
   crypto::secret_key encrypt_key(crypto::secret_key key, const epee::wipeable_string &passphrase);
   crypto::secret_key decrypt_key(crypto::secret_key key, const epee::wipeable_string &passphrase);
 #define CHECKED_GET_SPECIFIC_VARIANT(variant_var, specific_type, variable_name, fail_return_val) \
-  CHECK_AND_ASSERT_MES(variant_var.type() == typeid(specific_type), fail_return_val, "wrong variant type: " << variant_var.type().name() << ", expected " << typeid(specific_type).name()); \
-  specific_type& variable_name = boost::get<specific_type>(variant_var);
+  CHECK_AND_ASSERT_MES(std::holds_alternative<specific_type>(variant_var), fail_return_val, \
+          "wrong variant type: " << tools::type_name(tools::variant_type(variant_var)) << ", expected " << tools::type_name<specific_type>()); \
+  auto& variable_name = std::get<specific_type>(variant_var);
 }

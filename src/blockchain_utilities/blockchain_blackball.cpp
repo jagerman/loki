@@ -1419,12 +1419,11 @@ int main(int argc, char* argv[])
     for_all_transactions(filename, start_idx, n_txes, [&](const cryptonote::transaction_prefix &tx)->bool
     {
       std::cout << "\r" << start_idx << "/" << n_txes << "         \r" << std::flush;
-      const bool miner_tx = tx.vin.size() == 1 && tx.vin[0].type() == typeid(txin_gen);
       for (const auto &in: tx.vin)
       {
-        if (in.type() != typeid(txin_to_key))
+        if (!std::holds_alternative<txin_to_key>(in))
           continue;
-        const auto &txin = boost::get<txin_to_key>(in);
+        const auto &txin = std::get<txin_to_key>(in);
         if (opt_rct_only && txin.amount != 0)
           continue;
 
@@ -1553,6 +1552,7 @@ int main(int argc, char* argv[])
       set_processed_txidx(txn, canonical, start_idx+1);
       if (!opt_rct_only)
       {
+        const bool miner_tx = tx.vin.size() == 1 && std::holds_alternative<txin_gen>(tx.vin[0]);
         for (const auto &out: tx.vout)
         {
           uint64_t amount = out.amount;
@@ -1561,7 +1561,7 @@ int main(int argc, char* argv[])
 
           if (opt_rct_only && amount != 0)
             continue;
-          if (out.target.type() != typeid(txout_to_key))
+          if (!std::holds_alternative<txout_to_key>(out.target))
             continue;
           inc_per_amount_outputs(txn, amount, 1, 0);
         }

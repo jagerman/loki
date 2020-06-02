@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
   LOG_PRINT_L0("Reading blockchain from " << input);
   core_storage->for_all_transactions([&](const crypto::hash &hash, const cryptonote::transaction &tx)->bool
   {
-    const bool coinbase = tx.vin.size() == 1 && tx.vin[0].type() == typeid(txin_gen);
+    const bool coinbase = tx.vin.size() == 1 && std::holds_alternative<txin_gen>(tx.vin[0]);
     const uint64_t height = core_storage->get_db().get_tx_block_height(hash);
 
     // create new outputs
@@ -205,9 +205,9 @@ int main(int argc, char* argv[])
 
     for (const auto &in: tx.vin)
     {
-      if (in.type() != typeid(txin_to_key))
+      if (!std::holds_alternative<txin_to_key>(in))
         continue;
-      const auto &txin = boost::get<txin_to_key>(in);
+      const auto& txin = std::get<txin_to_key>(in);
       if (opt_rct_only && txin.amount != 0)
         continue;
 

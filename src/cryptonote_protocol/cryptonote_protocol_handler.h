@@ -45,6 +45,7 @@
 #include "cryptonote_protocol_handler_common.h"
 #include "block_queue.h"
 #include "common/perf_timer.h"
+#include "common/meta.h"
 #include "cryptonote_basic/connection_context.h"
 #include <boost/circular_buffer.hpp>
 
@@ -124,7 +125,7 @@ namespace cryptonote
     template<class T>
     bool relay_to_synchronized_peers(typename T::request& arg, cryptonote_connection_context& exclude_context)
     {
-      LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(exclude_context) << "] post relay " << typeid(T).name() << " -->");
+      LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(exclude_context) << "] post relay " << tools::type_name<T>() << " -->");
       std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections;
       m_p2p->for_each_connection([&exclude_context, &connections](connection_context& context, nodetool::peerid_type peer_id, uint32_t support_flags)
       {
@@ -200,7 +201,7 @@ namespace cryptonote
     template<class t_parameter>
       bool post_notify(typename t_parameter::request& arg, cryptonote_connection_context& context)
       {
-        LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(context) << "] post " << typeid(t_parameter).name() << " -->");
+        LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(context) << "] post " << tools::type_name<t_parameter>() << " -->");
         std::string blob;
         epee::serialization::store_t_to_binary(arg, blob);
         return m_p2p->invoke_notify_to_peer(t_parameter::ID, epee::strspan<uint8_t>(blob), context);

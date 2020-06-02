@@ -808,7 +808,7 @@ bool loki_core_test_deregister_preferred::generate(std::vector<test_event_entry>
     map_hash2tx_t mtx;
     {
       std::vector<cryptonote::block> chain;
-      CHECK_TEST_CONDITION(find_block_chain(events, chain, mtx, get_block_hash(boost::get<cryptonote::block>(events[0]))));
+      CHECK_TEST_CONDITION(find_block_chain(events, chain, mtx, get_block_hash(std::get<cryptonote::block>(events[0]))));
     }
 
     const auto deregister_count =
@@ -2814,8 +2814,8 @@ bool loki_service_nodes_test_rollback::generate(std::vector<test_event_entry>& e
     {
       /// obtain public key of node A
       const auto event_a = events.at(deregister_index);
-      CHECK_TEST_CONDITION(event_a.type() == typeid(loki_blockchain_addable<loki_transaction>));
-      const auto dereg_tx = boost::get<loki_blockchain_addable<loki_transaction>>(event_a);
+      CHECK_TEST_CONDITION(std::holds_alternative<loki_blockchain_addable<loki_transaction>>(event_a));
+      const auto dereg_tx = std::get<loki_blockchain_addable<loki_transaction>>(event_a);
       CHECK_TEST_CONDITION(dereg_tx.data.tx.type == cryptonote::txtype::state_change);
 
       cryptonote::tx_extra_service_node_state_change deregistration;
@@ -2836,8 +2836,8 @@ bool loki_service_nodes_test_rollback::generate(std::vector<test_event_entry>& e
       /// obtain public key of node B
       constexpr size_t reg_evnt_idx = 73;
       const auto event_b = events.at(reg_evnt_idx);
-      CHECK_TEST_CONDITION(event_b.type() == typeid(loki_blockchain_addable<loki_transaction>));
-      const auto reg_tx = boost::get<loki_blockchain_addable<loki_transaction>>(event_b);
+      CHECK_TEST_CONDITION(std::holds_alternative<loki_blockchain_addable<loki_transaction>>(event_b));
+      const auto reg_tx = std::get<loki_blockchain_addable<loki_transaction>>(event_b);
 
       crypto::public_key pk_b;
       if (!cryptonote::get_service_node_pubkey_from_tx_extra(reg_tx.data.tx.extra, pk_b)) {

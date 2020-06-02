@@ -1221,7 +1221,7 @@ namespace cryptonote
         ++m_sync_bad_spans_downloaded;
         return 1;
       }
-      if (b.miner_tx.vin.size() != 1 || b.miner_tx.vin.front().type() != typeid(txin_gen))
+      if (b.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(b.miner_tx.vin.front()))
       {
         LOG_ERROR_CCONTEXT("sent wrong block: block: miner tx does not have exactly one txin_gen input"
           << epee::string_tools::buff_to_hex_nodelimer(block_entry.block) << ", dropping connection");
@@ -1230,7 +1230,7 @@ namespace cryptonote
         return 1;
       }
       if (start_height == std::numeric_limits<uint64_t>::max())
-        start_height = boost::get<txin_gen>(b.miner_tx.vin[0]).height;
+        start_height = std::get<txin_gen>(b.miner_tx.vin[0]).height;
 
       auto req_it = context.m_requested_objects.find(block_hash);
       if(req_it == context.m_requested_objects.end())

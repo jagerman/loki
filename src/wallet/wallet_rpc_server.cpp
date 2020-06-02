@@ -55,6 +55,7 @@
 #include "rpc/core_rpc_server.h"
 #include "daemonizer/daemonizer.h"
 #include "cryptonote_core/loki_name_system.h"
+#include "serialization/boost_std_variant.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "wallet.rpc"

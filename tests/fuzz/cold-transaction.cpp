@@ -31,6 +31,7 @@
 #include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "serialization/boost_std_variant.h"
 #include "wallet/wallet2.h"
 #include "fuzzer.h"
 

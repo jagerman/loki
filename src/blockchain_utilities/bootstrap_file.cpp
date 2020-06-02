@@ -217,7 +217,7 @@ void BootstrapFile::write_block(block& block)
 
   std::vector<transaction> txs;
 
-  uint64_t block_height = boost::get<txin_gen>(block.miner_tx.vin.front()).height;
+  uint64_t block_height = std::get<txin_gen>(block.miner_tx.vin.front()).height;
 
 
   // now add all regular transactions

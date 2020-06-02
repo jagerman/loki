@@ -30,7 +30,6 @@
 
 #pragma once
 
-#include <boost/variant.hpp>
 #include <vector>
 #include <sstream>
 #include <atomic>
@@ -130,9 +129,9 @@ namespace cryptonote
   };
 
 
-  typedef boost::variant<txin_gen, txin_to_script, txin_to_scripthash, txin_to_key> txin_v;
+  using txin_v = std::variant<txin_gen, txin_to_script, txin_to_scripthash, txin_to_key>;
 
-  typedef boost::variant<txout_to_script, txout_to_scripthash, txout_to_key> txout_target_v;
+  using txout_target_v = std::variant<txout_to_script, txout_to_scripthash, txout_to_key>;
 
   //typedef std::pair<uint64_t, txout> out_t;
   struct tx_out
@@ -407,15 +406,9 @@ namespace cryptonote
   inline
   size_t transaction::get_signature_size(const txin_v& tx_in)
   {
-    struct txin_signature_size_visitor : public boost::static_visitor<size_t>
-    {
-      size_t operator()(const txin_gen& txin) const{return 0;}
-      size_t operator()(const txin_to_script& txin) const{return 0;}
-      size_t operator()(const txin_to_scripthash& txin) const{return 0;}
-      size_t operator()(const txin_to_key& txin) const {return txin.key_offsets.size();}
-    };
-
-    return boost::apply_visitor(txin_signature_size_visitor(), tx_in);
+    if (std::holds_alternative<txin_to_key>(tx_in))
+      return std::get<txin_to_key>(tx_in).key_offsets.size();
+    return 0;
   }
 
 

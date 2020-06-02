@@ -35,6 +35,7 @@
 #include <boost/endian/conversion.hpp>
 #include <algorithm>
 #include <cstring>
+#include <variant>
 #include "include_base_utils.h"
 #include "string_tools.h"
 #include "core_rpc_server.h"
@@ -1849,7 +1850,7 @@ namespace cryptonote { namespace rpc {
       bool have_block = m_core.get_block_by_hash(block_hash, blk, &orphan);
       if (!have_block)
         throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by hash. Hash = " + hash + '.'};
-      if (blk.miner_tx.vin.size() != 1 || blk.miner_tx.vin.front().type() != typeid(txin_gen))
+      if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
         throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
       uint64_t block_height = boost::get<txin_gen>(blk.miner_tx.vin.front()).height;
       fill_block_header_response(blk, orphan, block_height, block_hash, block_header, fill_pow_hash && admin);
@@ -1888,9 +1889,9 @@ namespace cryptonote { namespace rpc {
       if (!have_block)
         throw rpc_error{ERROR_INTERNAL, 
           "Internal error: can't get block by height. Height = " + std::to_string(h) + ". Hash = " + epee::string_tools::pod_to_hex(block_hash) + '.'};
-      if (blk.miner_tx.vin.size() != 1 || blk.miner_tx.vin.front().type() != typeid(txin_gen))
+      if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
         throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
-      uint64_t block_height = boost::get<txin_gen>(blk.miner_tx.vin.front()).height;
+      uint64_t block_height = std::get<txin_gen>(blk.miner_tx.vin.front()).height;
       if (block_height != h)
         throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong height"};
       res.headers.push_back(block_header_response());
@@ -1947,9 +1948,9 @@ namespace cryptonote { namespace rpc {
     bool have_block = m_core.get_block_by_hash(block_hash, blk, &orphan);
     if (!have_block)
       throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by hash. Hash = " + req.hash + '.'};
-    if (blk.miner_tx.vin.size() != 1 || blk.miner_tx.vin.front().type() != typeid(txin_gen))
+    if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
       throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
-    uint64_t block_height = boost::get<txin_gen>(blk.miner_tx.vin.front()).height;
+    uint64_t block_height = std::get<txin_gen>(blk.miner_tx.vin.front()).height;
     fill_block_header_response(blk, orphan, block_height, block_hash, res.block_header, req.fill_pow_hash && context.admin);
     for (size_t n = 0; n < blk.tx_hashes.size(); ++n)
     {

@@ -42,6 +42,7 @@ extern "C"
 #include "cryptonote_basic_impl.h"
 #include "cryptonote_format_utils.h"
 #include "cryptonote_config.h"
+#include "common/meta.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "account"
@@ -60,7 +61,7 @@ DISABLE_VS_WARNINGS(4244 4345)
   //-----------------------------------------------------------------
   void account_keys::set_device( hw::device &hwdev)  {
     m_device = &hwdev;
-    MCDEBUG("device", "account_keys::set_device device type: "<<typeid(hwdev).name());
+    MCDEBUG("device", "account_keys::set_device device type: " << tools::type_name(typeid(hwdev)));
   }
   //-----------------------------------------------------------------
   static void derive_key(const crypto::chacha_key &base_key, crypto::chacha_key &key)
@@ -207,7 +208,7 @@ DISABLE_VS_WARNINGS(4244 4345)
   void account_base::create_from_device(hw::device &hwdev)
   {
     m_keys.set_device(hwdev);
-    MCDEBUG("device", "device type: "<<typeid(hwdev).name());
+    MCDEBUG("device", "device type: " << tools::type_name(typeid(hwdev)));
     CHECK_AND_ASSERT_THROW_MES(hwdev.init(), "Device init failed");
     CHECK_AND_ASSERT_THROW_MES(hwdev.connect(), "Device connect failed");
     try {

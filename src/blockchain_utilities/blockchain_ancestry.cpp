@@ -40,6 +40,7 @@
 #include "common/unordered_containers_boost_serialization.h"
 #include "common/command_line.h"
 #include "common/varint.h"
+#include "serialization/boost_std_variant.h"
 #include "cryptonote_basic/cryptonote_boost_serialization.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "blockchain_objects.h"
@@ -91,15 +92,15 @@ struct tx_data_t
   tx_data_t(): coinbase(false) {}
   tx_data_t(const cryptonote::transaction &tx)
   {
-    coinbase = tx.vin.size() == 1 && tx.vin[0].type() == typeid(cryptonote::txin_gen);
+    coinbase = tx.vin.size() == 1 && std::holds_alternative<cryptonote::txin_gen>(tx.vin[0]);
     if (!coinbase)
     {
       vin.reserve(tx.vin.size());
       for (size_t ring = 0; ring < tx.vin.size(); ++ring)
       {
-        if (tx.vin[ring].type() == typeid(cryptonote::txin_to_key))
+        if (std::holds_alternative<cryptonote::txin_to_key>(tx.vin[ring]))
         {
-          const cryptonote::txin_to_key &txin = boost::get<cryptonote::txin_to_key>(tx.vin[ring]);
+          const cryptonote::txin_to_key &txin = std::get<cryptonote::txin_to_key>(tx.vin[ring]);
           vin.push_back(std::make_pair(txin.amount, cryptonote::relative_output_offsets_to_absolute(txin.key_offsets)));
         }
         else
@@ -112,9 +113,9 @@ struct tx_data_t
     vout.reserve(tx.vout.size());
     for (size_t out = 0; out < tx.vout.size(); ++out)
     {
-      if (tx.vout[out].target.type() == typeid(cryptonote::txout_to_key))
+      if (std::holds_alternative<cryptonote::txout_to_key>(tx.vout[out].target))
       {
-        const auto &txout = boost::get<cryptonote::txout_to_key>(tx.vout[out].target);
+        const auto &txout = std::get<cryptonote::txout_to_key>(tx.vout[out].target);
         vout.push_back(txout.key);
       }
       else
@@ -295,9 +296,9 @@ static bool get_output_txid(ancestry_state_t &state, BlockchainDB *db, uint64_t 
 
   for (size_t out = 0; out < b.miner_tx.vout.size(); ++out)
   {
-    if (b.miner_tx.vout[out].target.type() == typeid(cryptonote::txout_to_key))
+    if (std::holds_alternative<cryptonote::txout_to_key>(b.miner_tx.vout[out].target))
     {
-      const auto &txout = boost::get<cryptonote::txout_to_key>(b.miner_tx.vout[out].target);
+      const auto &txout = std::get<cryptonote::txout_to_key>(b.miner_tx.vout[out].target);
       if (txout.key == od.pubkey)
       {
         txid = cryptonote::get_transaction_hash(b.miner_tx);

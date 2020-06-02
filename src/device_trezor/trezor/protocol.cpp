@@ -156,7 +156,7 @@ namespace ki {
       res.emplace_back();
       auto & cres = res.back();
 
-      cres.set_out_key(key_to_string(boost::get<cryptonote::txout_to_key>(td.m_tx.vout[td.m_internal_output_index].target).key));
+      cres.set_out_key(key_to_string(std::get<cryptonote::txout_to_key>(td.m_tx.vout[td.m_internal_output_index].target).key));
       cres.set_tx_pub_key(key_to_string(tx_pub_key));
       cres.set_internal_output_index(td.m_internal_output_index);
       cres.set_sub_addr_major(td.m_subaddr_index.major);
@@ -649,8 +649,8 @@ namespace tx {
 
     CHECK_AND_ASSERT_THROW_MES(m_ct.tx.vin.size() == input_size, "Invalid vector size");
     std::sort(m_ct.source_permutation.begin(), m_ct.source_permutation.end(), [&](const size_t i0, const size_t i1) {
-      const cryptonote::txin_to_key &tk0 = boost::get<cryptonote::txin_to_key>(m_ct.tx.vin[i0]);
-      const cryptonote::txin_to_key &tk1 = boost::get<cryptonote::txin_to_key>(m_ct.tx.vin[i1]);
+      const cryptonote::txin_to_key &tk0 = std::get<cryptonote::txin_to_key>(m_ct.tx.vin[i0]);
+      const cryptonote::txin_to_key &tk1 = std::get<cryptonote::txin_to_key>(m_ct.tx.vin[i1]);
       return memcmp(&tk0.k_image, &tk1.k_image, sizeof(tk0.k_image)) > 0;
     });
 
@@ -830,7 +830,7 @@ namespace tx {
     }
 
     m_ct.tx_out_rsigs.emplace_back(bproof);
-    if (!rct::bulletproof_VERIFY(boost::get<rct::Bulletproof>(m_ct.tx_out_rsigs.back()))) {
+    if (!rct::bulletproof_VERIFY(std::get<rct::Bulletproof>(m_ct.tx_out_rsigs.back()))) {
       throw exc::ProtocolException("Returned range signature is invalid");
     }
   }
@@ -910,9 +910,9 @@ namespace tx {
 
     for(size_t i = 0; i < m_ct.tx_out_rsigs.size(); ++i){
       if (is_bulletproof()){
-        m_ct.rv->p.bulletproofs.push_back(boost::get<rct::Bulletproof>(m_ct.tx_out_rsigs[i]));
+        m_ct.rv->p.bulletproofs.push_back(std::get<rct::Bulletproof>(m_ct.tx_out_rsigs[i]));
       } else {
-        m_ct.rv->p.rangeSigs.push_back(boost::get<rct::rangeSig>(m_ct.tx_out_rsigs[i]));
+        m_ct.rv->p.rangeSigs.push_back(std::get<rct::rangeSig>(m_ct.tx_out_rsigs[i]));
       }
     }
 

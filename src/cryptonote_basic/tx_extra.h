@@ -35,7 +35,6 @@
 #include "serialization/binary_utils.h"
 #include "serialization/variant.h"
 #include "crypto/crypto.h"
-#include <boost/variant.hpp>
 #include "loki_economy.h"
 #include "cryptonote_basic.h"
 
@@ -539,7 +538,7 @@ namespace cryptonote
   // Note that the order of fields here also determines the tx extra sort order.  You should not
   // change the relative orders of existing tags, but new tags can be added wherever seems
   // appropriate.
-  using tx_extra_field = boost::variant<
+  using tx_extra_field = std::variant<
       tx_extra_pub_key,
       tx_extra_service_node_winner,
       tx_extra_additional_pub_keys,

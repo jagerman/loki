@@ -35,6 +35,7 @@
 #include "cryptonote_core/blockchain.h"
 #include "common/command_line.h"
 #include "version.h"
+#include <lokimq/hex.h>
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "debugtools.deserialize"
@@ -52,20 +53,33 @@ static std::string extra_nonce_to_string(const cryptonote::tx_extra_nonce &extra
   return epee::string_tools::buff_to_hex_nodelimer(extra_nonce.nonce);
 }
 
+struct extra_printer {
+  void operator(const cryptonote::tx_extra_padding& x) { std::cout << "extra padding: " << x.size << " bytes"; }
+  void operator(const cryptonote::tx_extra_pub_key& x) { std::cout << "extra pub key: " << x.pub_key; }
+  void operator(const cryptonote::tx_extra_nonce& x) { std::cout << "extra nonce: " << extra_nonce_to_string(x); }
+  void operator(const cryptonote::tx_extra_merge_mining_tag& x) { std::cout << "extra merge mining tag: depth " << x.depth << ", merkle root " << x.merkle_root; }
+  void operator(const cryptonote::tx_extra_additional_pub_keys& x) {
+    std::cout << "additional tx pubkeys: "
+    bool first = true;
+    for (auto& pk : x) {
+      if (first) first = false;
+      else std::cout << ", ";
+      std::cout << pk;
+    }
+  }
+  void operator(const cryptonote::tx_extra_mysterious_minergate& x) { std::cout << "extra minergate custom: " << lokimq::to_hex(x.data); }
+  template <typename T> void operator(const T&) { std::cout << "unknown"; }
+};
+
+
 static void print_extra_fields(const std::vector<cryptonote::tx_extra_field> &fields)
 {
   std::cout << "tx_extra has " << fields.size() << " field(s)" << std::endl;
   for (size_t n = 0; n < fields.size(); ++n)
   {
     std::cout << "field " << n << ": ";
-    if (typeid(cryptonote::tx_extra_padding) == fields[n].type()) std::cout << "extra padding: " << boost::get<cryptonote::tx_extra_padding>(fields[n]).size << " bytes";
-    else if (typeid(cryptonote::tx_extra_pub_key) == fields[n].type()) std::cout << "extra pub key: " << boost::get<cryptonote::tx_extra_pub_key>(fields[n]).pub_key;
-    else if (typeid(cryptonote::tx_extra_nonce) == fields[n].type()) std::cout << "extra nonce: " << extra_nonce_to_string(boost::get<cryptonote::tx_extra_nonce>(fields[n]));
-    else if (typeid(cryptonote::tx_extra_merge_mining_tag) == fields[n].type()) std::cout << "extra merge mining tag: depth " << boost::get<cryptonote::tx_extra_merge_mining_tag>(fields[n]).depth << ", merkle root " << boost::get<cryptonote::tx_extra_merge_mining_tag>(fields[n]).merkle_root;
-    else if (typeid(cryptonote::tx_extra_additional_pub_keys) == fields[n].type()) std::cout << "additional tx pubkeys: " << boost::join(boost::get<cryptonote::tx_extra_additional_pub_keys>(fields[n]).data | boost::adaptors::transformed([](const crypto::public_key &key){ return epee::string_tools::pod_to_hex(key); }), ", " );
-    else if (typeid(cryptonote::tx_extra_mysterious_minergate) == fields[n].type()) std::cout << "extra minergate custom: " << epee::string_tools::buff_to_hex_nodelimer(boost::get<cryptonote::tx_extra_mysterious_minergate>(fields[n]).data);
-    else std::cout << "unknown";
-    std::cout << std::endl;
+    std::visit(extra_printer{}, fields[n]);
+    std::cout << "\n";
   }
 }
 

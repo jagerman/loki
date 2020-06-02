@@ -382,10 +382,10 @@ void BlockchainBDB::add_output(const crypto::hash& tx_hash, const tx_out& tx_out
     if (m_output_amounts->put(DB_DEFAULT_TX, &val_amount, &k, 0))
         throw0(DB_ERROR("Failed to add output amount to db transaction."));
 
-    if (tx_output.target.type() == typeid(txout_to_key))
+    if (std::holds_alternative<txout_to_key>(tx_output.target))
     {
         output_data_t od;
-        od.pubkey = boost::get < txout_to_key > (tx_output.target).key;
+        od.pubkey = std::get<txout_to_key>(tx_output.target).key;
         od.unlock_time = unlock_time;
         od.height = m_height;
 

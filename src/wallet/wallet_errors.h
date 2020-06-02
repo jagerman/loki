@@ -104,7 +104,7 @@ namespace tools
       std::string to_string() const
       {
         std::ostringstream ss;
-        ss << m_loc << ':' << typeid(*this).name() << ": " << Base::what();
+        ss << m_loc << ':' << tools::type_name(typeid(*this)) << ": " << Base::what();
         return ss.str();
       }
 

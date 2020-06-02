@@ -508,7 +508,7 @@ namespace cryptonote
 
           std::string extra_nonce;
           set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
-          remove_field_from_tx_extra(tx.extra, typeid(tx_extra_nonce));
+          remove_field_from_tx_extra<tx_extra_nonce>(tx.extra);
           if (!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
           {
             LOG_ERROR("Failed to add encrypted payment id to tx extra");
@@ -620,8 +620,8 @@ namespace cryptonote
     for (size_t n = 0; n < sources.size(); ++n)
       ins_order[n] = n;
     std::sort(ins_order.begin(), ins_order.end(), [&](const size_t i0, const size_t i1) {
-      const txin_to_key &tk0 = boost::get<txin_to_key>(tx.vin[i0]);
-      const txin_to_key &tk1 = boost::get<txin_to_key>(tx.vin[i1]);
+      const txin_to_key &tk0 = std::get<txin_to_key>(tx.vin[i0]);
+      const txin_to_key &tk1 = std::get<txin_to_key>(tx.vin[i1]);
       return memcmp(&tk0.k_image, &tk1.k_image, sizeof(tk0.k_image)) > 0;
     });
     tools::apply_permutation(ins_order, [&] (size_t i0, size_t i1) {
@@ -645,7 +645,7 @@ namespace cryptonote
     {
       txkey_pub = rct::rct2pk(hwdev.scalarmultBase(rct::sk2rct(tx_key)));
     }
-    remove_field_from_tx_extra(tx.extra, typeid(tx_extra_pub_key));
+    remove_field_from_tx_extra<tx_extra_pub_key>(tx.extra);
     add_tx_pub_key_to_extra(tx, txkey_pub);
 
     std::vector<crypto::public_key> additional_tx_public_keys;
@@ -730,7 +730,7 @@ namespace cryptonote
         tx.type = txtype::standard;
     }
 
-    remove_field_from_tx_extra(tx.extra, typeid(tx_extra_additional_pub_keys));
+    remove_field_from_tx_extra<tx_extra_additional_pub_keys>(tx.extra);
 
     LOG_PRINT_L2("tx pubkey: " << txkey_pub);
     if (need_additional_txkeys)
@@ -786,7 +786,7 @@ namespace cryptonote
         std::vector<crypto::signature>& sigs = tx.signatures.back();
         sigs.resize(src_entr.outputs.size());
         if (!zero_secret_key)
-          crypto::generate_ring_signature(tx_prefix_hash, boost::get<txin_to_key>(tx.vin[i]).k_image, keys_ptrs, in_contexts[i].in_ephemeral.sec, src_entr.real_output, sigs.data());
+          crypto::generate_ring_signature(tx_prefix_hash, std::get<txin_to_key>(tx.vin[i]).k_image, keys_ptrs, in_contexts[i].in_ephemeral.sec, src_entr.real_output, sigs.data());
         ss_ring_s << "signatures:\n";
         std::for_each(sigs.begin(), sigs.end(), [&](const crypto::signature& s){ss_ring_s << s << "\n";});
         ss_ring_s << "prefix_hash:" << tx_prefix_hash << "\nin_ephemeral_key: " << in_contexts[i].in_ephemeral.sec << "\nreal_output: " << src_entr.real_output << "\n";
@@ -853,7 +853,7 @@ namespace cryptonote
       }
       for (size_t i = 0; i < tx.vout.size(); ++i)
       {
-        destinations.push_back(rct::pk2rct(boost::get<txout_to_key>(tx.vout[i].target).key));
+        destinations.push_back(rct::pk2rct(std::get<txout_to_key>(tx.vout[i].target).key));
         outamounts.push_back(tx.vout[i].amount);
         amount_out += tx.vout[i].amount;
       }
@@ -893,7 +893,7 @@ namespace cryptonote
           LOG_ERROR("invalid burn amount: tx does not have enough unspent funds available; amount_in: " << std::to_string(amount_in) << "; amount_out + tx_params.burn_fixed: " << std::to_string(amount_out) << " + " << std::to_string(tx_params.burn_fixed));
           return false;
         }
-        remove_field_from_tx_extra(tx.extra, typeid(tx_extra_burn)); // doesn't have to be present (but the wallet puts a dummy here as a safety to avoid growing the tx)
+        remove_field_from_tx_extra<tx_extra_burn>(tx.extra); // doesn't have to be present (but the wallet puts a dummy here as a safety to avoid growing the tx)
         if (!add_burned_amount_to_tx_extra(tx.extra, tx_params.burn_fixed))
         {
           LOG_ERROR("failed to add burn amount to tx extra");
@@ -905,7 +905,7 @@ namespace cryptonote
       for (size_t i = 0; i < tx.vin.size(); ++i)
       {
         if (sources[i].rct)
-          boost::get<txin_to_key>(tx.vin[i]).amount = 0;
+          std::get<txin_to_key>(tx.vin[i]).amount = 0;
       }
       for (size_t i = 0; i < tx.vout.size(); ++i)
         tx.vout[i].amount = 0;

@@ -445,7 +445,7 @@ private:
 
       bool is_rct() const { return m_rct; }
       uint64_t amount() const { return m_amount; }
-      const crypto::public_key &get_public_key() const { return boost::get<const cryptonote::txout_to_key>(m_tx.vout[m_internal_output_index].target).key; }
+      const crypto::public_key &get_public_key() const { return std::get<cryptonote::txout_to_key>(m_tx.vout[m_internal_output_index].target).key; }
 
       BEGIN_SERIALIZE_OBJECT()
         FIELD(m_block_height)
@@ -1131,7 +1131,7 @@ private:
         {
           const transfer_details &td = m_transfers[i];
           const cryptonote::tx_out &out = td.m_tx.vout[td.m_internal_output_index];
-          const cryptonote::txout_to_key &o = boost::get<const cryptonote::txout_to_key>(out.target);
+          const cryptonote::txout_to_key &o = std::get<cryptonote::txout_to_key>(out.target);
           m_pub_keys.emplace(o.key, i);
         }
         return;

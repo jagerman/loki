@@ -451,7 +451,7 @@ static tools::wallet2::tx_construction_data get_construction_data_with_decrypted
   if (get_short_payment_id(payment_id, ptx, hwdev))
   {
     // Remove encrypted
-    remove_field_from_tx_extra(construction_data.extra, typeid(cryptonote::tx_extra_nonce));
+    remove_field_from_tx_extra<cryptonote::tx_extra_nonce>(construction_data.extra);
     // Add decrypted
     std::string extra_nonce;
     set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id);
@@ -542,7 +542,7 @@ static void expand_tsx(cryptonote::transaction &tx)
     rv.p.MGs.resize(1);
     rv.p.MGs[0].II.resize(tx.vin.size());
     for (size_t n = 0; n < tx.vin.size(); ++n)
-      rv.p.MGs[0].II[n] = rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image);
+      rv.p.MGs[0].II[n] = rct::ki2rct(std::get<txin_to_key>(tx.vin[n]).k_image);
   }
   else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
   {
@@ -550,7 +550,7 @@ static void expand_tsx(cryptonote::transaction &tx)
     for (size_t n = 0; n < tx.vin.size(); ++n)
     {
       rv.p.MGs[n].II.resize(1);
-      rv.p.MGs[n].II[0] = rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image);
+      rv.p.MGs[n].II[0] = rct::ki2rct(std::get<txin_to_key>(tx.vin[n]).k_image);
     }
   }
 }
@@ -862,21 +862,21 @@ void gen_trezor_base::load(std::vector<test_event_entry>& events)
 
   for(auto & ev : events)
   {
-    if (typeid(cryptonote::block) == ev.type())
+    if (std::holds_alternative<cryptonote::block>(ev))
     {
-      m_head = boost::get<cryptonote::block>(ev);
+      m_head = std::get<cryptonote::block>(ev);
     }
-    else if (typeid(cryptonote::account_base) == ev.type())  // accounts
+    else if (std::holds_alternative<cryptonote::account_base>(ev))  // accounts
     {
-      const auto & acc = boost::get<cryptonote::account_base>(ev);
+      const auto & acc = std::get<cryptonote::account_base>(ev);
       if (acc_idx < accounts_num)
       {
         *accounts[acc_idx++] = acc;
       }
     }
-    else if (typeid(event_replay_settings) == ev.type())  // hard forks
+    else if (std::holds_alternative<event_replay_settings>(ev))  // hard forks
     {
-      const auto & rep_settings = boost::get<event_replay_settings>(ev);
+      const auto & rep_settings = std::get<event_replay_settings>(ev);
       if (rep_settings.hard_forks)
       {
         const auto & hf = rep_settings.hard_forks.get();
