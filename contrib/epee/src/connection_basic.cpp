@@ -151,7 +151,7 @@ connection_basic::connection_basic(boost::asio::ip::tcp::socket&& sock, std::sha
 	std::string remote_addr_str = "?";
 	try { boost::system::error_code e; remote_addr_str = socket().remote_endpoint(e).address().to_string(); } catch(...){} ;
 
-	_note("Spawned connection #"<<mI->m_peer_number<<" to " << remote_addr_str << " currently we have sockets count:" << m_state->sock_count);
+	MDEBUG("Spawned connection #"<<mI->m_peer_number<<" to " << remote_addr_str << " currently we have sockets count:" << m_state->sock_count);
 }
 
 connection_basic::connection_basic(boost::asio::io_service &io_service, std::shared_ptr<connection_basic_shared_state> state, ssl_support_t ssl_support)
@@ -174,7 +174,7 @@ connection_basic::connection_basic(boost::asio::io_service &io_service, std::sha
 	std::string remote_addr_str = "?";
 	try { boost::system::error_code e; remote_addr_str = socket().remote_endpoint(e).address().to_string(); } catch(...){} ;
 
-	_note("Spawned connection #"<<mI->m_peer_number<<" to " << remote_addr_str << " currently we have sockets count:" << m_state->sock_count);
+	MDEBUG("Spawned connection #"<<mI->m_peer_number<<" to " << remote_addr_str << " currently we have sockets count:" << m_state->sock_count);
 }
 
 connection_basic::~connection_basic() noexcept(false) {
@@ -182,7 +182,7 @@ connection_basic::~connection_basic() noexcept(false) {
 
 	std::string remote_addr_str = "?";
 	try { boost::system::error_code e; remote_addr_str = socket().remote_endpoint(e).address().to_string(); } catch(...){} ;
-	_note("Destructing connection #"<<mI->m_peer_number << " to " << remote_addr_str);
+	MDEBUG("Destructing connection #"<<mI->m_peer_number << " to " << remote_addr_str);
 }
 
 void connection_basic::set_rate_up_limit(uint64_t limit) {
@@ -240,7 +240,7 @@ void connection_basic::sleep_before_packet(size_t packet_size, int phase,  int q
 	do
 	{ // rate limiting
 		if (m_was_shutdown) { 
-			_dbg2("m_was_shutdown - so abort sleep");
+			MDEBUG("m_was_shutdown - so abort sleep");
 			return;
 		}
 

@@ -107,16 +107,6 @@
 #define LOG_PRINT_L3(x) MTRACE(x)
 #define LOG_PRINT_L4(x) MTRACE(x)
 
-#define _dbg3(x) MTRACE(x)
-#define _dbg2(x) MDEBUG(x)
-#define _dbg1(x) MDEBUG(x)
-#define _info(x) MINFO(x)
-#define _note(x) MDEBUG(x)
-#define _fact(x) MDEBUG(x)
-#define _mark(x) MDEBUG(x)
-#define _warn(x) MWARNING(x)
-#define _erro(x) MERROR(x)
-
 #define MLOG_SET_THREAD_NAME(x) el::Helpers::setThreadName(x)
 
 #ifndef LOCAL_ASSERT

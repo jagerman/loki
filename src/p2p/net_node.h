@@ -391,11 +391,11 @@ namespace nodetool
     bool check_incoming_connections();
 
     void kill() { ///< will be called e.g. from deinit()
-      _info("Killing the net_node");
+      MINFO("Killing the net_node");
       is_closing = true;
       if(mPeersLoggerThread != nullptr)
         mPeersLoggerThread->join(); // make sure the thread finishes
-      _info("Joined extra background net_node threads");
+      MINFO("Joined extra background net_node threads");
     }
 
     //debug functions

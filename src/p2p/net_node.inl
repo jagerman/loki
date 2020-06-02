@@ -888,7 +888,7 @@ namespace nodetool
     // creating thread to log number of connections
     mPeersLoggerThread.reset(new boost::thread([&]()
     {
-      _note("Thread monitor number of peers - start");
+      MDEBUG("Thread monitor number of peers - start");
       const network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
       while (!is_closing && !public_zone.m_net_server.is_stop_signal_sent())
       { // main loop of thread
@@ -917,7 +917,7 @@ namespace nodetool
         }
         boost::this_thread::sleep_for(boost::chrono::seconds(1));
       } // main loop of thread
-      _note("Thread monitor number of peers - done");
+      MDEBUG("Thread monitor number of peers - done");
     })); // lambda
 
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
@@ -1378,10 +1378,10 @@ namespace nodetool
   bool node_server<t_payload_net_handler>::make_new_connection_from_anchor_peerlist(const std::vector<anchor_peerlist_entry>& anchor_peerlist)
   {
     for (const auto& pe: anchor_peerlist) {
-      _note("Considering connecting (out) to anchor peer: " << peerid_to_string(pe.id) << " " << pe.adr.str());
+      MDEBUG("Considering connecting (out) to anchor peer: " << peerid_to_string(pe.id) << " " << pe.adr.str());
 
       if(is_peer_used(pe)) {
-        _note("Peer is used");
+        MDEBUG("Peer is used");
         continue;
       }
 
@@ -1398,7 +1398,7 @@ namespace nodetool
                                << "] first_seen: " << epee::misc_utils::get_time_interval_string(time(NULL) - pe.first_seen));
 
       if(!try_to_connect_and_handshake_with_new_peer(pe.adr, false, 0, anchor, pe.first_seen)) {
-        _note("Handshake failed");
+        MDEBUG("Handshake failed");
         continue;
       }
 
@@ -1514,12 +1514,12 @@ namespace nodetool
 
       ++try_count;
 
-      _note("Considering connecting (out) to " << (use_white_list ? "white" : "gray") << " list peer: " <<
+      MDEBUG("Considering connecting (out) to " << (use_white_list ? "white" : "gray") << " list peer: " <<
           peerid_to_string(pe.id) << " " << pe.adr.str() << ", pruning seed " << epee::string_tools::to_string_hex(pe.pruning_seed) <<
           " (stripe " << next_needed_pruning_stripe << " needed)");
 
       if(is_peer_used(pe)) {
-        _note("Peer is used");
+        MDEBUG("Peer is used");
         continue;
       }
 
@@ -1535,7 +1535,7 @@ namespace nodetool
                     << "] last_seen: " << (pe.last_seen ? epee::misc_utils::get_time_interval_string(time(NULL) - pe.last_seen) : "never"));
 
       if(!try_to_connect_and_handshake_with_new_peer(pe.adr, false, pe.last_seen, use_white_list ? white : gray)) {
-        _note("Handshake failed");
+        MDEBUG("Handshake failed");
         continue;
       }
 
@@ -2565,7 +2565,7 @@ namespace nodetool
       return true;
     }
     epee::net_utils::connection<epee::levin::async_protocol_handler<p2p_connection_context> >::set_tos_flag(flag);
-    _dbg1("Set ToS flag  " << flag);
+    MDEBUG("Set ToS flag  " << flag);
     return true;
   }
 

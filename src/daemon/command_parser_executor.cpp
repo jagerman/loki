@@ -651,7 +651,7 @@ bool command_parser_executor::out_peers(const std::vector<std::string>& args)
 	}
 	  
 	catch(const std::exception& ex) {
-		_erro("stoi exception");
+		MERROR("stoi exception");
 		return false;
 	}
 	
@@ -671,7 +671,7 @@ bool command_parser_executor::in_peers(const std::vector<std::string>& args)
 	}
 
 	catch(const std::exception& ex) {
-		_erro("stoi exception");
+		MERROR("stoi exception");
 		return false;
 	}
 

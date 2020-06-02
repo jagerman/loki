@@ -116,11 +116,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   {
     if(!m_was_shutdown)
     {
-      _dbg3("[sock " << socket().native_handle() << "] Socket destroyed without shutdown.");
+      MTRACE("[sock " << socket().native_handle() << "] Socket destroyed without shutdown.");
       shutdown();
     }
 
-    _dbg3("[sock " << socket().native_handle() << "] Socket destroyed");
+    MTRACE("[sock " << socket().native_handle() << "] Socket destroyed");
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
@@ -184,13 +184,13 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     auto local_ep = socket().local_endpoint(ec);
     CHECK_AND_NO_ASSERT_MES(!ec, false, "Failed to get local endpoint: " << ec.message() << ':' << ec.value());
 
-    _dbg3("[sock " << socket_.native_handle() << "] new connection from " << print_connection_context_short(context) <<
+    MTRACE("[sock " << socket_.native_handle() << "] new connection from " << print_connection_context_short(context) <<
       " to " << local_ep.address().to_string() << ':' << local_ep.port() <<
       ", total sockets objects " << get_state().sock_count);
 
     if(static_cast<shared_state&>(get_state()).pfilter && !static_cast<shared_state&>(get_state()).pfilter->is_remote_host_allowed(context.m_remote_address))
     {
-      _dbg2("[sock " << socket().native_handle() << "] host denied " << context.m_remote_address.host_str() << ", shutdowning connection");
+      MDEBUG("[sock " << socket().native_handle() << "] host denied " << context.m_remote_address.host_str() << ", shutdowning connection");
       close();
       return false;
     }
@@ -225,7 +225,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 	boost::asio::detail::socket_option::integer< IPPROTO_IP, IP_TOS >
 	optionTos( tos );
     socket().set_option( optionTos );
-	//_dbg1("Set ToS flag to " << tos);
+	//MDEBUG("Set ToS flag to " << tos);
 #endif
 	
 	boost::asio::ip::tcp::no_delay noDelayOption(false);
@@ -240,7 +240,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   bool connection<t_protocol_handler>::request_callback()
   {
     TRY_ENTRY();
-    _dbg2("[" << print_connection_context_short(context) << "] request_callback");
+    MDEBUG("[" << print_connection_context_short(context) << "] request_callback");
     // Use safe_shared_from_this, because of this is public method and it can be called on the object being deleted
     auto self = safe_shared_from_this();
     if(!self)
@@ -266,9 +266,9 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     auto self = safe_shared_from_this();
     if(!self)
       return false;
-    //_dbg3("[sock " << socket().native_handle() << "] add_ref, m_peer_number=" << mI->m_peer_number);
+    //MTRACE("[sock " << socket().native_handle() << "] add_ref, m_peer_number=" << mI->m_peer_number);
     CRITICAL_REGION_LOCAL(self->m_self_refs_lock);
-    //_dbg3("[sock " << socket().native_handle() << "] add_ref 2, m_peer_number=" << mI->m_peer_number);
+    //MTRACE("[sock " << socket().native_handle() << "] add_ref 2, m_peer_number=" << mI->m_peer_number);
     if(m_was_shutdown)
       return false;
     ++m_reference_count;
@@ -299,7 +299,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   void connection<t_protocol_handler>::call_back_starter()
   {
     TRY_ENTRY();
-    _dbg2("[" << print_connection_context_short(context) << "] fired_callback");
+    MDEBUG("[" << print_connection_context_short(context) << "] fired_callback");
     m_protocol_handler.handle_qued_callback();
     CATCH_ENTRY_L0("connection<t_protocol_handler>::call_back_starter()", void());
   }
@@ -331,7 +331,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     std::size_t bytes_transferred)
   {
     TRY_ENTRY();
-    //_info("[sock " << socket().native_handle() << "] Async read calledback.");
+    //MINFO("[sock " << socket().native_handle() << "] Async read calledback.");
     
     if (!e)
     {
@@ -369,7 +369,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 			} while(delay > 0);
 		} // any form of sleeping
 		
-      //_info("[sock " << socket().native_handle() << "] RECV " << bytes_transferred);
+      //MINFO("[sock " << socket().native_handle() << "] RECV " << bytes_transferred);
       logger_handle_net_read(bytes_transferred);
       context.m_last_recv = time(NULL);
       context.m_recv_cnt += bytes_transferred;
@@ -377,7 +377,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       bool recv_res = m_protocol_handler.handle_recv(buffer_.data(), bytes_transferred);
       if(!recv_res)
       {  
-        //_info("[sock " << socket().native_handle() << "] protocol_want_close");
+        //MINFO("[sock " << socket().native_handle() << "] protocol_want_close");
         //some error in protocol, protocol handler ask to close connection
         m_want_close_connection = true;
         bool do_shutdown = false;
@@ -395,19 +395,19 @@ PRAGMA_WARNING_DISABLE_VS(4355)
             boost::bind(&connection<t_protocol_handler>::handle_read, connection<t_protocol_handler>::shared_from_this(),
               boost::asio::placeholders::error,
               boost::asio::placeholders::bytes_transferred)));
-        //_info("[sock " << socket().native_handle() << "]Async read requested.");
+        //MINFO("[sock " << socket().native_handle() << "]Async read requested.");
       }
     }else
     {
-      _dbg3("[sock " << socket().native_handle() << "] Some not success at read: " << e.message() << ':' << e.value());
+      MTRACE("[sock " << socket().native_handle() << "] Some not success at read: " << e.message() << ':' << e.value());
       if(e.value() != 2)
       {
-        _dbg3("[sock " << socket().native_handle() << "] Some problems at read: " << e.message() << ':' << e.value());
+        MTRACE("[sock " << socket().native_handle() << "] Some problems at read: " << e.message() << ':' << e.value());
         shutdown();
       }
       else
       {
-        _dbg3("[sock " << socket().native_handle() << "] peer closed connection");
+        MTRACE("[sock " << socket().native_handle() << "] peer closed connection");
         bool do_shutdown = false;
         CRITICAL_REGION_BEGIN(m_send_que_lock);
         if(!m_send_que.size())
@@ -612,7 +612,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     context.m_current_speed_up = current_speed_up;
     context.m_max_speed_up = std::max(context.m_max_speed_up, current_speed_up);
 
-    //_info("[sock " << socket().native_handle() << "] SEND " << cb);
+    //MINFO("[sock " << socket().native_handle() << "] SEND " << cb);
     context.m_last_send = time(NULL);
     context.m_send_cnt += chunk.size();
     //some data should be wrote to stream
@@ -630,7 +630,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         retry++;
 
         /* if ( ::cryptonote::core::get_is_stopping() ) { // TODO re-add fast stop
-            _fact("ABORT queue wait due to stopping");
+            MDEBUG("ABORT queue wait due to stopping");
             return false; // aborted
         }*/
 
@@ -652,7 +652,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         m_send_que_lock.unlock();
         boost::this_thread::sleep(boost::posix_time::milliseconds( ms ) );
         m_send_que_lock.lock();
-        _dbg1("sleep for queue: " << ms);
+        MDEBUG("sleep for queue: " << ms);
 
         if (retry > retry_limit) {
             MWARNING("send que size is more than ABSTRACT_SERVER_SEND_QUE_MAX_COUNT(" << ABSTRACT_SERVER_SEND_QUE_MAX_COUNT << "), shutting down connection");
@@ -676,7 +676,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 
         if(m_send_que.size()!=1)
         {
-            _erro("Looks like no active operations, but send que size != 1!!");
+            MERROR("Looks like no active operations, but send que size != 1!!");
             return false;
         }
 
@@ -692,9 +692,9 @@ PRAGMA_WARNING_DISABLE_VS(4355)
                                  boost::bind(&connection<t_protocol_handler>::handle_write, self, _1, _2)
                                  )
                                  );
-        //_dbg3("(chunk): " << size_now);
+        //MTRACE("(chunk): " << size_now);
         //logger_handle_net_write(size_now);
-        //_info("[sock " << socket().native_handle() << "] Async send requested " << m_send_que.front().size());
+        //MINFO("[sock " << socket().native_handle() << "] Async send requested " << m_send_que.front().size());
     }
     
     //do_send_handler_stop( ptr , cb ); // empty function
@@ -817,7 +817,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     auto self = safe_shared_from_this();
     if(!self)
       return false;
-    //_info("[sock " << socket().native_handle() << "] Que Shutdown called.");
+    //MINFO("[sock " << socket().native_handle() << "] Que Shutdown called.");
     m_timer.cancel();
     size_t send_que_size = 0;
     CRITICAL_REGION_BEGIN(m_send_que_lock);
@@ -856,7 +856,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 
     if (e)
     {
-      _dbg1("[sock " << socket().native_handle() << "] Some problems at write: " << e.message() << ':' << e.value());
+      MDEBUG("[sock " << socket().native_handle() << "] Some problems at write: " << e.message() << ':' << e.value());
       shutdown();
       return;
     }
@@ -871,7 +871,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     CRITICAL_REGION_BEGIN(m_send_que_lock);
     if(m_send_que.empty())
     {
-      _erro("[sock " << socket().native_handle() << "] m_send_que.size() == 0 at handle_write!");
+      MERROR("[sock " << socket().native_handle() << "] m_send_que.size() == 0 at handle_write!");
       return;
     }
 
@@ -896,7 +896,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
             boost::bind(&connection<t_protocol_handler>::handle_write, connection<t_protocol_handler>::shared_from_this(), _1, _2)
 			  )
           );
-      //_dbg3("(normal)" << size_now);
+      //MTRACE("(normal)" << size_now);
     }
     CRITICAL_REGION_END();
 
@@ -1112,7 +1112,7 @@ POP_WARNINGS
     std::string thread_name = std::string("[") + m_thread_name_prefix;
     thread_name += std::to_string(local_thr_index) + "]";
     MLOG_SET_THREAD_NAME(thread_name);
-    //   _fact("Thread name: " << m_thread_name_prefix);
+    //   MDEBUG("Thread name: " << m_thread_name_prefix);
     while(!m_stop_signal_sent)
     {
       try
@@ -1122,14 +1122,14 @@ POP_WARNINGS
       }
       catch(const std::exception& ex)
       {
-        _erro("Exception at server worker thread, what=" << ex.what());
+        MERROR("Exception at server worker thread, what=" << ex.what());
       }
       catch(...)
       {
-        _erro("Exception at server worker thread, unknown execption");
+        MERROR("Exception at server worker thread, unknown execption");
       }
     }
-    //_info("Worker thread finished");
+    //MINFO("Worker thread finished");
     return true;
     CATCH_ENTRY_L0("boosted_tcp_server<t_protocol_handler>::worker_thread", false);
   }
@@ -1167,38 +1167,38 @@ POP_WARNINGS
       {
         std::shared_ptr<boost::thread> thread(new boost::thread(
           attrs, boost::bind(&boosted_tcp_server<t_protocol_handler>::worker_thread, this)));
-          _note("Run server thread name: " << m_thread_name_prefix);
+          MDEBUG("Run server thread name: " << m_thread_name_prefix);
         m_threads.push_back(thread);
       }
       CRITICAL_REGION_END();
       // Wait for all threads in the pool to exit.
       if (wait)
       {
-		_fact("JOINING all threads");
+		MDEBUG("JOINING all threads");
         for (std::size_t i = 0; i < m_threads.size(); ++i) {
 			m_threads[i]->join();
          }
-         _fact("JOINING all threads - almost");
+         MDEBUG("JOINING all threads - almost");
         m_threads.clear();
-        _fact("JOINING all threads - DONE");
+        MDEBUG("JOINING all threads - DONE");
 
       } 
       else {
-		_dbg1("Reiniting OK.");
+		MDEBUG("Reiniting OK.");
         return true;
       }
 
       if(wait && !m_stop_signal_sent)
       {
         //some problems with the listening socket ?..
-        _dbg1("Net service stopped without stop request, restarting...");
+        MDEBUG("Net service stopped without stop request, restarting...");
         if(!this->init_server(m_port, m_address, m_port_ipv6, m_address_ipv6, m_use_ipv6, m_require_ipv4))
         {
-          _dbg1("Reiniting service failed, exit.");
+          MDEBUG("Reiniting service failed, exit.");
           return false;
         }else
         {
-          _dbg1("Reiniting OK.");
+          MDEBUG("Reiniting OK.");
         }
       }
     }
@@ -1231,7 +1231,7 @@ POP_WARNINGS
     {
       if(m_threads[i]->joinable() && !m_threads[i]->try_join_for(ms))
       {
-        _dbg1("Interrupting thread " << m_threads[i]->native_handle());
+        MDEBUG("Interrupting thread " << m_threads[i]->native_handle());
         m_threads[i]->interrupt();
       }
     }
@@ -1333,7 +1333,7 @@ POP_WARNINGS
 
     // error path, if e or exception
     assert(m_state != nullptr); // always set in constructor
-    _erro("Some problems at accept: " << e.message() << ", connections_count = " << m_state->sock_count);
+    MERROR("Some problems at accept: " << e.message() << ", connections_count = " << m_state->sock_count);
     misc_utils::sleep_no_w(100);
     (*current_new_connection).reset(new connection<t_protocol_handler>(io_service_, m_state, m_connection_type, (*current_new_connection)->get_ssl_support()));
     current_acceptor->async_accept((*current_new_connection)->socket(),
@@ -1417,7 +1417,7 @@ POP_WARNINGS
       {
         //timeout
         sock_.close();
-        _dbg3("Failed to connect to " << adr << ":" << port << ", because of timeout (" << conn_timeout << ")");
+        MTRACE("Failed to connect to " << adr << ":" << port << ", because of timeout (" << conn_timeout << ")");
         return CONNECT_FAILURE;
       }
     }
@@ -1425,13 +1425,13 @@ POP_WARNINGS
 
     if (ec || !sock_.is_open())
     {
-      _dbg3("Some problems at connect, message: " << ec.message());
+      MTRACE("Some problems at connect, message: " << ec.message());
       if (sock_.is_open())
         sock_.close();
       return CONNECT_FAILURE;
     }
 
-    _dbg3("Connected success to " << adr << ':' << port);
+    MTRACE("Connected success to " << adr << ':' << port);
 
     const ssl_support_t ssl_support = new_connection_l->get_ssl_support();
     if (ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_enabled || ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_autodetect)
@@ -1504,7 +1504,7 @@ POP_WARNINGS
     {
       if (!m_use_ipv6)
       {
-        _erro("Failed to resolve " << adr);
+        MERROR("Failed to resolve " << adr);
         return false;
       }
       else
@@ -1526,7 +1526,7 @@ POP_WARNINGS
 
       if(iterator == end)
       {
-        _erro("Failed to resolve " << adr);
+        MERROR("Failed to resolve " << adr);
         return false;
       }
       else
@@ -1575,7 +1575,7 @@ POP_WARNINGS
     else
     {
       assert(m_state != nullptr); // always set in constructor
-      _erro("[sock " << new_connection_l->socket().native_handle() << "] Failed to start connection, connections_count = " << m_state->sock_count);
+      MERROR("[sock " << new_connection_l->socket().native_handle() << "] Failed to start connection, connections_count = " << m_state->sock_count);
     }
     
 	new_connection_l->save_dbg_log();
@@ -1628,7 +1628,7 @@ POP_WARNINGS
     {
       if (!try_ipv6)
       {
-        _erro("Failed to resolve " << adr);
+        MERROR("Failed to resolve " << adr);
         return false;
       }
       else
@@ -1645,7 +1645,7 @@ POP_WARNINGS
 
       if(iterator == end)
       {
-        _erro("Failed to resolve " << adr);
+        MERROR("Failed to resolve " << adr);
         return false;
       }
     }
@@ -1675,7 +1675,7 @@ POP_WARNINGS
       {
           if(error != boost::asio::error::operation_aborted) 
           {
-            _dbg3("Failed to connect to " << adr << ':' << port << ", because of timeout (" << conn_timeout << ")");
+            MTRACE("Failed to connect to " << adr << ':' << port << ", because of timeout (" << conn_timeout << ")");
             new_connection_l->socket().close();
           }
       });
@@ -1692,7 +1692,7 @@ POP_WARNINGS
             cb(conn_context, boost::asio::error::operation_aborted);//this mean that deadline timer already queued callback with cancel operation, rare situation
           }else
           {
-            _dbg3("[sock " << new_connection_l->socket().native_handle() << "] Connected success to " << adr << ':' << port <<
+            MTRACE("[sock " << new_connection_l->socket().native_handle() << "] Connected success to " << adr << ':' << port <<
               " from " << lep.address().to_string() << ':' << lep.port());
 
             // start adds the connection to the config object's list, so we don't need to have it locally anymore
@@ -1707,13 +1707,13 @@ POP_WARNINGS
             }
             else
             {
-              _dbg3("[sock " << new_connection_l->socket().native_handle() << "] Failed to start connection to " << adr << ':' << port);
+              MTRACE("[sock " << new_connection_l->socket().native_handle() << "] Failed to start connection to " << adr << ':' << port);
               cb(conn_context, boost::asio::error::fault);
             }
           }
         }else
         {
-          _dbg3("[sock " << new_connection_l->socket().native_handle() << "] Failed to connect to " << adr << ':' << port <<
+          MTRACE("[sock " << new_connection_l->socket().native_handle() << "] Failed to connect to " << adr << ':' << port <<
             " from " << lep.address().to_string() << ':' << lep.port() << ": " << ec_.message() << ':' << ec_.value());
           cb(conn_context, ec_);
         }
