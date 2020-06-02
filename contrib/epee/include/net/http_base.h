@@ -27,10 +27,10 @@
 
 
 #pragma once
-#include <boost/lexical_cast.hpp>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <list>
 
 #include "memwipe.h"
 #include "string_tools.h"

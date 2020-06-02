@@ -33,12 +33,10 @@
 /* rfree: implementation for throttle details */
 
 #include <string>
-#include <vector>
-#include <atomic>
-
-#include <boost/asio.hpp>
-
-#include <memory>
+#include <sstream>
+#include <fstream>
+#include <iomanip>
+#include <algorithm>
 
 #include "syncobj.h"
 
@@ -46,14 +44,7 @@
 #include "misc_log_ex.h" 
 #include "misc_language.h"
 #include "pragma_comp_defs.h"
-#include <sstream>
-#include <iomanip>
-#include <algorithm>
 
-
-
-#include <boost/asio/basic_socket.hpp>
-#include <boost/asio/ip/unicast.hpp>
 #include "net/abstract_tcp_server2.h"
 
 // TODO:

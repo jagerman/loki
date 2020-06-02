@@ -36,7 +36,6 @@
 #ifdef WITH_DEVICE_TREZOR
 #include <cstddef>
 #include <string>
-#include <boost/scope_exit.hpp>
 #include <mutex>
 
 #include "device/device_default.hpp"
