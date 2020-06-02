@@ -1131,7 +1131,7 @@ bool name_system_db::validate_lns_tx(uint8_t hf_version, uint64_t blockchain_hei
     if (check_condition(tx.type != cryptonote::txtype::loki_name_system, reason, tx, ", uses wrong tx type, expected=", cryptonote::txtype::loki_name_system))
       return false;
 
-    if (check_condition(!cryptonote::get_loki_name_system_from_tx_extra(tx.extra, *lns_extra), reason, tx, ", didn't have loki name service in the tx_extra"))
+    if (check_condition(!cryptonote::get_field_from_tx_extra(tx.extra, *lns_extra), reason, tx, ", didn't have loki name service in the tx_extra"))
       return false;
   }
 
@@ -1791,7 +1791,7 @@ static bool get_txid_lns_entry(cryptonote::Blockchain const &blockchain, crypto:
   if (!blockchain.get_transactions({txid}, txs, missed_txs) || txs.empty())
     return false;
 
-  return cryptonote::get_loki_name_system_from_tx_extra(txs[0].extra, extra);
+  return cryptonote::get_field_from_tx_extra(txs[0].extra, extra);
 }
 
 struct lns_update_history

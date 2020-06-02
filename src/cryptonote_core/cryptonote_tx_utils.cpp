@@ -245,7 +245,7 @@ namespace cryptonote
     const std::vector<service_nodes::payout_entry> &service_node_info = miner_tx_context.block_winner.payouts;
 
     keypair txkey = keypair::generate(hw::get_device("default"));
-    add_tx_pub_key_to_extra(tx, txkey.pub);
+    add_tx_extra<tx_extra_pub_key>(tx, txkey.pub);
     if(!extra_nonce.empty())
       if(!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
         return false;
@@ -255,7 +255,7 @@ namespace cryptonote
     keypair gov_key = get_deterministic_keypair_from_height(height); // NOTE: Always need since we use same key for service node
     if (already_generated_coins != 0)
     {
-      add_tx_pub_key_to_extra(tx, gov_key.pub);
+      add_tx_extra<tx_extra_pub_key>(tx, gov_key.pub);
     }
 
     add_service_node_winner_to_tx_extra(tx.extra, service_node_key);
@@ -646,7 +646,7 @@ namespace cryptonote
       txkey_pub = rct::rct2pk(hwdev.scalarmultBase(rct::sk2rct(tx_key)));
     }
     remove_field_from_tx_extra<tx_extra_pub_key>(tx.extra);
-    add_tx_pub_key_to_extra(tx, txkey_pub);
+    add_tx_extra<tx_extra_pub_key>(tx, txkey_pub);
 
     std::vector<crypto::public_key> additional_tx_public_keys;
 

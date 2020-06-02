@@ -166,7 +166,7 @@ namespace cryptonote
     else if (tx.type == txtype::key_image_unlock)
     {
       tx_extra_tx_key_image_unlock unlock;
-      if (!cryptonote::get_tx_key_image_unlock_from_tx_extra(tx.extra, unlock))
+      if (!cryptonote::get_field_from_tx_extra(tx.extra, unlock))
       {
         MERROR("Could not get key image unlock from tx: " << get_transaction_hash(tx) << ", tx to add is possibly invalid, rejecting");
         return true;
@@ -180,7 +180,7 @@ namespace cryptonote
           continue;
 
         tx_extra_tx_key_image_unlock pool_unlock;
-        if (!cryptonote::get_tx_key_image_unlock_from_tx_extra(pool_tx.extra, pool_unlock))
+        if (!cryptonote::get_field_from_tx_extra(pool_tx.extra, pool_unlock))
         {
           LOG_PRINT_L1("Could not get key image unlock from tx: " << get_transaction_hash(tx) << ", possibly corrupt tx in the pool");
           return true;
@@ -197,7 +197,7 @@ namespace cryptonote
     else if (tx.type == txtype::loki_name_system)
     {
       tx_extra_loki_name_system data;
-      if (!cryptonote::get_loki_name_system_from_tx_extra(tx.extra, data))
+      if (!cryptonote::get_field_from_tx_extra(tx.extra, data))
       {
         MERROR("Could not get acquire name service from tx: " << get_transaction_hash(tx) << ", tx to add is possibly invalid, rejecting");
         return true;
@@ -211,7 +211,7 @@ namespace cryptonote
           continue;
 
         tx_extra_loki_name_system pool_data;
-        if (!cryptonote::get_loki_name_system_from_tx_extra(pool_tx.extra, pool_data))
+        if (!cryptonote::get_field_from_tx_extra(pool_tx.extra, pool_data))
         {
           LOG_PRINT_L1("Could not get acquire name service from tx: " << get_transaction_hash(tx) << ", possibly corrupt tx in the pool");
           return true;

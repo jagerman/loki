@@ -296,7 +296,7 @@ namespace service_nodes
   bool reg_tx_extract_fields(const cryptonote::transaction& tx, contributor_args_t &contributor_args, uint64_t& expiration_timestamp, crypto::public_key& service_node_key, crypto::signature& signature)
   {
     cryptonote::tx_extra_service_node_register registration;
-    if (!get_service_node_register_from_tx_extra(tx.extra, registration))
+    if (!get_field_from_tx_extra(tx.extra, registration))
       return false;
     if (!cryptonote::get_service_node_pubkey_from_tx_extra(tx.extra, service_node_key))
       return false;
@@ -487,7 +487,7 @@ namespace service_nodes
       // would be generated, when they want to spend it in the future.
 
       cryptonote::tx_extra_tx_key_image_proofs key_image_proofs;
-      if (!get_tx_key_image_proofs_from_tx_extra(tx.extra, key_image_proofs))
+      if (!get_field_from_tx_extra(tx.extra, key_image_proofs))
       {
         LOG_PRINT_L1("TX: Didn't have key image proofs in the tx_extra, rejected on height: " << block_height << " for tx: " << cryptonote::get_transaction_hash(tx));
         stake_decoded = false;
@@ -815,7 +815,7 @@ namespace service_nodes
     }
 
     cryptonote::tx_extra_tx_key_image_unlock unlock;
-    if (!cryptonote::get_tx_key_image_unlock_from_tx_extra(tx.extra, unlock))
+    if (!cryptonote::get_field_from_tx_extra(tx.extra, unlock))
     {
       LOG_PRINT_L1("Unlock TX: Didn't have key image unlock in the tx_extra, rejected on height: "
                    << block_height << " for tx: " << cryptonote::get_transaction_hash(tx));

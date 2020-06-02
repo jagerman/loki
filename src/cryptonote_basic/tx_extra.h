@@ -39,30 +39,37 @@
 #include "cryptonote_basic.h"
 
 
-#define TX_EXTRA_PADDING_MAX_COUNT              255
-#define TX_EXTRA_NONCE_MAX_COUNT                255
+namespace cryptonote {
 
-#define TX_EXTRA_TAG_PADDING                    0x00
-#define TX_EXTRA_TAG_PUBKEY                     0x01
-#define TX_EXTRA_NONCE                          0x02
-#define TX_EXTRA_MERGE_MINING_TAG               0x03
-#define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS         0x04
-#define TX_EXTRA_TAG_SERVICE_NODE_REGISTER      0x70
-#define TX_EXTRA_TAG_SERVICE_NODE_DEREG_OLD     0x71
-#define TX_EXTRA_TAG_SERVICE_NODE_WINNER        0x72
-#define TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR   0x73
-#define TX_EXTRA_TAG_SERVICE_NODE_PUBKEY        0x74
-#define TX_EXTRA_TAG_TX_SECRET_KEY              0x75
-#define TX_EXTRA_TAG_TX_KEY_IMAGE_PROOFS        0x76
-#define TX_EXTRA_TAG_TX_KEY_IMAGE_UNLOCK        0x77
-#define TX_EXTRA_TAG_SERVICE_NODE_STATE_CHANGE  0x78
-#define TX_EXTRA_TAG_BURN                       0x79
-#define TX_EXTRA_TAG_LOKI_NAME_SYSTEM           0x7A
+constexpr size_t
+  TX_EXTRA_PADDING_MAX_COUNT = 255,
+  TX_EXTRA_NONCE_MAX_COUNT   = 255;
 
-#define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG       0xDE
+constexpr uint8_t
+  TX_EXTRA_TAG_PADDING                    = 0x00,
+  TX_EXTRA_TAG_PUBKEY                     = 0x01,
+  TX_EXTRA_NONCE                          = 0x02,
+  TX_EXTRA_MERGE_MINING_TAG               = 0x03,
+  TX_EXTRA_TAG_ADDITIONAL_PUBKEYS         = 0x04,
+  TX_EXTRA_TAG_SERVICE_NODE_REGISTER      = 0x70,
+  TX_EXTRA_TAG_SERVICE_NODE_DEREG_OLD     = 0x71,
+  TX_EXTRA_TAG_SERVICE_NODE_WINNER        = 0x72,
+  TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR   = 0x73,
+  TX_EXTRA_TAG_SERVICE_NODE_PUBKEY        = 0x74,
+  TX_EXTRA_TAG_TX_SECRET_KEY              = 0x75,
+  TX_EXTRA_TAG_TX_KEY_IMAGE_PROOFS        = 0x76,
+  TX_EXTRA_TAG_TX_KEY_IMAGE_UNLOCK        = 0x77,
+  TX_EXTRA_TAG_SERVICE_NODE_STATE_CHANGE  = 0x78,
+  TX_EXTRA_TAG_BURN                       = 0x79,
+  TX_EXTRA_TAG_LOKI_NAME_SYSTEM           = 0x7A,
 
-#define TX_EXTRA_NONCE_PAYMENT_ID               0x00
-#define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID     0x01
+  TX_EXTRA_MYSTERIOUS_MINERGATE_TAG       = 0xDE;
+
+constexpr char
+  TX_EXTRA_NONCE_PAYMENT_ID               = 0x00,
+  TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID     = 0x01;
+
+}
 
 namespace lns
 {
@@ -562,20 +569,20 @@ namespace cryptonote
 BLOB_SERIALIZER(cryptonote::tx_extra_service_node_deregister_old::vote);
 BLOB_SERIALIZER(cryptonote::tx_extra_tx_key_image_proofs::proof);
 
-BINARY_VARIANT_TAG(cryptonote::tx_extra_padding,                     TX_EXTRA_TAG_PADDING);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_pub_key,                     TX_EXTRA_TAG_PUBKEY);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_nonce,                       TX_EXTRA_NONCE);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_merge_mining_tag,            TX_EXTRA_MERGE_MINING_TAG);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_additional_pub_keys,         TX_EXTRA_TAG_ADDITIONAL_PUBKEYS);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_mysterious_minergate,        TX_EXTRA_MYSTERIOUS_MINERGATE_TAG);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_register,       TX_EXTRA_TAG_SERVICE_NODE_REGISTER);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_state_change,   TX_EXTRA_TAG_SERVICE_NODE_STATE_CHANGE);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_deregister_old, TX_EXTRA_TAG_SERVICE_NODE_DEREG_OLD);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_contributor,    TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_winner,         TX_EXTRA_TAG_SERVICE_NODE_WINNER);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_pubkey,         TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_tx_secret_key,               TX_EXTRA_TAG_TX_SECRET_KEY);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_tx_key_image_proofs,         TX_EXTRA_TAG_TX_KEY_IMAGE_PROOFS);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_tx_key_image_unlock,         TX_EXTRA_TAG_TX_KEY_IMAGE_UNLOCK);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_burn,                        TX_EXTRA_TAG_BURN);
-BINARY_VARIANT_TAG(cryptonote::tx_extra_loki_name_system,            TX_EXTRA_TAG_LOKI_NAME_SYSTEM);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_padding,                     cryptonote::TX_EXTRA_TAG_PADDING);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_pub_key,                     cryptonote::TX_EXTRA_TAG_PUBKEY);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_nonce,                       cryptonote::TX_EXTRA_NONCE);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_merge_mining_tag,            cryptonote::TX_EXTRA_MERGE_MINING_TAG);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_additional_pub_keys,         cryptonote::TX_EXTRA_TAG_ADDITIONAL_PUBKEYS);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_mysterious_minergate,        cryptonote::TX_EXTRA_MYSTERIOUS_MINERGATE_TAG);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_register,       cryptonote::TX_EXTRA_TAG_SERVICE_NODE_REGISTER);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_state_change,   cryptonote::TX_EXTRA_TAG_SERVICE_NODE_STATE_CHANGE);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_deregister_old, cryptonote::TX_EXTRA_TAG_SERVICE_NODE_DEREG_OLD);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_contributor,    cryptonote::TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_winner,         cryptonote::TX_EXTRA_TAG_SERVICE_NODE_WINNER);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_service_node_pubkey,         cryptonote::TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_tx_secret_key,               cryptonote::TX_EXTRA_TAG_TX_SECRET_KEY);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_tx_key_image_proofs,         cryptonote::TX_EXTRA_TAG_TX_KEY_IMAGE_PROOFS);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_tx_key_image_unlock,         cryptonote::TX_EXTRA_TAG_TX_KEY_IMAGE_UNLOCK);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_burn,                        cryptonote::TX_EXTRA_TAG_BURN);
+BINARY_VARIANT_TAG(cryptonote::tx_extra_loki_name_system,            cryptonote::TX_EXTRA_TAG_LOKI_NAME_SYSTEM);

@@ -88,18 +88,50 @@ namespace cryptonote
     return false;
   }
 
+  // Adds data with a given tag to the given tx_extra vector.  Generally not called directly,
+  // instead use one of the `add_tx_extra` overloads.
+  void add_tagged_data_to_tx_extra(std::vector<uint8_t>& tx_extra, uint8_t tag, std::string_view data);
+
+  // Adds some data to tx_extra with a tag looked up according to the given template parameter S.  T
+  // does not have to be the same as S, but it must have the same size and must be a basic layout,
+  // no-padding type.  Intended for use with simple tx extra decorator types, for example:
+  //
+  //     add_tx_extra<tx_extra_pub_key>(tx.extra, pubkey);
+  //
+  template <typename S, typename T>
+  void add_tx_extra(std::vector<uint8_t>& tx_extra, const T& val)
+  {
+    static_assert(sizeof(S) == sizeof(T));
+    (void) tools::template_index<S, tx_extra_field>;
+
+    add_tagged_data_to_tx_extra(tx_extra, serialization::variant_serialization_tag<S, uint8_t>, tools::view_guts(val));
+  }
+
+  // Wrapper around the above that takes the transaction rather than the extra vector, and forwards
+  // to one of the above.
+  template <typename S, typename T>
+  void add_tx_extra(transaction_prefix& tx, const T& val)
+  {
+    add_tx_extra<S>(tx.extra, val);
+  }
+
   bool parse_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<tx_extra_field>& tx_extra_fields);
   bool sort_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<uint8_t>& sorted_tx_extra);
+
+  template <typename T>
+  bool get_field_from_tx_extra(const std::vector<uint8_t>& tx_extra, T& field, size_t skip = 0)
+  {
+    std::vector<tx_extra_field> tx_extra_fields;
+    return
+      parse_tx_extra(tx_extra, tx_extra_fields) &&
+      find_tx_extra_field_by_type(tx_extra_fields, field, skip);
+  }
+
   crypto::public_key get_tx_pub_key_from_extra(const std::vector<uint8_t>& tx_extra, size_t pk_index = 0);
   crypto::public_key get_tx_pub_key_from_extra(const transaction_prefix& tx, size_t pk_index = 0);
-  crypto::public_key get_tx_pub_key_from_extra(const transaction& tx, size_t pk_index = 0);
-  void add_tx_pub_key_to_extra(transaction& tx, const crypto::public_key& tx_pub_key);
-  void add_tx_pub_key_to_extra(transaction_prefix& tx, const crypto::public_key& tx_pub_key);
-  void add_tx_pub_key_to_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& tx_pub_key);
 
   bool add_service_node_state_change_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_service_node_state_change& state_change, uint8_t hf_version);
   bool get_service_node_state_change_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_state_change& state_change, uint8_t hf_version);
-  bool get_service_node_register_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_register& registration);
 
   bool get_service_node_pubkey_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::public_key& pubkey);
   bool get_service_node_contributor_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::account_public_address& address);
@@ -107,9 +139,7 @@ namespace cryptonote
 
   bool get_tx_secret_key_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::secret_key& key);
   void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::secret_key& key);
-  bool get_tx_key_image_proofs_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_tx_key_image_proofs &proofs);
   bool add_tx_key_image_proofs_to_tx_extra  (std::vector<uint8_t>& tx_extra, const tx_extra_tx_key_image_proofs& proofs);
-  bool get_tx_key_image_unlock_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_tx_key_image_unlock &unlock);
   bool add_tx_key_image_unlock_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_tx_key_image_unlock& unlock);
 
   void add_service_node_winner_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& winner);
@@ -117,8 +147,7 @@ namespace cryptonote
   void add_service_node_contributor_to_tx_extra(std::vector<uint8_t>& tx_extra, const cryptonote::account_public_address& address);
   crypto::public_key get_service_node_winner_from_tx_extra(const std::vector<uint8_t>& tx_extra);
 
-  bool get_loki_name_system_from_tx_extra(std::vector<uint8_t> const &tx_extra, tx_extra_loki_name_system &entry);
-  void add_loki_name_system_to_tx_extra  (std::vector<uint8_t>       &tx_extra, tx_extra_loki_name_system const &entry);
+  void add_loki_name_system_to_tx_extra(std::vector<uint8_t> &tx_extra, tx_extra_loki_name_system const &entry);
 
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const std::vector<uint8_t>& tx_extra);
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const transaction_prefix& tx);

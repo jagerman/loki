@@ -50,7 +50,7 @@ namespace
       m_tx.unlock_time = unlock_time;
 
       m_tx_key = keypair::generate(hw::get_device("default"));
-      add_tx_pub_key_to_extra(m_tx, m_tx_key.pub);
+      add_tx_extra<tx_extra_pub_key>(m_tx, m_tx_key.pub);
     }
 
     void step2_fill_inputs(const account_keys& sender_account_keys, const std::vector<tx_source_entry>& sources)
@@ -298,7 +298,7 @@ bool gen_tx_no_inputs_no_outputs::generate(std::vector<test_event_entry>& events
 
   transaction tx = {};
   tx.version     = cryptonote::txversion::v2_ringct;
-  add_tx_pub_key_to_extra(tx, keypair::generate(hw::get_device("default")).pub);
+  add_tx_extra<tx_extra_pub_key>(tx, keypair::generate(hw::get_device("default")).pub);
 
   DO_CALLBACK(events, "mark_invalid_tx");
   events.push_back(tx);

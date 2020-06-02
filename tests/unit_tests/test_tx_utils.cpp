@@ -74,17 +74,17 @@ TEST(parse_tx_extra, handles_padding_only_size_2)
 
 TEST(parse_tx_extra, handles_padding_only_max_size)
 {
-  std::vector<uint8_t> extra(TX_EXTRA_NONCE_MAX_COUNT, 0);
+  std::vector<uint8_t> extra(cryptonote::TX_EXTRA_NONCE_MAX_COUNT, 0);
   std::vector<cryptonote::tx_extra_field> tx_extra_fields;
   ASSERT_TRUE(cryptonote::parse_tx_extra(extra, tx_extra_fields));
   ASSERT_EQ(1, tx_extra_fields.size());
   ASSERT_TRUE(std::holds_alternative<cryptonote::tx_extra_padding>(tx_extra_fields[0]));
-  ASSERT_EQ(TX_EXTRA_NONCE_MAX_COUNT, std::get<cryptonote::tx_extra_padding>(tx_extra_fields[0]).size);
+  ASSERT_EQ(cryptonote::TX_EXTRA_NONCE_MAX_COUNT, std::get<cryptonote::tx_extra_padding>(tx_extra_fields[0]).size);
 }
 
 TEST(parse_tx_extra, handles_padding_only_exceed_max_size)
 {
-  std::vector<uint8_t> extra(TX_EXTRA_NONCE_MAX_COUNT + 1, 0);
+  std::vector<uint8_t> extra(cryptonote::TX_EXTRA_NONCE_MAX_COUNT + 1, 0);
   std::vector<cryptonote::tx_extra_field> tx_extra_fields;
   ASSERT_FALSE(cryptonote::parse_tx_extra(extra, tx_extra_fields));
 }
@@ -150,14 +150,14 @@ TEST(parse_and_validate_tx_extra, fails_on_big_extra_nonce)
   cryptonote::transaction tx{};
   cryptonote::account_base acc;
   acc.generate();
-  cryptonote::blobdata b(TX_EXTRA_NONCE_MAX_COUNT + 1, 0);
+  cryptonote::blobdata b(cryptonote::TX_EXTRA_NONCE_MAX_COUNT + 1, 0);
   ASSERT_FALSE(cryptonote::construct_miner_tx(0, 0, 10000000000000, 1000, TEST_FEE, acc.get_keys().m_account_address, tx, b));
 }
 TEST(parse_and_validate_tx_extra, fails_on_wrong_size_in_extra_nonce)
 {
   cryptonote::transaction tx{};
   tx.extra.resize(20, 0);
-  tx.extra[0] = TX_EXTRA_NONCE;
+  tx.extra[0] = cryptonote::TX_EXTRA_NONCE;
   tx.extra[1] = 255;
   std::vector<cryptonote::tx_extra_field> tx_extra_fields;
   ASSERT_FALSE(cryptonote::parse_tx_extra(tx.extra, tx_extra_fields));

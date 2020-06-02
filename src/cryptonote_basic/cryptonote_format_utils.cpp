@@ -575,14 +575,10 @@ namespace cryptonote
   //---------------------------------------------------------------
   crypto::public_key get_tx_pub_key_from_extra(const std::vector<uint8_t>& tx_extra, size_t pk_index)
   {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-
     tx_extra_pub_key pub_key_field;
-    if(!find_tx_extra_field_by_type(tx_extra_fields, pub_key_field, pk_index))
-      return null_pkey;
-
-    return pub_key_field.pub_key;
+    if (get_field_from_tx_extra(tx_extra, pub_key_field, pk_index))
+      return pub_key_field.pub_key;
+    return null_pkey;
   }
   //---------------------------------------------------------------
   crypto::public_key get_tx_pub_key_from_extra(const transaction_prefix& tx_prefix, size_t pk_index)
@@ -590,44 +586,19 @@ namespace cryptonote
     return get_tx_pub_key_from_extra(tx_prefix.extra, pk_index);
   }
   //---------------------------------------------------------------
-  crypto::public_key get_tx_pub_key_from_extra(const transaction& tx, size_t pk_index)
+  void add_tagged_data_to_tx_extra(std::vector<uint8_t>& tx_extra, uint8_t tag, std::string_view data)
   {
-    return get_tx_pub_key_from_extra(tx.extra, pk_index);
-  }
-  //---------------------------------------------------------------
-  static void add_data_to_tx_extra(std::vector<uint8_t>& tx_extra, char const *data, size_t data_size, uint8_t tag)
-  {
-    size_t pos = tx_extra.size();
-    tx_extra.resize(tx_extra.size() + sizeof(tag) + data_size);
-    tx_extra[pos++] = tag;
-    std::memcpy(&tx_extra[pos], data, data_size);
-  }
-  //---------------------------------------------------------------
-  void add_tx_pub_key_to_extra(transaction& tx, const crypto::public_key& tx_pub_key)
-  {
-    add_tx_pub_key_to_extra(tx.extra, tx_pub_key);
-  }
-  //---------------------------------------------------------------
-  void add_tx_pub_key_to_extra(transaction_prefix& tx, const crypto::public_key& tx_pub_key)
-  {
-    add_tx_pub_key_to_extra(tx.extra, tx_pub_key);
-  }
-  //---------------------------------------------------------------
-  void add_tx_pub_key_to_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& tx_pub_key)
-  {
-    add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&tx_pub_key), sizeof(tx_pub_key), TX_EXTRA_TAG_PUBKEY);
+    tx_extra.reserve(tx_extra.size() + 1 + data.size());
+    tx_extra.push_back(tag);
+    tx_extra.insert(tx_extra.end(), data.begin(), data.end());
   }
   //---------------------------------------------------------------
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const std::vector<uint8_t>& tx_extra)
   {
-    // parse
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-    // find corresponding field
     tx_extra_additional_pub_keys additional_pub_keys;
-    if(!find_tx_extra_field_by_type(tx_extra_fields, additional_pub_keys))
-      return {};
-    return additional_pub_keys.data;
+    if (get_field_from_tx_extra(tx_extra, additional_pub_keys))
+      return additional_pub_keys.data;
+    return {};
   }
   //---------------------------------------------------------------
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const transaction_prefix& tx)
@@ -689,33 +660,27 @@ namespace cryptonote
   //---------------------------------------------------------------
   void add_service_node_pubkey_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& pubkey)
   {
-    add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&pubkey), sizeof(pubkey), TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
+    add_tx_extra<tx_extra_service_node_pubkey>(tx_extra, pubkey);
   }
   //---------------------------------------------------------------
   bool get_service_node_pubkey_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::public_key& pubkey)
   {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-    tx_extra_service_node_pubkey service_node_pubkey;
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, service_node_pubkey);
-    if (!result)
+    tx_extra_service_node_pubkey pk;
+    if (!get_field_from_tx_extra(tx_extra, pk))
       return false;
-    pubkey = service_node_pubkey.m_service_node_key;
+    pubkey = pk.m_service_node_key;
     return true;
   }
   //---------------------------------------------------------------
   void add_service_node_contributor_to_tx_extra(std::vector<uint8_t>& tx_extra, const cryptonote::account_public_address& address)
   {
-    add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&address), sizeof(address), TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR);
+    add_tx_extra<tx_extra_service_node_contributor>(tx_extra, address);
   }
   //---------------------------------------------------------------
   bool get_tx_secret_key_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::secret_key& key)
   {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
     tx_extra_tx_secret_key seckey;
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, seckey);
-    if (!result)
+    if (!get_field_from_tx_extra(tx_extra, seckey))
       return false;
     key = seckey.key;
     return true;
@@ -723,16 +688,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::secret_key& key)
   {
-    add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&key), sizeof(key), TX_EXTRA_TAG_TX_SECRET_KEY);
-  }
-  //---------------------------------------------------------------
-  bool get_tx_key_image_proofs_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_tx_key_image_proofs &proofs)
-  {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, proofs);
-    return result;
+    add_tx_extra<tx_extra_tx_secret_key>(tx_extra, key);
   }
   //---------------------------------------------------------------
   bool add_tx_key_image_proofs_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_tx_key_image_proofs& proofs)
@@ -740,15 +696,6 @@ namespace cryptonote
     tx_extra_field field = proofs;
     bool result = add_tx_extra_field_to_tx_extra(tx_extra, field);
     CHECK_AND_NO_ASSERT_MES_L1(result, false, "failed to serialize tx extra tx key image proof");
-    return result;
-  }
-  //---------------------------------------------------------------
-  bool get_tx_key_image_unlock_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_tx_key_image_unlock &unlock)
-  {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, unlock);
     return result;
   }
   //---------------------------------------------------------------
@@ -762,23 +709,12 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool get_service_node_contributor_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::account_public_address& address)
   {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
     tx_extra_service_node_contributor contributor;
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, contributor);
-    if (!result)
+    if (!get_field_from_tx_extra(tx_extra, contributor))
       return false;
     address.m_spend_public_key = contributor.m_spend_public_key;
     address.m_view_public_key = contributor.m_view_public_key;
     return true;
-  }
-  //---------------------------------------------------------------
-  bool get_service_node_register_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_register &registration)
-  {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, registration);
-    return result && registration.m_public_spend_keys.size() == registration.m_public_view_keys.size();
   }
   //---------------------------------------------------------------
   bool add_service_node_register_to_tx_extra(
@@ -819,50 +755,33 @@ namespace cryptonote
   //---------------------------------------------------------------
   void add_service_node_winner_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& winner)
   {
-    add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&winner), sizeof(winner), TX_EXTRA_TAG_SERVICE_NODE_WINNER);
+    add_tx_extra<tx_extra_service_node_winner>(tx_extra, winner);
   }
   //---------------------------------------------------------------
   bool get_service_node_state_change_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_state_change &state_change, const uint8_t hf_version)
   {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-
     if (hf_version >= cryptonote::network_version_12_checkpointing) {
       // Look for a new-style state change field:
-      if (find_tx_extra_field_by_type(tx_extra_fields, state_change))
-        return true;
-    }
-    else { // v11 or earlier; parse the old style and copy into a new style
-      tx_extra_service_node_deregister_old dereg;
-      if (find_tx_extra_field_by_type(tx_extra_fields, dereg))
-      {
-        state_change = tx_extra_service_node_state_change{
-          service_nodes::new_state::deregister, dereg.block_height, dereg.service_node_index, dereg.votes.begin(), dereg.votes.end()};
-        return true;
-      }
+      return get_field_from_tx_extra(tx_extra, state_change);
     }
 
-    return false;
+    // v11 or earlier; parse the old style and copy into a new style
+    tx_extra_service_node_deregister_old dereg;
+    if (!get_field_from_tx_extra(tx_extra, dereg))
+      return false;
+
+    state_change = tx_extra_service_node_state_change{
+      service_nodes::new_state::deregister, dereg.block_height, dereg.service_node_index, dereg.votes.begin(), dereg.votes.end()};
+    return true;
   }
   //---------------------------------------------------------------
   crypto::public_key get_service_node_winner_from_tx_extra(const std::vector<uint8_t>& tx_extra)
   {
-    // parse
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
     // find corresponding field
     tx_extra_service_node_winner winner;
-    if (!find_tx_extra_field_by_type(tx_extra_fields, winner))
-      return crypto::null_pkey;
-    return winner.m_service_node_key;
-  }
-  //---------------------------------------------------------------
-  bool get_loki_name_system_from_tx_extra(const std::vector<uint8_t> &tx_extra, tx_extra_loki_name_system &entry)
-  {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-    bool result = find_tx_extra_field_by_type(tx_extra_fields, entry);
-    return result;
+    if (get_field_from_tx_extra(tx_extra, winner))
+      return winner.m_service_node_key;
+    return crypto::null_pkey;
   }
   //---------------------------------------------------------------
   void add_loki_name_system_to_tx_extra(std::vector<uint8_t> &tx_extra, tx_extra_loki_name_system const &entry)
@@ -938,11 +857,8 @@ namespace cryptonote
   //---------------------------------------------------------------
   uint64_t get_burned_amount_from_tx_extra(const std::vector<uint8_t>& tx_extra)
   {
-    std::vector<tx_extra_field> tx_extra_fields;
-    parse_tx_extra(tx_extra, tx_extra_fields);
-
     tx_extra_burn burn;
-    if (find_tx_extra_field_by_type(tx_extra_fields, burn))
+    if (get_field_from_tx_extra(tx_extra, burn))
       return burn.amount;
     return 0;
   }
