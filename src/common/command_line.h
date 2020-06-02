@@ -90,7 +90,7 @@ namespace command_line
   template<typename T>
   struct arg_descriptor<T, true>
   {
-    static_assert(!std::is_same<T, bool>::value, "Boolean switch can't be required");
+    static_assert(!std::is_same_v<T, bool>, "Boolean switch can't be required");
 
     typedef T value_type;
 
@@ -269,7 +269,7 @@ namespace command_line
   }
 
   template<typename T, bool required, bool dependent, int NUM_DEPS>
-  typename std::enable_if<!std::is_same<T, bool>::value, bool>::type has_arg(const boost::program_options::variables_map& vm, const arg_descriptor<T, required, dependent, NUM_DEPS>& arg)
+  std::enable_if_t<!std::is_same_v<T, bool>, bool> has_arg(const boost::program_options::variables_map& vm, const arg_descriptor<T, required, dependent, NUM_DEPS>& arg)
   {
     auto value = vm[arg.name];
     return !value.empty();

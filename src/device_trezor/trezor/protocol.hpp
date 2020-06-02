@@ -87,8 +87,8 @@ namespace protocol{
 namespace crypto {
 namespace chacha {
   // Constants as defined in RFC 7539.
-  const unsigned IV_SIZE = 12;
-  const unsigned TAG_SIZE = 16;  // crypto_aead_chacha20poly1305_IETF_ABYTES;
+  constexpr unsigned IV_SIZE = 12;
+  constexpr unsigned TAG_SIZE = 16;  // crypto_aead_chacha20poly1305_IETF_ABYTES;
 
   /**
    * Chacha20Poly1305 decryption with tag verification. RFC 7539.
