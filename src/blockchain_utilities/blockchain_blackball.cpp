@@ -302,23 +302,19 @@ static void close()
 static std::string compress_ring(const std::vector<uint64_t> &ring, std::string s = "")
 {
   const size_t sz = s.size();
-  s.resize(s.size() + 12 * ring.size());
-  char *ptr = (char*)s.data() + sz;
+  s.reserve(s.size() + tools::VARINT_MAX_LENGTH<uint64_t> * ring.size());
+  auto ins = std::back_inserter(s);
   for (uint64_t out: ring)
-    tools::write_varint(ptr, out);
-  if (ptr > s.data() + sz + 12 * ring.size())
-    throw std::runtime_error("varint output overflow");
-  s.resize(ptr - s.data());
+    tools::write_varint(ins, out);
   return s;
 }
 
 static std::string compress_ring(uint64_t amount, const std::vector<uint64_t> &ring)
 {
-  char s[12], *ptr = s;
-  tools::write_varint(ptr, amount);
-  if (ptr > s + sizeof(s))
-    throw std::runtime_error("varint output overflow");
-  return compress_ring(ring, std::string(s, ptr-s));
+  std::string s;
+  s.reserve(tools::VARINT_MAX_LENGTH<uint64_t> * (1 + ring.size()));
+  tools::write_varint(std::back_inserter(s), amount);
+  return compress_ring(ring, std::move(s));
 }
 
 static std::vector<uint64_t> decompress_ring(const std::string &s)
@@ -393,13 +389,13 @@ static bool for_all_transactions(const std::string &filename, uint64_t &start_id
       continue;
 
     cryptonote::transaction_prefix tx;
-    blobdata bd;
-    bd.assign(reinterpret_cast<char*>(v.mv_data), v.mv_size);
-    std::stringstream ss;
-    ss << bd;
-    binary_archive<false> ba(ss);
-    bool r = do_serialize(ba, tx);
-    CHECK_AND_ASSERT_MES(r, false, "Failed to parse transaction from blob");
+    try {
+      std::string_view bd{static_cast<const char*>(v.mv_data), v.mv_size};
+      serialization::parse_binary(bd, tx);
+    } catch (const std::exception& e) {
+      LOG_ERROR("Failed to parse transaction from blob: " << e.what());
+      return false;
+    }
 
     start_idx = *(uint64_t*)k.mv_data;
     if (!f(tx)) {

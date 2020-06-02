@@ -239,7 +239,7 @@ namespace service_nodes
 
     BEGIN_SERIALIZE_OBJECT()
       FIELD(pubkey)
-      if (!W)
+      if (Archive::is_deserializer)
         info = std::make_shared<service_node_info>();
       FIELD_N("info", const_cast<service_node_info &>(*info))
     END_SERIALIZE()

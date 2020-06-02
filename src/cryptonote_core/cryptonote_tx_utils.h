@@ -133,7 +133,7 @@ namespace cryptonote
       FIELD(multisig_kLRki)
 
       if (real_output >= outputs.size())
-        return false;
+        throw std::invalid_argument{"invalid real_output size"};
     END_SERIALIZE()
   };
 

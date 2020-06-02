@@ -197,12 +197,11 @@ namespace crypto {
   void derivation_to_scalar(const key_derivation &derivation, size_t output_index, ec_scalar &res) {
     struct {
       key_derivation derivation;
-      char output_index[(sizeof(size_t) * 8 + 6) / 7];
+      char output_index[tools::VARINT_MAX_LENGTH<size_t>];
     } buf;
     char *end = buf.output_index;
     buf.derivation = derivation;
     tools::write_varint(end, output_index);
-    assert(end <= buf.output_index + sizeof buf.output_index);
     hash_to_scalar(&buf, end - reinterpret_cast<char *>(&buf), res);
   }
 

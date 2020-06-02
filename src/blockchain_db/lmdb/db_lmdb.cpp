@@ -976,12 +976,13 @@ uint64_t BlockchainLMDB::add_transaction_data(const crypto::hash& blk_hash, cons
   unsigned int unprunable_size = tx.unprunable_size;
   if (unprunable_size == 0)
   {
-    std::stringstream ss;
-    binary_archive<true> ba(ss);
-    bool r = const_cast<cryptonote::transaction&>(tx).serialize_base(ba);
-    if (!r)
-      throw0(DB_ERROR("Failed to serialize pruned tx"));
-    unprunable_size = ss.str().size();
+    serialization::binary_string_archiver ba;
+    try {
+      const_cast<cryptonote::transaction&>(tx).serialize_base(ba);
+    } catch (const std::exception& e) {
+      throw0(DB_ERROR("Failed to serialize pruned tx: "s + e.what()));
+    }
+    unprunable_size = ba.str().size();
   }
 
   if (unprunable_size > blob.size())
@@ -5504,12 +5505,13 @@ void BlockchainLMDB::migrate_1_2()
       transaction tx;
       if (!parse_and_validate_tx_from_blob(bd, tx))
         throw0(DB_ERROR("Failed to parse tx from blob retrieved from the db"));
-      std::stringstream ss;
-      binary_archive<true> ba(ss);
-      bool r = tx.serialize_base(ba);
-      if (!r)
-        throw0(DB_ERROR("Failed to serialize pruned tx"));
-      std::string pruned = ss.str();
+      serialization::binary_string_archiver ba;
+      try {
+        tx.serialize_base(ba);
+      } catch (const std::exception& e) {
+        throw0(DB_ERROR("Failed to serialize pruned tx: "s + e.what()));
+      }
+      std::string pruned = ba.str();
 
       if (pruned.size() > bd.size())
         throw0(DB_ERROR("Pruned tx is larger than raw tx"));

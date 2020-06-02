@@ -220,12 +220,12 @@ private:
 };
 
 
-VARIANT_TAG(binary_archive, callback_entry, 0xcb);
-VARIANT_TAG(binary_archive, cryptonote::account_base, 0xcc);
-VARIANT_TAG(binary_archive, serialized_block, 0xcd);
-VARIANT_TAG(binary_archive, serialized_transaction, 0xce);
-VARIANT_TAG(binary_archive, event_visitor_settings, 0xcf);
-VARIANT_TAG(binary_archive, event_replay_settings, 0xda);
+BINARY_VARIANT_TAG(callback_entry, 0xcb);
+BINARY_VARIANT_TAG(cryptonote::account_base, 0xcc);
+BINARY_VARIANT_TAG(serialized_block, 0xcd);
+BINARY_VARIANT_TAG(serialized_transaction, 0xce);
+BINARY_VARIANT_TAG(event_visitor_settings, 0xcf);
+BINARY_VARIANT_TAG(event_replay_settings, 0xda);
 
 typedef boost::variant<cryptonote::block,
                        cryptonote::transaction,
@@ -719,12 +719,10 @@ public:
       bvc.m_verifivation_failed = true;
 
     cryptonote::block blk;
-    std::stringstream ss;
-    ss << sr_block.data;
-    binary_archive<false> ba(ss);
-    ::serialization::serialize(ba, blk);
-    if (!ss.good())
-    {
+    serialization::binary_string_unarchiver ba{sr_block.data};
+    try {
+      serialization::serialize(ba, blk);
+    } catch (...) {
       blk = cryptonote::block();
     }
     bool r = m_validator.check_block_verification_context(bvc, m_ev_index, blk);
@@ -744,12 +742,10 @@ public:
     bool tx_added = pool_size + 1 == m_c.get_pool().get_transactions_count();
 
     cryptonote::transaction tx;
-    std::stringstream ss;
-    ss << sr_tx.data;
-    binary_archive<false> ba(ss);
-    ::serialization::serialize(ba, tx);
-    if (!ss.good())
-    {
+    serialization::binary_string_unarchiver ba{sr_tx.data};
+    try {
+      serialization::serialize(ba, tx);
+    } catch (...) {
       tx = cryptonote::transaction();
     }
 

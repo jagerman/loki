@@ -65,28 +65,22 @@ namespace protocol{
   };
 
   template<typename T>
-  bool cn_deserialize(const void * buff, size_t len, T & dst){
-    std::stringstream ss;
-    ss.write(static_cast<const char *>(buff), len);  //ss << tx_blob;
-    binary_archive<false> ba(ss);
-    bool r = ::serialization::serialize(ba, dst);
-    return r;
-  }
-
-  template<typename T>
-  bool cn_deserialize(const std::string & str, T & dst){
-    return cn_deserialize(str.data(), str.size(), dst);
+  bool cn_deserialize(const std::string_view buff, T& dst) {
+    try {
+      serialization::parse_binary(buff, dst);
+      return true;
+    } catch (...) {
+      return false;
+    }
   }
 
   template<typename T>
   std::string cn_serialize(T & obj){
-    std::ostringstream oss;
-    binary_archive<true> oar(oss);
-    bool success = ::serialization::serialize(oar, obj);
-    if (!success){
+    try {
+      return serialization::dump_binary(obj);
+    } catch (...) {
       throw exc::EncodingException("Could not CN serialize given object");
     }
-    return oss.str();
   }
 
 // Crypto / encryption

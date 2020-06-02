@@ -269,21 +269,10 @@ TEST(sort_tx_extra, invalid)
   ASSERT_FALSE(cryptonote::sort_tx_extra(extra, sorted));
 }
 
-TEST(sort_tx_extra, invalid_suffix_strict)
+TEST(sort_tx_extra, invalid_suffix)
 {
   std::vector<uint8_t> sorted;
   const uint8_t extra_arr[] = {2, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1};
   std::vector<uint8_t> extra(&extra_arr[0], &extra_arr[0] + sizeof(extra_arr));
   ASSERT_FALSE(cryptonote::sort_tx_extra(extra, sorted));
-}
-
-TEST(sort_tx_extra, invalid_suffix_partial)
-{
-  std::vector<uint8_t> sorted;
-  const uint8_t extra_arr[] = {2, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1};
-  const uint8_t expected_arr[] = {2, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1};
-  std::vector<uint8_t> extra(&extra_arr[0], &extra_arr[0] + sizeof(extra_arr));
-  ASSERT_TRUE(cryptonote::sort_tx_extra(extra, sorted, true));
-  std::vector<uint8_t> expected(&expected_arr[0], &expected_arr[0] + sizeof(expected_arr));
-  ASSERT_EQ(sorted, expected);
 }

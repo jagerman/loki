@@ -412,15 +412,17 @@ namespace rct {
       hashes.push_back(rv.message);
       crypto::hash h;
 
-      std::stringstream ss;
-      binary_archive<true> ba(ss);
       CHECK_AND_ASSERT_THROW_MES(!rv.mixRing.empty(), "Empty mixRing");
       const size_t inputs = is_rct_simple(rv.type) ? rv.mixRing.size() : rv.mixRing[0].size();
       const size_t outputs = rv.ecdhInfo.size();
       key prehash;
-      CHECK_AND_ASSERT_THROW_MES(const_cast<rctSig&>(rv).serialize_rctsig_base(ba, inputs, outputs),
-          "Failed to serialize rctSigBase");
-      cryptonote::get_blob_hash(ss.str(), h);
+      std::string blob;
+      {
+        serialization::binary_string_archiver ba;
+        const_cast<rctSig&>(rv).serialize_rctsig_base(ba, inputs, outputs);
+        blob = ba.str();
+      }
+      cryptonote::get_blob_hash(blob, h);
       hashes.push_back(hash2rct(h));
 
       keyV kv;
@@ -461,7 +463,7 @@ namespace rct {
         }
       }
       hashes.push_back(cn_fast_hash(kv));
-      hwdev.mlsag_prehash(ss.str(), inputs, outputs, hashes, rv.outPk, prehash);
+      hwdev.mlsag_prehash(blob, inputs, outputs, hashes, rv.outPk, prehash);
       return  prehash;
     }
 

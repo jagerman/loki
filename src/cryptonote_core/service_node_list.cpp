@@ -1894,11 +1894,14 @@ namespace service_nodes
     m_transient.cache_data_blob.clear();
     if (m_transient.state_added_to_archive)
     {
-      std::stringstream ss;
-      binary_archive<true> ba(ss);
-      bool r = ::serialization::serialize(ba, m_transient.cache_long_term_data);
-      CHECK_AND_ASSERT_MES(r, false, "Failed to store service node info: failed to serialize long term data");
-      m_transient.cache_data_blob.append(ss.str());
+      serialization::binary_string_archiver ba;
+      try {
+        serialization::serialize(ba, m_transient.cache_long_term_data);
+      } catch (const std::exception& e) {
+        LOG_ERROR("Failed to store service node info: failed to serialize long term data: " << e.what());
+        return false;
+      }
+      m_transient.cache_data_blob.append(ba.str());
       {
         auto &db = m_blockchain.get_db();
         cryptonote::db_wtxn_guard txn_guard{db};
@@ -1908,11 +1911,14 @@ namespace service_nodes
 
     m_transient.cache_data_blob.clear();
     {
-      std::stringstream ss;
-      binary_archive<true> ba(ss);
-      bool r = ::serialization::serialize(ba, m_transient.cache_short_term_data);
-      CHECK_AND_ASSERT_MES(r, false, "Failed to store service node info: failed to serialize short term data data");
-      m_transient.cache_data_blob.append(ss.str());
+      serialization::binary_string_archiver ba;
+      try {
+        serialization::serialize(ba, m_transient.cache_short_term_data);
+      } catch (const std::exception& e) {
+        LOG_ERROR("Failed to store service node info: failed to serialize short term data: " << e.what());
+        return false;
+      }
+      m_transient.cache_data_blob.append(ba.str());
       {
         auto &db = m_blockchain.get_db();
         cryptonote::db_wtxn_guard txn_guard{db};
@@ -2301,13 +2307,14 @@ namespace service_nodes
     if (db.get_service_node_data(blob, true /*long_term*/))
     {
       bytes_loaded += blob.size();
-      std::stringstream ss;
-      ss << blob;
-      blob.clear();
-      binary_archive<false> ba(ss);
-
       data_for_serialization data_in = {};
-      if (::serialization::serialize(ba, data_in) && data_in.states.size())
+      bool success = false;
+      try {
+        serialization::parse_binary(blob, data_in);
+        success = true;
+      } catch (...) {}
+
+      if (success && data_in.states.size())
       {
         // NOTE: Previously the quorum for the next state is derived from the
         // state that's been updated from the next block. This is fixed in
@@ -2373,13 +2380,13 @@ namespace service_nodes
       return false;
 
     bytes_loaded += blob.size();
-    std::stringstream ss;
-    ss << blob;
-    binary_archive<false> ba(ss);
-
     data_for_serialization data_in = {};
-    bool deserialized              = ::serialization::serialize(ba, data_in);
-    CHECK_AND_ASSERT_MES(deserialized, false, "Failed to parse service node data from blob");
+    try {
+      serialization::parse_binary(blob, data_in);
+    } catch (const std::exception& e) {
+      LOG_ERROR("Failed to parse service node data from blob: " << e.what());
+      return false;
+    }
 
     if (data_in.states.empty())
       return false;

@@ -859,11 +859,10 @@ namespace
   std::string compress_integer_array(const std::vector<T> &v)
   {
     std::string s;
-    s.resize(v.size() * (sizeof(T) * 8 / 7 + 1));
-    char *ptr = &s[0];
+    s.reserve(tools::VARINT_MAX_LENGTH<T>);
+    auto ins = std::back_inserter(s);
     for (const T &t: v)
-      tools::write_varint(ptr, t);
-    s.resize(ptr - s.data());
+      tools::write_varint(ins, t);
     return s;
   }
 
@@ -871,15 +870,10 @@ namespace
   std::vector<T> decompress_integer_array(const std::string &s)
   {
     std::vector<T> v;
-    v.reserve(s.size());
-    int read = 0;
-    const std::string::const_iterator end = s.end();
-    for (std::string::const_iterator i = s.begin(); i != end; std::advance(i, read))
+    for (auto it = s.begin(); it < s.end(); )
     {
-      T t;
-      read = tools::read_varint(std::string::const_iterator(i), s.end(), t);
-      CHECK_AND_ASSERT_THROW_MES(read > 0 && read <= 256, "Error decompressing data");
-      v.push_back(t);
+      int read = tools::read_varint(it, s.end(), v.emplace_back());
+      CHECK_AND_ASSERT_THROW_MES(read > 0, "Error decompressing data");
     }
     return v;
   }

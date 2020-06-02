@@ -37,6 +37,7 @@
 #include "include_base_utils.h"
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
+#include "serialization/binary_utils.h"
 #include <unordered_map>
 
 namespace epee
@@ -48,6 +49,8 @@ namespace service_nodes { struct quorum_vote_t; }
 
 namespace cryptonote
 {
+  using namespace std::literals;
+
   struct tx_verification_context;
   struct vote_verification_context;
   //---------------------------------------------------------------
@@ -55,13 +58,12 @@ namespace cryptonote
   crypto::hash get_transaction_prefix_hash(const transaction_prefix& tx, hw::device &hwdev);
   void get_transaction_prefix_hash(const transaction_prefix& tx, crypto::hash& h);
   crypto::hash get_transaction_prefix_hash(const transaction_prefix& tx);
-  bool parse_and_validate_tx_prefix_from_blob(const blobdata& tx_blob, transaction_prefix& tx);
-  bool parse_and_validate_tx_from_blob(const blobdata& tx_blob, transaction& tx, crypto::hash& tx_hash, crypto::hash& tx_prefix_hash);
-  bool parse_and_validate_tx_from_blob(const blobdata& tx_blob, transaction& tx, crypto::hash& tx_hash);
-  bool parse_and_validate_tx_from_blob(const blobdata& tx_blob, transaction& tx);
-  bool parse_and_validate_tx_base_from_blob(const blobdata& tx_blob, transaction& tx);
-  bool is_v1_tx(const blobdata_ref& tx_blob);
-  bool is_v1_tx(const blobdata& tx_blob);
+  bool parse_and_validate_tx_prefix_from_blob(const std::string_view tx_blob, transaction_prefix& tx);
+  bool parse_and_validate_tx_from_blob(const std::string_view tx_blob, transaction& tx, crypto::hash& tx_hash, crypto::hash& tx_prefix_hash);
+  bool parse_and_validate_tx_from_blob(const std::string_view tx_blob, transaction& tx, crypto::hash& tx_hash);
+  bool parse_and_validate_tx_from_blob(const std::string_view tx_blob, transaction& tx);
+  bool parse_and_validate_tx_base_from_blob(const std::string_view tx_blob, transaction& tx);
+  bool is_v1_tx(const std::string_view tx_blob);
 
   // skip_fields: How many fields of type <T> to skip
   template<typename T>
@@ -86,7 +88,7 @@ namespace cryptonote
   }
 
   bool parse_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<tx_extra_field>& tx_extra_fields);
-  bool sort_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<uint8_t> &sorted_tx_extra, bool allow_partial = false);
+  bool sort_tx_extra(const std::vector<uint8_t>& tx_extra, std::vector<uint8_t>& sorted_tx_extra);
   crypto::public_key get_tx_pub_key_from_extra(const std::vector<uint8_t>& tx_extra, size_t pk_index = 0);
   crypto::public_key get_tx_pub_key_from_extra(const transaction_prefix& tx, size_t pk_index = 0);
   crypto::public_key get_tx_pub_key_from_extra(const transaction& tx, size_t pk_index = 0);
@@ -141,10 +143,8 @@ namespace cryptonote
   uint64_t get_tx_miner_fee(const transaction& tx, bool burning_enabled);
   bool generate_key_image_helper(const account_keys& ack, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, const crypto::public_key& out_key, const crypto::public_key& tx_public_key, const std::vector<crypto::public_key>& additional_tx_public_keys, size_t real_output_index, keypair& in_ephemeral, crypto::key_image& ki, hw::device &hwdev);
   bool generate_key_image_helper_precomp(const account_keys& ack, const crypto::public_key& out_key, const crypto::key_derivation& recv_derivation, size_t real_output_index, const subaddress_index& received_index, keypair& in_ephemeral, crypto::key_image& ki, hw::device &hwdev);
-  void get_blob_hash(const blobdata& blob, crypto::hash& res);
-  void get_blob_hash(const epee::span<const char>& blob, crypto::hash& res);
-  crypto::hash get_blob_hash(const blobdata& blob);
-  crypto::hash get_blob_hash(const epee::span<const char>& blob);
+  void get_blob_hash(const std::string_view blob, crypto::hash& res);
+  crypto::hash get_blob_hash(const std::string_view blob);
   std::string short_hash_str(const crypto::hash& h);
 
   bool get_registration_hash(const std::vector<cryptonote::account_public_address>& addresses, uint64_t operator_portions, const std::vector<uint64_t>& portions, uint64_t expiration_timestamp, crypto::hash& hash);
@@ -162,9 +162,9 @@ namespace cryptonote
   bool calculate_block_hash(const block& b, crypto::hash& res);
   bool get_block_hash(const block& b, crypto::hash& res);
   crypto::hash get_block_hash(const block& b);
-  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash *block_hash);
-  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b);
-  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash &block_hash);
+  bool parse_and_validate_block_from_blob(const std::string_view b_blob, block& b, crypto::hash *block_hash);
+  bool parse_and_validate_block_from_blob(const std::string_view b_blob, block& b);
+  bool parse_and_validate_block_from_blob(const std::string_view b_blob, block& b, crypto::hash &block_hash);
   bool get_inputs_money_amount(const transaction& tx, uint64_t& money);
   uint64_t get_outs_money_amount(const transaction& tx);
   bool check_inputs_types_supported(const transaction& tx);
@@ -195,52 +195,55 @@ namespace cryptonote
   }
 
   //---------------------------------------------------------------
-  template<class t_object>
-  bool t_serializable_object_from_blob(t_object& to, const blobdata& b_blob)
+  template <typename T>
+  bool t_serializable_object_from_blob(T& to, const blobdata& blob)
   {
-    std::stringstream ss;
-    ss << b_blob;
-    binary_archive<false> ba(ss);
-    bool r = ::serialization::serialize(ba, to);
-    return r;
+    try {
+      serialization::parse_binary(blob, to);
+      return true;
+    } catch (...) {
+      return false;
+    }
   }
   //---------------------------------------------------------------
-  template<class t_object>
-  bool t_serializable_object_to_blob(const t_object& to, blobdata& b_blob)
+  template <typename T>
+  bool t_serializable_object_to_blob(T& val, blobdata& blob)
   {
-    std::stringstream ss;
-    binary_archive<true> ba(ss);
-    bool r = ::serialization::serialize(ba, const_cast<t_object&>(to));
-    b_blob = ss.str();
-    return r;
+    try {
+      blob = serialization::dump_binary(const_cast<std::remove_const_t<T>&>(val));
+      return true;
+    } catch (...) {
+      return false;
+    }
   }
   //---------------------------------------------------------------
-  template<class t_object>
-  blobdata t_serializable_object_to_blob(const t_object& to)
+  template <typename T>
+  blobdata t_serializable_object_to_blob(const T& val)
   {
     blobdata b;
-    t_serializable_object_to_blob(to, b);
+    t_serializable_object_to_blob(val, b);
     return b;
   }
   //---------------------------------------------------------------
-  template<class t_object>
-  bool get_object_hash(const t_object& o, crypto::hash& res)
+  template <typename T>
+  bool get_object_hash(const T& o, crypto::hash& res)
   {
     get_blob_hash(t_serializable_object_to_blob(o), res);
     return true;
   }
   //---------------------------------------------------------------
-  template<class t_object>
-  size_t get_object_blobsize(const t_object& o)
+  template <typename T>
+  size_t get_object_blobsize(const T& o)
   {
-    blobdata b = t_serializable_object_to_blob(o);
-    return b.size();
+    return t_serializable_object_to_blob(o).size();
   }
   //---------------------------------------------------------------
-  template<class t_object>
-  bool get_object_hash(const t_object& o, crypto::hash& res, size_t& blob_size)
+  template <typename T>
+  bool get_object_hash(const T& o, crypto::hash& res, size_t& blob_size)
   {
-    blobdata bl = t_serializable_object_to_blob(o);
+    blobdata bl;
+    if (!t_serializable_object_to_blob(o, bl))
+      return false;
     blob_size = bl.size();
     get_blob_hash(bl, res);
     return true;
@@ -249,10 +252,14 @@ namespace cryptonote
   template <typename T>
   std::string obj_to_json_str(T& obj)
   {
-    std::stringstream ss;
-    json_archive<true> ar(ss, true);
-    bool r = ::serialization::serialize(ar, obj);
-    CHECK_AND_ASSERT_MES(r, "", "obj_to_json_str failed: serialization::serialize returned false");
+    std::ostringstream ss;
+    serialization::json_archiver ar{ss, true /*indent*/};
+    try {
+      serialize(ar, obj);
+    } catch (const std::exception& e) {
+      LOG_ERROR("obj_to_json_str failed: serialization failed: " << e.what());
+      return ""s;
+    }
     return ss.str();
   }
   //---------------------------------------------------------------

@@ -40,8 +40,7 @@
 #include "bootstrap_serialization.h"
 #include "blocks/blocks.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
-#include "serialization/binary_utils.h" // dump_binary(), parse_binary()
-#include "serialization/json_utils.h" // dump_json()
+#include "serialization/binary_utils.h"
 #include "include_base_utils.h"
 #include "cryptonote_core/cryptonote_core.h"
 
@@ -249,7 +248,6 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
   // 4 byte magic + (currently) 1024 byte header structures
   bootstrap.seek_to_first_chunk(import_file);
 
-  std::string str1;
   char buffer1[1024];
   char buffer_block[BUFFER_SIZE];
   block b;
@@ -314,10 +312,10 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
     }
     bytes_read += sizeof(chunk_size);
 
-    str1.assign(buffer1, sizeof(chunk_size));
-    if (! ::serialization::parse_binary(str1, chunk_size))
-    {
-      throw std::runtime_error("Error in deserialization of chunk size");
+    try {
+      serialization::parse_binary(std::string_view{buffer1, sizeof(chunk_size)}, chunk_size);
+    } catch (const std::exception& e) {
+      throw std::runtime_error("Error in deserialization of chunk size: "s + e.what());
     }
     MDEBUG("chunk_size: " << chunk_size);
 
@@ -365,10 +363,12 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
 
     try
     {
-      str1.assign(buffer_block, chunk_size);
       bootstrap::block_package bp;
-      if (! ::serialization::parse_binary(str1, bp))
-        throw std::runtime_error("Error in deserialization of chunk");
+      try {
+        serialization::parse_binary(std::string_view{buffer_block, chunk_size}, bp);
+      } catch (const std::exception& e) {
+        throw std::runtime_error("Error in deserialization of chunk"s + e.what());
+      }
 
       int display_interval = 1000;
       int progress_interval = 10;

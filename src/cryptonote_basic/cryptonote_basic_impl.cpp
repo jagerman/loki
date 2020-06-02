@@ -247,24 +247,21 @@ namespace cryptonote {
         return false;
       }
 
-      if (info.has_payment_id)
-      {
-        integrated_address iadr;
-        if (!::serialization::parse_binary(data, iadr))
+      try {
+        if (info.has_payment_id)
         {
-          LOG_PRINT_L1("Account public address keys can't be parsed");
-          return false;
+          integrated_address iadr;
+          serialization::parse_binary(data, iadr);
+          info.address = iadr.adr;
+          info.payment_id = iadr.payment_id;
         }
-        info.address = iadr.adr;
-        info.payment_id = iadr.payment_id;
-      }
-      else
-      {
-        if (!::serialization::parse_binary(data, info.address))
+        else
         {
-          LOG_PRINT_L1("Account public address keys can't be parsed");
-          return false;
+          serialization::parse_binary(data, info.address);
         }
+      } catch (const std::exception& e) {
+        LOG_PRINT_L1("Account public address keys can't be parsed: "s + e.what());
+        return false;
       }
 
       if (!crypto::check_key(info.address.m_spend_public_key) || !crypto::check_key(info.address.m_view_public_key))

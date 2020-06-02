@@ -3894,8 +3894,11 @@ bool wallet2::store_keys(const std::string& keys_file_name, const epee::wipeable
 
   std::string tmp_file_name = keys_file_name + ".new";
   std::string buf;
-  bool r = ::serialization::dump_binary(keys_file_data.get(), buf);
-  r = r && save_to_file(tmp_file_name, buf);
+  bool r;
+  try {
+    buf = serialization::dump_binary(keys_file_data);
+    r = save_to_file(tmp_file_name, buf);
+  } catch (...) {}
   CHECK_AND_ASSERT_MES(r, false, "failed to generate wallet keys file " << tmp_file_name);
 
   unlock_keys_file();
@@ -3964,13 +3967,21 @@ boost::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee:
 
   if (m_multisig)
   {
-    bool r = ::serialization::dump_binary(m_multisig_signers, multisig_signers);
-    CHECK_AND_ASSERT_MES(r, boost::none, "failed to serialize wallet multisig signers");
+    try {
+      multisig_signers = serialization::dump_binary(m_multisig_signers);
+    } catch (const std::exception& e) {
+      LOG_ERROR("failed to serialize wallet multisig signers: " << e.what());
+      return boost::none;
+    }
     value.SetString(multisig_signers.c_str(), multisig_signers.length());
     json.AddMember("multisig_signers", value, json.GetAllocator());
 
-    r = ::serialization::dump_binary(m_multisig_derivations, multisig_derivations);
-    CHECK_AND_ASSERT_MES(r, boost::none, "failed to serialize wallet multisig derivations");
+    try {
+      multisig_derivations = serialization::dump_binary(m_multisig_derivations);
+    } catch (const std::exception& e) {
+      LOG_ERROR("failed to serialize wallet multisig derivations");
+      return boost::none;
+    }
     value.SetString(multisig_derivations.c_str(), multisig_derivations.length());
     json.AddMember("multisig_derivations", value, json.GetAllocator());
 
@@ -4171,8 +4182,11 @@ bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_st
   rapidjson::Document json;
   wallet2::keys_file_data keys_file_data;
   bool encrypted_secret_keys = false;
-  bool r = ::serialization::parse_binary(keys_buf, keys_file_data);
-  THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize keys buffer");
+  try {
+    serialization::parse_binary(keys_buf, keys_file_data);
+  } catch (const std::exception& e) {
+    THROW_WALLET_EXCEPTION(error::wallet_internal_error, "internal error: failed to deserialize keys buffer: " + e.what());
+  }
   crypto::chacha_key key;
   crypto::generate_chacha_key(password.data(), password.size(), key, m_kdf_rounds);
   std::string account_data;
@@ -4270,10 +4284,10 @@ bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_st
       }
       const char *field_multisig_signers = json["multisig_signers"].GetString();
       std::string multisig_signers = std::string(field_multisig_signers, field_multisig_signers + json["multisig_signers"].GetStringLength());
-      r = ::serialization::parse_binary(multisig_signers, m_multisig_signers);
-      if (!r)
-      {
-        LOG_ERROR("Field multisig_signers found in JSON, but failed to parse");
+      try {
+        serialization::parse_binary(multisig_signers, m_multisig_signers);
+      } catch (const std::exception& e) {
+        LOG_ERROR("Field multisig_signers found in JSON, but failed to parse: " << e.what());
         return false;
       }
 
@@ -4287,10 +4301,10 @@ bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_st
         }
         const char *field_multisig_derivations = json["multisig_derivations"].GetString();
         std::string multisig_derivations = std::string(field_multisig_derivations, field_multisig_derivations + json["multisig_derivations"].GetStringLength());
-        r = ::serialization::parse_binary(multisig_derivations, m_multisig_derivations);
-        if (!r)
-        {
-          LOG_ERROR("Field multisig_derivations found in JSON, but failed to parse");
+        try {
+          serialization::parse_binary(multisig_derivations, m_multisig_derivations);
+        } catch (const std::exception& e) {
+          LOG_ERROR("Field multisig_derivations found in JSON, but failed to parse: " << e.what());
           return false;
         }
       }
@@ -4437,7 +4451,7 @@ bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_st
     return false;
   }
 
-  r = epee::serialization::load_t_from_binary(m_account, account_data);
+  bool r = epee::serialization::load_t_from_binary(m_account, account_data);
   THROW_WALLET_EXCEPTION_IF(!r, error::invalid_password);
   if (m_key_device_type == hw::device::device_type::LEDGER || m_key_device_type == hw::device::device_type::TREZOR) {
     LOG_PRINT_L0("Account on device. Initing device...");
@@ -4527,8 +4541,11 @@ bool wallet2::verify_password(const std::string& keys_file_name, const epee::wip
   THROW_WALLET_EXCEPTION_IF(!r, error::file_read_error, keys_file_name);
 
   // Decrypt the contents
-  r = ::serialization::parse_binary(buf, keys_file_data);
-  THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize \"" + keys_file_name + '\"');
+  try {
+    serialization::parse_binary(buf, keys_file_data);
+  } catch (const std::exception& e) {
+    THROW_WALLET_EXCEPTION(error::wallet_internal_error, "internal error: failed to deserialize \"" + keys_file_name + "\": " + e.what());
+  }
   crypto::chacha_key key;
   crypto::generate_chacha_key(password.data(), password.size(), key, kdf_rounds);
   std::string account_data;
@@ -4640,8 +4657,11 @@ bool wallet2::query_device(hw::device::device_type& device_type, const std::stri
   THROW_WALLET_EXCEPTION_IF(!r, error::file_read_error, keys_file_name);
 
   // Decrypt the contents
-  r = ::serialization::parse_binary(buf, keys_file_data);
-  THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize \"" + keys_file_name + '\"');
+  try {
+    serialization::parse_binary(buf, keys_file_data);
+  } catch (const std::exception& e) {
+    THROW_WALLET_EXCEPTION(error::wallet_internal_error, "internal error: failed to deserialize \"" + keys_file_name + "\": " + e.what());
+  }
   crypto::chacha_key key;
   crypto::generate_chacha_key(password.data(), password.size(), key, kdf_rounds);
   std::string account_data;
@@ -5748,8 +5768,11 @@ void wallet2::load(const std::string& wallet_, const epee::wipeable_string& pass
     {
       LOG_PRINT_L1("Trying to decrypt cache data");
 
-      r = ::serialization::parse_binary(use_fs ? cache_file_buf : cache_buf, cache_file_data);
-      THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize \"" + m_wallet_file + '\"');
+      try {
+        serialization::parse_binary(use_fs ? cache_file_buf : cache_buf, cache_file_data);
+      } catch (const std::exception& e) {
+        THROW_WALLET_EXCEPTION(error::wallet_internal_error, "internal error: failed to deserialize \"" + m_wallet_file + "\": " + e.what());
+      }
       std::string cache_data;
       cache_data.resize(cache_file_data.cache_data.size());
       crypto::chacha20(cache_file_data.cache_data.data(), cache_file_data.cache_data.size(), m_cache_key, cache_file_data.iv, &cache_data[0]);
@@ -5998,20 +6021,21 @@ void wallet2::store_to(const std::string &path, const epee::wipeable_string &pas
 #ifdef WIN32
     // On Windows avoid using std::ofstream which does not work with UTF-8 filenames
     // The price to pay is temporary higher memory consumption for string stream + binary archive
-    std::ostringstream oss;
-    binary_archive<true> oar(oss);
-    bool success = ::serialization::serialize(oar, cache_file_data.get());
-    if (success) {
-        success = save_to_file(new_file, oss.str());
-    }
+    bool success = false;
+    try {
+      serialization::binary_string_archiver oar;
+      serialization::serialize(oar, cache_file_data.get());
+      success = save_to_file(new_file, oss.str());
+    } catch (...) {}
     THROW_WALLET_EXCEPTION_IF(!success, error::file_save_error, new_file);
 #else
-    std::ofstream ostr;
-    ostr.open(new_file, std::ios_base::binary | std::ios_base::out | std::ios_base::trunc);
-    binary_archive<true> oar(ostr);
-    bool success = ::serialization::serialize(oar, cache_file_data.get());
-    ostr.close();
-    THROW_WALLET_EXCEPTION_IF(!success || !ostr.good(), error::file_save_error, new_file);
+    try {
+      std::ofstream ostr{new_file, std::ios_base::binary | std::ios_base::trunc};
+      serialization::binary_archiver oar{ostr};
+      serialization::serialize(oar, cache_file_data.get());
+    } catch (const std::exception& e) {
+      THROW_WALLET_EXCEPTION(error::file_save_error, new_file);
+    }
 #endif
 
     // here we have "*.new" file, we need to rename it to be without ".new"

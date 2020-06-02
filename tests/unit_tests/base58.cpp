@@ -473,7 +473,7 @@ namespace
 TEST(get_account_address_as_str, works_correctly)
 {
   cryptonote::account_public_address addr;
-  ASSERT_TRUE(serialization::parse_binary(test_serialized_keys, addr));
+  ASSERT_NO_THROW(serialization::parse_binary(test_serialized_keys, addr));
   std::string addr_str = cryptonote::get_account_address_as_str(cryptonote::MAINNET, false, addr);
   ASSERT_EQ(addr_str, test_keys_addr_str);
 }
@@ -484,7 +484,7 @@ TEST(get_account_address_from_str, handles_valid_address)
   ASSERT_TRUE(cryptonote::get_account_address_from_str(info, cryptonote::MAINNET, test_keys_addr_str));
 
   std::string blob;
-  ASSERT_TRUE(serialization::dump_binary(info.address, blob));
+  ASSERT_NO_THROW(blob = serialization::dump_binary(info.address));
   ASSERT_EQ(blob, test_serialized_keys);
 }
 

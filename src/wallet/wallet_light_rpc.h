@@ -30,6 +30,7 @@
 
 #pragma once
 #include "cryptonote_basic/cryptonote_basic.h"
+#include "serialization/vector.h"
 #include "crypto/hash.h"
 
 namespace tools
