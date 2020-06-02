@@ -74,17 +74,17 @@ TEST(parse_tx_extra, handles_padding_only_size_2)
 
 TEST(parse_tx_extra, handles_padding_only_max_size)
 {
-  std::vector<uint8_t> extra(cryptonote::TX_EXTRA_NONCE_MAX_COUNT, 0);
+  std::vector<uint8_t> extra(cryptonote::TX_EXTRA_PADDING_MAX_COUNT, 0);
   std::vector<cryptonote::tx_extra_field> tx_extra_fields;
   ASSERT_TRUE(cryptonote::parse_tx_extra(extra, tx_extra_fields));
   ASSERT_EQ(1, tx_extra_fields.size());
   ASSERT_TRUE(std::holds_alternative<cryptonote::tx_extra_padding>(tx_extra_fields[0]));
-  ASSERT_EQ(cryptonote::TX_EXTRA_NONCE_MAX_COUNT, std::get<cryptonote::tx_extra_padding>(tx_extra_fields[0]).size);
+  ASSERT_EQ(cryptonote::TX_EXTRA_PADDING_MAX_COUNT, std::get<cryptonote::tx_extra_padding>(tx_extra_fields[0]).size);
 }
 
 TEST(parse_tx_extra, handles_padding_only_exceed_max_size)
 {
-  std::vector<uint8_t> extra(cryptonote::TX_EXTRA_NONCE_MAX_COUNT + 1, 0);
+  std::vector<uint8_t> extra(cryptonote::TX_EXTRA_PADDING_MAX_COUNT + 1, 0);
   std::vector<cryptonote::tx_extra_field> tx_extra_fields;
   ASSERT_FALSE(cryptonote::parse_tx_extra(extra, tx_extra_fields));
 }
