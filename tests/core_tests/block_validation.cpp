@@ -606,7 +606,7 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
     events.push_back(entry);
   }
 
-  loki_register_callback(events, "check_blocks_arent_accepted", [&events, last_valid_height](cryptonote::core &c, size_t ev_index)
+  loki_register_callback(events, "check_blocks_arent_accepted", [last_valid_height](cryptonote::core &c, size_t ev_index)
   {
     DEFINE_TESTS_ERROR_CONTEXT("check_blocks_arent_accepted");
     CHECK_EQ(c.get_pool().get_transactions_count(), 1);

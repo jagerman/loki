@@ -72,7 +72,7 @@ bool gen_double_spend_in_tx::generate(std::vector<test_event_entry>& events) con
     gen.add_tx(tx_1, false /*can_be_added_to_blockchain*/, "Can't add TX with double spending output", false /*kept_by_block*/);
     gen.add_block(entry, false /*can_be_added_to_blockchain*/, "Can't add block with double spending tx");
 
-    loki_register_callback(events, "check_block_and_txpool_unaffected", [&events, expected_height](cryptonote::core &c, size_t ev_index)
+    loki_register_callback(events, "check_block_and_txpool_unaffected", [expected_height](cryptonote::core &c, size_t ev_index)
     {
       DEFINE_TESTS_ERROR_CONTEXT("check_block_and_txpool_unaffected");
       uint64_t top_height;
@@ -97,7 +97,7 @@ bool gen_double_spend_in_tx::generate(std::vector<test_event_entry>& events) con
     gen.add_tx(tx_1, false /*can_be_added_to_blockchain*/, "Can't add TX with double spending output even if kept by block", true /*kept_by_block*/);
     gen.add_block(entry, false /*can_be_added_to_blockchain*/, "Can't add block with double spending tx");
 
-    loki_register_callback(events, "check_block_and_txpool_unaffected_even_if_kept_by_block", [&events, expected_height](cryptonote::core &c, size_t ev_index)
+    loki_register_callback(events, "check_block_and_txpool_unaffected_even_if_kept_by_block", [expected_height](cryptonote::core &c, size_t ev_index)
     {
       DEFINE_TESTS_ERROR_CONTEXT("check_block_and_txpool_unaffected_even_if_kept_by_block");
       uint64_t top_height;
@@ -186,7 +186,7 @@ bool gen_double_spend_in_different_blocks::generate(std::vector<test_event_entry
     // Similarly, if kept by block is false, adding the double spend tx should fail. Adding the new block should also fail because we don't have tx_2
     // sitting in the tx pool.
     gen.create_and_add_next_block({tx_2}, nullptr, false /*can_be_added_to_blockchain*/, fail_msg);
-    loki_register_callback(events, "check_txpool", [&events, kept_by_block](cryptonote::core &c, size_t ev_index)
+    loki_register_callback(events, "check_txpool", [kept_by_block](cryptonote::core &c, size_t ev_index)
     {
       DEFINE_TESTS_ERROR_CONTEXT("check_txpool");
       if (kept_by_block) CHECK_EQ(c.get_pool().get_transactions_count(), 1);
@@ -271,7 +271,7 @@ bool gen_double_spend_in_alt_chain_in_different_blocks::generate(std::vector<tes
 
     fork.add_tx(tx_2, kept_by_block /*can_be_added_to_blockchain*/, fail_msg, kept_by_block /*kept_by_block*/);
     fork.create_and_add_next_block({tx_2}, nullptr, false /*can_be_added_to_blockchain*/, fail_msg);
-    loki_register_callback(events, "check_txpool", [&events, kept_by_block](cryptonote::core &c, size_t ev_index)
+    loki_register_callback(events, "check_txpool", [kept_by_block](cryptonote::core &c, size_t ev_index)
     {
       DEFINE_TESTS_ERROR_CONTEXT("check_txpool");
       if (kept_by_block) CHECK_EQ(c.get_pool().get_transactions_count(), 1);
@@ -305,7 +305,7 @@ bool gen_double_spend_in_different_chains::generate(std::vector<test_event_entry
   fork.create_and_add_next_block();
   crypto::hash block_hash = cryptonote::get_block_hash(fork.top().block);
 
-  loki_register_callback(events, "check_top_block", [&events, block_hash](cryptonote::core &c, size_t ev_index)
+  loki_register_callback(events, "check_top_block", [block_hash](cryptonote::core &c, size_t ev_index)
   {
     DEFINE_TESTS_ERROR_CONTEXT("check_txpool");
     uint64_t top_height;
