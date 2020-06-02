@@ -34,7 +34,6 @@
 #include <unordered_map>
 
 #include "include_base_utils.h"
-using namespace epee;
 #include "wallet/wallet2.h"
 using namespace cryptonote;
 
@@ -175,7 +174,7 @@ bool transactions_flow_test(std::string& working_folder,
   rpc::START_MINING::response daemon_rsp{};
   daemon_req.miner_address = w1.get_account().get_public_address_str(MAINNET);
   daemon_req.threads_count = 9;
-  r = net_utils::invoke_http_json("/start_mining", daemon_req, daemon_rsp, http_client, std::chrono::seconds(10));
+  r = epee::net_utils::invoke_http_json("/start_mining", daemon_req, daemon_rsp, http_client, std::chrono::seconds(10));
   CHECK_AND_ASSERT_MES(r, false, "failed to start mining getrandom_outs");
   CHECK_AND_ASSERT_MES(daemon_rsp.status == rpc::STATUS_OK, false, "failed to start mining");
 
@@ -183,7 +182,7 @@ bool transactions_flow_test(std::string& working_folder,
   w1.refresh(true, blocks_fetched, received_money, ok);
   while(w1.unlocked_balance(0, true) < amount_to_transfer)
   {
-    misc_utils::sleep_no_w(1000);
+    epee::misc_utils::sleep_no_w(1000);
     w1.refresh(true, blocks_fetched, received_money, ok);
   }
 
@@ -210,7 +209,7 @@ bool transactions_flow_test(std::string& working_folder,
       break;
     }else
     {
-      misc_utils::sleep_no_w(1000);
+      epee::misc_utils::sleep_no_w(1000);
       w1.refresh(true, blocks_fetched, received_money, ok);
     }
   }
@@ -231,7 +230,7 @@ bool transactions_flow_test(std::string& working_folder,
     uint64_t amount_to_tx = (amount_to_transfer - transfered_money) > transfer_size ? transfer_size: (amount_to_transfer - transfered_money);
     while(w1.unlocked_balance(0, true) < amount_to_tx + TEST_FEE)
     {
-      misc_utils::sleep_no_w(1000);
+      epee::misc_utils::sleep_no_w(1000);
       LOG_PRINT_L0("not enough money, waiting for cashback or mining");
       w1.refresh(true, blocks_fetched, received_money, ok);
     }
@@ -265,17 +264,17 @@ bool transactions_flow_test(std::string& working_folder,
     ent.amount_transfered = amount_to_tx;
     ent.tx = tx;
     //if(i % transactions_per_second)
-    //  misc_utils::sleep_no_w(1000);
+    //  epee::misc_utils::sleep_no_w(1000);
   }
 
 
   LOG_PRINT_L0( "waiting some new blocks...");
-  misc_utils::sleep_no_w(DIFFICULTY_TARGET_V2*20*1000);//wait two blocks before sync on another wallet on another daemon
+  epee::misc_utils::sleep_no_w(DIFFICULTY_TARGET_V2*20*1000);//wait two blocks before sync on another wallet on another daemon
   LOG_PRINT_L0( "refreshing...");
   bool recvd_money = false;
   while(w2.refresh(true, blocks_fetched, recvd_money, ok) && ( (blocks_fetched && recvd_money) || !blocks_fetched  ) )
   {
-    misc_utils::sleep_no_w(DIFFICULTY_TARGET_V2*1000);//wait two blocks before sync on another wallet on another daemon
+    epee::misc_utils::sleep_no_w(DIFFICULTY_TARGET_V2*1000);//wait two blocks before sync on another wallet on another daemon
   }
 
   uint64_t money_2 = w2.balance(0, true);

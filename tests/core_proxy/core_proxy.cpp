@@ -54,8 +54,6 @@
 #endif
 
 namespace po = boost::program_options;
-using namespace std;
-using namespace epee;
 using namespace cryptonote;
 using namespace crypto;
 
@@ -72,7 +70,7 @@ int main(int argc, char* argv[])
   TRY_ENTRY();
 
   tools::on_startup();
-  string_tools::set_module_name_and_folder(argv[0]);
+  epee::string_tools::set_module_name_and_folder(argv[0]);
 
   //set up logging options
   mlog_configure(mlog_get_default_log_path("core_proxy.log"), true);
@@ -152,9 +150,9 @@ int main(int argc, char* argv[])
 string tx2str(const cryptonote::transaction& tx, const cryptonote::hash256& tx_hash, const cryptonote::hash256& tx_prefix_hash, const cryptonote::blobdata& blob) {
     stringstream ss;
 
-    ss << "{" << endl;
-    ss << "\tversion:" << tx.version << endl;
-    ss << "\tunlock_time:" << tx.unlock_time << endl;
+    ss << "{";
+    ss << "\n\tversion:" << tx.version;
+    ss << "\n\tunlock_time:" << tx.unlock_time;
     ss << "\t"
 
     return ss.str();

@@ -31,7 +31,6 @@
 #include "chaingen.h"
 #include "block_validation.h"
 
-using namespace epee;
 using namespace cryptonote;
 
 namespace

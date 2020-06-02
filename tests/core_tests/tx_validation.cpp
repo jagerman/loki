@@ -32,7 +32,6 @@
 #include "tx_validation.h"
 #include "device/device.hpp"
 
-using namespace epee;
 using namespace crypto;
 using namespace cryptonote;
 

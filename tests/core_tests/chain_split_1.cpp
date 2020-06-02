@@ -31,9 +31,6 @@
 #include "chaingen.h"
 #include "chain_split_1.h"
 
-using namespace std;
-
-using namespace epee;
 using namespace cryptonote;
 
 

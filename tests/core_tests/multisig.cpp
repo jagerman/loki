@@ -35,7 +35,6 @@
 #include "chaingen.h"
 #include "multisig.h"
 #include "device/device.hpp"
-using namespace epee;
 using namespace crypto;
 using namespace cryptonote;
 

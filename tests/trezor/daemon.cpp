@@ -29,7 +29,6 @@
 #include "daemon.h"
 #include <common/command_line.h>
 
-using namespace std;
 using namespace daemonize;
 namespace po = boost::program_options;
 

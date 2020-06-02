@@ -49,7 +49,6 @@
 #include <functional>
 
 
-using namespace std;
 using namespace std::literals;
 //unsigned int epee::g_test_dbg_lock_sleep = 0;
 

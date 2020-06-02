@@ -34,7 +34,6 @@
 #include "bulletproofs.h"
 #include "device/device.hpp"
 
-using namespace epee;
 using namespace crypto;
 using namespace cryptonote;
 

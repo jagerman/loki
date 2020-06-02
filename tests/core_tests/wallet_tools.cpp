@@ -5,8 +5,6 @@
 #include "wallet_tools.h"
 #include <random>
 
-using namespace std;
-using namespace epee;
 using namespace crypto;
 using namespace cryptonote;
 
@@ -203,7 +201,7 @@ void wallet_tools::gen_tx_src(size_t mixin, uint64_t cur_height, const tools::wa
 
 void wallet_tools::gen_block_data(block_tracker &bt, const cryptonote::block *bl, const map_hash2tx_t &mtx, cryptonote::block_complete_entry &bche, tools::wallet2::parsed_block &parsed_block, uint64_t &height)
 {
-  vector<const transaction*> vtx;
+  std::vector<const transaction*> vtx;
   vtx.push_back(&(bl->miner_tx));
   height = std::get<txin_gen>(*bl->miner_tx.vin.begin()).height;
 
@@ -258,7 +256,7 @@ bool construct_tx_to_key(cryptonote::transaction& tx,
                          uint64_t fee, rct::RangeProofType range_proof_type, int bp_version)
 {
   tx_destination_entry change_addr = {};
-  vector<tx_destination_entry> destinations;
+  std::vector<tx_destination_entry> destinations;
   fill_tx_destinations(sender_wallet->get_account(), get_address(to), amount, fee, sources, destinations);
   return construct_tx_rct(sender_wallet, sources, destinations, change_addr, std::vector<uint8_t>(), tx, 0, range_proof_type, bp_version);
 }

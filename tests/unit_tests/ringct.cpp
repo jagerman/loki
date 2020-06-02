@@ -39,7 +39,6 @@
 #include "ringct/rctOps.h"
 #include "device/device.hpp"
 
-using namespace std;
 using namespace crypto;
 using namespace rct;
 
@@ -146,16 +145,16 @@ TEST(ringct, range_proofs)
         std::vector<uint64_t> inamounts;
         //add fake input 6000
         inamounts.push_back(6000);
-        tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
+        std::tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
         sc.push_back(sctmp);
         pc.push_back(pctmp);
 
 
         inamounts.push_back(7000);
-        tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
+        std::tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
         sc.push_back(sctmp);
         pc.push_back(pctmp);
-        vector<xmr_amount >amounts;
+        std::vector<xmr_amount >amounts;
         rct::keyV amount_keys;
         key mask;
 
@@ -218,16 +217,16 @@ TEST(ringct, range_proofs_with_fee)
         std::vector<uint64_t> inamounts;
         //add fake input 6001
         inamounts.push_back(6001);
-        tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
+        std::tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
         sc.push_back(sctmp);
         pc.push_back(pctmp);
 
 
         inamounts.push_back(7000);
-        tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
+        std::tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
         sc.push_back(sctmp);
         pc.push_back(pctmp);
-        vector<xmr_amount >amounts;
+        std::vector<xmr_amount >amounts;
         keyV amount_keys;
         key mask;
 
@@ -279,9 +278,9 @@ TEST(ringct, simple)
         ctkeyV sc, pc;
         ctkey sctmp, pctmp;
         //this vector corresponds to output amounts
-        vector<xmr_amount>outamounts;
+        std::vector<xmr_amount>outamounts;
        //this vector corresponds to input amounts
-        vector<xmr_amount>inamounts;
+        std::vector<xmr_amount>inamounts;
         //this keyV corresponds to destination pubkeys
         keyV destinations;
         keyV amount_keys;
@@ -290,7 +289,7 @@ TEST(ringct, simple)
         //add fake input 3000
         //the sc is secret data
         //pc is public data
-        tie(sctmp, pctmp) = ctskpkGen(3000);
+        std::tie(sctmp, pctmp) = ctskpkGen(3000);
         sc.push_back(sctmp);
         pc.push_back(pctmp);
         inamounts.push_back(3000);
@@ -298,7 +297,7 @@ TEST(ringct, simple)
         //add fake input 3000
         //the sc is secret data
         //pc is public data
-        tie(sctmp, pctmp) = ctskpkGen(3000);
+        std::tie(sctmp, pctmp) = ctskpkGen(3000);
         sc.push_back(sctmp);
         pc.push_back(pctmp);
         inamounts.push_back(3000);
@@ -337,13 +336,13 @@ static rct::rctSig make_sample_rct_sig(int n_inputs, const uint64_t input_amount
 {
     ctkeyV sc, pc;
     ctkey sctmp, pctmp;
-    vector<xmr_amount >amounts;
+    std::vector<xmr_amount >amounts;
     keyV destinations;
     keyV amount_keys;
     key Sk, Pk;
 
     for (int n = 0; n < n_inputs; ++n) {
-        tie(sctmp, pctmp) = ctskpkGen(input_amounts[n]);
+        std::tie(sctmp, pctmp) = ctskpkGen(input_amounts[n]);
         sc.push_back(sctmp);
         pc.push_back(pctmp);
     }
@@ -366,14 +365,14 @@ static rct::rctSig make_sample_simple_rct_sig(int n_inputs, const uint64_t input
 {
     ctkeyV sc, pc;
     ctkey sctmp, pctmp;
-    vector<xmr_amount> inamounts, outamounts;
+    std::vector<xmr_amount> inamounts, outamounts;
     keyV destinations;
     keyV amount_keys;
     key Sk, Pk;
 
     for (int n = 0; n < n_inputs; ++n) {
         inamounts.push_back(input_amounts[n]);
-        tie(sctmp, pctmp) = ctskpkGen(input_amounts[n]);
+        std::tie(sctmp, pctmp) = ctskpkGen(input_amounts[n]);
         sc.push_back(sctmp);
         pc.push_back(pctmp);
     }

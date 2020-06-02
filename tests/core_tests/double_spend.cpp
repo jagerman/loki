@@ -31,7 +31,6 @@
 #include "chaingen.h"
 #include "double_spend.h"
 
-using namespace epee;
 using namespace cryptonote;
 
 

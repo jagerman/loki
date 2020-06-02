@@ -34,7 +34,6 @@
 
 #define EMISSION_SPEED_FACTOR_PER_MINUTE 20
 
-using namespace epee;
 using namespace cryptonote;
 
 namespace

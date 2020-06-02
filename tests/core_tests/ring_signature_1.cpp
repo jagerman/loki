@@ -31,7 +31,6 @@
 #include "chaingen.h"
 #include "ring_signature_1.h"
 
-using namespace epee;
 using namespace cryptonote;
 
 

@@ -31,7 +31,6 @@
 #include "chaingen.h"
 #include "v2_tests.h"
 
-using namespace epee;
 using namespace crypto;
 using namespace cryptonote;
 

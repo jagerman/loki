@@ -31,7 +31,6 @@
 #include "chaingen.h"
 #include "chain_switch_1.h"
 
-using namespace epee;
 using namespace cryptonote;
 
 
