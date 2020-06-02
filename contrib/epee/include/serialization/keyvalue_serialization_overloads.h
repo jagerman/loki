@@ -33,6 +33,7 @@
 #include <vector>
 #include <deque>
 #include <array>
+#include "span.h"
 #include "storages/portable_storage_base.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
@@ -65,6 +66,14 @@ namespace epee
     template <typename T> constexpr bool is_serialize_stl_container<std::unordered_set<T>> = true;
     template <typename T, size_t S> constexpr bool is_serialize_stl_container<std::array<T, S>> = true;
 
+    // static_asserts that the type is suitable for binary serialization: by default, this means it
+    // has no padding and is trivially copyable.  Types that are safe but don't satisfy these
+    // requirements can specialize is_byte_spannable.
+    template <typename T>
+    constexpr void assert_blob_serializable() {
+      static_assert(is_byte_spannable<T>, "Type is not acceptable for blob serialization");
+    }
+
     //-------------------------------------------------------------------------------------------------------------------
     template<class t_type, class t_storage>
     static bool serialize_t_val(const t_type& d, t_storage& stg, section* parent_section, const char* pname)
@@ -80,7 +89,8 @@ namespace epee
     //-------------------------------------------------------------------------------------------------------------------
     template<class t_type, class t_storage>
     static bool serialize_t_val_as_blob(const t_type& d, t_storage& stg, section* parent_section, const char* pname)
-    {      
+    {
+      assert_blob_serializable<t_type>();
       std::string blob((const char *)&d, sizeof(d));
       return stg.set_value(pname, blob, parent_section);
     }
@@ -88,6 +98,7 @@ namespace epee
     template<class t_type, class t_storage>
     static bool unserialize_t_val_as_blob(t_type& d, t_storage& stg, section* parent_section, const char* pname)
     {
+      assert_blob_serializable<t_type>();
       std::string blob;
       if(!stg.get_value(pname, blob, parent_section))
         return false;
@@ -175,6 +186,8 @@ namespace epee
     static bool serialize_stl_container_pod_val_as_blob(const stl_container& container, t_storage& stg, section* parent_section, const char* pname)
     {
       using T = typename stl_container::value_type;
+      assert_blob_serializable<T>();
+
       if(!container.size()) return true;
       std::string mb;
       if constexpr (is_std_vector<stl_container>)
@@ -192,6 +205,8 @@ namespace epee
     static bool unserialize_stl_container_pod_val_as_blob(stl_container& container, t_storage& stg, section* parent_section, const char* pname)
     {
       using T = typename stl_container::value_type;
+      assert_blob_serializable<T>();
+
       container.clear();
       std::string buff;
       if (!stg.get_value(pname, buff, parent_section))
@@ -203,7 +218,9 @@ namespace epee
       if constexpr (is_std_vector<stl_container>)
       {
         container.resize(buff.size() / sizeof(T));
-        std::memcpy(container.data(), buff.data(), buff.size());
+        // The explicit cast to (void*) is to silence a compiler warning about non-trivial types;
+        // we've already verified the byte copy is okay with the assert_blob_serializable<T> above.
+        std::memcpy((void*) container.data(), buff.data(), buff.size());
       }
       else
       {

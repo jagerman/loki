@@ -64,7 +64,7 @@ namespace rpc {
 // has its own version, and that clients can just test major to see
 // whether they can talk to a given daemon without having to know in
 // advance which version they will stop working with
-  constexpr version_t VERSION = {3, 8};
+  constexpr version_t VERSION = {4, 0};
 
   /// Makes a version array from a packed 32-bit integer version
   constexpr version_t make_version(uint32_t version)
