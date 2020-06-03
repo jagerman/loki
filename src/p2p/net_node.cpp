@@ -36,6 +36,7 @@
 #include <string_view>
 
 #include "common/command_line.h"
+#include "common/string_util.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "cryptonote_protocol/cryptonote_protocol_defs.h"
 #include "net_node.h"
@@ -54,14 +55,14 @@ namespace
     constexpr const std::chrono::milliseconds future_poll_interval = 500ms;
     constexpr const std::chrono::seconds socks_connect_timeout{P2P_DEFAULT_SOCKS_CONNECT_TIMEOUT};
 
-    std::int64_t get_max_connections(const boost::iterator_range<std::string_view::const_iterator> value) noexcept
+    std::int64_t get_max_connections(const std::string_view value) noexcept
     {
         // -1 is default, 0 is error
         if (value.empty())
             return -1;
 
         std::uint32_t out = 0;
-        if (epee::string_tools::get_xtype_from_string(out, std::string{value.begin(), value.end()}))
+        if (tools::parse_int(value, out))
             return out;
         return 0;
     }
@@ -171,45 +172,42 @@ namespace nodetool
 
         for (std::string_view arg : args)
         {
-            proxies.emplace_back();
+            auto& set_proxy = proxies.emplace_back();
 
-            auto next = boost::algorithm::make_split_iterator(arg, boost::algorithm::first_finder(","));
-            CHECK_AND_ASSERT_MES(!next.eof() && !next->empty(), std::nullopt, "No network type for --" << arg_tx_proxy.name);
-            std::string_view zone{next->begin(), next->size()};
-
-            ++next;
-            CHECK_AND_ASSERT_MES(!next.eof() && !next->empty(), std::nullopt, "No ipv4:port given for --" << arg_tx_proxy.name);
-            std::string_view proxy{next->begin(), next->size()};
-
-            ++next;
-            for (unsigned count = 0; !next.eof(); ++count, ++next)
+            auto pieces = tools::split(arg, ","sv);
+            CHECK_AND_ASSERT_MES(pieces.size() >= 1 && !pieces[0].empty(), std::nullopt, "No network type for --" << arg_tx_proxy.name);
+            CHECK_AND_ASSERT_MES(pieces.size() >= 2 && !pieces[1].empty(), std::nullopt, "No ipv4:port given for --" << arg_tx_proxy.name);
+            auto& zone = pieces[0];
+            auto& proxy = pieces[1];
+            auto it = pieces.begin() + 2;
+            if (it != pieces.end() && *it == "disable_noise"sv)
             {
-                if (2 <= count)
+                set_proxy.noise = false;
+                ++it;
+            }
+            if (it != pieces.end())
+            {
+                set_proxy.max_connections = get_max_connections(*it);
+                if (set_proxy.max_connections == 0)
                 {
-                    MERROR("Too many ',' characters given to --" << arg_tx_proxy.name);
+                    MERROR("Invalid max connections given to --" << arg_tx_proxy.name);
                     return std::nullopt;
                 }
-
-                if (boost::string_ref{next->begin(), next->size()} == "disable_noise")
-                    proxies.back().noise = false;
-                else
-                {
-                    proxies.back().max_connections = get_max_connections(*next);
-                    if (proxies.back().max_connections == 0)
-                    {
-                        MERROR("Invalid max connections given to --" << arg_tx_proxy.name);
-                        return boost::none;
-                    }
-                }
+                ++it;
+            }
+            if (it != pieces.end())
+            {
+                MERROR("Too many ',' characters given to --" << arg_tx_proxy.name);
+                return std::nullopt;
             }
 
             switch (epee::net_utils::zone_from_string(zone))
             {
             case epee::net_utils::zone::tor:
-                proxies.back().zone = epee::net_utils::zone::tor;
+                set_proxy.zone = epee::net_utils::zone::tor;
                 break;
             case epee::net_utils::zone::i2p:
-                proxies.back().zone = epee::net_utils::zone::i2p;
+                set_proxy.zone = epee::net_utils::zone::i2p;
                 break;
             default:
                 MERROR("Invalid network for --" << arg_tx_proxy.name);
@@ -218,12 +216,12 @@ namespace nodetool
 
             std::uint32_t ip = 0;
             std::uint16_t port = 0;
-            if (!epee::string_tools::parse_peer_from_string(ip, port, std::string{proxy}) || port == 0)
+            if (!epee::string_tools::parse_peer_from_string(ip, port, proxy) || port == 0)
             {
                 MERROR("Invalid ipv4:port given for --" << arg_tx_proxy.name);
                 return std::nullopt;
             }
-            proxies.back().address = ip::tcp::endpoint{ip::address_v4{boost::endian::native_to_big(ip)}, port};
+            set_proxy.address = ip::tcp::endpoint{ip::address_v4{boost::endian::native_to_big(ip)}, port};
         }
 
         return proxies;
@@ -238,24 +236,21 @@ namespace nodetool
 
         for (std::string_view arg : args)
         {
-            inbounds.emplace_back();
+            auto& set_inbound = inbounds.emplace_back();
 
-            auto next = boost::algorithm::make_split_iterator(arg, boost::algorithm::first_finder(","));
-            CHECK_AND_ASSERT_MES(!next.eof() && !next->empty(), std::nullopt, "No inbound address for --" << arg_anonymous_inbound.name);
-            std::string_view address{next->begin(), next->size()};
-
-            ++next;
-            CHECK_AND_ASSERT_MES(!next.eof() && !next->empty(), std::nullopt, "No local ipv4:port given for --" << arg_anonymous_inbound.name);
-            std::string_view bind{next->begin(), next->size()};
+            auto pieces = tools::split(arg, ","sv);
+            CHECK_AND_ASSERT_MES(pieces.size() >= 1 && !pieces[0].empty(), std::nullopt, "No inbound address for --" << arg_anonymous_inbound.name);
+            CHECK_AND_ASSERT_MES(pieces.size() >= 2 && !pieces[1].empty(), std::nullopt, "No local ipv4:port given for --" << arg_anonymous_inbound.name);
+            auto& address = pieces[0];
+            auto& bind = pieces[1];
 
             const std::size_t colon = bind.find_first_of(':');
             CHECK_AND_ASSERT_MES(colon < bind.size(), std::nullopt, "No local port given for --" << arg_anonymous_inbound.name);
 
-            ++next;
-            if (!next.eof())
+            if (pieces.size() >= 3)
             {
-                inbounds.back().max_connections = get_max_connections(*next);
-                if (inbounds.back().max_connections == 0)
+                set_inbound.max_connections = get_max_connections(pieces[2]);
+                if (set_inbound.max_connections == 0)
                 {
                     MERROR("Invalid max connections given to --" << arg_tx_proxy.name);
                     return std::nullopt;
@@ -266,12 +261,12 @@ namespace nodetool
             switch (our_address ? our_address->get_type_id() : epee::net_utils::address_type::invalid)
             {
             case net::tor_address::get_type_id():
-                inbounds.back().our_address = std::move(*our_address);
-                inbounds.back().default_remote = net::tor_address::unknown();
+                set_inbound.our_address = std::move(*our_address);
+                set_inbound.default_remote = net::tor_address::unknown();
                 break;
             case net::i2p_address::get_type_id():
-                inbounds.back().our_address = std::move(*our_address);
-                inbounds.back().default_remote = net::i2p_address::unknown();
+                set_inbound.our_address = std::move(*our_address);
+                set_inbound.default_remote = net::i2p_address::unknown();
                 break;
             default:
                 MERROR("Invalid inbound address (" << address << ") for --" << arg_anonymous_inbound.name << ": " << (our_address ? "invalid type" : our_address.error().message()));
@@ -279,18 +274,18 @@ namespace nodetool
             }
 
             // get_address returns default constructed address on error
-            if (inbounds.back().our_address == epee::net_utils::network_address{})
+            if (set_inbound.our_address == epee::net_utils::network_address{})
                 return std::nullopt;
 
             std::uint32_t ip = 0;
             std::uint16_t port = 0;
-            if (!epee::string_tools::parse_peer_from_string(ip, port, std::string{bind}))
+            if (!epee::string_tools::parse_peer_from_string(ip, port, bind))
             {
                 MERROR("Invalid ipv4:port given for --" << arg_anonymous_inbound.name);
                 return std::nullopt;
             }
-            inbounds.back().local_ip = std::string{bind.substr(0, colon)};
-            inbounds.back().local_port = std::string{bind.substr(colon + 1)};
+            set_inbound.local_ip = bind.substr(0, colon);
+            set_inbound.local_port = bind.substr(colon + 1);
         }
 
         return inbounds;

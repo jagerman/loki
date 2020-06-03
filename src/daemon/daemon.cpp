@@ -31,7 +31,6 @@
 
 #include <memory>
 #include <stdexcept>
-#include <boost/algorithm/string/split.hpp>
 #include <lokimq/lokimq.h>
 
 #include "misc_log_ex.h"
