@@ -27,7 +27,7 @@
 #pragma once
 #include <boost/asio/steady_timer.hpp>
 #include <boost/uuid/uuid_generators.hpp>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
 
 #include <atomic>
 #include <memory>
@@ -54,6 +54,13 @@ namespace epee
 namespace levin
 {
 
+struct uuid_hasher {
+  size_t operator()(const boost::uuids::uuid& uid) const
+  {
+    return boost::uuids::hash_value(uid);
+  }
+};
+
 /************************************************************************/
 /*                                                                      */
 /************************************************************************/
@@ -63,7 +70,7 @@ class async_protocol_handler;
 template<class t_connection_context>
 class async_protocol_handler_config
 {
-  typedef boost::unordered_map<boost::uuids::uuid, async_protocol_handler<t_connection_context>* > connections_map;
+  typedef std::unordered_map<boost::uuids::uuid, async_protocol_handler<t_connection_context>*, uuid_hasher > connections_map;
   critical_section m_connects_lock;
   connections_map m_connects;
 

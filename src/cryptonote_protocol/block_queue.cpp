@@ -42,12 +42,14 @@
 #define LOKI_DEFAULT_LOG_CATEGORY "cn.block_queue"
 
 namespace std {
-  static_assert(sizeof(size_t) <= sizeof(boost::uuids::uuid), "boost::uuids::uuid too small");
-  template<> struct hash<boost::uuids::uuid> {
-    std::size_t operator()(const boost::uuids::uuid &_v) const {
-      return reinterpret_cast<const std::size_t &>(_v);
-    }
-  };
+template<>
+struct hash<boost::uuids::uuid>
+{
+  size_t operator()(const boost::uuids::uuid& uid) const
+  {
+    return boost::uuids::hash_value(uid);
+  }
+};
 }
 
 namespace cryptonote
