@@ -37,7 +37,7 @@
 #include <string>
 #include <mutex>
 #include <condition_variable>
-#include <boost/thread/thread.hpp>
+#include <thread>
 
 
 namespace Monero {
@@ -256,8 +256,8 @@ private:
     // synchronizing  sync and async refresh
     std::mutex        m_refreshMutex2;
     std::condition_variable m_refreshCV;
-    boost::thread       m_refreshThread;
-    boost::thread       m_longPollThread;
+    std::thread       m_refreshThread;
+    std::thread       m_longPollThread;
 
     // flag indicating wallet is recovering from seed
     // so it shouldn't be considered as new and pull blocks (slow-refresh)

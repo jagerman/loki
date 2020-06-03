@@ -27,12 +27,13 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <boost/thread/thread.hpp>
 #include <cstddef>
 #include <functional>
 #include <utility>
 #include <vector>
+#include <deque>
 #include <stdexcept>
+#include <thread>
 #include <mutex>
 #include <condition_variable>
 
@@ -90,7 +91,7 @@ public:
     std::deque<entry> queue;
     std::condition_variable has_work;
     std::mutex mutex;
-    std::vector<boost::thread> threads;
+    std::vector<std::thread> threads;
     unsigned int active;
     unsigned int max;
     bool running;

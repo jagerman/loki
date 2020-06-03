@@ -45,8 +45,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include <boost/thread/thread.hpp>
-#include <memory>
 #include "byte_slice.h"
 #include "net_utils_base.h"
 #include "syncobj.h"
@@ -234,10 +232,10 @@ namespace net_utils
 	ssl_options_t ssl_options = ssl_support_t::e_ssl_support_autodetect);
 
     /// Run the server's io_service loop.
-    bool run_server(size_t threads_count, bool wait = true, const boost::thread::attributes& attrs = boost::thread::attributes());
+    bool run_server(size_t threads_count, bool wait = true);
 
     /// wait for service workers stop
-    bool timed_wait_server_stop(uint64_t wait_mseconds);
+    bool server_stop();
 
     /// Stop the server.
     void send_stop_signal();
@@ -384,8 +382,8 @@ namespace net_utils
     bool m_require_ipv4;
     std::string m_thread_name_prefix; //TODO: change to enum server_type, now used
     size_t m_threads_count;
-    std::vector<std::shared_ptr<boost::thread> > m_threads;
-    boost::thread::id m_main_thread_id;
+    std::vector<std::thread> m_threads;
+    std::thread::id m_main_thread_id;
     critical_section m_threads_lock;
     std::atomic<uint32_t> m_thread_index;
 

@@ -60,7 +60,7 @@ namespace trezor {
     protected:
       std::atomic<bool> m_live_refresh_in_progress;
       std::chrono::steady_clock::time_point m_last_live_refresh_time;
-      std::unique_ptr<boost::thread> m_live_refresh_thread;
+      std::optional<std::thread> m_live_refresh_thread;
       std::atomic<bool> m_live_refresh_thread_running;
       bool m_live_refresh_enabled;
       size_t m_num_transations_to_sign;

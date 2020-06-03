@@ -131,6 +131,6 @@ TEST(boosted_tcp_server, worker_threads_are_exception_resistant)
   }
 
   srv.send_stop_signal();
-  ASSERT_TRUE(srv.timed_wait_server_stop(5 * 1000));
+  ASSERT_TRUE(srv.server_stop());
   ASSERT_TRUE(srv.deinit_server());
 }

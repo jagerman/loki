@@ -33,16 +33,15 @@
 //#include <Ws2tcpip.h>
 #include <atomic>
 #include <string>
-#include <boost/version.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <boost/thread/future.hpp>
 #include <boost/lambda/bind.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/system/error_code.hpp>
+#include <future>
 #include <functional>
 #include "net/net_utils_base.h"
 #include "net/net_ssl.h"
@@ -62,7 +61,7 @@ namespace net_utils
 {
 	struct direct_connect
 	{
-		boost::unique_future<boost::asio::ip::tcp::socket>
+		std::future<boost::asio::ip::tcp::socket>
 			operator()(const std::string& addr, const std::string& port, boost::asio::steady_timer&) const;
 	};
 
@@ -129,7 +128,7 @@ namespace net_utils
 
 		    The return value is a future to a connected socket. Asynchronous
 		    failures should use the `set_exception` method. */
-		using connect_func = boost::unique_future<boost::asio::ip::tcp::socket>(const std::string&, const std::string&, boost::asio::steady_timer&);
+		using connect_func = std::function<std::future<boost::asio::ip::tcp::socket>(const std::string&, const std::string&, boost::asio::steady_timer&)>;
 
 		inline
 			~blocked_mode_client()
@@ -158,15 +157,11 @@ namespace net_utils
 			try_connect_result_t try_connect(const std::string& addr, const std::string& port, std::chrono::milliseconds timeout)
 		{
 				m_deadline.expires_from_now(timeout);
-				boost::unique_future<boost::asio::ip::tcp::socket> connection = m_connector(addr, port, m_deadline);
-				for (;;)
-				{
+        auto connection = m_connector(addr, port, m_deadline);
+        do {
 					m_io_service.reset();
 					m_io_service.run_one();
-
-					if (connection.is_ready())
-						break;
-				}
+        } while (connection.wait_for(0s) != std::future_status::ready);
 
 				m_ssl_socket->next_layer() = connection.get();
 				m_deadline.cancel();
@@ -246,7 +241,7 @@ namespace net_utils
 			return true;
 		}
 		//! Change the connection routine (proxy, etc.)
-		void set_connector(std::function<connect_func> connector)
+		void set_connector(connect_func connector)
 		{
 			m_connector = std::move(connector);
 		}

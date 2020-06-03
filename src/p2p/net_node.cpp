@@ -32,7 +32,7 @@
 #include <boost/algorithm/string/finder.hpp>
 #include <boost/chrono/duration.hpp>
 #include <boost/endian/conversion.hpp>
-#include <boost/thread/future.hpp>
+#include <future>
 #include <optional>
 #include <chrono>
 #include <utility>
@@ -324,7 +324,7 @@ namespace nodetool
 
         struct notify
         {
-            boost::promise<client_result> socks_promise;
+            std::promise<client_result> socks_promise;
 
             void operator()(boost::system::error_code error, socket_type&& sock)
             {
@@ -332,9 +332,9 @@ namespace nodetool
             }
         };
 
-        boost::unique_future<client_result> socks_result{};
+        std::future<client_result> socks_result{};
         {
-            boost::promise<client_result> socks_promise{};
+            std::promise<client_result> socks_promise{};
             socks_result = socks_promise.get_future();
 
             auto client = net::socks::make_connect_client(
@@ -345,7 +345,7 @@ namespace nodetool
         }
 
         const auto start = std::chrono::steady_clock::now();
-        while (socks_result.wait_for(future_poll_interval) == boost::future_status::timeout)
+        while (socks_result.wait_for(future_poll_interval) == std::future_status::timeout)
         {
             if (socks_connect_timeout < std::chrono::steady_clock::now() - start)
             {
@@ -365,7 +365,7 @@ namespace nodetool
 
             MERROR("Failed to make socks connection to " << remote.str() << " (via " << proxy << "): " << result.first.message());
         }
-        catch (boost::broken_promise const&)
+        catch (const std::future_error&)
         {}
 
         return std::nullopt;

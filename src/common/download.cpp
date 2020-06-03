@@ -29,8 +29,8 @@
 
 #include <string>
 #include <atomic>
+#include <thread>
 #include <boost/filesystem.hpp>
-#include <boost/thread/thread.hpp>
 #include "file_io_utils.h"
 #include "net/http_client.h"
 #include "download.h"
@@ -49,7 +49,7 @@ namespace tools
     bool stop;
     bool stopped;
     bool success;
-    boost::thread thread;
+    std::thread thread;
     std::mutex mutex;
 
     download_thread_control(const std::string &path, const std::string &uri, std::function<void(const std::string&, const std::string&, bool)> result_cb, std::function<bool(const std::string&, const std::string&, size_t, ssize_t)> progress_cb):
@@ -270,7 +270,7 @@ namespace tools
   download_async_handle download_async(const std::string &path, const std::string &url, std::function<void(const std::string&, const std::string&, bool)> result, std::function<bool(const std::string&, const std::string&, size_t, ssize_t)> progress)
   {
     download_async_handle control = std::make_shared<download_thread_control>(path, url, result, progress);
-    control->thread = boost::thread([control](){ download_thread(control); });
+    control->thread = std::thread([control](){ download_thread(control); });
     return control;
   }
 

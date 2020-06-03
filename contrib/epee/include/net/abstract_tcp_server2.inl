@@ -43,6 +43,7 @@
 #include "net/local_ip.h"
 #include "pragma_comp_defs.h"
 
+#include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <sstream>
@@ -364,7 +365,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 				long int ms = (long int)(delay * 100);
 				if (ms > 0) {
 					reset_timer(boost::posix_time::milliseconds(ms + 1), true);
-					boost::this_thread::sleep_for(boost::chrono::milliseconds(ms));
+					std::this_thread::sleep_for(std::chrono::milliseconds{ms});
 				}
 			} while(delay > 0);
 		} // any form of sleeping
@@ -650,7 +651,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         int ms = std::uniform_int_distribution<>{250, 299}(rng);
         MDEBUG("Sleeping because QUEUE is FULL, in " << __FUNCTION__ << " for " << ms << " ms before packet_size="<<chunk.size()); // XXX debug sleep
         m_send_que_lock.unlock();
-        boost::this_thread::sleep(boost::posix_time::milliseconds( ms ) );
+        std::this_thread::sleep_for(std::chrono::milliseconds{ms});
         m_send_que_lock.lock();
         MDEBUG("sleep for queue: " << ms);
 
@@ -965,8 +966,8 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   template<class t_protocol_handler>
   boosted_tcp_server<t_protocol_handler>::~boosted_tcp_server()
   {
-    this->send_stop_signal();
-    timed_wait_server_stop(10000);
+    send_stop_signal();
+    server_stop();
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
@@ -1152,11 +1153,11 @@ POP_WARNINGS
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
-  bool boosted_tcp_server<t_protocol_handler>::run_server(size_t threads_count, bool wait, const boost::thread::attributes& attrs)
+  bool boosted_tcp_server<t_protocol_handler>::run_server(size_t threads_count, bool wait)
   {
     TRY_ENTRY();
     m_threads_count = threads_count;
-    m_main_thread_id = boost::this_thread::get_id();
+    m_main_thread_id = std::this_thread::get_id();
     MLOG_SET_THREAD_NAME("[SRV_MAIN]");
     while(!m_stop_signal_sent)
     {
@@ -1165,20 +1166,17 @@ POP_WARNINGS
       CRITICAL_REGION_BEGIN(m_threads_lock);
       for (std::size_t i = 0; i < threads_count; ++i)
       {
-        std::shared_ptr<boost::thread> thread(new boost::thread(
-          attrs, boost::bind(&boosted_tcp_server<t_protocol_handler>::worker_thread, this)));
-          MDEBUG("Run server thread name: " << m_thread_name_prefix);
-        m_threads.push_back(thread);
+        m_threads.emplace_back([this] { worker_thread(); });
+        MDEBUG("Run server thread name: " << m_thread_name_prefix);
       }
       CRITICAL_REGION_END();
       // Wait for all threads in the pool to exit.
       if (wait)
       {
 		MDEBUG("JOINING all threads");
-        for (std::size_t i = 0; i < m_threads.size(); ++i) {
-			m_threads[i]->join();
-         }
-         MDEBUG("JOINING all threads - almost");
+        for (auto& th: m_threads)
+          th.join();
+        MDEBUG("JOINING all threads - almost");
         m_threads.clear();
         MDEBUG("JOINING all threads - DONE");
 
@@ -1211,32 +1209,24 @@ POP_WARNINGS
   {
     TRY_ENTRY();
     CRITICAL_REGION_LOCAL(m_threads_lock);
-    for (auto &thp : m_threads)
-    {
-      if(thp->get_id() == boost::this_thread::get_id())
+    for (auto& th : m_threads)
+      if(th.get_id() == std::this_thread::get_id())
         return true;
-    }
-    if(m_threads_count == 1 && boost::this_thread::get_id() == m_main_thread_id)
+    if(m_threads_count == 1 && std::this_thread::get_id() == m_main_thread_id)
       return true;
     return false;
     CATCH_ENTRY_L0("boosted_tcp_server<t_protocol_handler>::is_thread_worker", false);
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
-  bool boosted_tcp_server<t_protocol_handler>::timed_wait_server_stop(uint64_t wait_mseconds)
+  bool boosted_tcp_server<t_protocol_handler>::server_stop()
   {
     TRY_ENTRY();
-    boost::chrono::milliseconds ms(wait_mseconds);
-    for (std::size_t i = 0; i < m_threads.size(); ++i)
-    {
-      if(m_threads[i]->joinable() && !m_threads[i]->try_join_for(ms))
-      {
-        MDEBUG("Interrupting thread " << m_threads[i]->native_handle());
-        m_threads[i]->interrupt();
-      }
-    }
+    for (auto& th : m_threads)
+      if (th.joinable())
+        th.join();
     return true;
-    CATCH_ENTRY_L0("boosted_tcp_server<t_protocol_handler>::timed_wait_server_stop", false);
+    CATCH_ENTRY_L0("boosted_tcp_server<t_protocol_handler>::server_stop", false);
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>

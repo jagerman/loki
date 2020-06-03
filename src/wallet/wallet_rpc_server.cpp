@@ -139,7 +139,7 @@ namespace tools
       return true;
     }, 500);
 
-    m_long_poll_thread = boost::thread([&] {
+    m_long_poll_thread = std::thread([&] {
       for (;;)
       {
         if (m_long_poll_disabled) return true;

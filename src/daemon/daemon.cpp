@@ -95,7 +95,7 @@ void http_rpc_server::run()
 void http_rpc_server::stop()
 {
   m_server.send_stop_signal();
-  m_server.timed_wait_server_stop(5000);
+  m_server.server_stop();
 }
 
 http_rpc_server::~http_rpc_server()
@@ -240,12 +240,12 @@ bool daemon::run(bool interactive)
     throw std::runtime_error{"Can't run stopped daemon"};
 
   std::atomic<bool> stop_sig(false), shutdown(false);
-  boost::thread stop_thread = boost::thread([&stop_sig, &shutdown, this] {
+  std::thread stop_thread{[&stop_sig, &shutdown, this] {
     while (!stop_sig)
       epee::misc_utils::sleep_no_w(100);
     if (shutdown)
       stop();
-  });
+  }};
 
   LOKI_DEFER
   {

@@ -8707,9 +8707,9 @@ bool simple_wallet::run()
   refresh_main(0, ResetNone, true);
 
   m_auto_refresh_enabled = m_wallet->auto_refresh();
-  m_idle_thread          = boost::thread([&] { wallet_idle_thread(); });
+  m_idle_thread          = std::thread([&] { wallet_idle_thread(); });
 
-  m_long_poll_thread = boost::thread([&] {
+  m_long_poll_thread = std::thread([&] {
     for (;;)
     {
       if (m_wallet->m_long_poll_disabled)

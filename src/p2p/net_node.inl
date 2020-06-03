@@ -36,7 +36,6 @@
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/thread/thread.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <atomic>
 #include <functional>
@@ -886,7 +885,7 @@ namespace nodetool
   bool node_server<t_payload_net_handler>::run()
   {
     // creating thread to log number of connections
-    mPeersLoggerThread.reset(new boost::thread([&]()
+    mPeersLoggerThread.emplace([&]()
     {
       MDEBUG("Thread monitor number of peers - start");
       const network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
@@ -915,10 +914,10 @@ namespace nodetool
           zone.second.m_current_number_of_in_peers = number_of_in_peers;
           zone.second.m_current_number_of_out_peers = number_of_out_peers;
         }
-        boost::this_thread::sleep_for(boost::chrono::seconds(1));
+        std::this_thread::sleep_for(1s);
       } // main loop of thread
       MDEBUG("Thread monitor number of peers - done");
-    })); // lambda
+    }); // lambda
 
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
     public_zone.m_net_server.add_idle_handler(boost::bind(&node_server<t_payload_net_handler>::idle_worker, this), 1000);
@@ -926,11 +925,9 @@ namespace nodetool
 
     //here you can set worker threads count
     int thrds_count = 10;
-    boost::thread::attributes attrs;
-    attrs.set_stack_size(THREAD_STACK_SIZE);
     //go to loop
     MINFO("Run net_service loop( " << thrds_count << " threads)...");
-    if(!public_zone.m_net_server.run_server(thrds_count, true, attrs))
+    if(!public_zone.m_net_server.run_server(thrds_count, true))
     {
       LOG_ERROR("Failed to run net tcp server!");
     }
@@ -1669,7 +1666,7 @@ namespace nodetool
         {
           // we did not make any connection, sleep a bit to avoid a busy loop in case we don't have
           // any peers to try, then break so we will try seeds to get more peers
-          boost::this_thread::sleep_for(boost::chrono::seconds(1));
+          std::this_thread::sleep_for(1s);
           break;
         }
         conn_count = new_conn_count;

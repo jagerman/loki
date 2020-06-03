@@ -299,7 +299,7 @@ void mock_daemon::stop()
 void mock_daemon::stop_rpc()
 {
   m_rpc_server.send_stop_signal();
-  m_rpc_server.timed_wait_server_stop(5000);
+  m_rpc_server.server_stop();
 }
 
 void mock_daemon::stop_p2p()

@@ -453,11 +453,9 @@ WalletImpl::WalletImpl(NetworkType nettype, uint64_t kdf_rounds)
 
     m_refreshIntervalMillis = DEFAULT_REFRESH_INTERVAL_MILLIS;
 
-    m_refreshThread = boost::thread([this] () {
-        this->refreshThreadFunc();
-    });
+    m_refreshThread = std::thread([this] () { refreshThreadFunc(); });
 
-    m_longPollThread = boost::thread([this]() {
+    m_longPollThread = std::thread([this]() {
       for (;;)
       {
         if (!m_refreshEnabled)

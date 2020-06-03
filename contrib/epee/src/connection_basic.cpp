@@ -37,7 +37,7 @@
 #include "net/net_utils_base.h" 
 #include "misc_log_ex.h" 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/thread/thread.hpp>
+#include <thread>
 #include "misc_language.h"
 #include "pragma_comp_defs.h"
 #include <iomanip>
@@ -253,7 +253,7 @@ void connection_basic::sleep_before_packet(size_t packet_size, int phase,  int q
 		if (delay > 0) {
             long int ms = (long int)(delay * 1000);
 			MTRACE("Sleeping in " << __FUNCTION__ << " for " << ms << " ms before packet_size="<<packet_size); // debug sleep
-			boost::this_thread::sleep(boost::posix_time::milliseconds( ms ) );
+			std::this_thread::sleep_for(std::chrono::milliseconds{ms});
 		}
 	} while(delay > 0);
 

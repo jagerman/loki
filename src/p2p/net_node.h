@@ -393,7 +393,7 @@ namespace nodetool
     void kill() { ///< will be called e.g. from deinit()
       MINFO("Killing the net_node");
       is_closing = true;
-      if(mPeersLoggerThread != nullptr)
+      if(mPeersLoggerThread)
         mPeersLoggerThread->join(); // make sure the thread finishes
       MINFO("Joined extra background net_node threads");
     }
@@ -430,7 +430,7 @@ namespace nodetool
     bool m_use_ipv6;
     bool m_require_ipv4;
     std::atomic<bool> is_closing;
-    std::unique_ptr<boost::thread> mPeersLoggerThread;
+    std::optional<std::thread> mPeersLoggerThread;
     //critical_section m_connections_lock;
     //connections_indexed_container m_connections;
 

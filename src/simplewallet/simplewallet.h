@@ -40,6 +40,7 @@
 #include <optional>
 #include <mutex>
 #include <condition_variable>
+#include <thread>
 
 #include <boost/program_options/variables_map.hpp>
 
@@ -433,7 +434,7 @@ namespace cryptonote
     refresh_progress_reporter_t m_refresh_progress_reporter;
 
     std::atomic<bool> m_idle_run;
-    boost::thread m_idle_thread;
+    std::thread m_idle_thread;
     std::mutex m_idle_mutex;
     std::condition_variable m_idle_cond;
 
@@ -444,7 +445,7 @@ namespace cryptonote
 
     std::atomic<uint64_t> m_password_asked_on_height;
     crypto::hash          m_password_asked_on_checksum;
-    boost::thread         m_long_poll_thread;
+    std::thread           m_long_poll_thread;
 
     std::atomic<time_t> m_last_activity_time;
     std::atomic<bool> m_locked;

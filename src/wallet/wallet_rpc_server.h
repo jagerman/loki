@@ -290,7 +290,7 @@ namespace tools
       boost::program_options::variables_map m_vm;
       uint32_t m_auto_refresh_period;
       boost::posix_time::ptime m_last_auto_refresh_time;
-      boost::thread m_long_poll_thread;
+      std::thread m_long_poll_thread;
       std::atomic<bool> m_long_poll_new_changes;
   };
 }

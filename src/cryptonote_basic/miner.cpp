@@ -86,9 +86,7 @@ namespace cryptonote
     m_do_mining(false),
     m_current_hash_rate(0),
     m_block_reward(0)
-  {
-    m_attrs.set_stack_size(THREAD_STACK_SIZE);
-  }
+  {}
   //-----------------------------------------------------------------------------------------------------
   miner::~miner()
   {
@@ -236,7 +234,7 @@ namespace cryptonote
     m_stop = false;
     m_thread_index = 0;
     for(size_t i = 0; i != m_threads_total; i++)
-      m_threads.emplace_back(m_attrs, [this] { return worker_thread(false); });
+      m_threads.emplace_back([this] { return worker_thread(false); });
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::init_options(boost::program_options::options_description& desc)
@@ -340,7 +338,7 @@ namespace cryptonote
     
     for(size_t i = 0; i != m_threads_total; i++)
     {
-      m_threads.emplace_back(m_attrs, [=] { return worker_thread(slow_mining); });
+      m_threads.emplace_back([=] { return worker_thread(slow_mining); });
     }
 
     if (threads_count == 0)
