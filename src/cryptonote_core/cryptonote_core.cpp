@@ -2214,12 +2214,12 @@ namespace cryptonote
       m_starter_message_showed = true;
     }
 
-    m_fork_moaner.do_call(boost::bind(&core::check_fork_time, this));
-    m_txpool_auto_relayer.do_call(boost::bind(&core::relay_txpool_transactions, this));
-    m_service_node_vote_relayer.do_call(boost::bind(&core::relay_service_node_votes, this));
-    // m_check_updates_interval.do_call(boost::bind(&core::check_updates, this));
-    m_check_disk_space_interval.do_call(boost::bind(&core::check_disk_space, this));
-    m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));
+    m_fork_moaner.do_call([this] { return check_fork_time(); });
+    m_txpool_auto_relayer.do_call([this] { return relay_txpool_transactions(); });
+    m_service_node_vote_relayer.do_call([this] { return relay_service_node_votes(); });
+    // m_check_updates_interval.do_call([this] { return check_updates(); });
+    m_check_disk_space_interval.do_call([this] { return check_disk_space(); });
+    m_block_rate_interval.do_call([this] { return check_block_rate(); });
     m_sn_proof_cleanup_interval.do_call([&snl=m_service_node_list] { snl.cleanup_proofs(); return true; });
 
     time_t const lifetime = time(nullptr) - get_start_time();
@@ -2229,7 +2229,7 @@ namespace cryptonote
       do_uptime_proof_call();
     }
 
-    m_blockchain_pruning_interval.do_call(boost::bind(&core::update_blockchain_pruning, this));
+    m_blockchain_pruning_interval.do_call([this] { return update_blockchain_pruning(); });
     m_miner.on_idle();
     m_mempool.on_idle();
 

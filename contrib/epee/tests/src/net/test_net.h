@@ -27,7 +27,6 @@
 #pragma once
 
 #include <thread>
-#include <boost/bind.hpp> 
 
 #include "net/abstract_tcp_server2.h"
 #include "net/levin_protocol_handler.h"

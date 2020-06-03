@@ -33,7 +33,6 @@
 
 #include <algorithm>
 #include <optional>
-#include <boost/bind.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <atomic>
@@ -919,8 +918,8 @@ namespace nodetool
     }); // lambda
 
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
-    public_zone.m_net_server.add_idle_handler(boost::bind(&node_server<t_payload_net_handler>::idle_worker, this), 1000);
-    public_zone.m_net_server.add_idle_handler(boost::bind(&t_payload_net_handler::on_idle, &m_payload_handler), 1000);
+    public_zone.m_net_server.add_idle_handler([this] { return idle_worker(); }, 1s);
+    public_zone.m_net_server.add_idle_handler([this] { return m_payload_handler.on_idle(); }, 1s);
 
     //here you can set worker threads count
     int thrds_count = 10;
@@ -1816,11 +1815,11 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::idle_worker()
   {
-    m_peer_handshake_idle_maker_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::peer_sync_idle_maker, this));
-    m_connections_maker_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::connections_maker, this));
-    m_gray_peerlist_housekeeping_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::gray_peerlist_housekeeping, this));
-    m_peerlist_store_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::store_config, this));
-    m_incoming_connections_interval.do_call(boost::bind(&node_server<t_payload_net_handler>::check_incoming_connections, this));
+    m_peer_handshake_idle_maker_interval.do_call([this] { return peer_sync_idle_maker(); });
+    m_connections_maker_interval.do_call([this] { return connections_maker(); });
+    m_gray_peerlist_housekeeping_interval.do_call([this] { return gray_peerlist_housekeeping(); });
+    m_peerlist_store_interval.do_call([this] { return store_config(); });
+    m_incoming_connections_interval.do_call([this] { return check_incoming_connections(); });
     return true;
   }
   //-----------------------------------------------------------------------------------
