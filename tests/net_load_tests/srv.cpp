@@ -190,10 +190,10 @@ namespace
       if (0 < count)
       {
         // Perhaps not all connections were closed, try to close it after 7 seconds
-        std::shared_ptr<boost::asio::deadline_timer> sh_deadline(new boost::asio::deadline_timer(m_tcp_server.get_io_service(), boost::posix_time::seconds(7)));
+        auto sh_deadline = std::make_shared<boost::asio::steady_timer>(m_tcp_server.get_io_service(), 7s);
         sh_deadline->async_wait([=](const boost::system::error_code& ec)
         {
-          std::shared_ptr<boost::asio::deadline_timer> t = sh_deadline; // Capture sh_deadline
+          std::shared_ptr<boost::asio::steady_timer> t = sh_deadline; // Capture sh_deadline
           if (!ec)
           {
             close_connections(cmd_conn_id);

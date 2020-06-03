@@ -68,14 +68,14 @@ namespace cryptonote
     std::string peer_id;
 
     uint64_t recv_count;
-    uint64_t recv_idle_time;
+    std::chrono::milliseconds recv_idle_time;
 
     uint64_t send_count;
-    uint64_t send_idle_time;
+    std::chrono::milliseconds send_idle_time;
 
     std::string state;
 
-    uint64_t live_time;
+    std::chrono::milliseconds live_time;
 
 	uint64_t avg_download;
 	uint64_t current_download;

@@ -140,7 +140,6 @@ target_link_libraries(http-client_fuzz_tests
     common
     epee
     Boost::thread
-    Boost::chrono
     Boost::program_options
     Boost::system
     extra)
@@ -154,7 +153,6 @@ target_link_libraries(levin_fuzz_tests
     common
     epee
     Boost::thread
-    Boost::chrono
     Boost::program_options
     extra)
 set_property(TARGET levin_fuzz_tests
@@ -167,7 +165,6 @@ target_link_libraries(bulletproof_fuzz_tests
     common
     epee
     Boost::thread
-    Boost::chrono
     Boost::program_options
     extra)
 set_property(TARGET bulletproof_fuzz_tests

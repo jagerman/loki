@@ -53,7 +53,6 @@ target_link_libraries(cryptonote_core
     sqlite3
   PRIVATE
     Boost::program_options
-    Boost::chrono
     systemd
     extra)
 

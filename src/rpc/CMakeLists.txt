@@ -92,6 +92,5 @@ target_link_libraries(daemon_rpc_server
     rpc
     daemon_messages
     serialization
-    Boost::chrono
     Boost::thread
     extra)

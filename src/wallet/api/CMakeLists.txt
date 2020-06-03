@@ -45,7 +45,6 @@ target_link_libraries(wallet_api
     cryptonote_core
     mnemonics
     lmdb
-    Boost::chrono
     Boost::serialization
     Boost::filesystem
     Boost::thread

@@ -13,11 +13,22 @@ KV_SERIALIZE_MAP_CODE_BEGIN(connection_info)
   KV_SERIALIZE(rpc_port)
   KV_SERIALIZE(peer_id)
   KV_SERIALIZE(recv_count)
-  KV_SERIALIZE(recv_idle_time)
+  uint64_t recv_idle_time, send_idle_time, live_time;
+  if (is_store) {
+    recv_idle_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.recv_idle_time).count();
+    send_idle_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.send_idle_time).count();
+    live_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.live_time).count();
+  }
+  KV_SERIALIZE_VALUE(recv_idle_time)
   KV_SERIALIZE(send_count)
-  KV_SERIALIZE(send_idle_time)
+  KV_SERIALIZE_VALUE(send_idle_time)
   KV_SERIALIZE(state)
-  KV_SERIALIZE(live_time)
+  KV_SERIALIZE_VALUE(live_time)
+  if constexpr (!is_store) {
+    this_ref.recv_idle_time = std::chrono::seconds{recv_idle_time};
+    this_ref.send_idle_time = std::chrono::seconds{send_idle_time};
+    this_ref.live_time = std::chrono::seconds{live_time};
+  }
   KV_SERIALIZE(avg_download)
   KV_SERIALIZE(current_download)
   KV_SERIALIZE(avg_upload)

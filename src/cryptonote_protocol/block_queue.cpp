@@ -1,5 +1,5 @@
+// Copyright (c) 2018-2020, The Loki Project
 // Copyright (c) 2017-2019, The Monero Project
-// Copyright (c)      2018, The Loki Project
 // 
 // All rights reserved.
 // 
@@ -70,7 +70,7 @@ void block_queue::add_blocks(uint64_t height, std::vector<cryptonote::block_comp
   }
 }
 
-void block_queue::add_blocks(uint64_t height, uint64_t nblocks, const boost::uuids::uuid &connection_id, boost::posix_time::ptime time)
+void block_queue::add_blocks(uint64_t height, uint64_t nblocks, const boost::uuids::uuid &connection_id, std::chrono::steady_clock::time_point time)
 {
   CHECK_AND_ASSERT_THROW_MES(nblocks > 0, "Empty span");
   std::unique_lock lock{mutex};
@@ -229,7 +229,14 @@ bool block_queue::have(const crypto::hash &hash) const
   return have_blocks.find(hash) != have_blocks.end();
 }
 
-std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_height, uint64_t last_block_height, uint64_t max_blocks, const boost::uuids::uuid &connection_id, uint32_t pruning_seed, uint64_t blockchain_height, const std::vector<crypto::hash> &block_hashes, boost::posix_time::ptime time)
+std::pair<uint64_t, uint64_t> block_queue::reserve_span(
+        uint64_t first_block_height,
+        uint64_t last_block_height,
+        uint64_t max_blocks,
+        const boost::uuids::uuid &connection_id,
+        uint32_t pruning_seed,
+        uint64_t blockchain_height,
+        const std::vector<crypto::hash> &block_hashes)
 {
   std::unique_lock lock{mutex};
 
@@ -295,12 +302,12 @@ std::pair<uint64_t, uint64_t> block_queue::reserve_span(uint64_t first_block_hei
     return std::make_pair(0, 0);
   }
   MDEBUG("Reserving span " << span_start_height << " - " << (span_start_height + span_length - 1) << " for " << connection_id);
-  add_blocks(span_start_height, span_length, connection_id, time);
+  add_blocks(span_start_height, span_length, connection_id, std::chrono::steady_clock::now());
   set_span_hashes(span_start_height, connection_id, hashes);
   return std::make_pair(span_start_height, span_length);
 }
 
-std::pair<uint64_t, uint64_t> block_queue::get_next_span_if_scheduled(std::vector<crypto::hash> &hashes, boost::uuids::uuid &connection_id, boost::posix_time::ptime &time) const
+std::pair<uint64_t, uint64_t> block_queue::get_next_span_if_scheduled(std::vector<crypto::hash> &hashes, boost::uuids::uuid &connection_id) const
 {
   std::unique_lock lock{mutex};
   if (blocks.empty())
@@ -312,19 +319,20 @@ std::pair<uint64_t, uint64_t> block_queue::get_next_span_if_scheduled(std::vecto
     return std::make_pair(0, 0);
   hashes = i->hashes;
   connection_id = i->connection_id;
-  time = i->time;
   return std::make_pair(i->start_block_height, i->nblocks);
 }
 
-void block_queue::reset_next_span_time(boost::posix_time::ptime t)
+void block_queue::reset_next_span_time()
 {
   std::unique_lock lock{mutex};
   CHECK_AND_ASSERT_THROW_MES(!blocks.empty(), "No next span to reset time");
   block_map::iterator i = blocks.begin();
   CHECK_AND_ASSERT_THROW_MES(i != blocks.end(), "No next span to reset time");
   CHECK_AND_ASSERT_THROW_MES(i->blocks.empty(), "Next span is not empty");
-  (boost::posix_time::ptime&)i->time = t; // sod off, time doesn't influence sorting
+  const_cast<std::chrono::steady_clock::time_point&>(i->time) // time doesn't influence sorting
+      = std::chrono::steady_clock::now();
 }
+
 
 void block_queue::set_span_hashes(uint64_t start_height, const boost::uuids::uuid &connection_id, std::vector<crypto::hash> hashes)
 {
@@ -363,22 +371,7 @@ bool block_queue::get_next_span(uint64_t &height, std::vector<cryptonote::block_
   return false;
 }
 
-bool block_queue::has_next_span(const boost::uuids::uuid &connection_id, bool &filled, boost::posix_time::ptime &time) const
-{
-  std::unique_lock lock{mutex};
-  if (blocks.empty())
-    return false;
-  block_map::const_iterator i = blocks.begin();
-  if (i == blocks.end())
-    return false;
-  if (i->connection_id != connection_id)
-    return false;
-  filled = !i->blocks.empty();
-  time = i->time;
-  return true;
-}
-
-bool block_queue::has_next_span(uint64_t height, bool &filled, boost::posix_time::ptime &time, boost::uuids::uuid &connection_id) const
+bool block_queue::has_next_span(uint64_t height, bool &filled, std::chrono::steady_clock::time_point& time, boost::uuids::uuid &connection_id) const
 {
   std::unique_lock lock{mutex};
   if (blocks.empty())
@@ -400,22 +393,6 @@ size_t block_queue::get_data_size() const
   size_t size = 0;
   for (const auto &span: blocks)
     size += span.size;
-  return size;
-}
-
-size_t block_queue::get_num_filled_spans_prefix() const
-{
-  std::unique_lock lock{mutex};
-
-  if (blocks.empty())
-    return 0;
-  block_map::const_iterator i = blocks.begin();
-  size_t size = 0;
-  while (i != blocks.end() && !i->blocks.empty())
-  {
-    ++i;
-    ++size;
-  }
   return size;
 }
 

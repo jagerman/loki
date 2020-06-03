@@ -34,7 +34,6 @@
 #include <algorithm>
 #include <optional>
 #include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <atomic>
@@ -906,7 +905,7 @@ namespace nodetool
             {
               // If this is a new (<10s) connection and we're still in before handshake mode then
               // don't count it yet: it is probably a back ping connection that will be closed soon.
-              if (!(cntxt.m_state == p2p_connection_context::state_before_handshake && std::time(NULL) < cntxt.m_started + 10))
+              if (!(cntxt.m_state == p2p_connection_context::state_before_handshake && std::chrono::steady_clock::now() < cntxt.m_started + 10s))
                 ++number_of_out_peers;
             }
             return true;

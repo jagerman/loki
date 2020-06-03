@@ -61,12 +61,13 @@
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "wallet.rpc"
 
-#define DEFAULT_AUTO_REFRESH_PERIOD 20 // seconds
-
 namespace rpc = cryptonote::rpc;
 
 namespace
 {
+  using namespace std::literals;
+  constexpr auto DEFAULT_AUTO_REFRESH_PERIOD = 20s;
+
   const command_line::arg_descriptor<std::string, true> arg_rpc_bind_port = {"rpc-bind-port", "Sets bind port for server"};
   const command_line::arg_descriptor<bool> arg_disable_rpc_login = {"disable-rpc-login", "Disable HTTP authentication for RPC connections served by this process"};
   const command_line::arg_descriptor<bool> arg_restricted = {"restricted-rpc", "Restricts to view-only commands", false};
@@ -111,12 +112,13 @@ namespace tools
   {
     m_stop = false;
     m_net_server.add_idle_handler([this](){
-      if (m_auto_refresh_period == 0) // disabled
+      if (m_auto_refresh_period == 0s) // disabled
         return true;
 
+      const auto now = std::chrono::steady_clock::now();
       if (!m_long_poll_new_changes)
       {
-        if (boost::posix_time::microsec_clock::universal_time() < m_last_auto_refresh_time + boost::posix_time::seconds(m_auto_refresh_period))
+        if (now < m_last_auto_refresh_time + m_auto_refresh_period)
           return true;
       }
       m_long_poll_new_changes = false; // Always consume the change, if we miss one due to thread race, not the end of the world.
@@ -126,9 +128,9 @@ namespace tools
       } catch (const std::exception& ex) {
         LOG_ERROR("Exception at while refreshing, what=" << ex.what());
       }
-      m_last_auto_refresh_time = boost::posix_time::microsec_clock::universal_time();
+      m_last_auto_refresh_time = now;
       return true;
-    }, 1000);
+    }, 1s);
 
     m_net_server.add_idle_handler([this](){
       if (m_stop.load(std::memory_order_relaxed))
@@ -137,13 +139,13 @@ namespace tools
         return false;
       }
       return true;
-    }, 500);
+    }, 500ms);
 
     m_long_poll_thread = std::thread([&] {
       for (;;)
       {
         if (m_long_poll_disabled) return true;
-        if (m_auto_refresh_period == 0)
+        if (m_auto_refresh_period == 0s)
         {
           std::this_thread::sleep_for(std::chrono::seconds(1));
           continue;
@@ -260,7 +262,7 @@ namespace tools
     } // end auth enabled
 
     m_auto_refresh_period = DEFAULT_AUTO_REFRESH_PERIOD;
-    m_last_auto_refresh_time = boost::posix_time::min_date_time;
+    m_last_auto_refresh_time = std::chrono::steady_clock::time_point::min();
 
     m_net_server.set_threads_prefix("RPC");
     auto rng = [](size_t len, uint8_t *ptr) { return crypto::rand(len, ptr); };
@@ -2833,8 +2835,8 @@ namespace tools
     }
     try
     {
-      m_auto_refresh_period = req.enable ? req.period ? req.period : DEFAULT_AUTO_REFRESH_PERIOD : 0;
-      MINFO("Auto refresh now " << (m_auto_refresh_period ? std::to_string(m_auto_refresh_period) + " seconds" : std::string("disabled")));
+      m_auto_refresh_period = req.enable ? req.period ? std::chrono::seconds{req.period} : DEFAULT_AUTO_REFRESH_PERIOD : 0s;
+      MINFO("Auto refresh now " << (m_auto_refresh_period != 0s ? std::to_string(std::chrono::duration<float>(m_auto_refresh_period).count()) + " seconds" : std::string("disabled")));
       return true;
     }
     catch (const std::exception& e)

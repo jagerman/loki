@@ -37,7 +37,6 @@ target_link_libraries(gen_multisig
     rpc_commands
     cryptonote_core
     epee
-    Boost::chrono
     Boost::program_options
     Boost::filesystem
     version

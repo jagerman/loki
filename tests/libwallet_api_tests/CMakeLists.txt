@@ -37,7 +37,6 @@ target_link_libraries(libwallet_api_tests
     wallet
     version
     epee
-    Boost::chrono
     Boost::serialization
     Boost::filesystem
     Boost::locale

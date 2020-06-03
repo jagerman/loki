@@ -35,7 +35,6 @@ if(MSVC OR MINGW)
   target_link_libraries(daemonizer
     PUBLIC
       common
-      Boost::chrono
       Boost::filesystem
       Boost::program_options
     PRIVATE

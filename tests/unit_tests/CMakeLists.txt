@@ -106,7 +106,6 @@ target_link_libraries(unit_tests
     wallet
     p2p
     version
-    Boost::chrono
     Boost::thread
     miniupnpc
     gtest

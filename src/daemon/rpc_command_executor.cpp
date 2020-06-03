@@ -614,6 +614,10 @@ bool rpc_command_executor::mining_status() {
   return true;
 }
 
+// Converts a duration to integer seconds, truncating sub-second amounts.
+template <typename Duration>
+static auto count_seconds(const Duration &d) { return std::chrono::duration_cast<std::chrono::seconds>(d).count(); }
+
 bool rpc_command_executor::print_connections() {
   GET_CONNECTIONS::response res{};
 
@@ -646,9 +650,9 @@ bool rpc_command_executor::print_connections() {
      << std::setw(6) << (info.ssl ? "yes" : "no")
      << std::setw(20) << info.peer_id
      << std::setw(20) << info.support_flags
-     << std::setw(30) << std::to_string(info.recv_count) + "("  + std::to_string(info.recv_idle_time) + ")/" + std::to_string(info.send_count) + "(" + std::to_string(info.send_idle_time) + ")"
+     << std::setw(30) << std::to_string(info.recv_count) + "("  + std::to_string(count_seconds(info.recv_idle_time)) + ")/" + std::to_string(info.send_count) + "(" + std::to_string(count_seconds(info.send_idle_time)) + ")"
      << std::setw(25) << info.state
-     << std::setw(20) << info.live_time
+     << std::setw(20) << std::to_string(count_seconds(info.live_time))
      << std::setw(12) << info.avg_download
      << std::setw(14) << info.current_download
      << std::setw(10) << info.avg_upload

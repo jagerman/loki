@@ -34,15 +34,14 @@
 
 #include <boost/bind.hpp>
 #include <boost/uuid/random_generator.hpp>
-#include <boost/chrono.hpp>
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp> // TODO
+#include <boost/asio/steady_timer.hpp>
 #include "warnings.h"
 #include "string_tools.h"
 #include "misc_language.h"
 #include "net/local_ip.h"
 #include "pragma_comp_defs.h"
 
+#include <chrono>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -201,7 +200,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 
     m_protocol_handler.after_init_connection();
 
-    reset_timer(boost::posix_time::milliseconds(m_local ? NEW_CONNECTION_TIMEOUT_LOCAL : NEW_CONNECTION_TIMEOUT_REMOTE), false);
+    reset_timer(std::chrono::milliseconds(m_local ? NEW_CONNECTION_TIMEOUT_LOCAL : NEW_CONNECTION_TIMEOUT_REMOTE), false);
 
     // first read on the raw socket to detect SSL for the server
     buffer_ssl_init_fill = 0;
@@ -364,7 +363,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 				delay *= 0.5;
 				long int ms = (long int)(delay * 100);
 				if (ms > 0) {
-					reset_timer(boost::posix_time::milliseconds(ms + 1), true);
+					reset_timer(std::chrono::milliseconds(ms + 1), true);
 					std::this_thread::sleep_for(std::chrono::milliseconds{ms});
 				}
 			} while(delay > 0);
@@ -372,7 +371,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 		
       //MINFO("[sock " << socket().native_handle() << "] RECV " << bytes_transferred);
       logger_handle_net_read(bytes_transferred);
-      context.m_last_recv = time(NULL);
+      context.m_last_recv = std::chrono::steady_clock::now();
       context.m_recv_cnt += bytes_transferred;
       m_ready_to_close = false;
       bool recv_res = m_protocol_handler.handle_recv(buffer_.data(), bytes_transferred);
@@ -614,7 +613,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     context.m_max_speed_up = std::max(context.m_max_speed_up, current_speed_up);
 
     //MINFO("[sock " << socket().native_handle() << "] SEND " << cb);
-    context.m_last_send = time(NULL);
+    context.m_last_send = std::chrono::steady_clock::now();
     context.m_send_cnt += chunk.size();
     //some data should be wrote to stream
     //request complete
@@ -706,26 +705,24 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   } // do_send_chunk
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
-  boost::posix_time::milliseconds connection<t_protocol_handler>::get_default_timeout()
+  std::chrono::milliseconds connection<t_protocol_handler>::get_default_timeout()
   {
     unsigned count;
     try { count = host_count(m_host); } catch (...) { count = 0; }
     const unsigned shift = get_state().sock_count > AGGRESSIVE_TIMEOUT_THRESHOLD ? std::min(std::max(count, 1u) - 1, 8u) : 0;
-    boost::posix_time::milliseconds timeout(0);
     if (m_local)
-      timeout = boost::posix_time::milliseconds(DEFAULT_TIMEOUT_MS_LOCAL >> shift);
+      return std::chrono::milliseconds{DEFAULT_TIMEOUT_MS_LOCAL >> shift};
     else
-      timeout = boost::posix_time::milliseconds(DEFAULT_TIMEOUT_MS_REMOTE >> shift);
-    return timeout;
+      return std::chrono::milliseconds{DEFAULT_TIMEOUT_MS_REMOTE >> shift};
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
-  boost::posix_time::milliseconds connection<t_protocol_handler>::get_timeout_from_bytes_read(size_t bytes)
+  std::chrono::milliseconds connection<t_protocol_handler>::get_timeout_from_bytes_read(size_t bytes)
   {
-    boost::posix_time::milliseconds ms = (boost::posix_time::milliseconds)(unsigned)(bytes * TIMEOUT_EXTRA_MS_PER_BYTE);
-    const auto cur = m_timer.expires_from_now().total_milliseconds();
-    if (cur > 0)
-      ms += (boost::posix_time::milliseconds)cur;
+    std::chrono::milliseconds ms{(unsigned)(bytes * TIMEOUT_EXTRA_MS_PER_BYTE)};
+    if (auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(m_timer.expiry() - std::chrono::steady_clock::now());
+        remaining > 0ms)
+      ms += remaining;
     if (ms > get_default_timeout())
       ms = get_default_timeout();
     return ms;
@@ -749,14 +746,14 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   }
   //---------------------------------------------------------------------------------
   template<class t_protocol_handler>
-  void connection<t_protocol_handler>::reset_timer(boost::posix_time::milliseconds ms, bool add)
+  void connection<t_protocol_handler>::reset_timer(std::chrono::milliseconds ms, bool add)
   {
-    if (ms.total_milliseconds() < 0)
+    if (ms < 0s)
     {
-      MWARNING("Ignoring negative timeout " << ms);
+      MWARNING("Ignoring negative timeout " << ms.count());
       return;
     }
-    MTRACE((add ? "Adding" : "Setting") << " " << ms << " expiry");
+    MTRACE((add ? "Adding" : "Setting") << " " << ms.count() << "ms expiry");
     auto self = safe_shared_from_this();
     if(!self)
     {
@@ -770,11 +767,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     }
     if (add)
     {
-      const auto cur = m_timer.expires_from_now().total_milliseconds();
-      if (cur > 0)
-        ms += (boost::posix_time::milliseconds)cur;
+      if (const auto cur = std::chrono::duration_cast<std::chrono::milliseconds>(m_timer.expiry() - std::chrono::steady_clock::now());
+          cur > 0)
+        ms += cur;
     }
-    m_timer.expires_from_now(ms);
+    m_timer.expires_after(ms);
     m_timer.async_wait([=](const boost::system::error_code& ec)
     {
       if(ec == boost::asio::error::operation_aborted)
@@ -1658,9 +1655,9 @@ POP_WARNINGS
       }
     }
     
-    std::shared_ptr<boost::asio::deadline_timer> sh_deadline(new boost::asio::deadline_timer(io_service_));
+    std::shared_ptr<boost::asio::steady_timer> sh_deadline(new boost::asio::steady_timer(io_service_));
     //start deadline
-    sh_deadline->expires_from_now(boost::posix_time::milliseconds(conn_timeout));
+    sh_deadline->expires_from_now(std::chrono::milliseconds(conn_timeout));
     sh_deadline->async_wait([=](const boost::system::error_code& error)
       {
           if(error != boost::asio::error::operation_aborted) 

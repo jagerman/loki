@@ -154,9 +154,9 @@ namespace net_utils
     void handle_write(const boost::system::error_code& e, size_t cb);
 
     /// reset connection timeout timer and callback
-    void reset_timer(boost::posix_time::milliseconds ms, bool add);
-    boost::posix_time::milliseconds get_default_timeout();
-    boost::posix_time::milliseconds get_timeout_from_bytes_read(size_t bytes);
+    void reset_timer(std::chrono::milliseconds ms, bool add);
+    std::chrono::milliseconds get_default_timeout();
+    std::chrono::milliseconds get_timeout_from_bytes_read(size_t bytes);
 
     /// host connection count tracking
     unsigned int host_count(const std::string &host, int delta = 0);
@@ -185,7 +185,7 @@ namespace net_utils
     std::mutex m_throttle_speed_in_mutex;
     std::mutex m_throttle_speed_out_mutex;
 
-    boost::asio::deadline_timer m_timer;
+    boost::asio::steady_timer m_timer;
     bool m_local;
     bool m_ready_to_close;
     std::string m_host;
@@ -287,59 +287,47 @@ namespace net_utils
 
     boost::asio::io_service& get_io_service(){return io_service_;}
 
-    struct idle_callback_conext_base
+    template <class Callback>
+    struct idle_callback_conext
     {
-      virtual ~idle_callback_conext_base(){}
-
-      virtual bool call_handler(){return true;}
-
-      idle_callback_conext_base(boost::asio::io_service& io_serice):
-                                                          m_timer(io_serice)
+      idle_callback_conext(boost::asio::io_service& io_service, Callback h, std::chrono::milliseconds period)
+        : m_timer{io_service}, m_handler{std::move(h)}, m_period{period}
       {}
-      boost::asio::deadline_timer m_timer;
-    };
 
-    template <class t_handler>
-    struct idle_callback_conext: public idle_callback_conext_base
-    {
-      idle_callback_conext(boost::asio::io_service& io_serice, t_handler& h, uint64_t period):
-                                                    idle_callback_conext_base(io_serice),
-                                                    m_handler(h)
-      {this->m_period = period;}
-
-      t_handler m_handler;
-      virtual bool call_handler()
+      bool call_handler()
       {
         return m_handler();
       }
-      uint64_t m_period;
+
+      Callback m_handler;
+      std::chrono::milliseconds m_period;
+      boost::asio::steady_timer m_timer;
     };
 
     template<class t_handler>
-    bool add_idle_handler(t_handler t_callback, uint64_t timeout_ms)
+    bool add_idle_handler(t_handler callback, std::chrono::milliseconds timeout)
       {
-        auto ptr = std::make_shared<idle_callback_conext<t_handler>>(io_service_, t_callback, timeout_ms);
+        auto ptr = std::make_shared<idle_callback_conext<t_handler>>(io_service_, std::move(callback), timeout);
         //needed call handler here ?...
-        ptr->m_timer.expires_from_now(boost::posix_time::milliseconds(ptr->m_period));
-        ptr->m_timer.async_wait(boost::bind(&boosted_tcp_server<t_protocol_handler>::global_timer_handler<t_handler>, this, ptr));
+        ptr->m_timer.expires_after(ptr->m_period);
+        ptr->m_timer.async_wait([this, ptr] (const boost::system::error_code&) { global_timer_handler<t_handler>(ptr); });
         return true;
       }
 
     template<class t_handler>
-    bool global_timer_handler(/*const boost::system::error_code& err, */std::shared_ptr<idle_callback_conext<t_handler>> ptr)
+    void global_timer_handler(/*const boost::system::error_code& err, */std::shared_ptr<idle_callback_conext<t_handler>> ptr)
     {
       //if handler return false - he don't want to be called anymore
       if(!ptr->call_handler())
-        return true;
-      ptr->m_timer.expires_from_now(boost::posix_time::milliseconds(ptr->m_period));
-      ptr->m_timer.async_wait(boost::bind(&boosted_tcp_server<t_protocol_handler>::global_timer_handler<t_handler>, this, ptr));
-      return true;
+        return;
+      ptr->m_timer.expires_after(ptr->m_period);
+      ptr->m_timer.async_wait([this, ptr] (const boost::system::error_code&) { global_timer_handler<t_handler>(ptr); });
     }
 
     template<class t_handler>
     bool async_call(t_handler t_callback)
     {
-      io_service_.post(t_callback);
+      io_service_.post(std::move(t_callback));
       return true;
     }
 

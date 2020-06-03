@@ -34,7 +34,6 @@ target_link_libraries(net_load_tests_clt
     cryptonote_core
     epee
     gtest
-    Boost::chrono
     Boost::date_time
     Boost::thread
     extra)
@@ -47,7 +46,6 @@ target_link_libraries(net_load_tests_srv
     cryptonote_core
     epee
     gtest
-    Boost::chrono
     Boost::date_time
     extra)
 

@@ -28,9 +28,6 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <boost/algorithm/string/find_iterator.hpp>
-#include <boost/algorithm/string/finder.hpp>
-#include <boost/chrono/duration.hpp>
 #include <boost/endian/conversion.hpp>
 #include <future>
 #include <optional>
@@ -50,9 +47,11 @@
 #include "p2p/p2p_protocol_defs.h"
 #include "string_tools.h"
 
+using namespace std::literals;
+
 namespace
 {
-    constexpr const boost::chrono::milliseconds future_poll_interval{500};
+    constexpr const std::chrono::milliseconds future_poll_interval = 500ms;
     constexpr const std::chrono::seconds socks_connect_timeout{P2P_DEFAULT_SOCKS_CONNECT_TIMEOUT};
 
     std::int64_t get_max_connections(const boost::iterator_range<std::string_view::const_iterator> value) noexcept

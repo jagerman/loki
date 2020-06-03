@@ -32,10 +32,10 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 #include <boost/endian/conversion.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/udp.hpp>
-#include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/format.hpp>
 #include <boost/bind/bind.hpp>
 #include "common/apply_permutation.h"
@@ -567,7 +567,7 @@ namespace trezor{
     return ping_int();
   }
 
-  bool UdpTransport::ping_int(boost::posix_time::time_duration timeout){
+  bool UdpTransport::ping_int(std::chrono::milliseconds timeout){
     require_socket();
     try {
       std::string req = "PINGPING";
@@ -611,7 +611,7 @@ namespace trezor{
     m_socket.reset(new udp::socket(m_io_service));
     m_socket->open(udp::v4());
 
-    m_deadline.expires_at(boost::posix_time::pos_infin);
+    m_deadline.expires_at(std::chrono::steady_clock::time_point::max());
     check_deadline();
 
     m_proto->session_begin(*this);
@@ -693,14 +693,14 @@ namespace trezor{
     return static_cast<size_t>(len);
   }
 
-  ssize_t UdpTransport::receive(void * buff, size_t size, boost::system::error_code * error_code, bool no_throw, boost::posix_time::time_duration timeout){
+  ssize_t UdpTransport::receive(void * buff, size_t size, boost::system::error_code * error_code, bool no_throw, std::chrono::milliseconds timeout){
     boost::system::error_code ec;
     boost::asio::mutable_buffer buffer = boost::asio::buffer(buff, size);
 
     require_socket();
 
     // Set a deadline for the asynchronous operation.
-    m_deadline.expires_from_now(timeout);
+    m_deadline.expires_after(timeout);
 
     // Set up the variables that receive the result of the asynchronous
     // operation. The error code is set to would_block to signal that the
@@ -710,10 +710,9 @@ namespace trezor{
     ec = boost::asio::error::would_block;
     std::size_t length = 0;
 
-    // Start the asynchronous operation itself. The handle_receive function
-    // used as a callback will update the ec and length variables.
+    // Start the asynchronous operation itself.
     m_socket->async_receive_from(boost::asio::buffer(buffer), m_endpoint,
-                                 boost::bind(&UdpTransport::handle_receive, _1, _2, &ec, &length));
+            [&ec, &length] (const boost::system::error_code &ec_, std::size_t length_) { ec = ec_; length = length_; });
 
     // Block until the asynchronous operation has completed.
     do {
@@ -758,7 +757,7 @@ namespace trezor{
     // Check whether the deadline has passed. We compare the deadline against
     // the current time since a new asynchronous operation may have moved the
     // deadline before this actor had a chance to run.
-    if (m_deadline.expires_at() <= boost::asio::deadline_timer::traits_type::now())
+    if (m_deadline.expiry() <= std::chrono::steady_clock::now())
     {
       // The deadline has passed. The outstanding asynchronous operation needs
       // to be cancelled so that the blocked receive() function will return.
@@ -770,17 +769,11 @@ namespace trezor{
 
       // There is no longer an active deadline. The expiry is set to positive
       // infinity so that the actor takes no action until a new deadline is set.
-      m_deadline.expires_at(boost::posix_time::pos_infin);
+      m_deadline.expires_at(std::chrono::steady_clock::time_point::max());
     }
 
     // Put the actor back to sleep.
-    m_deadline.async_wait(boost::bind(&UdpTransport::check_deadline, this));
-  }
-
-  void UdpTransport::handle_receive(const boost::system::error_code &ec, std::size_t length,
-                                    boost::system::error_code *out_ec, std::size_t *out_length) {
-    *out_ec = ec;
-    *out_length = length;
+    m_deadline.async_wait([this] (const boost::system::error_code&) { check_deadline(); });
   }
 
   std::ostream& UdpTransport::dump(std::ostream& o) const {
