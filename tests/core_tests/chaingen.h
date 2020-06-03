@@ -114,7 +114,7 @@ struct loki_blockchain_addable
   template<class Archive> void serialize(Archive & /*ar*/, const unsigned int /*version*/) { }
 };
 
-typedef boost::function<bool (cryptonote::core& c, size_t ev_index)> loki_callback;
+typedef std::function<bool (cryptonote::core& c, size_t ev_index)> loki_callback;
 struct loki_callback_entry
 {
   std::string   name;
@@ -251,7 +251,7 @@ typedef std::unordered_map<crypto::hash, const cryptonote::transaction*> map_has
 class test_chain_unit_base
 {
 public:
-  typedef boost::function<bool (cryptonote::core& c, size_t ev_index, const std::vector<test_event_entry> &events)> verify_callback;
+  typedef std::function<bool (cryptonote::core& c, size_t ev_index, const std::vector<test_event_entry> &events)> verify_callback;
   typedef std::map<std::string, verify_callback> callbacks_map;
 
   void register_callback(const std::string& cb_name, verify_callback cb);

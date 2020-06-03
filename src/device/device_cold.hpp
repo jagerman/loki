@@ -32,14 +32,14 @@
 
 #include "wallet/wallet2.h"
 #include <optional>
-#include <boost/function.hpp>
+#include <functional>
 
 
 namespace hw {
 
-  typedef struct wallet_shim {
-    boost::function<crypto::public_key (const tools::wallet2::transfer_details &td)> get_tx_pub_key_from_received_outs;
-  } wallet_shim;
+  struct wallet_shim {
+    std::function<crypto::public_key (const tools::wallet2::transfer_details &td)> get_tx_pub_key_from_received_outs;
+  };
 
   class tx_aux_data {
   public:
