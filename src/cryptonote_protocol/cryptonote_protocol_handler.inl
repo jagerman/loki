@@ -1708,9 +1708,9 @@ skip:
   template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::on_idle()
   {
-    m_idle_peer_kicker.do_call(boost::bind(&t_cryptonote_protocol_handler<t_core>::kick_idle_peers, this));
-    m_standby_checker.do_call(boost::bind(&t_cryptonote_protocol_handler<t_core>::check_standby_peers, this));
-    m_sync_search_checker.do_call(boost::bind(&t_cryptonote_protocol_handler<t_core>::update_sync_search, this));
+    m_idle_peer_kicker.do_call([this] { return kick_idle_peers(); });
+    m_standby_checker.do_call([this] { return check_standby_peers(); });
+    m_sync_search_checker.do_call([this] { return update_sync_search(); });
     return m_core.on_idle();
   }
   //------------------------------------------------------------------------------------------------------------------------

@@ -37,7 +37,6 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/udp.hpp>
 #include <boost/format.hpp>
-#include <boost/bind/bind.hpp>
 #include "common/apply_permutation.h"
 #include "transport.hpp"
 #include "messages/messages-common.pb.h"
@@ -51,8 +50,6 @@ using json = rapidjson::Document;
 
 namespace hw{
 namespace trezor{
-
-    using namespace boost::placeholders;
 
   bool t_serialize(const std::string & in, std::string & out){
     out = in;
