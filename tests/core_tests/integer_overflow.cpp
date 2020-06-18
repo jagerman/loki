@@ -74,7 +74,7 @@ namespace
 gen_uint_overflow_base::gen_uint_overflow_base()
   : m_last_valid_block_event_idx(static_cast<size_t>(-1))
 {
-  REGISTER_CALLBACK_METHOD(gen_uint_overflow_1, mark_last_valid_block);
+  REGISTER_CALLBACK(mark_last_valid_block);
 }
 
 bool gen_uint_overflow_base::check_tx_verification_context(const cryptonote::tx_verification_context& tvc, bool tx_added, size_t event_idx, const cryptonote::transaction& /*tx*/)

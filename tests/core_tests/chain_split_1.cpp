@@ -36,22 +36,22 @@ using namespace cryptonote;
 
 gen_simple_chain_split_1::gen_simple_chain_split_1()
 {
-  REGISTER_CALLBACK("check_split_not_switched", gen_simple_chain_split_1::check_split_not_switched);
-  REGISTER_CALLBACK("check_split_not_switched2", gen_simple_chain_split_1::check_split_not_switched2);
-  REGISTER_CALLBACK("check_split_switched", gen_simple_chain_split_1::check_split_switched);
-  REGISTER_CALLBACK("check_split_not_switched_back", gen_simple_chain_split_1::check_split_not_switched_back);
-  REGISTER_CALLBACK("check_split_switched_back_1", gen_simple_chain_split_1::check_split_switched_back_1);
-  REGISTER_CALLBACK("check_split_switched_back_2", gen_simple_chain_split_1::check_split_switched_back_2);
-  REGISTER_CALLBACK("check_mempool_1", gen_simple_chain_split_1::check_mempool_1);
-  REGISTER_CALLBACK("check_mempool_2", gen_simple_chain_split_1::check_mempool_2);
-  //REGISTER_CALLBACK("check_orphaned_chain_1", gen_simple_chain_split_1::check_orphaned_chain_1);
-  //REGISTER_CALLBACK("check_orphaned_switched_to_alternative", gen_simple_chain_split_1::check_orphaned_switched_to_alternative);
-  //REGISTER_CALLBACK("check_orphaned_chain_2", gen_simple_chain_split_1::check_orphaned_chain_2);
-  //REGISTER_CALLBACK("check_orphaned_switched_to_main", gen_simple_chain_split_1::check_orphaned_switched_to_main);
-  //REGISTER_CALLBACK("check_orphaned_chain_38", gen_simple_chain_split_1::check_orphaned_chain_38);
-  //REGISTER_CALLBACK("check_orphaned_chain_39", gen_simple_chain_split_1::check_orphaned_chain_39);
-  //REGISTER_CALLBACK("check_orphaned_chain_40", gen_simple_chain_split_1::check_orphaned_chain_40);
-  //REGISTER_CALLBACK("check_orphaned_chain_41", gen_simple_chain_split_1::check_orphaned_chain_41);
+  REGISTER_CALLBACK(check_split_not_switched);
+  REGISTER_CALLBACK(check_split_not_switched2);
+  REGISTER_CALLBACK(check_split_switched);
+  REGISTER_CALLBACK(check_split_not_switched_back);
+  REGISTER_CALLBACK(check_split_switched_back_1);
+  REGISTER_CALLBACK(check_split_switched_back_2);
+  REGISTER_CALLBACK(check_mempool_1);
+  REGISTER_CALLBACK(check_mempool_2);
+  //REGISTER_CALLBACK(check_orphaned_chain_1);
+  //REGISTER_CALLBACK(check_orphaned_switched_to_alternative);
+  //REGISTER_CALLBACK(check_orphaned_chain_2);
+  //REGISTER_CALLBACK(check_orphaned_switched_to_main);
+  //REGISTER_CALLBACK(check_orphaned_chain_38);
+  //REGISTER_CALLBACK(check_orphaned_chain_39);
+  //REGISTER_CALLBACK(check_orphaned_chain_40);
+  //REGISTER_CALLBACK(check_orphaned_chain_41);
 }
 //-----------------------------------------------------------------------------------------------------
 bool gen_simple_chain_split_1::generate(std::vector<test_event_entry> &events) const

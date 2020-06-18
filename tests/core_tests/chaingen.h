@@ -1015,11 +1015,8 @@ inline bool do_replay_file(const std::string& filename)
   VEC_EVENTS.push_back(CALLBACK_ENTRY); \
 }
 
-#define REGISTER_CALLBACK(CB_NAME, CLBACK) \
-  register_callback(CB_NAME, boost::bind(&CLBACK, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3));
-
-#define REGISTER_CALLBACK_METHOD(CLASS, METHOD) \
-  register_callback(#METHOD, boost::bind(&CLASS::METHOD, this, boost::placeholders::_1, boost::placeholders::_2, boost::placeholders::_3));
+#define REGISTER_CALLBACK(METHOD) \
+  register_callback(#METHOD, [this](auto&&... x) { return METHOD(std::forward<decltype(x)>(x)...); });
 
 #define MAKE_GENESIS_BLOCK(VEC_EVENTS, BLK_NAME, MINER_ACC, TS)                       \
   test_generator generator;                                               \

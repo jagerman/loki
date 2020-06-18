@@ -121,9 +121,9 @@ namespace
 gen_block_reward::gen_block_reward()
   : m_invalid_block_index(0)
 {
-  REGISTER_CALLBACK_METHOD(gen_block_reward, mark_invalid_block);
-  REGISTER_CALLBACK_METHOD(gen_block_reward, mark_checked_block);
-  REGISTER_CALLBACK_METHOD(gen_block_reward, check_block_rewards);
+  REGISTER_CALLBACK(mark_invalid_block);
+  REGISTER_CALLBACK(mark_checked_block);
+  REGISTER_CALLBACK(check_block_rewards);
 }
 
 bool gen_block_reward::generate(std::vector<test_event_entry>& events) const

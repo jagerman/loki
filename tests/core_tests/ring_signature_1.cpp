@@ -39,8 +39,8 @@ using namespace cryptonote;
 
 gen_ring_signature_1::gen_ring_signature_1()
 {
-  REGISTER_CALLBACK("check_balances_1", gen_ring_signature_1::check_balances_1);
-  REGISTER_CALLBACK("check_balances_2", gen_ring_signature_1::check_balances_2);
+  REGISTER_CALLBACK(check_balances_1);
+  REGISTER_CALLBACK(check_balances_2);
 }
 
 namespace
@@ -141,8 +141,8 @@ bool gen_ring_signature_1::check_balances_2(cryptonote::core& c, size_t ev_index
 
 gen_ring_signature_2::gen_ring_signature_2()
 {
-  REGISTER_CALLBACK("check_balances_1", gen_ring_signature_2::check_balances_1);
-  REGISTER_CALLBACK("check_balances_2", gen_ring_signature_2::check_balances_2);
+  REGISTER_CALLBACK(check_balances_1);
+  REGISTER_CALLBACK(check_balances_2);
 }
 
 /**
@@ -225,8 +225,8 @@ gen_ring_signature_big::gen_ring_signature_big()
   : m_test_size(100)
   , m_tx_amount(MK_COINS(29))
 {
-  REGISTER_CALLBACK("check_balances_1", gen_ring_signature_big::check_balances_1);
-  REGISTER_CALLBACK("check_balances_2", gen_ring_signature_big::check_balances_2);
+  REGISTER_CALLBACK(check_balances_1);
+  REGISTER_CALLBACK(check_balances_2);
 }
 
 /**

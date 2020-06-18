@@ -50,7 +50,7 @@ using eventV = std::vector<test_event_entry>;
 
 one_block::one_block()
 {
-  REGISTER_CALLBACK("verify_1", one_block::verify_1);
+  REGISTER_CALLBACK(verify_1);
 }
 
 bool one_block::generate(eventV &events)
@@ -96,8 +96,8 @@ bool one_block::verify_1(cryptonote::core& c, size_t ev_index, const eventV &eve
 
 gen_simple_chain_001::gen_simple_chain_001()
 {
-  REGISTER_CALLBACK("verify_callback_1", gen_simple_chain_001::verify_callback_1);
-  REGISTER_CALLBACK("verify_callback_2", gen_simple_chain_001::verify_callback_2);
+  REGISTER_CALLBACK(verify_callback_1);
+  REGISTER_CALLBACK(verify_callback_2);
 }
 
 static void make_rct_tx(eventV& events,

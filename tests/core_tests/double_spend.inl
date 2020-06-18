@@ -37,10 +37,10 @@ gen_double_spend_base<concrete_test>::gen_double_spend_base()
   : m_invalid_tx_index(invalid_index_value)
   , m_invalid_block_index(invalid_index_value)
 {
-  REGISTER_CALLBACK_METHOD(gen_double_spend_base<concrete_test>, mark_last_valid_block);
-  REGISTER_CALLBACK_METHOD(gen_double_spend_base<concrete_test>, mark_invalid_tx);
-  REGISTER_CALLBACK_METHOD(gen_double_spend_base<concrete_test>, mark_invalid_block);
-  REGISTER_CALLBACK_METHOD(gen_double_spend_base<concrete_test>, check_double_spend);
+  REGISTER_CALLBACK(mark_last_valid_block);
+  REGISTER_CALLBACK(mark_invalid_tx);
+  REGISTER_CALLBACK(mark_invalid_block);
+  REGISTER_CALLBACK(check_double_spend);
 }
 
 template<class concrete_test>
