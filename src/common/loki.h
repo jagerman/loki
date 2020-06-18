@@ -44,14 +44,6 @@ namespace loki
 double      round           (double);
 double      exp2            (double);
 
-constexpr uint64_t clamp_u64(uint64_t val, uint64_t min, uint64_t max)
-{
-  assert(min <= max);
-  if (val < min) val = min;
-  else if (val > max) val = max;
-  return val;
-}
-
 template <typename lambda_t>
 struct deferred
 {

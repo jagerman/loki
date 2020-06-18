@@ -4111,8 +4111,8 @@ std::vector<checkpoint_t> BlockchainLMDB::get_checkpoints_range(uint64_t start, 
   if (!get_top_checkpoint(top_checkpoint)) return result;
   if (!get_block_checkpoint_internal(0, bottom_checkpoint, MDB_FIRST)) return result;
 
-  start = loki::clamp_u64(start, bottom_checkpoint.height, top_checkpoint.height);
-  end   = loki::clamp_u64(end, bottom_checkpoint.height, top_checkpoint.height);
+  start = std::clamp(start, bottom_checkpoint.height, top_checkpoint.height);
+  end   = std::clamp(end, bottom_checkpoint.height, top_checkpoint.height);
   if (start > end)
   {
     if (start < bottom_checkpoint.height) return result;
