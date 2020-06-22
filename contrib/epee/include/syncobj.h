@@ -38,15 +38,6 @@
 namespace epee
 {
 
-  namespace debug
-  {
-    inline unsigned int &g_test_dbg_lock_sleep()
-    {
-      static unsigned int value = 0;
-      return value;
-    }
-  }
-  
   struct simple_event
   {
     simple_event() : m_rised(false)
@@ -150,10 +141,10 @@ namespace epee
   };
 
 
-#define  CRITICAL_REGION_LOCAL(x) {} epee::critical_region_t<decltype(x)>   critical_region_var(x)
-#define  CRITICAL_REGION_BEGIN(x) { std::this_thread::sleep_for(std::chrono::milliseconds(epee::debug::g_test_dbg_lock_sleep())); epee::critical_region_t<decltype(x)>   critical_region_var(x)
-#define  CRITICAL_REGION_LOCAL1(x) {std::this_thread::sleep_for(std::chrono::milliseconds(epee::debug::g_test_dbg_lock_sleep()));} epee::critical_region_t<decltype(x)>   critical_region_var1(x)
-#define  CRITICAL_REGION_BEGIN1(x) {  std::this_thread::sleep_for(std::chrono::milliseconds(epee::debug::g_test_dbg_lock_sleep())); epee::critical_region_t<decltype(x)>   critical_region_var1(x)
+#define  CRITICAL_REGION_LOCAL(x) epee::critical_region_t<decltype(x)> critical_region_var(x)
+#define  CRITICAL_REGION_LOCAL1(x) epee::critical_region_t<decltype(x)> critical_region_var1(x)
+#define  CRITICAL_REGION_BEGIN(x) { epee::critical_region_t<decltype(x)> critical_region_var(x)
+#define  CRITICAL_REGION_BEGIN1(x) { epee::critical_region_t<decltype(x)> critical_region_var1(x)
 
 #define  CRITICAL_REGION_END() }
 
