@@ -33,7 +33,7 @@
 #include <memory>
 #include <vector>
 
-#include "byte_slice.h"
+#include "shared_sv.h"
 #include "cryptonote_basic/blobdatatype.h"
 #include "net/enums.h"
 #include "span.h"
@@ -86,7 +86,7 @@ namespace levin
     {}
 
     //! Construct an instance with available notification `zones`.
-    explicit notify(boost::asio::io_service& service, std::shared_ptr<connections> p2p, epee::byte_slice noise, bool is_public);
+    explicit notify(boost::asio::io_service& service, std::shared_ptr<connections> p2p, epee::shared_sv noise, bool is_public);
 
     notify(const notify&) = delete;
     notify(notify&&) = default;

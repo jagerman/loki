@@ -35,7 +35,7 @@
 #include <limits>
 #include <set>
 
-#include "byte_slice.h"
+#include "shared_sv.h"
 #include "crypto/crypto.h"
 #include "cryptonote_basic/connection_context.h"
 #include "cryptonote_core/cryptonote_core.h"
@@ -54,7 +54,7 @@ namespace
         boost::asio::io_service& io_service_;
         std::size_t ref_count_;
 
-        virtual bool do_send(epee::byte_slice message) override final
+        virtual bool do_send(epee::shared_sv message) override final
         {
             send_queue_.push_back(std::move(message));
             return true;
@@ -110,7 +110,7 @@ namespace
             EXPECT_EQ(0u, ref_count_);
         }
 
-        std::deque<epee::byte_slice> send_queue_;
+        std::deque<epee::shared_sv> send_queue_;
     };
 
     class test_connection
@@ -273,9 +273,9 @@ namespace
 
         cryptonote::levin::notify make_notifier(const std::size_t noise_size, bool is_public)
         {
-            epee::byte_slice noise = nullptr;
+            epee::shared_sv noise;
             if (noise_size)
-                noise = epee::levin::make_noise_notify(noise_size);
+                noise = epee::shared_sv{epee::levin::make_noise_notify(noise_size)};
             return cryptonote::levin::notify{io_service_, connections_, std::move(noise), is_public};
         }
 
@@ -312,7 +312,7 @@ TEST(make_header, expect_return)
 
 TEST(make_notify, empty_payload)
 {
-    const epee::byte_slice message = epee::levin::make_notify(443, nullptr);
+    const epee::shared_sv message{epee::levin::make_notify(443, nullptr)};
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(443, 0, LEVIN_PACKET_REQUEST, false);
     ASSERT_EQ(sizeof(header), message.size());
@@ -324,7 +324,7 @@ TEST(make_notify, with_payload)
     std::string bytes(100, 'a');
     std::generate(bytes.begin(), bytes.end(), crypto::random_device{});
 
-    const epee::byte_slice message = epee::levin::make_notify(443, epee::strspan<std::uint8_t>(bytes));
+    const epee::shared_sv message{epee::levin::make_notify(443, epee::strspan<std::uint8_t>(bytes))};
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(443, bytes.size(), LEVIN_PACKET_REQUEST, false);
 
@@ -343,31 +343,31 @@ TEST(make_noise, valid)
     static constexpr const std::uint32_t flags =
         LEVIN_PACKET_BEGIN | LEVIN_PACKET_END;
 
-    const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
+    const epee::shared_sv noise{epee::levin::make_noise_notify(1024)};
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(0, 1024 - sizeof(epee::levin::bucket_head2), flags, false);
 
     ASSERT_EQ(1024, noise.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), noise.data(), sizeof(header)) == 0);
-    EXPECT_EQ(1024 - sizeof(header), std::count(noise.cbegin() + sizeof(header), noise.cend(), 0));
+    EXPECT_EQ(1024 - sizeof(header), std::count(noise.view.cbegin() + sizeof(header), noise.view.cend(), 0));
 }
 
 TEST(make_fragment, invalid)
 {
-    EXPECT_TRUE(epee::levin::make_fragmented_notify(nullptr, 0, nullptr).empty());
+    EXPECT_TRUE(epee::levin::make_fragmented_notify({}, 0, nullptr).empty());
 }
 
 TEST(make_fragment, single)
 {
-    const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
-    const epee::byte_slice fragment = epee::levin::make_fragmented_notify(noise, 11, nullptr);
+    const epee::shared_sv noise{epee::levin::make_noise_notify(1024)};
+    const epee::shared_sv fragment{epee::levin::make_fragmented_notify(noise.view, 11, nullptr)};
     const epee::levin::bucket_head2 header =
         epee::levin::make_header(11, 1024 - sizeof(epee::levin::bucket_head2), LEVIN_PACKET_REQUEST, false);
 
     EXPECT_EQ(1024, noise.size());
     ASSERT_EQ(1024, fragment.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), fragment.data(), sizeof(header)) == 0);
-    EXPECT_EQ(1024 - sizeof(header), std::count(noise.cbegin() + sizeof(header), noise.cend(), 0));
+    EXPECT_EQ(1024 - sizeof(header), std::count(noise.view.cbegin() + sizeof(header), noise.view.cend(), 0));
 }
 
 TEST(make_fragment, multiple)
@@ -375,8 +375,8 @@ TEST(make_fragment, multiple)
     std::string bytes(1024 * 3 - 150, 'a');
     std::generate(bytes.begin(), bytes.end(), crypto::random_device{});
 
-    const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
-    epee::byte_slice fragment = epee::levin::make_fragmented_notify(noise, 114, epee::strspan<std::uint8_t>(bytes));
+    const epee::shared_sv noise{epee::levin::make_noise_notify(1024)};
+    epee::shared_sv fragment{epee::levin::make_fragmented_notify(noise.view, 114, epee::strspan<std::uint8_t>(bytes))};
 
     epee::levin::bucket_head2 header =
         epee::levin::make_header(0, 1024 - sizeof(epee::levin::bucket_head2), LEVIN_PACKET_BEGIN, false);
@@ -384,7 +384,7 @@ TEST(make_fragment, multiple)
     ASSERT_LE(sizeof(header), fragment.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), fragment.data(), sizeof(header)) == 0);
 
-    fragment.take_slice(sizeof(header));
+    fragment.view.remove_prefix(sizeof(header));
     header.m_flags = LEVIN_PACKET_REQUEST;
     header.m_cb = bytes.size();
     header.m_command = 114;
@@ -392,13 +392,13 @@ TEST(make_fragment, multiple)
     ASSERT_LE(sizeof(header), fragment.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), fragment.data(), sizeof(header)) == 0);
 
-    fragment.take_slice(sizeof(header));
+    fragment.view.remove_prefix(sizeof(header));
 
     ASSERT_LE(bytes.size(), fragment.size());
     EXPECT_TRUE(std::memcmp(bytes.data(), fragment.data(), 1024 - sizeof(header) * 2) == 0);
 
     bytes.erase(0, 1024 - sizeof(header) * 2);
-    fragment.take_slice(1024 - sizeof(header) * 2);
+    fragment.view.remove_prefix(1024 - sizeof(header) * 2);
     header.m_flags = 0;
     header.m_cb = 1024 - sizeof(header);
     header.m_command = 0;
@@ -406,24 +406,24 @@ TEST(make_fragment, multiple)
     ASSERT_LE(sizeof(header), fragment.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), fragment.data(), sizeof(header)) == 0);
 
-    fragment.take_slice(sizeof(header));
+    fragment.view.remove_prefix(sizeof(header));
 
     ASSERT_LE(bytes.size(), fragment.size());
     EXPECT_TRUE(std::memcmp(bytes.data(), fragment.data(), 1024 - sizeof(header)) == 0);
 
     bytes.erase(0, 1024 - sizeof(header));
-    fragment.take_slice(1024 - sizeof(header));
+    fragment.view.remove_prefix(1024 - sizeof(header));
     header.m_flags = LEVIN_PACKET_END;
 
     ASSERT_LE(sizeof(header), fragment.size());
     EXPECT_TRUE(std::memcmp(std::addressof(header), fragment.data(), sizeof(header)) == 0);
 
-    fragment.take_slice(sizeof(header));
+    fragment.view.remove_prefix(sizeof(header));
     EXPECT_TRUE(std::memcmp(bytes.data(), fragment.data(), bytes.size()) == 0);
 
-    fragment.take_slice(bytes.size());
+    fragment.view.remove_prefix(bytes.size());
 
-    EXPECT_EQ(18, std::count(fragment.cbegin(), fragment.cend(), 0));
+    EXPECT_EQ(18, std::count(fragment.view.cbegin(), fragment.view.cend(), 0));
 }
 
 TEST_F(levin_notify, defaulted)

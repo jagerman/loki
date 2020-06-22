@@ -387,7 +387,7 @@ namespace nodetool
     m_use_ipv6 = command_line::get_arg(vm, arg_p2p_use_ipv6);
     m_require_ipv4 = !command_line::get_arg(vm, arg_p2p_ignore_ipv4);
     public_zone.m_notifier = cryptonote::levin::notify{
-      public_zone.m_net_server.get_io_service(), public_zone.m_net_server.get_config_shared(), nullptr, true
+      public_zone.m_net_server.get_io_service(), public_zone.m_net_server.get_config_shared(), {}, true
     };
 
     if (command_line::has_arg(vm, arg_p2p_add_peer))
@@ -470,7 +470,7 @@ namespace nodetool
       return false;
 
 
-    epee::byte_slice noise = nullptr;
+    epee::shared_sv noise;
     auto proxies = get_proxies(vm);
     if (!proxies)
       return false;
@@ -489,14 +489,14 @@ namespace nodetool
       if (!set_max_out_peers(zone, proxy.max_connections))
         return false;
 
-      epee::byte_slice this_noise = nullptr;
+      epee::shared_sv this_noise;
       if (proxy.noise)
       {
         static_assert(sizeof(epee::levin::bucket_head2) < CRYPTONOTE_NOISE_BYTES, "noise bytes too small");
-        if (noise.empty())
-          noise = epee::levin::make_noise_notify(CRYPTONOTE_NOISE_BYTES);
+        if (noise.view.empty())
+          noise = epee::shared_sv{epee::levin::make_noise_notify(CRYPTONOTE_NOISE_BYTES)};
 
-        this_noise = noise.clone();
+        this_noise = noise;
       }
 
       zone.m_notifier = cryptonote::levin::notify{

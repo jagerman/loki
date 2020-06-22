@@ -39,6 +39,7 @@
 #include <string_view>
 
 #include "net_helper.h"
+#include "abstract_http_client.h"
 #include "http_client_base.h"
 
 #ifdef HTTP_ENABLE_GZIP

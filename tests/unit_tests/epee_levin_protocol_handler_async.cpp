@@ -139,7 +139,7 @@ namespace
     }
 
     // Implement epee::net_utils::i_service_endpoint interface
-    virtual bool do_send(epee::byte_slice message)
+    virtual bool do_send(epee::shared_sv message)
     {
       //std::cout << "test_connection::do_send()" << std::endl;
       m_send_counter.inc();
@@ -430,8 +430,8 @@ TEST_F(positive_test_connection_to_levin_protocol_handler_calls, handler_process
   const int expected_command = 4673261;
   const std::string in_data(256, 'e');
 
-  const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
-  const epee::byte_slice notify = epee::levin::make_notify(expected_command, epee::strspan<std::uint8_t>(in_data));
+  const epee::shared_sv noise{epee::levin::make_noise_notify(1024)};
+  const epee::shared_sv notify{epee::levin::make_notify(expected_command, epee::strspan<std::uint8_t>(in_data))};
 
   test_connection_ptr conn = create_connection();
 
@@ -466,16 +466,16 @@ TEST_F(positive_test_connection_to_levin_protocol_handler_calls, handler_process
   const std::string in_data(256, 'e');
   std::string in_fragmented_data(1024 * 4, 'c');
 
-  const epee::byte_slice noise = epee::levin::make_noise_notify(1024);
-  const epee::byte_slice notify = epee::levin::make_notify(expected_command, epee::strspan<std::uint8_t>(in_data));
-  epee::byte_slice fragmented = epee::levin::make_fragmented_notify(noise, expected_fragmented_command, epee::strspan<std::uint8_t>(in_fragmented_data));
+  const epee::shared_sv noise{epee::levin::make_noise_notify(1024)};
+  const epee::shared_sv notify{epee::levin::make_notify(expected_command, epee::strspan<std::uint8_t>(in_data))};
+  epee::shared_sv fragmented{epee::levin::make_fragmented_notify(noise.view, expected_fragmented_command, epee::strspan<std::uint8_t>(in_fragmented_data))};
 
   EXPECT_EQ(5u, fragmented.size() / 1024);
   EXPECT_EQ(0u, fragmented.size() % 1024);
 
   test_connection_ptr conn = create_connection();
 
-  while (!fragmented.empty())
+  while (!fragmented.view.empty())
   {
     if ((fragmented.size() / 1024) % 2 == 1)
     {
@@ -489,7 +489,7 @@ TEST_F(positive_test_connection_to_levin_protocol_handler_calls, handler_process
     ASSERT_EQ(0u, conn->send_counter());
     ASSERT_TRUE(conn->last_send_data().empty());
 
-    epee::byte_slice next = fragmented.take_slice(1024);
+    epee::shared_sv next = fragmented.extract_prefix(1024);
     ASSERT_TRUE(conn->m_protocol_handler.handle_recv(next.data(), next.size()));
   }
 

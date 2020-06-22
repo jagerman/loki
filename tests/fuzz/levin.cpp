@@ -149,7 +149,7 @@ namespace
     }
 
     // Implement epee::net_utils::i_service_endpoint interface
-    virtual bool do_send(epee::byte_slice message)
+    virtual bool do_send(epee::shared_sv message)
     {
       m_send_counter.inc();
       std::unique_lock lock{m_mutex};

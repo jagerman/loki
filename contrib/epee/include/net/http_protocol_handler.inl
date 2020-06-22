@@ -577,10 +577,10 @@ namespace net_utils
 
     LOG_PRINT_L3("HTTP_RESPONSE_HEAD: << \r\n" << response_data);
 		
-		m_psnd_hndlr->do_send(byte_slice{std::move(response_data)});
+		m_psnd_hndlr->do_send(shared_sv{std::move(response_data)});
 		if (query_info.m_http_method != http::http_method_head)
 			for (auto& body_piece : response.m_body_pieces)
-				m_psnd_hndlr->do_send(byte_slice{std::move(body_piece)});
+				m_psnd_hndlr->do_send(shared_sv{std::move(body_piece)});
 
 		m_psnd_hndlr->send_done();
 		return res;
