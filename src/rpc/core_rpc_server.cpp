@@ -2793,10 +2793,10 @@ namespace cryptonote { namespace rpc {
       args.push_back(std::to_string(portions_cut));
     }
 
-    for (const auto contrib : req.contributions)
+    for (const auto& [address, amount] : req.contributions)
     {
-        uint64_t num_portions = service_nodes::get_portions_to_make_amount(staking_requirement, contrib.amount);
-        args.push_back(contrib.address);
+        uint64_t num_portions = service_nodes::get_portions_to_make_amount(staking_requirement, amount);
+        args.push_back(address);
         args.push_back(std::to_string(num_portions));
     }
 

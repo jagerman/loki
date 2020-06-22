@@ -116,7 +116,7 @@ namespace service_nodes
   static std::vector<service_nodes::pubkey_and_sninfo> sort_and_filter(const service_nodes_infos_t &sns_infos, UnaryPredicate p, bool reserve = true) {
     std::vector<pubkey_and_sninfo> result;
     if (reserve) result.reserve(sns_infos.size());
-    for (const pubkey_and_sninfo &key_info : sns_infos)
+    for (const auto& key_info : sns_infos)
       if (p(*key_info.second))
         result.push_back(key_info);
 
@@ -172,9 +172,8 @@ namespace service_nodes
 
     if (alt_quorums)
     {
-      for (std::pair<crypto::hash, state_t> const &hash_to_state : m_transient.alt_state)
+      for (const auto& [hash, alt_state] : m_transient.alt_state)
       {
-        state_t const &alt_state = hash_to_state.second;
         if (alt_state.height == height)
         {
           std::shared_ptr<const quorum> alt_result = alt_state.quorums.get(type);
@@ -630,9 +629,8 @@ namespace service_nodes
             state_change, cryptonote::get_block_height(block), tvc, *quorums->obligations, hf_version))
     {
       quorums = nullptr;
-      for (std::pair<crypto::hash, state_t> const &entry : alt_states)
+      for (const auto& [hash, alt_state] : alt_states)
       {
-        state_t const &alt_state = entry.second;
         if (alt_state.height != state_change.block_height) continue;
 
         quorums = &alt_state.quorums;
@@ -1434,13 +1432,8 @@ namespace service_nodes
       calc_swarm_changes(existing_swarms, seed);
 
       /// Apply changes
-      for (const auto entry : existing_swarms) {
-
-        const swarm_id_t swarm_id = entry.first;
-        const std::vector<crypto::public_key>& snodes = entry.second;
-
-        for (const auto snode : snodes) {
-
+      for (const auto& [swarm_id, snodes] : existing_swarms) {
+        for (const auto& snode : snodes) {
           auto& sn_info_ptr = service_nodes_infos.at(snode);
           if (sn_info_ptr->swarm_id == swarm_id) continue; /// nothing changed for this snode
           duplicate_info(sn_info_ptr).swarm_id = swarm_id;

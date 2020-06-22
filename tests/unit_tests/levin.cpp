@@ -155,7 +155,7 @@ namespace
         std::string payload;
     };
 
-    class test_receiver : public epee::levin::levin_commands_handler<cryptonote::levin::detail::p2p_context>
+    class test_receiver final : public epee::levin::levin_commands_handler<cryptonote::levin::detail::p2p_context>
     {
         std::deque<received_message> invoked_;
         std::deque<received_message> notified_;

@@ -117,11 +117,14 @@ namespace cryptonote
        *
        * @param pprotocol pre-constructed protocol object to store and use
        */
-     explicit core();
+     core();
 
      // Non-copyable:
      core(const core &) = delete;
      core &operator=(const core &) = delete;
+
+     // Default virtual destructor
+     virtual ~core() = default;
 
      /**
       * @brief calls various idle routines

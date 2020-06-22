@@ -44,7 +44,7 @@ void init_lmq_options(boost::program_options::options_description& desc);
  * cryptonote_core--but it works with it to add RPC endpoints, make it listen on RPC ports, and
  * handles RPC requests.
  */
-class lmq_rpc : public cryptonote::BlockAddedHook {
+class lmq_rpc final : public cryptonote::BlockAddedHook {
 
   enum class mempool_sub_type { all, blink };
   struct mempool_sub {

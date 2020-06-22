@@ -154,8 +154,8 @@ struct ancestry_state_t
     {
       std::unordered_map<crypto::hash, cryptonote::transaction> old_tx_cache;
       a & old_tx_cache;
-      for (const auto i: old_tx_cache)
-        tx_cache.insert(std::make_pair(i.first, ::tx_data_t(i.second)));
+      for (const auto& [hash, tx] : old_tx_cache)
+        tx_cache.insert(std::make_pair(hash, ::tx_data_t(tx)));
     }
     else
     {
@@ -165,9 +165,9 @@ struct ancestry_state_t
     {
       std::unordered_map<uint64_t, cryptonote::block> old_block_cache;
       a & old_block_cache;
-      block_cache.resize(old_block_cache.size());
-      for (const auto i: old_block_cache)
-        block_cache[i.first] = i.second;
+      block_cache.reserve(old_block_cache.size());
+      for (auto& [i, block] : old_block_cache)
+        block_cache.push_back(std::move(block));
     }
     else
     {

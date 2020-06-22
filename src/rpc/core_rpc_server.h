@@ -323,7 +323,6 @@ private:
     std::unique_ptr<bootstrap_daemon> m_bootstrap_daemon;
     std::chrono::system_clock::time_point m_bootstrap_height_check_time;
     bool m_was_bootstrap_ever_used;
-    network_type m_nettype;
   };
 
 }} // namespace cryptonote::rpc
