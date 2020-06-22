@@ -32,6 +32,7 @@
 #include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <lokimq/hex.h>
+#include <variant>
 #include "wipeable_string.h"
 #include "string_tools.h"
 #include "common/i18n.h"
@@ -452,7 +453,7 @@ namespace cryptonote
     CHECK_AND_ASSERT_MES(tx.rct_signatures.type >= rct::RCTTypeBulletproof2,
         std::numeric_limits<uint64_t>::max(), "get_pruned_transaction_weight does not support older range proof types");
     CHECK_AND_ASSERT_MES(!tx.vin.empty(), std::numeric_limits<uint64_t>::max(), "empty vin");
-    CHECK_AND_ASSERT_MES(tx.vin[0].type() == typeid(cryptonote::txin_to_key), std::numeric_limits<uint64_t>::max(), "empty vin");
+    CHECK_AND_ASSERT_MES(std::holds_alternative<cryptonote::txin_to_key>(tx.vin[0]), std::numeric_limits<uint64_t>::max(), "empty vin");
 
     // get pruned data size
     uint64_t weight = serialization::dump_binary(const_cast<transaction&>(tx)).size();
@@ -469,7 +470,7 @@ namespace cryptonote
     weight += extra;
 
     // calculate deterministic MLSAG data size
-    const size_t ring_size = boost::get<cryptonote::txin_to_key>(tx.vin[0]).key_offsets.size();
+    const size_t ring_size = std::get<cryptonote::txin_to_key>(tx.vin[0]).key_offsets.size();
     extra = tx.vin.size() * (ring_size * (1 + 1) * 32 + 32 /* cc */);
     weight += extra;
 

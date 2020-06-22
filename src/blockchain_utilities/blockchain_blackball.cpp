@@ -1344,7 +1344,7 @@ int main(int argc, char* argv[])
       for (const auto &out: tx.vout)
       {
         ++outs_total;
-        CHECK_AND_ASSERT_THROW_MES(out.target.type() == typeid(txout_to_key), "Out target type is not txout_to_key: height=" + std::to_string(height));
+        CHECK_AND_ASSERT_THROW_MES(std::holds_alternative<txout_to_key>(out.target), "Out target type is not txout_to_key: height=" + std::to_string(height));
         uint64_t out_global_index = outs_per_amount[out.amount]++;
         if (is_output_spent(cur, output_data(out.amount, out_global_index)))
           ++outs_spent;

@@ -1857,7 +1857,7 @@ namespace cryptonote { namespace rpc {
         throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by hash. Hash = " + hash + '.'};
       if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
         throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
-      uint64_t block_height = boost::get<txin_gen>(blk.miner_tx.vin.front()).height;
+      uint64_t block_height = std::get<txin_gen>(blk.miner_tx.vin.front()).height;
       fill_block_header_response(blk, orphan, block_height, block_hash, block_header, fill_pow_hash && admin);
     };
 
