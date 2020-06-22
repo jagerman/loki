@@ -134,7 +134,7 @@ namespace lmdb
     template<typename T, std::size_t offset = 0>
     inline int compare(MDB_val const* left, MDB_val const* right) noexcept
     {
-        static_assert(epee::is_byte_spannable<T>::value, "memcmp will not work");
+        static_assert(epee::is_byte_spannable<T>, "memcmp will not work");
         if (!left || !right || left->mv_size < sizeof(T) + offset || right->mv_size < sizeof(T) + offset)
         {
             assert("invalid use of custom comparison" == 0);

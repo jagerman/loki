@@ -79,7 +79,7 @@ namespace tools {
 } // namespace tools
 
 namespace epee {
-  template <typename T> struct is_byte_spannable<tools::scrubbed<T>> : is_byte_spannable<T> {};
+  template <typename T> constexpr bool is_byte_spannable<tools::scrubbed<T>> = is_byte_spannable<T>;
 }
 
 #endif // __cplusplus
