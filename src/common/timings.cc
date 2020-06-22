@@ -101,8 +101,8 @@ bool TimingsDatabase::save()
     fprintf(f, " %f", i.second.median);
     fprintf(f, " %f", i.second.stddev);
     fprintf(f, " %f", i.second.npskew);
-    for (uint64_t v: i.second.deciles)
-      fprintf(f, " %lu", (unsigned long)v);
+    for (double v: i.second.deciles)
+      fprintf(f, " %f", v);
     fputc('\n', f);
   }
   fclose(f);
