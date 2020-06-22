@@ -307,9 +307,9 @@ private:
 
     //utils
     uint64_t get_block_reward(const block& blk);
-    boost::optional<std::string> get_random_public_node();
+    std::optional<std::string> get_random_public_node();
     bool set_bootstrap_daemon(const std::string &address, const std::string &username_password);
-    bool set_bootstrap_daemon(const std::string &address, const boost::optional<epee::net_utils::http::login> &credentials);
+    bool set_bootstrap_daemon(const std::string &address, const std::optional<epee::net_utils::http::login> &credentials);
     void fill_block_header_response(const block& blk, bool orphan_status, uint64_t height, const crypto::hash& hash, block_header_response& response, bool fill_pow_hash);
     std::unique_lock<std::shared_mutex> should_bootstrap_lock();
 

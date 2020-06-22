@@ -494,7 +494,7 @@ namespace trezor {
         }
       }
 
-      boost::optional<epee::wipeable_string> passphrase;
+      std::optional<epee::wipeable_string> passphrase;
       TREZOR_CALLBACK_GET(passphrase, on_passphrase_request, on_device);
 
       std::string passphrase_field;
@@ -506,7 +506,7 @@ namespace trezor {
         }
 
         if (m_passphrase) {
-          m_passphrase = boost::none;
+          m_passphrase = std::nullopt;
         }
 
         if (passphrase) {
@@ -588,7 +588,7 @@ namespace trezor {
 
     std::optional<epee::wipeable_string> trezor_debug_callback::on_passphrase_request(bool& on_device) {
       on_device = true;
-      return boost::none;
+      return std::nullopt;
     }
 
     void trezor_debug_callback::on_passphrase_state_request(const std::string &state) {

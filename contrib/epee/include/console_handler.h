@@ -307,7 +307,7 @@ eof:
     template<class chain_handler>
     bool run(chain_handler ch_handler, std::function<std::string(void)> prompt, const std::string& usage = "", std::function<void(void)> exit_handler = NULL)
     {
-      return run(prompt, usage, [&](const boost::optional<std::string>& cmd) { return ch_handler(cmd); }, exit_handler);
+      return run(prompt, usage, [&](const std::optional<std::string>& cmd) { return ch_handler(cmd); }, exit_handler);
     }
 
     void stop()
@@ -374,7 +374,7 @@ eof:
           if (m_cancel)
           {
             MDEBUG("Input cancelled");
-            cmd_handler(boost::none);
+            cmd_handler(std::nullopt);
             m_cancel = false;
             continue;
           }
@@ -492,7 +492,7 @@ eof:
       return false;
     }
 
-    bool process_command_and_log(const boost::optional<std::string>& cmd)
+    bool process_command_and_log(const std::optional<std::string>& cmd)
     {
       if (!cmd)
         return m_cancel_handler();

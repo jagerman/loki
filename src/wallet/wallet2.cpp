@@ -376,7 +376,7 @@ std::unique_ptr<tools::wallet2> make_basic(const boost::program_options::variabl
         if (!password_prompter)
         {
           MERROR("Password needed without prompt function");
-          return boost::optional<tools::password_container>();
+          return std::optional<tools::password_container>();
         }
         return password_prompter("Daemon client password", verify);
       }
@@ -3889,8 +3889,8 @@ void wallet2::clear_soft(bool keep_key_images)
  */
 bool wallet2::store_keys(const std::string& keys_file_name, const epee::wipeable_string& password, bool watch_only)
 {
-  boost::optional<wallet2::keys_file_data> keys_file_data = get_keys_file_data(password, watch_only);
-  CHECK_AND_ASSERT_MES(keys_file_data != boost::none, false, "failed to generate wallet keys data");
+  std::optional<wallet2::keys_file_data> keys_file_data = get_keys_file_data(password, watch_only);
+  CHECK_AND_ASSERT_MES(keys_file_data, false, "failed to generate wallet keys data");
 
   std::string tmp_file_name = keys_file_name + ".new";
   std::string buf;
@@ -3914,7 +3914,7 @@ bool wallet2::store_keys(const std::string& keys_file_name, const epee::wipeable
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-boost::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee::wipeable_string& password, bool watch_only)
+std::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee::wipeable_string& password, bool watch_only)
 {
   std::string account_data;
   std::string multisig_signers;
@@ -3936,8 +3936,8 @@ boost::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee:
   account.encrypt_keys(key);
 
   bool r = epee::serialization::store_t_to_binary(account, account_data);
-  CHECK_AND_ASSERT_MES(r, boost::none, "failed to serialize wallet keys");
-  boost::optional<wallet2::keys_file_data> keys_file_data = (wallet2::keys_file_data) {};
+  CHECK_AND_ASSERT_MES(r, std::nullopt, "failed to serialize wallet keys");
+  std::optional<wallet2::keys_file_data> keys_file_data = (wallet2::keys_file_data) {};
 
   // Create a JSON object with "key_data" and "seed_language" as keys.
   rapidjson::Document json;
@@ -3971,7 +3971,7 @@ boost::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee:
       multisig_signers = serialization::dump_binary(m_multisig_signers);
     } catch (const std::exception& e) {
       LOG_ERROR("failed to serialize wallet multisig signers: " << e.what());
-      return boost::none;
+      return std::nullopt;
     }
     value.SetString(multisig_signers.c_str(), multisig_signers.length());
     json.AddMember("multisig_signers", value, json.GetAllocator());
@@ -3980,7 +3980,7 @@ boost::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee:
       multisig_derivations = serialization::dump_binary(m_multisig_derivations);
     } catch (const std::exception& e) {
       LOG_ERROR("failed to serialize wallet multisig derivations");
-      return boost::none;
+      return std::nullopt;
     }
     value.SetString(multisig_derivations.c_str(), multisig_derivations.length());
     json.AddMember("multisig_derivations", value, json.GetAllocator());
@@ -4103,9 +4103,9 @@ boost::optional<wallet2::keys_file_data> wallet2::get_keys_file_data(const epee:
   // Encrypt the entire JSON object.
   std::string cipher;
   cipher.resize(account_data.size());
-  keys_file_data.get().iv = crypto::rand<crypto::chacha_iv>();
-  crypto::chacha20(account_data.data(), account_data.size(), key, keys_file_data.get().iv, &cipher[0]);
-  keys_file_data.get().account_data = cipher;
+  keys_file_data->iv = crypto::rand<crypto::chacha_iv>();
+  crypto::chacha20(account_data.data(), account_data.size(), key, keys_file_data->iv, &cipher[0]);
+  keys_file_data->account_data = cipher;
   return keys_file_data;
 }
 //----------------------------------------------------------------------------------------------------
@@ -4150,14 +4150,14 @@ bool wallet2::load_keys(const std::string& keys_file_name, const epee::wipeable_
   THROW_WALLET_EXCEPTION_IF(!r, error::file_read_error, keys_file_name);
 
   // Load keys from buffer
-  boost::optional<crypto::chacha_key> keys_to_encrypt;
+  std::optional<crypto::chacha_key> keys_to_encrypt;
   r = wallet2::load_keys_buf(keys_file_buf, password, keys_to_encrypt);
 
   // Rewrite with encrypted keys if unencrypted, ignore errors
-  if (r && keys_to_encrypt != boost::none)
+  if (r && keys_to_encrypt)
   {
     if (m_ask_password == AskPasswordToDecrypt && !m_unattended && !m_watch_only)
-      encrypt_keys(keys_to_encrypt.get());
+      encrypt_keys(*keys_to_encrypt);
     bool saved_ret = store_keys(keys_file_name, password, m_watch_only);
     if (!saved_ret)
     {
@@ -4165,18 +4165,18 @@ bool wallet2::load_keys(const std::string& keys_file_name, const epee::wipeable_
       MERROR("Error saving keys file with encrypted keys, not fatal");
     }
     if (m_ask_password == AskPasswordToDecrypt && !m_unattended && !m_watch_only)
-      decrypt_keys(keys_to_encrypt.get());
+      decrypt_keys(*keys_to_encrypt);
     m_keys_file_locker.reset();
   }
   return r;
 }
 //----------------------------------------------------------------------------------------------------
 bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password) {
-  boost::optional<crypto::chacha_key> keys_to_encrypt;
+  std::optional<crypto::chacha_key> keys_to_encrypt;
   return wallet2::load_keys_buf(keys_buf, password, keys_to_encrypt);
 }
 //----------------------------------------------------------------------------------------------------
-bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password, boost::optional<crypto::chacha_key>& keys_to_encrypt) {
+bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password, std::optional<crypto::chacha_key>& keys_to_encrypt) {
 
   // Decrypt the contents
   rapidjson::Document json;
@@ -4185,7 +4185,7 @@ bool wallet2::load_keys_buf(const std::string& keys_buf, const epee::wipeable_st
   try {
     serialization::parse_binary(keys_buf, keys_file_data);
   } catch (const std::exception& e) {
-    THROW_WALLET_EXCEPTION(error::wallet_internal_error, "internal error: failed to deserialize keys buffer: " + e.what());
+    THROW_WALLET_EXCEPTION(error::wallet_internal_error, "internal error: failed to deserialize keys buffer: "s + e.what());
   }
   crypto::chacha_key key;
   crypto::generate_chacha_key(password.data(), password.size(), key, m_kdf_rounds);
@@ -5971,8 +5971,8 @@ void wallet2::store_to(const std::string &path, const epee::wipeable_string &pas
   }
 
   // get wallet cache data
-  boost::optional<wallet2::cache_file_data> cache_file_data = get_cache_file_data(password);
-  THROW_WALLET_EXCEPTION_IF(cache_file_data == boost::none, error::wallet_internal_error, "failed to generate wallet cache data");
+  std::optional<wallet2::cache_file_data> cache_file_data = get_cache_file_data(password);
+  THROW_WALLET_EXCEPTION_IF(!cache_file_data, error::wallet_internal_error, "failed to generate wallet cache data");
 
   const std::string new_file = same_file ? m_wallet_file + ".new" : path;
   const std::string old_file = m_wallet_file;
@@ -6032,7 +6032,7 @@ void wallet2::store_to(const std::string &path, const epee::wipeable_string &pas
     try {
       std::ofstream ostr{new_file, std::ios_base::binary | std::ios_base::trunc};
       serialization::binary_archiver oar{ostr};
-      serialization::serialize(oar, cache_file_data.get());
+      serialization::serialize(oar, *cache_file_data);
     } catch (const std::exception& e) {
       THROW_WALLET_EXCEPTION(error::file_save_error, new_file);
     }
@@ -6051,7 +6051,7 @@ void wallet2::store_to(const std::string &path, const epee::wipeable_string &pas
   }
 }
 //----------------------------------------------------------------------------------------------------
-boost::optional<wallet2::cache_file_data> wallet2::get_cache_file_data(const epee::wipeable_string &passwords)
+std::optional<wallet2::cache_file_data> wallet2::get_cache_file_data(const epee::wipeable_string &passwords)
 {
   trim_hashchain();
   try
@@ -6060,18 +6060,18 @@ boost::optional<wallet2::cache_file_data> wallet2::get_cache_file_data(const epe
     boost::archive::portable_binary_oarchive ar(oss);
     ar << *this;
 
-    boost::optional<wallet2::cache_file_data> cache_file_data = (wallet2::cache_file_data) {};
-    cache_file_data.get().cache_data = oss.str();
+    std::optional<wallet2::cache_file_data> cache_file_data = (wallet2::cache_file_data) {};
+    cache_file_data->cache_data = oss.str();
     std::string cipher;
-    cipher.resize(cache_file_data.get().cache_data.size());
-    cache_file_data.get().iv = crypto::rand<crypto::chacha_iv>();
-    crypto::chacha20(cache_file_data.get().cache_data.data(), cache_file_data.get().cache_data.size(), m_cache_key, cache_file_data.get().iv, &cipher[0]);
-    cache_file_data.get().cache_data = cipher;
+    cipher.resize(cache_file_data->cache_data.size());
+    cache_file_data->iv = crypto::rand<crypto::chacha_iv>();
+    crypto::chacha20(cache_file_data->cache_data.data(), cache_file_data->cache_data.size(), m_cache_key, cache_file_data->iv, &cipher[0]);
+    cache_file_data->cache_data = cipher;
     return cache_file_data;
   }
   catch(...)
   {
-    return boost::none;
+    return std::nullopt;
   }
 }
 //----------------------------------------------------------------------------------------------------

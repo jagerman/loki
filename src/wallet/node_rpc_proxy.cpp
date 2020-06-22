@@ -88,7 +88,7 @@ std::optional<std::string> NodeRPCProxy::get_rpc_version(rpc::version_t &rpc_ver
     m_rpc_version = rpc::make_version(resp_t.version);
   }
   rpc_version = m_rpc_version;
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 void NodeRPCProxy::set_height(uint64_t h)
@@ -123,7 +123,7 @@ std::optional<std::string> NodeRPCProxy::get_info() const
     m_get_info_time = now;
     m_height_time = now;
   }
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 std::optional<std::string> NodeRPCProxy::get_height(uint64_t &height) const
@@ -132,14 +132,14 @@ std::optional<std::string> NodeRPCProxy::get_height(uint64_t &height) const
   if (now < m_height_time + 30) // re-cache every 30 seconds
   {
     height = m_height;
-    return boost::optional<std::string>();
+    return std::nullopt;
   }
 
   auto res = get_info();
   if (res)
     return res;
   height = m_height;
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 std::optional<std::string> NodeRPCProxy::get_target_height(uint64_t &height) const
@@ -148,7 +148,7 @@ std::optional<std::string> NodeRPCProxy::get_target_height(uint64_t &height) con
   if (res)
     return res;
   height = m_target_height;
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 std::optional<std::string> NodeRPCProxy::get_immutable_height(uint64_t &height) const
@@ -157,7 +157,7 @@ std::optional<std::string> NodeRPCProxy::get_immutable_height(uint64_t &height) 
   if (res)
     return res;
   height = m_immutable_height;
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 std::optional<std::string> NodeRPCProxy::get_block_weight_limit(uint64_t &block_weight_limit) const
@@ -166,7 +166,7 @@ std::optional<std::string> NodeRPCProxy::get_block_weight_limit(uint64_t &block_
   if (res)
     return res;
   block_weight_limit = m_block_weight_limit;
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 std::optional<std::string> NodeRPCProxy::get_earliest_height(uint8_t version, uint64_t &earliest_height) const
@@ -189,7 +189,7 @@ std::optional<std::string> NodeRPCProxy::get_earliest_height(uint8_t version, ui
   }
 
   earliest_height = m_earliest_height[version];
-  return std::optional<std::string>();
+  return std::nullopt;
 }
 
 std::optional<uint8_t> NodeRPCProxy::get_hardfork_version() const

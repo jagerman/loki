@@ -4883,7 +4883,7 @@ void simple_wallet::on_skip_transaction(uint64_t height, const crypto::hash &txi
 std::optional<epee::wipeable_string> simple_wallet::on_get_password(const char *reason)
 {
   if (m_locked)
-    return boost::none;
+    return std::nullopt;
   // can't ask for password from a background thread
   if (!m_in_manual_refresh.load(std::memory_order_relaxed))
   {
@@ -4928,7 +4928,7 @@ std::optional<epee::wipeable_string> simple_wallet::on_device_pin_request()
   return pwd_container->password();
 }
 //----------------------------------------------------------------------------------------------------
-std:optional<epee::wipeable_string> simple_wallet::on_device_passphrase_request(bool & on_device)
+std::optional<epee::wipeable_string> simple_wallet::on_device_passphrase_request(bool & on_device)
 {
   if (on_device) {
     std::string accepted = input_line(tr(

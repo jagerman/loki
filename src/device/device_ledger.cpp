@@ -661,7 +661,7 @@ namespace hw {
       return true;
     }
 
-    void  device_ledger::display_address(const cryptonote::subaddress_index& index, const boost::optional<crypto::hash8> &payment_id) {
+    void  device_ledger::display_address(const cryptonote::subaddress_index& index, const std::optional<crypto::hash8> &payment_id) {
         AUTO_LOCK_CMD();
 
         int offset = set_command_header_noopt(INS_DISPLAY_ADDRESS, payment_id?1:0);

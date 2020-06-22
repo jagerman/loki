@@ -857,13 +857,13 @@ private:
      * \param watch_only          true to include only view key, false to include both spend and view keys
      * \return                    Encrypted wallet keys data which can be stored to a wallet file
      */
-    boost::optional<wallet2::keys_file_data> get_keys_file_data(const epee::wipeable_string& password, bool watch_only);
+    std::optional<wallet2::keys_file_data> get_keys_file_data(const epee::wipeable_string& password, bool watch_only);
     /*!
      * \brief get_cache_file_data   Get wallet cache data which can be stored to a wallet file.
      * \param password              Password to protect the wallet cache data (TODO: probably better save the password in the wallet object?)
      * \return                      Encrypted wallet cache data which can be stored to a wallet file
      */
-    boost::optional<wallet2::cache_file_data> get_cache_file_data(const epee::wipeable_string& password);
+    std::optional<wallet2::cache_file_data> get_cache_file_data(const epee::wipeable_string& password);
 
     std::string path() const;
 
@@ -1658,7 +1658,7 @@ private:
      * \param password       Password of keys buffer
      */
     bool load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password);
-    bool load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password, boost::optional<crypto::chacha_key>& keys_to_encrypt);
+    bool load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password, std::optional<crypto::chacha_key>& keys_to_encrypt);
     void process_new_transaction(const crypto::hash &txid, const cryptonote::transaction& tx, const std::vector<uint64_t> &o_indices, uint64_t height, uint8_t block_version, uint64_t ts, bool miner_tx, bool pool, bool blink, bool double_spend_seen, const tx_cache_data &tx_cache_data, std::map<std::pair<uint64_t, uint64_t>, size_t> *output_tracker_cache = NULL);
     bool should_skip_block(const cryptonote::block &b, uint64_t height) const;
     void process_new_blockchain_entry(const cryptonote::block& b, const cryptonote::block_complete_entry& bche, const parsed_block &parsed_block, const crypto::hash& bl_id, uint64_t height, const std::vector<tx_cache_data> &tx_cache_data, size_t tx_cache_data_offset, std::map<std::pair<uint64_t, uint64_t>, size_t> *output_tracker_cache = NULL);

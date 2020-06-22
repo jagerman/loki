@@ -12,12 +12,12 @@
 namespace cryptonote
 {
 
-  bootstrap_daemon::bootstrap_daemon(std::function<boost::optional<std::string>()> get_next_public_node)
+  bootstrap_daemon::bootstrap_daemon(std::function<std::optional<std::string>()> get_next_public_node)
     : m_get_next_public_node(get_next_public_node)
   {
   }
 
-  bootstrap_daemon::bootstrap_daemon(const std::string &address, const boost::optional<epee::net_utils::http::login> &credentials)
+  bootstrap_daemon::bootstrap_daemon(const std::string &address, const std::optional<epee::net_utils::http::login> &credentials)
     : bootstrap_daemon(nullptr)
   {
     if (!set_server(address, credentials))
@@ -36,19 +36,19 @@ namespace cryptonote
     return host + ":" + m_http_client.get_port();
   }
 
-  boost::optional<uint64_t> bootstrap_daemon::get_height()
+  std::optional<uint64_t> bootstrap_daemon::get_height()
   {
     // query bootstrap daemon's height
     cryptonote::rpc::GET_HEIGHT::request req{};
     cryptonote::rpc::GET_HEIGHT::response res{};
     if (!invoke_http_json("/getheight", req, res))
     {
-      return boost::none;
+      return std::nullopt;
     }
 
     if (res.status != cryptonote::rpc::STATUS_OK)
     {
-      return boost::none;
+      return std::nullopt;
     }
 
     return res.height;
@@ -64,7 +64,7 @@ namespace cryptonote
     return success;
   }
 
-  bool bootstrap_daemon::set_server(const std::string &address, const boost::optional<epee::net_utils::http::login> &credentials /* = boost::none */)
+  bool bootstrap_daemon::set_server(const std::string &address, const std::optional<epee::net_utils::http::login> &credentials /* = std::nullopt */)
   {
     if (!m_http_client.set_server(address, credentials))
     {
@@ -84,7 +84,7 @@ namespace cryptonote
       return true;
     }
 
-    const boost::optional<std::string> address = m_get_next_public_node();
+    const std::optional<std::string> address = m_get_next_public_node();
     if (address) {
       return set_server(*address);
     }
