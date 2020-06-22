@@ -46,6 +46,7 @@
 #ifdef HAVE_READLINE
   #include "readline_buffer.h"
 #endif
+#include "readline_suspend.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "console_handler"
@@ -521,16 +522,12 @@ eof:
       }
       catch (const invalid_command &e)
       {
-#ifdef HAVE_READLINE
         rdln::suspend_readline pause_readline;
-#endif
         std::cout << "Unknown command: " << e.what() << ". Try 'help' for available commands\n";
       }
       catch (const std::exception &e)
       {
-#ifdef HAVE_READLINE
         rdln::suspend_readline pause_readline;
-#endif
         std::cout << "Command errored: " << cmd.front() << ", " << e.what();
       }
 

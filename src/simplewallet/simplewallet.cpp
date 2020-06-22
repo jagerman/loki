@@ -5600,24 +5600,23 @@ void simple_wallet::check_for_inactivity_lock(bool user)
   if (m_locked)
   {
     rdln::suspend_readline pause_readline;
-#ifdef HAVE_READLINE
-    rdln::clear_screen();
-#endif
-    tools::clear_screen();
+    command_line::clear_screen();
     m_in_command = true;
     if (!user)
     {
         tools::msg_writer() << R"(
- ______________________________________________
-/ I locked your Loki Wallet to protect you     \
-| while you were away see "help set" to        |
-\ to configure/disable                         /
- ----------------------------------------------
-        \   (__)
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
+        .
+      oooo
+    oooo
+  oooo   .           You Loki Wallet has been locked to
+oooo    oooo         protect you while you were away.
+  oooo    oooo
+    oooo    oooo     (Use `set inactivity-lock-timeout 0`
+      oooo    oooo   to disable this inactivity timeout)
+        .   oooo
+          oooo
+        oooo
+         .
 )";
     }
 
