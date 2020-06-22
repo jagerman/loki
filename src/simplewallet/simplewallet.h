@@ -302,7 +302,6 @@ namespace cryptonote
     std::pair<std::string, std::string> show_outputs_line(const std::vector<uint64_t> &heights, uint64_t blockchain_height, uint64_t highlight_idx = std::numeric_limits<uint64_t>::max()) const;
     bool freeze_thaw(const std::vector<std::string>& args, bool freeze);
 
-    bool on_command(bool (simple_wallet::*cmd)(const std::vector<std::string>&), const std::vector<std::string> &args);
     bool on_cancelled_command();
     void check_for_inactivity_lock(bool user);
 

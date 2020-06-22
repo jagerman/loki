@@ -35,6 +35,8 @@
 #include <mutex>
 #include <thread>
 #include <iostream>
+#include <any>
+#include <unordered_map>
 #ifdef __OpenBSD__
 #include <stdio.h>
 #endif
@@ -442,6 +444,39 @@ eof:
       return it->second.second;
     }
 
+    using pre_handler_callback = std::function<std::any(const std::string& cmd)>;
+    using post_handler_callback = std::function<void(const std::string& cmd, bool& handler_result, std::any pre_handler_result)>;
+
+    /// Sets a pre-handler than runs immediately before any handler set up with `set_handler`.
+    /// Called with the command name.  If the handler returns a value it will be stored in a
+    /// `std::any` and then passed into the `post_handler`.  Pre- and post-handlers are only invoked
+    /// on valid commands.
+    template <typename Callback>
+    void pre_handler(Callback handler)
+    {
+      using Return = decltype(handler(""s));
+      if constexpr (std::is_void_v<Return>)
+        m_pre_handler = [f=std::move(handler)](const std::string& cmd) { f(cmd); return std::any{}; };
+      else if constexpr (std::is_same_v<Return, std::any>)
+        m_pre_handler = handler;
+      else
+        m_pre_handler = [f=std::move(handler)](const std::string& cmd) -> std::any { return f(cmd); };
+    }
+
+    /// Sets a post-handler that runs immediately after a handler set up with `set_handler`.  Takes
+    /// three arguments:
+    /// - the command name
+    /// - a `bool&` containing the result returned by the handler (which can be modified by the post
+    ///   handler to affect the callback return, if desired)
+    /// - an `std::any` containing the result of the pre-handler.  (If not pre-handler was set up or
+    ///   the pre-handler has a void return, the std::any will be empty).
+    ///
+    /// The post handler is not invoked at all if the command handler throws an exception.
+    void post_handler(post_handler_callback handler)
+    {
+      m_post_handler = std::move(handler);
+    }
+
     void set_handler(const std::string& cmd, callback hndlr, std::string usage = "", std::string description = "")
     {
       lookup::mapped_type & vt = m_command_handlers[cmd];
@@ -465,7 +500,17 @@ eof:
       auto it = m_command_handlers.find(cmd.front());
       if (it == m_command_handlers.end())
         throw invalid_command{cmd.front()};
-      return it->second.first(std::vector<std::string>{cmd.begin()+1, cmd.end()});
+
+      std::any pre_result;
+      if (m_pre_handler)
+        pre_result = m_pre_handler(cmd.front());
+
+      bool result = it->second.first(std::vector<std::string>{cmd.begin()+1, cmd.end()});
+
+      if (m_post_handler)
+        m_post_handler(cmd.front(), result, std::move(pre_result));
+
+      return result;
     }
 
     bool process_command_and_log(const std::vector<std::string> &cmd)
@@ -507,6 +552,8 @@ eof:
     }
 
   private:
+    pre_handler_callback m_pre_handler;
+    post_handler_callback m_post_handler;
     lookup m_command_handlers;
     empty_callback m_cancel_handler;
   };
