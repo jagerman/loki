@@ -14429,10 +14429,10 @@ T wallet2::decrypt(const std::string &ciphertext, const crypto::secret_key &skey
     THROW_WALLET_EXCEPTION_IF(!crypto::check_signature(hash, pkey, signature),
       error::wallet_internal_error, "Failed to authenticate ciphertext");
   }
-  std::unique_ptr<char[]> buffer{new char[ciphertext.size() - prefix_size]};
-  LOKI_DEFER { memwipe(buffer.get(), ciphertext.size() - prefix_size); };
-  crypto::chacha20(ciphertext.data() + sizeof(iv), ciphertext.size() - prefix_size, key, iv, buffer.get());
-  return T(buffer.get(), ciphertext.size() - prefix_size);
+  epee::wipeable_string buffer;
+  buffer.resize(ciphertext.size() - prefix_size);
+  crypto::chacha20(ciphertext.data() + sizeof(iv), ciphertext.size() - prefix_size, key, iv, buffer.data());
+  return T(buffer.data(), buffer.size());
 }
 //----------------------------------------------------------------------------------------------------
 template epee::wipeable_string wallet2::decrypt(const std::string &ciphertext, const crypto::secret_key &skey, bool authenticated) const;
