@@ -31,7 +31,9 @@
 #include "password.h"
 
 #include <iostream>
-#include <stdio.h>
+#include <cstdio>
+#include <utility>
+#include <type_traits>
 
 #if defined(_WIN32)
 #include <io.h>

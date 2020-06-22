@@ -30,8 +30,9 @@
 #define _LEVIN_BASE_H_
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 
-#include "shared_sv.h"
 #include "net_utils_base.h"
 #include "span.h"
 
@@ -132,7 +133,7 @@ namespace levin
 
   /*! Generate a dummy levin message.
 
-      \param noise_bytes Total size of the returned `shared_sv`.
+      \param noise_bytes Total size of the returned string.
       \return `nullptr` if `noise_size` is smaller than the levin header.
         Otherwise, a dummy levin message. */
   std::string make_noise_notify(std::size_t noise_bytes);

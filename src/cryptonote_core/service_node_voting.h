@@ -28,16 +28,14 @@
 
 #pragma once
 
+#include <cassert>
+#include <mutex>
 #include <vector>
-#include <unordered_map>
 #include <utility>
 
-#include "crypto/crypto.h"
 #include "cryptonote_basic/cryptonote_basic.h"
-#include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/tx_extra.h"
 
-#include "string_tools.h"
 #include "common/periodic_task.h"
 #include "syncobj.h"
 

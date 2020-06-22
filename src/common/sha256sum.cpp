@@ -1,5 +1,7 @@
 
 #include "sha256sum.h"
+#include <fstream>
+#include "crypto/hash.h"
 #include "file_io_utils.h" // epee
 
 extern "C" {

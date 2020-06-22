@@ -27,13 +27,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include "i18n.h"
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+#include <cstdint>
 #include <string>
 #include <map>
+#include <utility>
 #include "file_io_utils.h"
-#include "common/i18n.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "i18n"

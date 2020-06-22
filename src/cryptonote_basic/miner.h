@@ -30,7 +30,6 @@
 
 #pragma once 
 
-#include <boost/program_options.hpp>
 #include <atomic>
 #include <thread>
 #include "cryptonote_basic/blobdatatype.h"
@@ -41,6 +40,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+namespace boost::program_options { class variables_map; class options_description; }
 
 namespace cryptonote
 {

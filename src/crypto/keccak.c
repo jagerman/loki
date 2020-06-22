@@ -2,8 +2,9 @@
 // 19-Nov-11  Markku-Juhani O. Saarinen <mjos@iki.fi>
 // A baseline Keccak (3rd round) implementation.
 
+#include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include "int-util.h"
 #include "hash-ops.h"

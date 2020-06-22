@@ -33,6 +33,7 @@
 #include <iosfwd>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "wipeable_string.h"
 #include "span.h"

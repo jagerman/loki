@@ -1,6 +1,8 @@
 #include "readline_buffer.h"
+#include "readline_suspend.h"
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <algorithm>
 #include <iostream>
 #include <mutex>
 #include <boost/algorithm/string.hpp>

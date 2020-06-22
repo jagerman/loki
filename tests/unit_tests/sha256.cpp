@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "common/sha256sum.h"
+#include "crypto/hash.h"
 #include "string_tools.h"
 
 static bool check(const std::string &data, const char *expected_hash_hex)

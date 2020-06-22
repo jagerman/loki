@@ -33,6 +33,8 @@
 #include <ostream>
 #include <stdexcept>
 #include <string_view>
+#include <cctype>
+#include <algorithm>
 
 namespace epee
 {

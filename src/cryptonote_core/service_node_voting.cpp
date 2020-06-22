@@ -39,11 +39,8 @@
 #include "misc_log_ex.h"
 #include "string_tools.h"
 
-#include <random>
 #include <string>
 #include <vector>
-
-#include <boost/endian/conversion.hpp>
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "service_nodes"

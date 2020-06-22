@@ -27,6 +27,12 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <optional>
+#include <cctype>
+#include <algorithm>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 #include <cstring>
 #include "memwipe.h"
 #include "misc_log_ex.h"

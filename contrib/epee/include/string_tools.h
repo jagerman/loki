@@ -35,18 +35,15 @@
 # include <windows.h>
 #endif
 
-#include <string.h>
-#include <locale>
+#include <cstring>
 #include <cstdlib>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include "misc_log_ex.h"
 #include "storages/parserse_base_utils.h"
 #include "hex.h"
-#include "memwipe.h"
 #include "mlocker.h"
 #include "span.h"
 #include "warnings.h"

@@ -45,12 +45,12 @@
 #include <string>
 #include <atomic>
 #include <memory>
+#include <deque>
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 
 #include "shared_sv.h"
-#include "net/net_utils_base.h"
 #include "net/net_ssl.h"
 #include "syncobj.h"
 

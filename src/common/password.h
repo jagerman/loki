@@ -33,6 +33,8 @@
 #include <string>
 #include <atomic>
 #include <optional>
+#include <functional>
+#include <cstddef>
 #include "wipeable_string.h"
 
 namespace tools

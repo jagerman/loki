@@ -27,8 +27,9 @@
 
 #include <string>
 #include <optional>
-#include "http_auth.h"
 #include "net/net_ssl.h"
+#include "net/http_base.h"
+#include "net/http_auth.h"
 
 namespace epee
 {

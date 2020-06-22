@@ -1,14 +1,12 @@
 #include <bitset>
 #include "loki_name_system.h"
 
-#include "checkpoints/checkpoints.h"
 #include "common/loki.h"
 #include "common/string_util.h"
 #include "crypto/hash.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
-#include "cryptonote_core/cryptonote_tx_utils.h"
 #include "cryptonote_basic/tx_extra.h"
 #include "cryptonote_core/blockchain.h"
 #include "loki_economy.h"
@@ -21,7 +19,11 @@
 
 extern "C"
 {
-#include <sodium.h>
+#include <sodium/crypto_generichash.h>
+#include <sodium/crypto_generichash_blake2b.h>
+#include <sodium/crypto_pwhash.h>
+#include <sodium/crypto_secretbox.h>
+#include <sodium/crypto_sign.h>
 }
 
 #undef LOKI_DEFAULT_LOG_CATEGORY

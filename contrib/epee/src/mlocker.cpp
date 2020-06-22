@@ -39,6 +39,12 @@
 #include "mlocker.h"
 
 #include <atomic>
+#include <cerrno>
+#include <cstdint>
+#include <cstring>
+#include <map>
+#include <mutex>
+#include <utility>
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "mlocker"

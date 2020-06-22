@@ -32,10 +32,10 @@
 #include "unbound.h"
 
 #include <chrono>
-#include <mutex>
 #include <optional>
 #include <stdexcept>
-#include <stdlib.h>
+#include <cstdlib>
+#include <cstdio>
 #include "include_base_utils.h"
 #include "common/threadpool.h"
 #include "crypto/crypto.h"
@@ -275,7 +275,7 @@ std::vector<std::string> DNSResolver::get_record(const std::string& url, int rec
   dnssec_available = false;
   dnssec_valid = false;
 
-  if (!check_address_syntax(url.c_str()))
+  if (url.find('.') == std::string::npos)
   {
     return addresses;
   }
@@ -438,16 +438,6 @@ DNSResolver& DNSResolver::instance()
 DNSResolver DNSResolver::create()
 {
   return DNSResolver();
-}
-
-bool DNSResolver::check_address_syntax(const char *addr) const
-{
-  // if string doesn't contain a dot, we won't consider it a url for now.
-  if (strchr(addr,'.') == NULL)
-  {
-    return false;
-  }
-  return true;
 }
 
 namespace dns_utils
@@ -646,13 +636,13 @@ std::vector<std::string> parse_dns_public(const char *s)
   unsigned ip0, ip1, ip2, ip3;
   char c;
   std::vector<std::string> dns_public_addr;
-  if (!strcmp(s, "tcp"))
+  if (s != "tcp"sv)
   {
     for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
       dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
     LOG_PRINT_L0("Using default public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
   }
-  else if (sscanf(s, "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
+  else if (std::sscanf(s, "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
   {
     if (ip0 > 255 || ip1 > 255 || ip2 > 255 || ip3 > 255)
     {
@@ -660,7 +650,7 @@ std::vector<std::string> parse_dns_public(const char *s)
     }
     else
     {
-      dns_public_addr.push_back(std::string(s + strlen("tcp://")));
+      dns_public_addr.push_back(std::string(s + "tcp://"sv.size()));
     }
   }
   else

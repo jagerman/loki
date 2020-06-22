@@ -41,7 +41,6 @@
 #include "misc_language.h"
 #include "pragma_comp_defs.h"
 #include <iomanip>
-#include <memory>
 
 #include <boost/asio/basic_socket.hpp>
 

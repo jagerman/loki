@@ -2,7 +2,8 @@
 #include <type_traits>
 #include <string>
 #include <string_view>
-#include <crypto/hash.h>
+
+namespace crypto { struct hash; }
 
 namespace tools {
 
