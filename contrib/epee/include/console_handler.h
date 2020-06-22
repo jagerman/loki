@@ -299,13 +299,13 @@ eof:
     }
 
     template<class t_server, class chain_handler>
-    bool run(t_server* psrv, chain_handler ch_handler, std::function<std::string(void)> prompt, const std::string& usage = "")
+    bool run(t_server* psrv, chain_handler ch_handler, std::function<std::string()> prompt, const std::string& usage = "")
     {
       return run(prompt, usage, [&](const std::string& cmd) { return ch_handler(psrv, cmd); }, [&] { psrv->send_stop_signal(); });
     }
 
     template<class chain_handler>
-    bool run(chain_handler ch_handler, std::function<std::string(void)> prompt, const std::string& usage = "", std::function<void(void)> exit_handler = NULL)
+    bool run(chain_handler ch_handler, std::function<std::string()> prompt, const std::string& usage = "", std::function<void()> exit_handler = NULL)
     {
       return run(prompt, usage, [&](const std::optional<std::string>& cmd) { return ch_handler(cmd); }, exit_handler);
     }
@@ -346,7 +346,7 @@ eof:
 
   private:
     template<typename t_cmd_handler>
-    bool run(std::function<std::string(void)> prompt, const std::string& usage, const t_cmd_handler& cmd_handler, std::function<void(void)> exit_handler)
+    bool run(std::function<std::string()> prompt, const std::string& usage, const t_cmd_handler& cmd_handler, std::function<void()> exit_handler)
     {
       bool continue_handle = true;
       m_prompt = prompt;
@@ -413,14 +413,14 @@ eof:
     async_stdin_reader m_stdin_reader;
     std::atomic<bool> m_running = {true};
     std::atomic<bool> m_cancel = {false};
-    std::function<std::string(void)> m_prompt;
+    std::function<std::string()> m_prompt;
   };
 
   class command_handler {
   public:
-    typedef std::function<bool(const std::vector<std::string> &)> callback;
-    typedef boost::function<bool (void)> empty_callback;
-    typedef std::map<std::string, std::pair<callback, std::pair<std::string, std::string>>> lookup;
+    using callback = std::function<bool(const std::vector<std::string> &)>;
+    using empty_callback = std::function<bool()>;
+    using lookup = std::unordered_map<std::string, std::pair<callback, std::pair<std::string, std::string>>>;
 
     /// Go through registered commands in sorted order, call the function with three string
     /// arguments: command name, usage, and description.
@@ -533,12 +533,12 @@ eof:
       }
     }
 
-    bool start_handling(std::function<std::string(void)> prompt, const std::string& usage_string = "", std::function<void(void)> exit_handler = NULL)
+    bool start_handling(std::function<std::string()> prompt, const std::string& usage_string = "", std::function<void()> exit_handler = NULL)
     {
       m_console_thread = std::thread{std::bind(&console_handlers_binder::run_handling, this, prompt, usage_string, exit_handler)};
       return true;
     }
-    bool start_handling(const std::string &prompt, const std::string& usage_string = "", std::function<void(void)> exit_handler = NULL)
+    bool start_handling(const std::string &prompt, const std::string& usage_string = "", std::function<void()> exit_handler = NULL)
     {
       return start_handling([prompt](){ return prompt; }, usage_string, exit_handler);
     }
@@ -548,7 +548,7 @@ eof:
       m_console_handler.stop();
     }
 
-    bool run_handling(std::function<std::string(void)> prompt, const std::string& usage_string, std::function<void(void)> exit_handler = NULL)
+    bool run_handling(std::function<std::string()> prompt, const std::string& usage_string, std::function<void()> exit_handler = NULL)
     {
       return m_console_handler.run([this](const auto& arg) { return process_command_and_log(arg); }, prompt, usage_string, exit_handler);
     }

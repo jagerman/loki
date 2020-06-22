@@ -533,7 +533,7 @@ bool ssl_options_t::handshake(
   });
 
   boost::system::error_code ec = boost::asio::error::would_block;
-  socket.async_handshake(type, boost::lambda::var(ec) = boost::lambda::_1);
+  socket.async_handshake(type, [&ec](const auto& val) { ec = val; });
   if (io_service.stopped())
   {
     io_service.reset();
