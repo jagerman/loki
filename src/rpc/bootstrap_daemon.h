@@ -3,8 +3,6 @@
 #include <functional>
 #include <vector>
 
-#include <boost/utility/string_ref.hpp>
-
 #include "net/http_client.h"
 #include "storages/http_abstract_invoke.h"
 
@@ -22,7 +20,7 @@ namespace cryptonote
     bool handle_result(bool success);
 
     template <class t_request, class t_response>
-    bool invoke_http_json(const boost::string_ref uri, const t_request &out_struct, t_response &result_struct)
+    bool invoke_http_json(const std::string_view uri, const t_request &out_struct, t_response &result_struct)
     {
       if (!switch_server_if_needed())
       {
@@ -33,7 +31,7 @@ namespace cryptonote
     }
 
     template <class t_request, class t_response>
-    bool invoke_http_bin(const boost::string_ref uri, const t_request &out_struct, t_response &result_struct)
+    bool invoke_http_bin(const std::string_view uri, const t_request &out_struct, t_response &result_struct)
     {
       if (!switch_server_if_needed())
       {
@@ -44,7 +42,7 @@ namespace cryptonote
     }
 
     template <class t_request, class t_response>
-    bool invoke_http_json_rpc(const boost::string_ref command_name, const t_request &out_struct, t_response &result_struct)
+    bool invoke_http_json_rpc(const std::string_view command_name, const t_request &out_struct, t_response &result_struct)
     {
       if (!switch_server_if_needed())
       {

@@ -552,7 +552,7 @@ TEST(i2p_address, invalid)
     EXPECT_TRUE(net::i2p_address::make(".b32.i2p").has_error());
     EXPECT_TRUE(net::i2p_address::make(".b32.i2p:").has_error());
     EXPECT_TRUE(net::i2p_address::make(b32_i2p + 1).has_error());
-    EXPECT_TRUE(net::i2p_address::make(boost::string_ref{b32_i2p, sizeof(b32_i2p) - 2}).has_error());
+    EXPECT_TRUE(net::i2p_address::make(std::string_view{b32_i2p, sizeof(b32_i2p) - 2}).has_error());
     EXPECT_TRUE(net::i2p_address::make(std::string{b32_i2p} + ":65536").has_error());
     EXPECT_TRUE(net::i2p_address::make(std::string{b32_i2p} + ":-1").has_error());
 
