@@ -40,7 +40,6 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/range/adaptor/reversed.hpp>
 
 
 #include "crypto/crypto.h"
@@ -268,7 +267,7 @@ namespace nodetool
   bool peerlist_manager::get_peerlist_head(std::vector<peerlist_entry>& bs_head, bool anonymize, uint32_t depth)
   {
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
-    peers_indexed::index<by_time>::type& by_time_index=m_peers_white.get<by_time>();
+    auto& by_time_index=m_peers_white.get<by_time>();
     uint32_t cnt = 0;
 
     // picks a random set of peers within the whole set, rather pick the first depth elements.
@@ -285,12 +284,12 @@ namespace nodetool
     //
     const uint32_t pick_depth = anonymize ? m_peers_white.size() : depth;
     bs_head.reserve(pick_depth);
-    for(const peers_indexed::value_type& vl: boost::adaptors::reverse(by_time_index))
+    for(auto it = by_time_index.rbegin(); it != by_time_index.rend(); ++it)
     {
       if(cnt++ >= pick_depth)
         break;
 
-      bs_head.push_back(vl);
+      bs_head.push_back(*it);
     }
 
     if (anonymize)
@@ -305,13 +304,13 @@ namespace nodetool
     return true;
   }
   //--------------------------------------------------------------------------------------------------
-  template<typename F> inline
+  template<typename F>
   bool peerlist_manager::foreach(bool white, const F &f)
   {
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
-    peers_indexed::index<by_time>::type& by_time_index = white ? m_peers_white.get<by_time>() : m_peers_gray.get<by_time>();
-    for(const peers_indexed::value_type& vl: boost::adaptors::reverse(by_time_index))
-      if (!f(vl))
+    auto& by_time_index = white ? m_peers_white.get<by_time>() : m_peers_gray.get<by_time>();
+    for (auto it = by_time_index.rbegin(); it != by_time_index.rend(); ++it)
+      if (!f(*it))
         return false;
     return true;
   }
