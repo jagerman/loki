@@ -74,7 +74,7 @@ Install all dependencies at once on Debian/Ubuntu:
 ```
 sudo apt update && \
 sudo apt install g++ cmake pkg-config libboost-filesystem-dev libboost-thread-dev libboost-date-time-dev \
-    libboost-chrono-dev libboost-serialization-dev libboost-program-options-dev \
+    libboost-serialization-dev libboost-program-options-dev \
     libssl-dev libzmq3-dev libsqlite3-dev libunbound-dev libsodium-dev libunwind8-dev liblzma-dev libreadline-dev \
     libldns-dev libexpat1-dev doxygen graphviz libsqlite3-dev
 ```
