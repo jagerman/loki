@@ -8581,7 +8581,7 @@ void simple_wallet::check_for_messages()
 //----------------------------------------------------------------------------------------------------
 void simple_wallet::wallet_idle_thread()
 {
-  const boost::posix_time::ptime start_time = boost::posix_time::microsec_clock::universal_time();
+  const auto start_time = std::chrono::steady_clock::now();
   while (true)
   {
     std::unique_lock lock{m_idle_mutex};
@@ -8591,13 +8591,14 @@ void simple_wallet::wallet_idle_thread()
     // if another thread was busy (ie, a foreground refresh thread), we'll end up here at
     // some random time that's not what we slept for, so we should not call refresh now
     // or we'll be leaking that fact through timing
-    const boost::posix_time::ptime now0 = boost::posix_time::microsec_clock::universal_time();
-    const uint64_t dt_actual = (now0 - start_time).total_microseconds() % 1000000;
+    const auto dt_actual = (std::chrono::steady_clock::now() - start_time) % 1s;
+    constexpr auto threshold =
 #ifdef _WIN32
-    static const uint64_t threshold = 10000;
+        10ms;
 #else
-    static const uint64_t threshold = 2000;
+        2ms;
 #endif
+
     if (dt_actual < threshold) // if less than a threshold... would a very slow machine always miss it ?
     {
 #ifndef _WIN32
@@ -8611,10 +8612,9 @@ void simple_wallet::wallet_idle_thread()
     }
 
     // aim for the next multiple of 1 second
-    const boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-    const auto dt = (now - start_time).total_microseconds();
-    const auto wait = 1000000 - dt % 1000000;
-    m_idle_cond.wait_for(lock, boost::chrono::microseconds(wait));
+    const auto dt = std::chrono::steady_clock::now() - start_time;
+    const auto wait = 1s - dt % 1s;
+    m_idle_cond.wait_for(lock, wait);
   }
 }
 //----------------------------------------------------------------------------------------------------

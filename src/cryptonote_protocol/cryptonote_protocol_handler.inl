@@ -1308,27 +1308,25 @@ namespace cryptonote
       return 0;
     }
 
-    const boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-    const boost::posix_time::time_duration sync_time = now - m_sync_start_time;
+    auto now = std::chrono::steady_clock::now();
+    seconds_f sync_time = now - m_sync_start_time;
     cryptonote::network_type nettype = m_core.get_nettype();
 
     // Don't simply use remaining number of blocks for the estimate but "sync weight" as provided by
     // "cumulative_block_sync_weight" which knows about strongly varying Monero mainnet block sizes
     uint64_t synced_weight = tools::cumulative_block_sync_weight(nettype, m_sync_start_height, current_blockchain_height - m_sync_start_height);
-    float us_per_weight = (float)sync_time.total_microseconds() / (float)synced_weight;
     uint64_t remaining_weight = tools::cumulative_block_sync_weight(nettype, current_blockchain_height, target_blockchain_height - current_blockchain_height);
-    float remaining_us = us_per_weight * (float)remaining_weight;
-    return (uint64_t)(remaining_us / 1e6);
+    return (uint64_t)((sync_time.count() / synced_weight) * remaining_weight);
   }
 
   // Return a textual remaining sync time estimate, or the empty string if waiting period not yet over
   template<class t_core>
   std::string t_cryptonote_protocol_handler<t_core>::get_periodic_sync_estimate(uint64_t current_blockchain_height, uint64_t target_blockchain_height)
   {
-    std::string text = "";
-    const boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-    boost::posix_time::time_duration period_sync_time = now - m_period_start_time;
-    if (period_sync_time > boost::posix_time::minutes(2))
+    std::string text;
+    const auto now = std::chrono::steady_clock::now();
+    auto period_sync_time = now - m_period_start_time;
+    if (period_sync_time > 2min)
     {
       // Period is over, time to report another estimate
       uint64_t remaining_seconds = get_estimated_remaining_sync_seconds(current_blockchain_height, target_blockchain_height);
@@ -1369,7 +1367,7 @@ namespace cryptonote
           if (!starting) m_last_add_end_time = epee::misc_utils::get_ns_count();
         };
 
-        m_sync_start_time = boost::posix_time::microsec_clock::universal_time();
+        m_sync_start_time = std::chrono::steady_clock::now();
         m_sync_start_height = m_core.get_current_blockchain_height();
         m_period_start_time = m_sync_start_time;
 
@@ -2323,15 +2321,12 @@ skip:
         // Report only after syncing an "interesting" number of blocks:
         if (synced_blocks > 20)
         {
-          const boost::posix_time::ptime now = boost::posix_time::microsec_clock::universal_time();
-          uint64_t synced_seconds = (now - m_sync_start_time).total_seconds();
-          if (synced_seconds == 0)
-          {
-            synced_seconds = 1;
-          }
-          float blocks_per_second = (1000 * synced_blocks / synced_seconds) / 1000.0f;
+          auto synced_seconds = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - m_sync_start_time);
+          if (synced_seconds == 0s)
+            synced_seconds = 1s;
+          float blocks_per_second = synced_blocks / (float)synced_seconds.count();
           MGINFO_YELLOW("Synced " << synced_blocks << " blocks in "
-            << tools::get_human_readable_timespan(std::chrono::seconds(synced_seconds)) << " (" << blocks_per_second << " blocks per second)");
+            << tools::get_human_readable_timespan(synced_seconds) << " (" << blocks_per_second << " blocks per second)");
         }
       }
       MGINFO_YELLOW("\n**********************************************************************\n"

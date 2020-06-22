@@ -57,6 +57,7 @@
 #include "bulletproof.h"
 #include "crypto_ops.h"
 #include "multiexp.h"
+#include <chrono>
 
 namespace po = boost::program_options;
 
@@ -100,8 +101,7 @@ int main(int argc, char** argv)
   p.stats = command_line::get_arg(vm, arg_stats);
   p.loop_multiplier = command_line::get_arg(vm, arg_loop_multiplier);
 
-  performance_timer timer;
-  timer.start();
+  auto started = std::chrono::steady_clock::now();
 
   TEST_PERFORMANCE3(filter, p, test_construct_tx, 1, 1, false);
   TEST_PERFORMANCE3(filter, p, test_construct_tx, 1, 2, false);
@@ -536,7 +536,7 @@ int main(int argc, char** argv)
   TEST_PERFORMANCE3(filter, p, test_multiexp, multiexp_pippenger, 4096, 9);
 #endif
 
-  std::cout << "Tests finished. Elapsed time: " << timer.elapsed_ms() / 1000 << " sec" << std::endl;
+  std::cout << "Tests finished. Elapsed time: " << elapsed_str(std::chrono::steady_clock::now() - started) << std::endl;
 
   return 0;
   CATCH_ENTRY_L0("main", 1);

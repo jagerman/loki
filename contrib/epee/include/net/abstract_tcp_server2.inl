@@ -768,7 +768,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     if (add)
     {
       if (const auto cur = std::chrono::duration_cast<std::chrono::milliseconds>(m_timer.expiry() - std::chrono::steady_clock::now());
-          cur > 0)
+          cur > 0s)
         ms += cur;
     }
     m_timer.expires_after(ms);
