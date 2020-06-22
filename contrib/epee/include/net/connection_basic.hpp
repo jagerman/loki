@@ -42,6 +42,7 @@
 #define INCLUDED_p2p_connection_basic_hpp
 
 
+#include <mutex>
 #include <string>
 #include <atomic>
 #include <memory>
@@ -52,7 +53,6 @@
 
 #include "shared_sv.h"
 #include "net/net_ssl.h"
-#include "syncobj.h"
 
 namespace epee
 {
@@ -108,7 +108,7 @@ class connection_basic { // not-templated base class for rapid developmet of som
 		// moved here from orginal connecton<> - common member variables that do not depend on template in connection<>
     std::atomic<bool> m_want_close_connection;
     std::atomic<bool> m_was_shutdown;
-    critical_section m_send_que_lock;
+    std::mutex m_send_que_lock;
     std::deque<shared_sv> m_send_que;
     std::atomic<bool> m_is_multithreaded;
     /// Strand to ensure the connection's handlers are not called concurrently.

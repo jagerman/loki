@@ -263,9 +263,9 @@ namespace nodetool
     virtual bool unblock_host(const epee::net_utils::network_address &address);
     virtual bool block_subnet(const epee::net_utils::ipv4_network_subnet &subnet, time_t seconds = P2P_IP_BLOCKTIME);
     virtual bool unblock_subnet(const epee::net_utils::ipv4_network_subnet &subnet);
-    virtual bool is_host_blocked(const epee::net_utils::network_address &address, time_t *seconds) { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return !is_remote_host_allowed(address, seconds); }
-    virtual std::map<std::string, time_t> get_blocked_hosts() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_hosts; }
-    virtual std::map<epee::net_utils::ipv4_network_subnet, time_t> get_blocked_subnets() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_subnets; }
+    virtual bool is_host_blocked(const epee::net_utils::network_address &address, time_t *seconds) { return !is_remote_host_allowed(address, seconds); }
+    virtual std::map<std::string, time_t> get_blocked_hosts() { std::shared_lock lock{m_blocked_hosts_lock}; return m_blocked_hosts; }
+    virtual std::map<epee::net_utils::ipv4_network_subnet, time_t> get_blocked_subnets() { std::shared_lock lock{m_blocked_hosts_lock}; return m_blocked_subnets; }
 
     virtual void add_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
     virtual void remove_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
@@ -431,8 +431,6 @@ namespace nodetool
     bool m_require_ipv4;
     std::atomic<bool> is_closing;
     std::optional<std::thread> mPeersLoggerThread;
-    //critical_section m_connections_lock;
-    //connections_indexed_container m_connections;
 
     t_payload_net_handler& m_payload_handler;
     peerlist_storage m_peerlist_storage;
@@ -467,13 +465,13 @@ namespace nodetool
 
 
     std::map<std::string, time_t> m_conn_fails_cache;
-    epee::critical_section m_conn_fails_cache_lock;
+    std::shared_mutex m_conn_fails_cache_lock;
 
-    epee::critical_section m_blocked_hosts_lock; // for both hosts and subnets
+    std::shared_mutex m_blocked_hosts_lock; // for both hosts and subnets
     std::map<std::string, time_t> m_blocked_hosts;
     std::map<epee::net_utils::ipv4_network_subnet, time_t> m_blocked_subnets;
 
-    epee::critical_section m_host_fails_score_lock;
+    std::mutex m_host_fails_score_lock;
     std::map<std::string, uint64_t> m_host_fails_score;
 
     std::mutex m_used_stripe_peers_mutex;

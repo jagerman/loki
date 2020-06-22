@@ -96,7 +96,6 @@ class connection_basic_pimpl {
 		static int m_default_tos;
 
 		network_throttle_bw m_throttle; // per-perr
-    critical_section m_throttle_lock;
 
 		int m_peer_number; // e.g. for debug/stats
 };
@@ -186,7 +185,7 @@ connection_basic::~connection_basic() noexcept(false) {
 
 void connection_basic::set_rate_up_limit(uint64_t limit) {
 	{
-		CRITICAL_REGION_LOCAL(	network_throttle_manager::m_lock_get_global_throttle_out );
+		std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_out};
 		network_throttle_manager::get_global_throttle_out().set_target_speed(limit);
 	}
 	save_limit_to_file(limit);
@@ -194,12 +193,12 @@ void connection_basic::set_rate_up_limit(uint64_t limit) {
 
 void connection_basic::set_rate_down_limit(uint64_t limit) {
 	{
-	  CRITICAL_REGION_LOCAL(	network_throttle_manager::m_lock_get_global_throttle_in );
+	  std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_in};
 		network_throttle_manager::get_global_throttle_in().set_target_speed(limit);
 	}
 
 	{
-	  CRITICAL_REGION_LOCAL(	network_throttle_manager::m_lock_get_global_throttle_inreq );
+	  std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_inreq};
 		network_throttle_manager::get_global_throttle_inreq().set_target_speed(limit);
 	}
     save_limit_to_file(limit);
@@ -208,7 +207,7 @@ void connection_basic::set_rate_down_limit(uint64_t limit) {
 uint64_t connection_basic::get_rate_up_limit() {
     uint64_t limit;
     {
-         CRITICAL_REGION_LOCAL( network_throttle_manager::m_lock_get_global_throttle_out );
+         std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_out};
          limit = network_throttle_manager::get_global_throttle_out().get_target_speed();
 	}
     return limit;
@@ -217,7 +216,7 @@ uint64_t connection_basic::get_rate_up_limit() {
 uint64_t connection_basic::get_rate_down_limit() {
     uint64_t limit;
     {
-         CRITICAL_REGION_LOCAL( network_throttle_manager::m_lock_get_global_throttle_in );
+         std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_in};
          limit = network_throttle_manager::get_global_throttle_in().get_target_speed();
 	}
     return limit;
@@ -244,7 +243,7 @@ void connection_basic::sleep_before_packet(size_t packet_size, int phase,  int q
 		}
 
 		{ 
-			CRITICAL_REGION_LOCAL(	network_throttle_manager::m_lock_get_global_throttle_out );
+			std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_out};
 			delay = network_throttle_manager::get_global_throttle_out().get_sleep_time_after_tick( packet_size );
 		}
 
@@ -258,7 +257,7 @@ void connection_basic::sleep_before_packet(size_t packet_size, int phase,  int q
 
 // XXX LATER XXX
 	{
-	  CRITICAL_REGION_LOCAL(	network_throttle_manager::m_lock_get_global_throttle_out );
+	  std::lock_guard lock{network_throttle_manager::m_lock_get_global_throttle_out};
 		network_throttle_manager::get_global_throttle_out().handle_trafic_exact( packet_size ); // increase counter - global
 	}
 
@@ -281,7 +280,7 @@ void connection_basic::logger_handle_net_write(size_t size) {
 }
 
 double connection_basic::get_sleep_time(size_t cb) {
-	CRITICAL_REGION_LOCAL(epee::net_utils::network_throttle_manager::network_throttle_manager::m_lock_get_global_throttle_out);
+	std::lock_guard lock{epee::net_utils::network_throttle_manager::network_throttle_manager::m_lock_get_global_throttle_out};
     auto t = network_throttle_manager::get_global_throttle_out().get_sleep_time(cb);
     return t;
 }

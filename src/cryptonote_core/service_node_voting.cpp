@@ -472,7 +472,7 @@ namespace service_nodes
 
   void voting_pool::set_relayed(const std::vector<quorum_vote_t>& votes)
   {
-    CRITICAL_REGION_LOCAL(m_lock);
+    std::unique_lock lock{m_lock};
     const time_t now = time(NULL);
 
     for (const quorum_vote_t &find_vote : votes)
@@ -503,7 +503,7 @@ namespace service_nodes
 
   std::vector<quorum_vote_t> voting_pool::get_relayable_votes(uint64_t height, uint8_t hf_version, bool quorum_relay) const
   {
-    CRITICAL_REGION_LOCAL(m_lock);
+    std::unique_lock lock{m_lock};
 
     // TODO(doyle): Rate-limiting: A better threshold value that follows suite with transaction relay time back-off
 #if defined(LOKI_ENABLE_INTEGRATION_TEST_HOOKS)
@@ -549,7 +549,7 @@ namespace service_nodes
 
   std::vector<pool_vote_entry> voting_pool::add_pool_vote_if_unique(const quorum_vote_t& vote, cryptonote::vote_verification_context& vvc)
   {
-    CRITICAL_REGION_LOCAL(m_lock);
+    std::unique_lock lock{m_lock};
     auto *votes = find_vote_pool(vote, /*create_if_not_found=*/ true);
     if (!votes)
       return {};
@@ -561,7 +561,7 @@ namespace service_nodes
   void voting_pool::remove_used_votes(std::vector<cryptonote::transaction> const &txs, uint8_t hard_fork_version)
   {
     // TODO(doyle): Cull checkpoint votes
-    CRITICAL_REGION_LOCAL(m_lock);
+    std::unique_lock lock{m_lock};
     if (m_obligations_pool.empty())
       return;
 
@@ -599,7 +599,7 @@ namespace service_nodes
 
   void voting_pool::remove_expired_votes(uint64_t height)
   {
-    CRITICAL_REGION_LOCAL(m_lock);
+    std::unique_lock lock{m_lock};
     uint64_t min_height = (height < VOTE_LIFETIME) ? 0 : height - VOTE_LIFETIME;
     cull_votes(m_obligations_pool, min_height, height);
     cull_votes(m_checkpoint_pool, min_height, height);

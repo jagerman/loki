@@ -193,7 +193,9 @@ public:
 
   std::string get_db_name() const override;
 
-  bool lock() override;
+  void lock() override;
+
+  bool try_lock() override;
 
   void unlock() override;
 
@@ -501,6 +503,9 @@ private:
   constexpr static uint64_t DEFAULT_MAPSIZE = 1LL << 33;
 #endif
 #endif
+
+  // Guards LMDB resize
+  std::mutex m_synchronization_lock;
 
   constexpr static float RESIZE_PERCENT = 0.9f;
 };

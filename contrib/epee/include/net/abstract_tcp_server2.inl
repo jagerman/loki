@@ -267,7 +267,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     if(!self)
       return false;
     //MTRACE("[sock " << socket().native_handle() << "] add_ref, m_peer_number=" << mI->m_peer_number);
-    CRITICAL_REGION_LOCAL(self->m_self_refs_lock);
+    std::lock_guard lock{self->m_self_refs_lock};
     //MTRACE("[sock " << socket().native_handle() << "] add_ref 2, m_peer_number=" << mI->m_peer_number);
     if(m_was_shutdown)
       return false;
@@ -283,14 +283,13 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     TRY_ENTRY();
     std::shared_ptr<connection<t_protocol_handler> >  back_connection_copy;
     LOG_TRACE_CC(context, "[sock " << socket().native_handle() << "] release");
-    CRITICAL_REGION_BEGIN(m_self_refs_lock);
+    std::lock_guard lock{m_self_refs_lock};
     CHECK_AND_ASSERT_MES(m_reference_count, false, "[sock " << socket().native_handle() << "] m_reference_count already at 0 at connection<t_protocol_handler>::release() call");
     // is this the last reference?
     if (--m_reference_count == 0) {
         // move the held reference to a local variable, keeping the object alive until the function terminates
         std::swap(back_connection_copy, m_self_ref);
     }
-    CRITICAL_REGION_END();
     return true;
     CATCH_ENTRY_L0("connection<t_protocol_handler>::release()", false);
   }
@@ -337,7 +336,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     {
         double current_speed_down;
 		{
-			CRITICAL_REGION_LOCAL(m_throttle_speed_in_mutex);
+			std::lock_guard lock{m_throttle_speed_in_mutex};
 			m_throttle_speed_in.handle_trafic_exact(bytes_transferred);
 			current_speed_down = m_throttle_speed_in.get_current_speed();
 		}
@@ -345,7 +344,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         context.m_max_speed_down = std::max(context.m_max_speed_down, current_speed_down);
     
     {
-			CRITICAL_REGION_LOCAL(	epee::net_utils::network_throttle_manager::network_throttle_manager::m_lock_get_global_throttle_in );
+			std::lock_guard lock{epee::net_utils::network_throttle_manager::network_throttle_manager::m_lock_get_global_throttle_in};
 			epee::net_utils::network_throttle_manager::network_throttle_manager::get_global_throttle_in().handle_trafic_exact(bytes_transferred);
 		}
 
@@ -355,8 +354,8 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 		if (speed_limit_is_enabled()) {
 			do // keep sleeping if we should sleep
 			{
-				{ //_scope_dbg1("CRITICAL_REGION_LOCAL");
-					CRITICAL_REGION_LOCAL(	epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_in );
+				{
+					std::lock_guard lock{epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_in};
 					delay = epee::net_utils::network_throttle_manager::get_global_throttle_in().get_sleep_time_after_tick( bytes_transferred );
 				}
 				
@@ -381,10 +380,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         //some error in protocol, protocol handler ask to close connection
         m_want_close_connection = true;
         bool do_shutdown = false;
-        CRITICAL_REGION_BEGIN(m_send_que_lock);
-        if(!m_send_que.size())
-          do_shutdown = true;
-        CRITICAL_REGION_END();
+        {
+          std::lock_guard lock{m_send_que_lock};
+          if(!m_send_que.size())
+            do_shutdown = true;
+        }
         if(do_shutdown)
           shutdown();
       }else
@@ -409,10 +409,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       {
         MTRACE("[sock " << socket().native_handle() << "] peer closed connection");
         bool do_shutdown = false;
-        CRITICAL_REGION_BEGIN(m_send_que_lock);
-        if(!m_send_que.size())
-          do_shutdown = true;
-        CRITICAL_REGION_END();
+        {
+          std::lock_guard lock{m_send_que_lock};
+          if(!m_send_que.size())
+            do_shutdown = true;
+        }
         if (m_ready_to_close || do_shutdown)
           shutdown();
       }
@@ -475,10 +476,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         m_want_close_connection = true;
         m_ready_to_close = true;
         bool do_shutdown = false;
-        CRITICAL_REGION_BEGIN(m_send_que_lock);
-        if(!m_send_que.size())
-          do_shutdown = true;
-        CRITICAL_REGION_END();
+        {
+          std::lock_guard lock{m_send_que_lock};
+          if(!m_send_que.size())
+            do_shutdown = true;
+        }
         if(do_shutdown)
           shutdown();
         return;
@@ -545,7 +547,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 
         if (allow_split && (message.size() > chunksize_max_unsigned)) {
             { // LOCK: chunking
-                epee::critical_region_t<decltype(m_chunking_lock)> send_guard(m_chunking_lock); // *** critical *** 
+                std::lock_guard send_guard{m_chunking_lock};
 
                 MDEBUG("do_send() will SPLIT into small chunks, from packet="<<message.size()<<" B for ptr="<<(void*)message.ptr.get());
 
@@ -585,7 +587,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       return false;
     double current_speed_up;
     {
-		CRITICAL_REGION_LOCAL(m_throttle_speed_out_mutex);
+		std::lock_guard lock{m_throttle_speed_out_mutex};
 		m_throttle_speed_out.handle_trafic_exact(chunk.size());
 		current_speed_up = m_throttle_speed_out.get_current_speed();
 	}
@@ -600,8 +602,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     
     // No sleeping here; sleeping is done once and for all in "handle_write"
 
-    m_send_que_lock.lock(); // *** critical ***
-    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){m_send_que_lock.unlock();});
+    std::unique_lock queue_lock{m_send_que_lock};
 
     long int retry=0;
     const long int retry_limit = 5*4;
@@ -629,9 +630,9 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 
         int ms = std::uniform_int_distribution<>{250, 299}(rng);
         MDEBUG("Sleeping because QUEUE is FULL, in " << __FUNCTION__ << " for " << ms << " ms before packet_size="<<chunk.size()); // XXX debug sleep
-        m_send_que_lock.unlock();
+        queue_lock.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds{ms});
-        m_send_que_lock.lock();
+        queue_lock.lock();
         MDEBUG("sleep for queue: " << ms);
 
         if (retry > retry_limit) {
@@ -713,7 +714,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   unsigned int connection<t_protocol_handler>::host_count(const std::string &host, int delta)
   {
     static std::mutex hosts_mutex;
-    CRITICAL_REGION_LOCAL(hosts_mutex);
+    std::lock_guard lock{hosts_mutex};
     static std::map<std::string, unsigned int> hosts;
     unsigned int &val = hosts[host];
     if (delta > 0)
@@ -765,7 +766,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   template<class t_protocol_handler>
   bool connection<t_protocol_handler>::shutdown()
   {
-    CRITICAL_REGION_BEGIN(m_shutdown_lock);
+    std::unique_lock lock{m_shutdown_lock};
     if (m_was_shutdown)
       return true;
     m_was_shutdown = true;
@@ -784,7 +785,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       try { host_count(m_host, -1); } catch (...) { /* ignore */ }
       m_host = "";
     }
-    CRITICAL_REGION_END();
+    lock.unlock();
     m_protocol_handler.release_protocol();
     return true;
   }
@@ -799,9 +800,10 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     //MINFO("[sock " << socket().native_handle() << "] Que Shutdown called.");
     m_timer.cancel();
     size_t send_que_size = 0;
-    CRITICAL_REGION_BEGIN(m_send_que_lock);
-    send_que_size = m_send_que.size();
-    CRITICAL_REGION_END();
+    {
+      std::lock_guard lock{m_send_que_lock};
+      send_que_size = m_send_que.size();
+    }
     m_want_close_connection = true;
     if(!send_que_size)
     {
@@ -847,7 +849,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 		}
 
     bool do_shutdown = false;
-    CRITICAL_REGION_BEGIN(m_send_que_lock);
+    std::unique_lock lock{m_send_que_lock};
     if(m_send_que.empty())
     {
       MERROR("[sock " << socket().native_handle() << "] m_send_que.size() == 0 at handle_write!");
@@ -878,7 +880,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
           );
       //MTRACE("(normal)" << size_now);
     }
-    CRITICAL_REGION_END();
+    lock.unlock();
 
     if(do_shutdown)
     {
@@ -1142,13 +1144,14 @@ POP_WARNINGS
     {
 
       // Create a pool of threads to run all of the io_services.
-      CRITICAL_REGION_BEGIN(m_threads_lock);
-      for (std::size_t i = 0; i < threads_count; ++i)
       {
-        m_threads.emplace_back([this] { worker_thread(); });
-        MDEBUG("Run server thread name: " << m_thread_name_prefix);
+        std::lock_guard lock{m_threads_lock};
+        for (std::size_t i = 0; i < threads_count; ++i)
+        {
+          m_threads.emplace_back([this] { worker_thread(); });
+          MDEBUG("Run server thread name: " << m_thread_name_prefix);
+        }
       }
-      CRITICAL_REGION_END();
       // Wait for all threads in the pool to exit.
       if (wait)
       {
@@ -1187,7 +1190,7 @@ POP_WARNINGS
   bool boosted_tcp_server<t_protocol_handler>::is_thread_worker()
   {
     TRY_ENTRY();
-    CRITICAL_REGION_LOCAL(m_threads_lock);
+    std::lock_guard lock{m_threads_lock};
     for (auto& th : m_threads)
       if(th.get_id() == std::this_thread::get_id())
         return true;
@@ -1439,7 +1442,7 @@ POP_WARNINGS
     connections_.insert(new_connection_l);
     MDEBUG("connections_ size now " << connections_.size());
     connections_mutex.unlock();
-    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ CRITICAL_REGION_LOCAL(connections_mutex); connections_.erase(new_connection_l); });
+    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ std::lock_guard lock{connections_mutex}; connections_.erase(new_connection_l); });
     boost::asio::ip::tcp::socket&  sock_ = new_connection_l->socket();
 
     bool try_ipv6 = false;
@@ -1564,7 +1567,7 @@ POP_WARNINGS
     connections_.insert(new_connection_l);
     MDEBUG("connections_ size now " << connections_.size());
     connections_mutex.unlock();
-    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ CRITICAL_REGION_LOCAL(connections_mutex); connections_.erase(new_connection_l); });
+    epee::misc_utils::auto_scope_leave_caller scope_exit_handler = epee::misc_utils::create_scope_leave_handler([&](){ std::lock_guard lock{connections_mutex}; connections_.erase(new_connection_l); });
     boost::asio::ip::tcp::socket&  sock_ = new_connection_l->socket();
     
     bool try_ipv6 = false;

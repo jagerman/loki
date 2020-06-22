@@ -39,7 +39,6 @@
 #include <functional>
 
 #include "string_tools.h"
-#include "syncobj.h"
 #include "common/periodic_task.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "cryptonote_basic/verification_context.h"

@@ -36,6 +36,7 @@
 #define _ABSTRACT_TCP_SERVER2_H_ 
 
 
+#include <mutex>
 #include <string>
 #include <vector>
 #include <atomic>
@@ -46,7 +47,6 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include "net_utils_base.h"
-#include "syncobj.h"
 #include "connection_basic.hpp"
 #include "network_throttle-detail.hpp"
 
@@ -172,9 +172,9 @@ namespace net_utils
     //typename t_protocol_handler::config_type m_dummy_config;
     size_t m_reference_count = 0; // reference count managed through add_ref/release support
     std::shared_ptr<connection<t_protocol_handler> > m_self_ref; // the reference to hold
-    critical_section m_self_refs_lock;
-    critical_section m_chunking_lock; // held while we add small chunks of the big do_send() to small do_send_chunk()
-    critical_section m_shutdown_lock; // held while shutting down
+    std::mutex m_self_refs_lock;
+    std::mutex m_chunking_lock; // held while we add small chunks of the big do_send() to small do_send_chunk()
+    std::mutex m_shutdown_lock; // held while shutting down
     
     t_connection_type m_connection_type;
     
@@ -371,7 +371,7 @@ namespace net_utils
     size_t m_threads_count;
     std::vector<std::thread> m_threads;
     std::thread::id m_main_thread_id;
-    critical_section m_threads_lock;
+    std::mutex m_threads_lock;
     std::atomic<uint32_t> m_thread_index;
 
     t_connection_type m_connection_type;

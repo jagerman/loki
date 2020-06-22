@@ -56,7 +56,7 @@ namespace net_utils
 			std::string m_folder;
 			std::vector<std::string> m_access_control_origins;
 			std::optional<login> m_user;
-			critical_section m_lock;
+            std::mutex m_config_mutex;
 		};
 
 		/************************************************************************/

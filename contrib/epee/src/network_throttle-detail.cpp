@@ -38,8 +38,6 @@
 #include <iomanip>
 #include <algorithm>
 
-#include "syncobj.h"
-
 #include "net/net_utils_base.h" 
 #include "misc_log_ex.h" 
 #include "misc_language.h"
@@ -76,7 +74,6 @@ class connection_basic_pimpl {
 		static int m_default_tos;
 
 		network_throttle_bw m_throttle; // per-perr
-    critical_section m_throttle_lock;
 
 		void _packet(size_t packet_size, int phase, int q_len); // execute a sleep ; phase is not really used now(?) could be used for different kinds of sleep e.g. direct/queue write
 };

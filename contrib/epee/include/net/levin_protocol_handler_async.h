@@ -27,6 +27,7 @@
 #pragma once
 #include <boost/asio/steady_timer.hpp>
 #include <boost/uuid/uuid_generators.hpp>
+#include <mutex>
 #include <unordered_map>
 
 #include <atomic>
@@ -35,7 +36,6 @@
 #include "levin_base.h"
 #include "buffer.h"
 #include "misc_language.h"
-#include "syncobj.h"
 #include "misc_os_dependent.h"
 #include "int-util.h"
 
@@ -71,7 +71,7 @@ template<class t_connection_context>
 class async_protocol_handler_config
 {
   typedef std::unordered_map<boost::uuids::uuid, async_protocol_handler<t_connection_context>*, uuid_hasher > connections_map;
-  critical_section m_connects_lock;
+  std::recursive_mutex m_connects_lock;
   connections_map m_connects;
 
   void add_connection(async_protocol_handler<t_connection_context>* pc);
@@ -160,10 +160,10 @@ public:
 
   volatile int m_invoke_result_code;
 
-  critical_section m_local_inv_buff_lock;
+  std::mutex m_local_inv_buff_lock;
   std::string m_local_inv_buff;
 
-  critical_section m_call_lock;
+  std::recursive_mutex m_call_lock;
 
   std::atomic<uint32_t> m_wait_count;
   std::atomic<uint32_t> m_close_called;
@@ -274,13 +274,13 @@ public:
       }
     }
   };
-  critical_section m_invoke_response_handlers_lock;
+  std::recursive_mutex m_invoke_response_handlers_lock;
   std::list<std::shared_ptr<invoke_response_handler_base> > m_invoke_response_handlers;
   
   template<class callback_t>
   bool add_invoke_response_handler(const callback_t &cb, uint64_t timeout,  async_protocol_handler& con, int command)
   {
-    CRITICAL_REGION_LOCAL(m_invoke_response_handlers_lock);
+    std::lock_guard lock{m_invoke_response_handlers_lock};
     if (m_protocol_released)
     {
       MERROR("Adding response handler to a released object");
@@ -356,12 +356,13 @@ public:
   bool release_protocol()
   {
     decltype(m_invoke_response_handlers) local_invoke_response_handlers;
-    CRITICAL_REGION_BEGIN(m_invoke_response_handlers_lock);
-    local_invoke_response_handlers.swap(m_invoke_response_handlers);
-    m_protocol_released = true;
-    CRITICAL_REGION_END();
+    {
+      std::lock_guard lock{m_invoke_response_handlers_lock};
+      local_invoke_response_handlers.swap(m_invoke_response_handlers);
+      m_protocol_released = true;
+    }
 
-    // Never call callback inside critical section, that can cause deadlock. Callback can be called when
+    // Never call callback inside locked section, that can cause deadlock. Callback can be called when
     // invoke_response_handler_base is cancelled
     std::for_each(local_invoke_response_handlers.begin(), local_invoke_response_handlers.end(), [](const std::shared_ptr<invoke_response_handler_base>& pinv_resp_hndlr) {
       pinv_resp_hndlr->cancel();
@@ -433,7 +434,7 @@ public:
           is_continue = false;
           if(cb >= MIN_BYTES_WANTED)
           {
-            CRITICAL_REGION_LOCAL(m_invoke_response_handlers_lock);
+            std::lock_guard lock{m_invoke_response_handlers_lock};
             if (!m_invoke_response_handlers.empty())
             {
               //async call scenario
@@ -488,7 +489,7 @@ public:
           if(is_response)
           {//response to some invoke 
 
-            epee::critical_region_t<decltype(m_invoke_response_handlers_lock)> invoke_response_handlers_guard(m_invoke_response_handlers_lock);
+            std::unique_lock invoke_response_handlers_guard{m_invoke_response_handlers_lock};
             if(!m_invoke_response_handlers.empty())
             {//async call scenario
               std::shared_ptr<invoke_response_handler_base> response_handler = m_invoke_response_handlers.front();
@@ -511,11 +512,10 @@ public:
                 return false;
               }else
               {
-                CRITICAL_REGION_BEGIN(m_local_inv_buff_lock);
+                std::lock_guard lock{m_local_inv_buff_lock};
                 m_local_inv_buff = std::string((const char*)buff_to_invoke.data(), buff_to_invoke.size());
                 buff_to_invoke = epee::span<const uint8_t>((const uint8_t*)NULL, 0);
                 m_invoke_result_code = m_current_head.m_return_code;
-                CRITICAL_REGION_END();
                 m_invoke_buf_ready = true;
               }
             }
@@ -632,7 +632,7 @@ public:
         break;
       }
 
-      CRITICAL_REGION_LOCAL(m_call_lock);
+      std::lock_guard lock{m_call_lock};
 
       if(m_deletion_initiated)
       {
@@ -641,27 +641,28 @@ public:
       }
 
       m_invoke_buf_ready = false;
-      CRITICAL_REGION_BEGIN(m_invoke_response_handlers_lock);
-
-      if(!send_message(command, in_buff, LEVIN_PACKET_REQUEST, true))
       {
-        LOG_ERROR_CC(m_connection_context, "Failed to do_send");
-        err_code = LEVIN_ERROR_CONNECTION;
-        break;
-      }
+        std::lock_guard lock{m_invoke_response_handlers_lock};
 
-      if(!add_invoke_response_handler(cb, timeout, *this, command))
-      {
-        err_code = LEVIN_ERROR_CONNECTION_DESTROYED;
-        break;
+        if(!send_message(command, in_buff, LEVIN_PACKET_REQUEST, true))
+        {
+          LOG_ERROR_CC(m_connection_context, "Failed to do_send");
+          err_code = LEVIN_ERROR_CONNECTION;
+          break;
+        }
+
+        if(!add_invoke_response_handler(cb, timeout, *this, command))
+        {
+          err_code = LEVIN_ERROR_CONNECTION_DESTROYED;
+          break;
+        }
       }
-      CRITICAL_REGION_END();
     } while (false);
 
     if (LEVIN_OK != err_code)
     {
       epee::span<const uint8_t> stub_buff = nullptr;
-      // Never call callback inside critical section, that can cause deadlock
+      // Never call callback inside locked section, that can cause deadlock
       cb(err_code, stub_buff, m_connection_context);
       return false;
     }
@@ -677,7 +678,7 @@ public:
     if(m_deletion_initiated)
       return LEVIN_ERROR_CONNECTION_DESTROYED;
 
-    CRITICAL_REGION_LOCAL(m_call_lock);
+    std::lock_guard lock{m_call_lock};
 
     if(m_deletion_initiated)
       return LEVIN_ERROR_CONNECTION_DESTROYED;
@@ -713,10 +714,9 @@ public:
     if(m_deletion_initiated || m_protocol_released)
       return LEVIN_ERROR_CONNECTION_DESTROYED;
 
-    CRITICAL_REGION_BEGIN(m_local_inv_buff_lock);
+    std::lock_guard invlock{m_local_inv_buff_lock};
     buff_out.swap(m_local_inv_buff);
     m_local_inv_buff.clear();
-    CRITICAL_REGION_END();
 
     return m_invoke_result_code;
   }
@@ -729,7 +729,7 @@ public:
     if(m_deletion_initiated)
       return LEVIN_ERROR_CONNECTION_DESTROYED;
 
-    CRITICAL_REGION_LOCAL(m_call_lock);
+    std::lock_guard lock{m_call_lock};
 
     if(m_deletion_initiated)
       return LEVIN_ERROR_CONNECTION_DESTROYED;
@@ -776,9 +776,10 @@ public:
 template<class t_connection_context>
 void async_protocol_handler_config<t_connection_context>::del_connection(async_protocol_handler<t_connection_context>* pconn)
 {
-  CRITICAL_REGION_BEGIN(m_connects_lock);
-  m_connects.erase(pconn->get_connection_id());
-  CRITICAL_REGION_END();
+  {
+    std::lock_guard lock{m_connects_lock};
+    m_connects.erase(pconn->get_connection_id());
+  }
   m_pcommands_handler->on_connection_close(pconn->m_connection_context);
 }
 //------------------------------------------------------------------------------------------
@@ -786,7 +787,7 @@ template<class t_connection_context>
 void async_protocol_handler_config<t_connection_context>::delete_connections(size_t count, bool incoming)
 {
   std::vector <boost::uuids::uuid> connections;
-  CRITICAL_REGION_BEGIN(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   for (auto& c: m_connects)
   {
     if (c.second->m_connection_context.m_is_income == incoming)
@@ -813,8 +814,6 @@ void async_protocol_handler_config<t_connection_context>::delete_connections(siz
     }
     --count;
   }
-
-  CRITICAL_REGION_END();
 }
 //------------------------------------------------------------------------------------------
 template<class t_connection_context>
@@ -832,9 +831,10 @@ void async_protocol_handler_config<t_connection_context>::del_in_connections(siz
 template<class t_connection_context>
 void async_protocol_handler_config<t_connection_context>::add_connection(async_protocol_handler<t_connection_context>* pconn)
 {
-  CRITICAL_REGION_BEGIN(m_connects_lock);
-  m_connects[pconn->get_connection_id()] = pconn;
-  CRITICAL_REGION_END();
+  {
+    std::lock_guard lock{m_connects_lock};
+    m_connects[pconn->get_connection_id()] = pconn;
+  }
   m_pcommands_handler->on_connection_new(pconn->m_connection_context);
 }
 //------------------------------------------------------------------------------------------
@@ -848,7 +848,7 @@ async_protocol_handler<t_connection_context>* async_protocol_handler_config<t_co
 template<class t_connection_context>
 int async_protocol_handler_config<t_connection_context>::find_and_lock_connection(boost::uuids::uuid connection_id, async_protocol_handler<t_connection_context>*& aph)
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   aph = find_connection(connection_id);
   if(0 == aph)
     return LEVIN_ERROR_CONNECTION_NOT_FOUND;
@@ -876,7 +876,7 @@ int async_protocol_handler_config<t_connection_context>::invoke_async(int comman
 template<class t_connection_context> template<class callback_t>
 bool async_protocol_handler_config<t_connection_context>::foreach_connection(const callback_t &cb)
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   for(auto& c: m_connects)
   {
     async_protocol_handler<t_connection_context>* aph = c.second;
@@ -889,7 +889,7 @@ bool async_protocol_handler_config<t_connection_context>::foreach_connection(con
 template<class t_connection_context> template<class callback_t>
 bool async_protocol_handler_config<t_connection_context>::for_connection(const boost::uuids::uuid &connection_id, const callback_t &cb)
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   async_protocol_handler<t_connection_context>* aph = find_connection(connection_id);
   if (!aph)
     return false;
@@ -901,14 +901,14 @@ bool async_protocol_handler_config<t_connection_context>::for_connection(const b
 template<class t_connection_context>
 size_t async_protocol_handler_config<t_connection_context>::get_connections_count()
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   return m_connects.size();
 }
 //------------------------------------------------------------------------------------------
 template<class t_connection_context>
 size_t async_protocol_handler_config<t_connection_context>::get_out_connections_count()
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   size_t count = 0;
   for (const auto &c: m_connects)
     if (!c.second->m_connection_context.m_is_income)
@@ -919,7 +919,7 @@ size_t async_protocol_handler_config<t_connection_context>::get_out_connections_
 template<class t_connection_context>
 size_t async_protocol_handler_config<t_connection_context>::get_in_connections_count()
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   size_t count = 0;
   for (const auto &c: m_connects)
     if (c.second->m_connection_context.m_is_income)
@@ -955,7 +955,7 @@ int async_protocol_handler_config<t_connection_context>::send(shared_sv message,
 template<class t_connection_context>
 bool async_protocol_handler_config<t_connection_context>::close(boost::uuids::uuid connection_id)
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   async_protocol_handler<t_connection_context>* aph = find_connection(connection_id);
   if (aph) {
     del_connection(aph);
@@ -967,7 +967,7 @@ bool async_protocol_handler_config<t_connection_context>::close(boost::uuids::uu
 template<class t_connection_context>
 bool async_protocol_handler_config<t_connection_context>::update_connection_context(const t_connection_context& contxt)
 {
-  CRITICAL_REGION_LOCAL(m_connects_lock);
+  std::lock_guard lock{m_connects_lock};
   async_protocol_handler<t_connection_context>* aph = find_connection(contxt.m_connection_id);
   if(0 == aph)
     return false;

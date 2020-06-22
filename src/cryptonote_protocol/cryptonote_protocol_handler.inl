@@ -1185,7 +1185,7 @@ namespace cryptonote
 
     size += sizeof(arg.current_blockchain_height);
     {
-      CRITICAL_REGION_LOCAL(m_buffer_mutex);
+      std::lock_guard lock{m_buffer_mutex};
       m_avg_buffer.push_back(size);
     }
     ++m_sync_spans_downloaded;

@@ -51,7 +51,6 @@
 #include "http_auth.h"
 #include "to_nonconst_iterator.h"
 #include "net_parse_helpers.h"
-#include "syncobj.h"
 
 //#include "shlwapi.h"
 
@@ -149,7 +148,7 @@ namespace net_utils
 			chunked_state m_chunked_state;
 			std::string m_chunked_cache;
 			bool m_auto_connect;
-			mutable critical_section m_lock;
+			mutable std::recursive_mutex m_lock;
 
 		public:
 			explicit http_simple_client_template()
@@ -177,7 +176,7 @@ namespace net_utils
 
 			void set_server(std::string host, std::string port, std::optional<login> user, ssl_options_t ssl_options = ssl_support_t::e_ssl_support_autodetect) override
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				disconnect();
 				m_host_buff = std::move(host);
 				m_port = std::move(port);
@@ -193,31 +192,31 @@ namespace net_utils
 			template<typename F>
 			void set_connector(F connector)
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				m_net_client.set_connector(std::move(connector));
 			}
 
       bool connect(std::chrono::milliseconds timeout) override
       {
-        CRITICAL_REGION_LOCAL(m_lock);
+        std::lock_guard lock{m_lock};
         return m_net_client.connect(m_host_buff, m_port, timeout);
       }
 			//---------------------------------------------------------------------------
 			bool disconnect() override
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				return m_net_client.disconnect();
 			}
 			//---------------------------------------------------------------------------
 			bool is_connected(bool *ssl = NULL) override
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				return m_net_client.is_connected(ssl);
 			}
 			//---------------------------------------------------------------------------
 			virtual bool handle_target_data(std::string& piece_of_transfer) override
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				m_response_info.m_body += piece_of_transfer;
         piece_of_transfer.clear();
 				return true;
@@ -231,14 +230,14 @@ namespace net_utils
 			inline 
 				bool invoke_get(std::string_view uri, std::chrono::milliseconds timeout, const std::string& body = std::string(), const http_response_info** ppresponse_info = NULL, const fields_list& additional_params = fields_list()) override
 			{
-					CRITICAL_REGION_LOCAL(m_lock);
+					std::lock_guard lock{m_lock};
 					return invoke(uri, "GET", body, timeout, ppresponse_info, additional_params);
 			}
 
 			//---------------------------------------------------------------------------
 			inline bool invoke(std::string_view uri, std::string_view method, const std::string& body, std::chrono::milliseconds timeout, const http_response_info** ppresponse_info = NULL, const fields_list& additional_params = fields_list()) override
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				if(!is_connected())
 				{
 					if (!m_auto_connect)
@@ -311,13 +310,13 @@ namespace net_utils
 			//---------------------------------------------------------------------------
 			inline bool invoke_post(std::string_view uri, const std::string& body, std::chrono::milliseconds timeout, const http_response_info** ppresponse_info = NULL, const fields_list& additional_params = fields_list()) override
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				return invoke(uri, "POST", body, timeout, ppresponse_info, additional_params);
 			}
 			//---------------------------------------------------------------------------
 			bool test(const std::string &s, std::chrono::milliseconds timeout) // TEST FUNC ONLY
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				m_net_client.set_test_data(s);
 				m_state = reciev_machine_state_header;
 				return handle_reciev(timeout);
@@ -342,7 +341,7 @@ namespace net_utils
 			//---------------------------------------------------------------------------
 			inline bool handle_reciev(std::chrono::milliseconds timeout)
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				bool keep_handling = true;
 				bool need_more_data = true;
 				std::string recv_buffer;
@@ -407,7 +406,7 @@ namespace net_utils
 				bool handle_header(std::string& recv_buff, bool& need_more_data)
 			{
  
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
         if(!recv_buff.size())
         {
           LOG_ERROR("Connection closed at handle_header");
@@ -443,7 +442,7 @@ namespace net_utils
 			inline
 				bool handle_body_content_len(std::string& recv_buff, bool& need_more_data)
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				if(!recv_buff.size())
 				{
 					MERROR("Warning: Content-Len mode, but connection unexpectedly closed");
@@ -469,7 +468,7 @@ namespace net_utils
 			inline
 				bool handle_body_connection_close(std::string& recv_buff, bool& need_more_data)
 			{
-				CRITICAL_REGION_LOCAL(m_lock);
+				std::lock_guard lock{m_lock};
 				if(!recv_buff.size())
 				{
 					m_state = reciev_machine_state_done;
@@ -561,7 +560,7 @@ namespace net_utils
 			inline
 				bool handle_body_body_chunked(std::string& recv_buff, bool& need_more_data)
 			{
-        CRITICAL_REGION_LOCAL(m_lock);
+        std::lock_guard lock{m_lock};
 				if(!recv_buff.size())
 				{
 					MERROR("Warning: CHUNKED mode, but connection unexpectedly closed");

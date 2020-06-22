@@ -113,7 +113,7 @@ namespace cryptonote
 
     std::atomic<bool> m_stop;
     uint64_t m_stop_height = std::numeric_limits<uint64_t>::max();
-    epee::critical_section m_template_lock;
+    std::mutex m_template_lock;
     block m_template;
     std::atomic<uint32_t> m_template_no;
     std::atomic<uint32_t> m_starter_nonce;
@@ -123,10 +123,10 @@ namespace cryptonote
     std::atomic<uint32_t> m_threads_total;
     std::atomic<uint32_t> m_threads_active;
     std::atomic<int32_t> m_pausers_count;
-    epee::critical_section m_miners_count_lock;
+    std::mutex m_miners_count_lock;
 
     std::list<std::thread> m_threads;
-    epee::critical_section m_threads_lock;
+    std::mutex m_threads_lock;
     i_miner_handler* m_phandler;
     get_block_hash_t m_gbh;
     account_public_address m_mine_address;
@@ -140,7 +140,7 @@ namespace cryptonote
     std::atomic<uint64_t> m_hashes;
     std::atomic<uint64_t> m_total_hashes;
     std::atomic<uint64_t> m_current_hash_rate;
-    epee::critical_section m_last_hash_rates_lock;
+    std::mutex m_last_hash_rates_lock;
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;

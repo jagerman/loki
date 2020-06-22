@@ -159,7 +159,7 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::is_remote_host_allowed(const epee::net_utils::network_address &address, time_t *t)
   {
-    CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
+    std::unique_lock lock{m_blocked_hosts_lock};
 
     const time_t now = time(nullptr);
 
@@ -216,7 +216,7 @@ namespace nodetool
 
     const time_t now = time(nullptr);
 
-    CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
+    std::unique_lock lock{m_blocked_hosts_lock};
     time_t limit;
     if (now > std::numeric_limits<time_t>::max() - seconds)
       limit = std::numeric_limits<time_t>::max();
@@ -251,7 +251,7 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::unblock_host(const epee::net_utils::network_address &address)
   {
-    CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
+    std::unique_lock lock{m_blocked_hosts_lock};
     auto i = m_blocked_hosts.find(address.host_str());
     if (i == m_blocked_hosts.end())
       return false;
@@ -265,7 +265,7 @@ namespace nodetool
   {
     const time_t now = time(nullptr);
 
-    CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
+    std::unique_lock lock{m_blocked_hosts_lock};
     time_t limit;
     if (now > std::numeric_limits<time_t>::max() - seconds)
       limit = std::numeric_limits<time_t>::max();
@@ -303,7 +303,7 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::unblock_subnet(const epee::net_utils::ipv4_network_subnet &subnet)
   {
-    CRITICAL_REGION_LOCAL(m_blocked_hosts_lock);
+    std::unique_lock lock{m_blocked_hosts_lock};
     auto i = m_blocked_subnets.find(subnet);
     if (i == m_blocked_subnets.end())
       return false;
@@ -318,7 +318,7 @@ namespace nodetool
     if(!address.is_blockable())
       return false;
 
-    CRITICAL_REGION_LOCAL(m_host_fails_score_lock);
+    std::lock_guard lock{m_host_fails_score_lock};
     uint64_t fails = ++m_host_fails_score[address.host_str()];
     MDEBUG("Host " << address.host_str() << " fail score=" << fails);
     if(fails > P2P_IP_FAILS_BEFORE_BLOCK)
@@ -957,14 +957,14 @@ namespace nodetool
     get_local_node_data(arg.node_data, zone);
     m_payload_handler.get_payload_sync_data(arg.payload_data);
 
-    epee::simple_event ev;
+    std::promise<void> ev;
     std::atomic<bool> hsh_result(false);
     bool timeout = false;
 
     bool r = epee::net_utils::async_invoke_remote_command2<typename COMMAND_HANDSHAKE::response>(context_.m_connection_id, COMMAND_HANDSHAKE::ID, arg, zone.m_net_server.get_config_object(),
       [this, &pi, &ev, &hsh_result, &just_take_peerlist, &context_, &timeout](int code, typename COMMAND_HANDSHAKE::response&& rsp, p2p_connection_context& context)
     {
-      LOKI_DEFER { ev.raise(); };
+      LOKI_DEFER { ev.set_value(); };
 
       if(code < 0)
       {
@@ -1019,7 +1019,7 @@ namespace nodetool
 
     if(r)
     {
-      ev.wait();
+      ev.get_future().wait();
     }
 
     if(!hsh_result)
@@ -1292,14 +1292,14 @@ namespace nodetool
   template<class t_payload_net_handler>
   void node_server<t_payload_net_handler>::record_addr_failed(const epee::net_utils::network_address& addr)
   {
-    CRITICAL_REGION_LOCAL(m_conn_fails_cache_lock);
+    std::unique_lock lock{m_conn_fails_cache_lock};
     m_conn_fails_cache[addr.host_str()] = time(NULL);
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::is_addr_recently_failed(const epee::net_utils::network_address& addr)
   {
-    CRITICAL_REGION_LOCAL(m_conn_fails_cache_lock);
+    std::shared_lock lock{m_conn_fails_cache_lock};
     auto it = m_conn_fails_cache.find(addr.host_str());
     if(it == m_conn_fails_cache.end())
       return false;
@@ -1415,7 +1415,7 @@ namespace nodetool
       {
         // if using the white list, we first pick in the set of peers we've already been using earlier
         random_index = get_random_index_with_fixed_probability(std::min<uint64_t>(filtered.size() - 1, 20));
-        CRITICAL_REGION_LOCAL(m_used_stripe_peers_mutex);
+        std::lock_guard lock{m_used_stripe_peers_mutex};
         if (next_needed_pruning_stripe > 0 && next_needed_pruning_stripe <= (1ul << CRYPTONOTE_PRUNING_LOG_STRIPES) && !m_used_stripe_peers[next_needed_pruning_stripe-1].empty())
         {
           const epee::net_utils::network_address na = m_used_stripe_peers[next_needed_pruning_stripe-1].front();
@@ -2630,7 +2630,7 @@ namespace nodetool
     if (stripe == 0 || stripe > (1ul << CRYPTONOTE_PRUNING_LOG_STRIPES))
       return;
     const uint32_t index = stripe - 1;
-    CRITICAL_REGION_LOCAL(m_used_stripe_peers_mutex);
+    std::lock_guard lock{m_used_stripe_peers_mutex};
     MINFO("adding stripe " << stripe << " peer: " << context.m_remote_address.str());
     std::remove_if(m_used_stripe_peers[index].begin(), m_used_stripe_peers[index].end(),
         [&context](const epee::net_utils::network_address &na){ return context.m_remote_address == na; });
@@ -2644,7 +2644,7 @@ namespace nodetool
     if (stripe == 0 || stripe > (1ul << CRYPTONOTE_PRUNING_LOG_STRIPES))
       return;
     const uint32_t index = stripe - 1;
-    CRITICAL_REGION_LOCAL(m_used_stripe_peers_mutex);
+    std::lock_guard lock{m_used_stripe_peers_mutex};
     MINFO("removing stripe " << stripe << " peer: " << context.m_remote_address.str());
     std::remove_if(m_used_stripe_peers[index].begin(), m_used_stripe_peers[index].end(),
         [&context](const epee::net_utils::network_address &na){ return context.m_remote_address == na; });
@@ -2653,7 +2653,7 @@ namespace nodetool
   template<class t_payload_net_handler>
   void node_server<t_payload_net_handler>::clear_used_stripe_peers()
   {
-    CRITICAL_REGION_LOCAL(m_used_stripe_peers_mutex);
+    std::lock_guard lock{m_used_stripe_peers_mutex};
     MINFO("clearing used stripe peers");
     for (auto &e: m_used_stripe_peers)
       e.clear();

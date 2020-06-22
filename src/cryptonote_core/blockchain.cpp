@@ -612,7 +612,7 @@ bool Blockchain::store_blockchain()
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   // lock because the rpc_thread command handler also calls this
-  std::unique_lock lock{m_db->m_synchronization_lock};
+  std::unique_lock lock{*m_db};
 
   TIME_MEASURE_START(save);
   // TODO: make sure sync(if this throws that it is not simply ignored higher
@@ -2790,7 +2790,7 @@ bool Blockchain::add_block_as_invalid(cryptonote::block const &block)
 void Blockchain::flush_invalid_blocks()
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
-  CRITICAL_REGION_LOCAL(m_blockchain_lock);
+  std::unique_lock lock{*this};
   m_invalid_blocks.clear();
 }
 //------------------------------------------------------------------

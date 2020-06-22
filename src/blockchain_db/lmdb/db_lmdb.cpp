@@ -596,7 +596,7 @@ void BlockchainLMDB::check_open() const
 void BlockchainLMDB::do_resize(uint64_t increase_size)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  CRITICAL_REGION_LOCAL(m_synchronization_lock);
+  std::lock_guard lock{*this};
   const uint64_t add_size = 1LL << 30;
 
   // check disk capacity
@@ -1744,19 +1744,22 @@ std::string BlockchainLMDB::get_db_name() const
   return std::string("lmdb");
 }
 
-// TODO: this?
-bool BlockchainLMDB::lock()
+void BlockchainLMDB::lock()
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  check_open();
-  return false;
+  m_synchronization_lock.lock();
 }
 
-// TODO: this?
+bool BlockchainLMDB::try_lock()
+{
+  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
+  return m_synchronization_lock.try_lock();
+}
+
 void BlockchainLMDB::unlock()
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  check_open();
+  m_synchronization_lock.unlock();
 }
 
 #define TXN_PREFIX(flags) \
