@@ -2467,7 +2467,8 @@ bool loki_name_system_update_mapping_replay::generate(std::vector<test_event_ent
   {
     cryptonote::transaction tx1 = gen.create_and_add_loki_name_system_tx_update(miner, lns::mapping_type::session, name, &bob_key.session_value);
     gen.create_and_add_next_block({tx1});
-    assert(cryptonote::get_loki_name_system_from_tx_extra(tx1.extra, lns_entry));
+    [[maybe_unused]] bool found_tx_extra = cryptonote::get_field_from_tx_extra(tx1.extra, lns_entry);
+    assert(found_tx_extra);
   }
 
   // Replay the (1)st update mapping, should fail because the update is to the same session value
