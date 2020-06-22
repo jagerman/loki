@@ -209,93 +209,57 @@ namespace cryptonote {
     uint64_t integrated_address_prefix = get_config(nettype).CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
     uint64_t subaddress_prefix = get_config(nettype).CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX;
 
-    if (2 * sizeof(public_address_outer_blob) != str.size())
+    blobdata data;
+    uint64_t prefix{0};
+    if (!tools::base58::decode_addr(str, prefix, data))
     {
-      blobdata data;
-      uint64_t prefix{0};
-      if (!tools::base58::decode_addr(str, prefix, data))
-      {
-        LOG_PRINT_L2("Invalid address format");
-        return false;
-      }
-
-      if (integrated_address_prefix == prefix)
-      {
-        info.is_subaddress = false;
-        info.has_payment_id = true;
-      }
-      else if (address_prefix == prefix)
-      {
-        info.is_subaddress = false;
-        info.has_payment_id = false;
-      }
-      else if (subaddress_prefix == prefix)
-      {
-        info.is_subaddress = true;
-        info.has_payment_id = false;
-      }
-      else {
-        LOG_PRINT_L1("Wrong address prefix: " << prefix << ", expected " << address_prefix 
-          << " or " << integrated_address_prefix
-          << " or " << subaddress_prefix);
-        return false;
-      }
-
-      try {
-        if (info.has_payment_id)
-        {
-          integrated_address iadr;
-          serialization::parse_binary(data, iadr);
-          info.address = iadr.adr;
-          info.payment_id = iadr.payment_id;
-        }
-        else
-        {
-          serialization::parse_binary(data, info.address);
-        }
-      } catch (const std::exception& e) {
-        LOG_PRINT_L1("Account public address keys can't be parsed: "s + e.what());
-        return false;
-      }
-
-      if (!crypto::check_key(info.address.m_spend_public_key) || !crypto::check_key(info.address.m_view_public_key))
-      {
-        LOG_PRINT_L1("Failed to validate address keys");
-        return false;
-      }
+      LOG_PRINT_L2("Invalid address format");
+      return false;
     }
-    else
+
+    if (integrated_address_prefix == prefix)
     {
-      // Old address format
-      std::string buff;
-      if(!epee::string_tools::parse_hexstr_to_binbuff(str, buff))
-        return false;
-
-      if(buff.size()!=sizeof(public_address_outer_blob))
-      {
-        LOG_PRINT_L1("Wrong public address size: " << buff.size() << ", expected size: " << sizeof(public_address_outer_blob));
-        return false;
-      }
-
-      public_address_outer_blob blob = *reinterpret_cast<const public_address_outer_blob*>(buff.data());
-
-
-      if(blob.m_ver > CRYPTONOTE_PUBLIC_ADDRESS_TEXTBLOB_VER)
-      {
-        LOG_PRINT_L1("Unknown version of public address: " << blob.m_ver << ", expected " << CRYPTONOTE_PUBLIC_ADDRESS_TEXTBLOB_VER);
-        return false;
-      }
-
-      if(blob.check_sum != get_account_address_checksum(blob))
-      {
-        LOG_PRINT_L1("Wrong public address checksum");
-        return false;
-      }
-
-      //we success
-      info.address = blob.m_address;
+      info.is_subaddress = false;
+      info.has_payment_id = true;
+    }
+    else if (address_prefix == prefix)
+    {
       info.is_subaddress = false;
       info.has_payment_id = false;
+    }
+    else if (subaddress_prefix == prefix)
+    {
+      info.is_subaddress = true;
+      info.has_payment_id = false;
+    }
+    else {
+      LOG_PRINT_L1("Wrong address prefix: " << prefix << ", expected " << address_prefix 
+        << " or " << integrated_address_prefix
+        << " or " << subaddress_prefix);
+      return false;
+    }
+
+    try {
+      if (info.has_payment_id)
+      {
+        integrated_address iadr;
+        serialization::parse_binary(data, iadr);
+        info.address = iadr.adr;
+        info.payment_id = iadr.payment_id;
+      }
+      else
+      {
+        serialization::parse_binary(data, info.address);
+      }
+    } catch (const std::exception& e) {
+      LOG_PRINT_L1("Account public address keys can't be parsed: "s + e.what());
+      return false;
+    }
+
+    if (!crypto::check_key(info.address.m_spend_public_key) || !crypto::check_key(info.address.m_view_public_key))
+    {
+      LOG_PRINT_L1("Failed to validate address keys");
+      return false;
     }
 
     return true;
