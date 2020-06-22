@@ -146,9 +146,9 @@ TEST(common_string_util, split_any)
 
 TEST(common_string_util, trim)
 {
-  std::array abc{
+  std::vector<std::string_view> abc{{
     "abc"sv, "abc "sv, " abc"sv, " abc "sv, "\tabc\n\n\n \t\r\r"sv, "\n\r\t \t \r\nabc"sv
-  };
+  }};
   for (auto& s : abc) {
     tools::trim(s);
     ASSERT_EQ(s, "abc"sv);
