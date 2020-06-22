@@ -37,7 +37,6 @@
 #include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/thread/thread.hpp>
 #include <atomic>
 #include <functional>
 #include <unordered_map>
@@ -1118,7 +1117,7 @@ namespace cryptonote
     difficulty_type m_difficulty_for_next_block;
 
     boost::asio::io_service m_async_service;
-    boost::thread_group m_async_pool;
+    std::thread m_async_thread;
     std::unique_ptr<boost::asio::io_service::work> m_async_work_idle;
 
     // some invalid blocks
