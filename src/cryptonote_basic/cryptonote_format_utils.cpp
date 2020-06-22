@@ -455,10 +455,7 @@ namespace cryptonote
     CHECK_AND_ASSERT_MES(tx.vin[0].type() == typeid(cryptonote::txin_to_key), std::numeric_limits<uint64_t>::max(), "empty vin");
 
     // get pruned data size
-    std::ostringstream s;
-    binary_archive<true> a(s);
-    ::serialization::serialize(a, const_cast<transaction&>(tx));
-    uint64_t weight = s.str().size(), extra;
+    uint64_t weight = serialization::dump_binary(const_cast<transaction&>(tx)).size();
 
     // nbps (technically varint)
     weight += 1;
@@ -468,7 +465,7 @@ namespace cryptonote
     while ((n_padded_outputs = (1u << nrl)) < tx.vout.size())
       ++nrl;
     nrl += 6;
-    extra = 32 * (9 + 2 * nrl) + 2;
+    uint64_t extra = 32 * (9 + 2 * nrl) + 2;
     weight += extra;
 
     // calculate deterministic MLSAG data size

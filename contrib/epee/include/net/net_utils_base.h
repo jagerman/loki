@@ -89,7 +89,7 @@ namespace net_utils
 			if (is_store)
 			{
 				uint32_t ip = SWAP32LE(this_ref.m_ip);
-				epee::serialization::selector<is_store>::serialize(ip, stg, hparent_section, "m_ip");
+				epee::serialization::perform_serialize<is_store>(ip, stg, parent_section, "m_ip");
 			}
 			else
 			{
@@ -268,7 +268,7 @@ namespace net_utils
 		Type& as_mutable() const
 		{
 			// types `implmentation<Type>` and `implementation<const Type>` are unique
-			using Type_ = typename std::remove_const<Type>::type;
+			using Type_ = std::remove_const_t<Type>;
 			network_address::interface* const self_ = self.get(); // avoid clang warning in typeid
 			if (!self_ || typeid(implementation<Type_>) != typeid(*self_))
 				throw std::bad_cast{};

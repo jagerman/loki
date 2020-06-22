@@ -1416,15 +1416,15 @@ namespace hw {
       MDEBUG("get_transaction_prefix_hash [[IN]] h_x/1 "<<h_x);
       #endif
     
-      std::ostringstream s_x;
-      binary_archive<true> a_x(s_x);
-      CHECK_AND_ASSERT_THROW_MES(::serialization::serialize(a_x, const_cast<cryptonote::transaction_prefix&>(tx)),
-                                 "unable to serialize transaction prefix");
-      pref_length = s_x.str().size();
-      //auto pref = std::make_unique<unsigned char[]>(pref_length);
-      auto uprt_pref = std::unique_ptr<unsigned char[]>{ new unsigned char[pref_length] };
-      unsigned char* pref = uprt_pref.get();
-      memmove(pref, s_x.str().data(), pref_length);
+      std::string tx_prefix;
+      try {
+        tx_prefix = serialization::dump_binary(const_cast<cryptonote::transaction_prefix&>(tx));
+      } catch (const std::exception& e) {
+        ASSERT_MES_AND_THROW("unable to serialize transaction prefix: " << e.what());
+      }
+
+      pref_length = tx_prefix.size();
+      const unsigned char* pref = reinterpret_cast<const unsigned char*>(tx_prefix.c_str());
 
       offset = set_command_header_noopt(INS_PREFIX_HASH,1);
       pref_offset = 0;

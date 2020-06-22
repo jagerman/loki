@@ -3895,9 +3895,9 @@ bool wallet2::store_keys(const std::string& keys_file_name, const epee::wipeable
 
   std::string tmp_file_name = keys_file_name + ".new";
   std::string buf;
-  bool r;
+  bool r = false;
   try {
-    buf = serialization::dump_binary(keys_file_data);
+    buf = serialization::dump_binary(*keys_file_data);
     r = save_to_file(tmp_file_name, buf);
   } catch (...) {}
   CHECK_AND_ASSERT_MES(r, false, "failed to generate wallet keys file " << tmp_file_name);
