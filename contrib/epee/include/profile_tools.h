@@ -29,6 +29,7 @@
 #define _PROFILE_TOOLS_H_
 
 #include <chrono>
+#include "misc_os_dependent.h"
 
 namespace epee
 {

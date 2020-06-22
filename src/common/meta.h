@@ -1,5 +1,7 @@
 #pragma once
+#include <string>
 #include <variant>
+#include <array>
 #include <typeinfo>
 #ifdef __GNUG__
 #include <cxxabi.h>

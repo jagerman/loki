@@ -39,6 +39,7 @@
 #include "util.h"
 #include "stack_trace.h"
 #include "net/http_client.h"                        // epee::net_utils::...
+#include "misc_os_dependent.h"
 #include "readline_buffer.h"
 #include "string_util.h"
 

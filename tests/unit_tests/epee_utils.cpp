@@ -998,13 +998,13 @@ TEST(parsing, unicode)
   std::string s;
   std::string::const_iterator si;
 
-  s = "\"\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.end(), bs)); ASSERT_EQ(bs, "");
-  s = "\"\\u0000\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.end(), bs)); ASSERT_EQ(bs, std::string(1, '\0'));
-  s = "\"\\u0020\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.end(), bs)); ASSERT_EQ(bs, " ");
-  s = "\"\\u1\""; si = s.begin(); ASSERT_FALSE(epee::misc_utils::parse::match_string(si, s.end(), bs));
-  s = "\"\\u12\""; si = s.begin(); ASSERT_FALSE(epee::misc_utils::parse::match_string(si, s.end(), bs));
-  s = "\"\\u123\""; si = s.begin(); ASSERT_FALSE(epee::misc_utils::parse::match_string(si, s.end(), bs));
-  s = "\"\\u1234\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.end(), bs)); ASSERT_EQ(bs, "ሴ");
-  s = "\"foo\\u1234bar\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.end(), bs)); ASSERT_EQ(bs, "fooሴbar");
-  s = "\"\\u3042\\u307e\\u3084\\u304b\\u3059\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.end(), bs)); ASSERT_EQ(bs, "あまやかす");
+  s = "\"\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.cend(), bs)); ASSERT_EQ(bs, "");
+  s = "\"\\u0000\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.cend(), bs)); ASSERT_EQ(bs, std::string(1, '\0'));
+  s = "\"\\u0020\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.cend(), bs)); ASSERT_EQ(bs, " ");
+  s = "\"\\u1\""; si = s.begin(); ASSERT_FALSE(epee::misc_utils::parse::match_string(si, s.cend(), bs));
+  s = "\"\\u12\""; si = s.begin(); ASSERT_FALSE(epee::misc_utils::parse::match_string(si, s.cend(), bs));
+  s = "\"\\u123\""; si = s.begin(); ASSERT_FALSE(epee::misc_utils::parse::match_string(si, s.cend(), bs));
+  s = "\"\\u1234\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.cend(), bs)); ASSERT_EQ(bs, "ሴ");
+  s = "\"foo\\u1234bar\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.cend(), bs)); ASSERT_EQ(bs, "fooሴbar");
+  s = "\"\\u3042\\u307e\\u3084\\u304b\\u3059\""; si = s.begin(); ASSERT_TRUE(epee::misc_utils::parse::match_string(si, s.cend(), bs)); ASSERT_EQ(bs, "あまやかす");
 }

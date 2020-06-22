@@ -214,7 +214,7 @@ namespace tools {
     std::wstring filename_wide;
     try
     {
-      filename_wide = string_tools::utf8_to_utf16(filename);
+      filename_wide = epee::string_tools::utf8_to_utf16(filename);
     }
     catch (const std::exception &e)
     {
