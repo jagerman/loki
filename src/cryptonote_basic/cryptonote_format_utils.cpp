@@ -191,27 +191,6 @@ namespace cryptonote
     return true;
   }
 
-  // NOTE: Compiling with a libc++ (Mac OSX 10.13, our Android NDK version) and
-  // generating a binary_archive with a one_shot_read_buffer, causes the
-  // following snippet to fail
-
-#if 0
-  explicit binary_archive(stream_type &s) : base_type(s) {
-    stream_type::pos_type pos = stream_.tellg();
-    stream_.seekg(0, std::ios_base::end);
-    eof_pos_ = stream_.tellg();
-    stream_.seekg(pos);
-  }
-#endif
-
-  // In particular
-  // stream_.seekg(0, std::ios_base::end);
-  // eof_pos_ = stream_.tellg();
-
-  // A seekg followed by a tellg returns 0, no state flags are set on the io
-  // stream. So use the old method that copies the blob into a stringstream
-  // 2020-01-15, doyle
-
 #if defined(_LIBCPP_VERSION)
   #define BINARY_ARCHIVE_STREAM(stream_name, blob) \
     std::stringstream stream_name; \
