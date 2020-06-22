@@ -35,6 +35,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <shared_mutex>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
