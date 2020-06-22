@@ -454,7 +454,7 @@ namespace
     return "invalid";
   }
 
-  std::string oa_prompter(const std::string &url, const std::vector<std::string> &addresses, bool dnssec_valid)
+  std::string oa_prompter(const std::string_view url, const std::vector<std::string> &addresses, bool dnssec_valid)
   {
     if (addresses.empty())
       return {};

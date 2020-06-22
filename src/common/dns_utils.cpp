@@ -416,8 +416,9 @@ std::vector<std::vector<std::string>> DNSResolver::get_many(int type, const std:
   return results;
 }
 
-std::string DNSResolver::get_dns_format_from_oa_address(std::string addr)
+std::string DNSResolver::get_dns_format_from_oa_address(std::string_view addr_v)
 {
+  std::string addr{addr_v};
   auto first_at = addr.find("@");
   if (first_at == std::string::npos)
     return addr;
@@ -454,30 +455,25 @@ namespace dns_utils
 
 //-----------------------------------------------------------------------
 // TODO: parse the string in a less stupid way, probably with regex
-std::string address_from_txt_record(const std::string& s)
+std::string address_from_txt_record(std::string_view s)
 {
   // make sure the txt record has "oa1:xmr" and find it
-  auto pos = s.find("oa1:xmr");
-  if (pos == std::string::npos)
+  if (auto pos = s.find("oa1:xmr"); pos == std::string_view::npos)
     return {};
-  // search from there to find "recipient_address="
-  pos = s.find("recipient_address=", pos);
-  if (pos == std::string::npos)
+  s.remove_prefix(7); // eat it
+
+  if (auto pos = s.find("recipient_address="); pos == std::string_view::npos)
     return {};
-  pos += 18; // move past "recipient_address="
+  s.remove_prefix(18); // eat it
+
   // find the next semicolon
-  auto pos2 = s.find(";", pos);
-  if (pos2 != std::string::npos)
+  if (auto pos = s.find(";"); pos != std::string::npos)
   {
     // length of address == 95, we can at least validate that much here
-    if (pos2 - pos == 95)
-    {
-      return s.substr(pos, 95);
-    }
-    else if (pos2 - pos == 106) // length of address == 106 --> integrated address
-    {
-      return s.substr(pos, 106);
-    }
+    if (pos == 95)
+      return std::string{s.substr(0, 95)};
+    else if (pos == 106) // length of address == 106 --> integrated address
+      return std::string{s.substr(0, 106)};
   }
   return {};
 }
@@ -495,7 +491,7 @@ std::string address_from_txt_record(const std::string& s)
  *
  * @return a loki address (as a string) or an empty string
  */
-std::vector<std::string> addresses_from_url(const std::string& url, bool& dnssec_valid)
+std::vector<std::string> addresses_from_url(const std::string_view url, bool& dnssec_valid)
 {
   std::vector<std::string> addresses;
   // get txt records
@@ -516,13 +512,14 @@ std::vector<std::string> addresses_from_url(const std::string& url, bool& dnssec
     std::string addr = address_from_txt_record(rec);
     if (addr.size())
     {
-      addresses.push_back(addr);
+      addresses.push_back(std::move(addr));
     }
   }
   return addresses;
 }
 
-std::string get_account_address_as_str_from_url(const std::string& url, bool& dnssec_valid, std::function<std::string(const std::string&, const std::vector<std::string>&, bool)> dns_confirm)
+std::string get_account_address_as_str_from_url(const std::string_view url, bool& dnssec_valid,
+    std::function<std::string(const std::string_view, const std::vector<std::string>&, bool)> dns_confirm)
 {
   // attempt to get address from dns query
   auto addresses = addresses_from_url(url, dnssec_valid);

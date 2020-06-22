@@ -609,6 +609,41 @@ namespace tools
     }
     return true;
   }
+
+  static bool extract_account_addr(
+      cryptonote::address_parse_info& info,
+      cryptonote::network_type nettype,
+      std::string_view addr_or_url,
+      epee::json_rpc::error& er)
+  {
+    if (!get_account_address_from_str_or_url(info, nettype, addr_or_url,
+          [&er](const std::string_view url, const std::vector<std::string> &addresses, bool dnssec_valid) {
+            if (!dnssec_valid)
+            {
+              er.message = "Invalid DNSSEC for "s;
+              er.message += url;
+              return ""s;
+            }
+            if (addresses.empty())
+            {
+              er.message = "No Loki address found at "s;
+              er.message += url;
+              return ""s;
+            }
+            return addresses[0];
+          }))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
+      if (er.message.empty())
+      {
+        er.message = "WALLET_RPC_ERROR_CODE_WRONG_ADDRESS: "s;
+        er.message += addr_or_url;
+      }
+      return false;
+    }
+    return true;
+  }
+
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::validate_transfer(const std::list<transfer_destination>& destinations, const std::string& payment_id, std::vector<cryptonote::tx_destination_entry>& dsts, std::vector<uint8_t>& extra, bool at_least_one_destination, epee::json_rpc::error& er)
   {
@@ -617,29 +652,11 @@ namespace tools
     for (auto it = destinations.begin(); it != destinations.end(); it++)
     {
       cryptonote::address_parse_info info;
-      cryptonote::tx_destination_entry de;
       er.message = "";
-      if(!get_account_address_from_str_or_url(info, m_wallet->nettype(), it->address,
-        [&er](const std::string &url, const std::vector<std::string> &addresses, bool dnssec_valid)->std::string {
-          if (!dnssec_valid)
-          {
-            er.message = std::string("Invalid DNSSEC for ") + url;
-            return {};
-          }
-          if (addresses.empty())
-          {
-            er.message = std::string("No Loki address found at ") + url;
-            return {};
-          }
-          return addresses[0];
-        }))
-      {
-        er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
-        if (er.message.empty())
-          er.message = std::string("WALLET_RPC_ERROR_CODE_WRONG_ADDRESS: ") + it->address;
+      if (!extract_account_addr(info, m_wallet->nettype(), it->address, er))
         return false;
-      }
 
+      cryptonote::tx_destination_entry de;
       de.original = it->address;
       de.addr = info.address;
       de.is_subaddress = info.is_subaddress;
@@ -1877,24 +1894,8 @@ namespace tools
 
     cryptonote::address_parse_info info;
     er.message = "";
-    if(!get_account_address_from_str_or_url(info, m_wallet->nettype(), req.address,
-      [&er](const std::string &url, const std::vector<std::string> &addresses, bool dnssec_valid)->std::string {
-        if (!dnssec_valid)
-        {
-          er.message = std::string("Invalid DNSSEC for ") + url;
-          return {};
-        }
-        if (addresses.empty())
-        {
-          er.message = std::string("No Loki address found at ") + url;
-          return {};
-        }
-        return addresses[0];
-      }))
-    {
-      er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
+    if (!extract_account_addr(info, m_wallet->nettype(), req.address, er))
       return false;
-    }
 
     res.good = m_wallet->verify(req.data, info.address, req.signature);
     return true;
@@ -2685,26 +2686,9 @@ namespace tools
 
     cryptonote::address_parse_info info;
     er.message = "";
-    if(!get_account_address_from_str_or_url(info, m_wallet->nettype(), req.address,
-      [&er](const std::string &url, const std::vector<std::string> &addresses, bool dnssec_valid)->std::string {
-        if (!dnssec_valid)
-        {
-          er.message = std::string("Invalid DNSSEC for ") + url;
-          return {};
-        }
-        if (addresses.empty())
-        {
-          er.message = std::string("No Loki address found at ") + url;
-          return {};
-        }
-        return addresses[0];
-      }))
-    {
-      er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
-      if (er.message.empty())
-        er.message = std::string("WALLET_RPC_ERROR_CODE_WRONG_ADDRESS: ") + req.address;
+    if (!extract_account_addr(info, m_wallet->nettype(), req.address, er))
       return false;
-    }
+
     if (!m_wallet->add_address_book_row(info.address, info.has_payment_id ? &info.payment_id : NULL, req.description, info.is_subaddress))
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -2739,26 +2723,8 @@ namespace tools
     if (req.set_address)
     {
       er.message = "";
-      if(!get_account_address_from_str_or_url(info, m_wallet->nettype(), req.address,
-        [&er](const std::string &url, const std::vector<std::string> &addresses, bool dnssec_valid)->std::string {
-          if (!dnssec_valid)
-          {
-            er.message = std::string("Invalid DNSSEC for ") + url;
-            return {};
-          }
-          if (addresses.empty())
-          {
-            er.message = std::string("No Monero address found at ") + url;
-            return {};
-          }
-          return addresses[0];
-        }))
-      {
-        er.code = WALLET_RPC_ERROR_CODE_WRONG_ADDRESS;
-        if (er.message.empty())
-          er.message = std::string("WALLET_RPC_ERROR_CODE_WRONG_ADDRESS: ") + req.address;
+      if (!extract_account_addr(info, m_wallet->nettype(), req.address, er))
         return false;
-      }
       entry.m_address = info.address;
       entry.m_is_subaddress = info.is_subaddress;
       if (info.has_payment_id)
@@ -4016,24 +3982,9 @@ namespace tools
         continue;
       if (req.allow_openalias)
       {
-        std::string address;
-        res.valid = get_account_address_from_str_or_url(info, net_type.type, req.address,
-          [&er, &address](const std::string &url, const std::vector<std::string> &addresses, bool dnssec_valid)->std::string {
-            if (!dnssec_valid)
-            {
-              er.message = std::string("Invalid DNSSEC for ") + url;
-              return {};
-            }
-            if (addresses.empty())
-            {
-              er.message = std::string("No Loki address found at ") + url;
-              return {};
-            }
-            address = addresses[0];
-            return address;
-          });
+        res.valid = extract_account_addr(info, net_type.type, req.address, er);
         if (res.valid)
-          res.openalias_address = address;
+          res.openalias_address = info.as_str(net_type.type);
       }
       else
       {
