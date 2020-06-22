@@ -158,6 +158,15 @@ TEST(DNSResolver, GetTXTRecord)
   EXPECT_STREQ("donate.getmonero.org", addr.c_str());
 }
 
+TEST(DNSResolver, GetMulti)
+{
+  auto records = tools::DNSResolver::instance().get_many(tools::DNS_TYPE_A, {"loki.network", "example.invalid", "lokinet.org"});
+  EXPECT_EQ(records.size(), 3);
+  EXPECT_TRUE(records[0].size() > 0);
+  EXPECT_EQ(records[1].size(), 0);
+  EXPECT_TRUE(records[2].size() > 0);
+}
+
 bool is_equal(const char *s, const std::vector<std::string> &v) { return v.size() == 1 && v[0] == s; }
 
 TEST(DNS_PUBLIC, empty) { EXPECT_TRUE(tools::dns_utils::parse_dns_public("").empty()); }

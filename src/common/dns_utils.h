@@ -31,17 +31,22 @@
 #include <string>
 #include <functional>
 #include <optional>
+#include <chrono>
+
+struct ub_ctx;
 
 namespace tools
 {
 
-// RFC defines for record types and classes for DNS, gleaned from ldns source
-const static int DNS_CLASS_IN  = 1;
-const static int DNS_TYPE_A    = 1;
-const static int DNS_TYPE_TXT  = 16;
-const static int DNS_TYPE_AAAA = 8;
+using namespace std::literals;
 
-struct DNSResolverData;
+// RFC defines for record types and classes for DNS, gleaned from ldns source
+constexpr int DNS_CLASS_IN  = 1;
+constexpr int DNS_TYPE_A    = 1;
+constexpr int DNS_TYPE_TXT  = 16;
+constexpr int DNS_TYPE_AAAA = 8;
+
+struct ub_ctx_deleter { void operator()(ub_ctx*); };
 
 /**
  * @brief Provides high-level access to DNS resolution
@@ -62,11 +67,6 @@ private:
   DNSResolver();
 
 public:
-
-  /**
-   * @brief takes care of freeing C pointers and such
-   */
-  ~DNSResolver();
 
   /**
    * @brief gets ipv4 addresses from DNS query of a URL
@@ -106,6 +106,24 @@ public:
    std::vector<std::string> get_txt_record(const std::string& url, bool& dnssec_available, bool& dnssec_valid);
 
   /**
+   * @brief query multiple hostnames simultaneously for results, waiting up to a fixed amount of
+   * time for results before returning.
+   *
+   * @param type `DNS_TYPE_A` or `DNS_TYPE_AAAA` or `DNS_TYPE_TXT` indicating the lookup type.
+   * @param hostnames a vector of hostnames to look up
+   * @param timeout how long to wait for results before giving up.  Any results not yet retrieved by
+   * the timeout are left empty.
+   * @param dnssec if true then validate DNSSEC if available (i.e. reject DNSSEC failures, but allow insecure results when DNSSEC not available)
+   * @param dnssec_required if true then require and validate DNSSEC (i.e. reject failures and reject when DNSSEC not available)
+   *
+   * Returns a vector of vector of results: the results for address [i] are in result element [i].
+   * If lookup failed (or DNSSEC failed with the relevant options given) for element [i] then vector
+   * [i] will be empty.
+   */
+   // TODO: this could be extended to support doing multiple lookup types at once (e.g. A and AAAA).
+  std::vector<std::vector<std::string>> get_many(int type, const std::vector<std::string>& hostnames, std::chrono::milliseconds timeout = 10s, bool dnssec = false, bool dnssec_required = false);
+
+  /**
    * @brief Gets a DNS address from OpenAlias format
    *
    * If the address looks good, but contains one @ symbol, replace that with a .
@@ -115,12 +133,12 @@ public:
    *
    * @return dns_addr  DNS address
    */
-  std::string get_dns_format_from_oa_address(const std::string& oa_addr);
+  std::string get_dns_format_from_oa_address(std::string oa_addr);
 
   /**
    * @brief Gets the singleton instance of DNSResolver
    *
-   * @return returns a pointer to the singleton
+   * @return returns a reference to the singleton
    */
   static DNSResolver& instance();
 
@@ -155,7 +173,7 @@ private:
    */
   bool check_address_syntax(const char *addr) const;
 
-  DNSResolverData *m_data;
+  ub_ctx* m_ctx = nullptr;
 }; // class DNSResolver
 
 namespace dns_utils
