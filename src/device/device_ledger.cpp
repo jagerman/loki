@@ -662,7 +662,7 @@ namespace hw {
     }
 
     void  device_ledger::display_address(const cryptonote::subaddress_index& index, const std::optional<crypto::hash8> &payment_id) {
-        AUTO_LOCK_CMD();
+        auto locks = tools::unique_locks(device_locker, command_locker);
 
         int offset = set_command_header_noopt(INS_DISPLAY_ADDRESS, payment_id?1:0);
         //index
@@ -1406,7 +1406,7 @@ namespace hw {
     }
 
     void device_ledger::get_transaction_prefix_hash(const cryptonote::transaction_prefix& tx, crypto::hash& h) {
-      AUTO_LOCK_CMD();
+      auto locks = tools::unique_locks(device_locker, command_locker);
       
       int pref_length = 0, pref_offset = 0, offset = 0;
 

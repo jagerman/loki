@@ -436,7 +436,7 @@ namespace nodetool
 
     if (command_line::has_arg(vm, arg_p2p_seed_node))
     {
-      boost::unique_lock<boost::shared_mutex> lock(m_seed_nodes_lock);
+      std::unique_lock lock{m_seed_nodes_mutex};
 
       if (!parse_peers_and_add_to_container(vm, arg_p2p_seed_node, m_seed_nodes))
         return false;
@@ -1542,19 +1542,22 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::connect_to_seed()
   {
-      boost::upgrade_lock<boost::shared_mutex> seed_nodes_upgrade_lock(m_seed_nodes_lock);
-
       if (!m_seed_nodes_initialized)
       {
-        boost::upgrade_to_unique_lock<boost::shared_mutex> seed_nodes_lock(seed_nodes_upgrade_lock);
-        m_seed_nodes_initialized = true;
-        for (const auto& full_addr : get_seed_nodes())
+        std::unique_lock lock{m_seed_nodes_mutex};
+        if (!m_seed_nodes_initialized)
         {
-          MDEBUG("Seed node: " << full_addr);
-          append_net_address(m_seed_nodes, full_addr, cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT);
+          for (const auto& full_addr : get_seed_nodes())
+          {
+            MDEBUG("Seed node: " << full_addr);
+            append_net_address(m_seed_nodes, full_addr, cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT);
+          }
+          MDEBUG("Number of seed nodes: " << m_seed_nodes.size());
+          m_seed_nodes_initialized = true;
         }
-        MDEBUG("Number of seed nodes: " << m_seed_nodes.size());
       }
+
+      std::shared_lock shlock{m_seed_nodes_mutex};
 
       if (m_seed_nodes.empty() || m_offline || !m_exclusive_peers.empty())
         return true;
@@ -1581,13 +1584,16 @@ namespace nodetool
             MWARNING("Failed to connect to any of seed peers, trying fallback seeds");
             current_index = m_seed_nodes.size() - 1;
             {
-              boost::upgrade_to_unique_lock<boost::shared_mutex> seed_nodes_lock(seed_nodes_upgrade_lock);
-
-              for (const auto &peer: get_seed_nodes(m_nettype))
+              shlock.unlock();
               {
-                MDEBUG("Fallback seed node: " << peer);
-                append_net_address(m_seed_nodes, peer, cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT);
+                std::unique_lock lock{m_seed_nodes_mutex};
+                for (const auto &peer: get_seed_nodes(m_nettype))
+                {
+                  MDEBUG("Fallback seed node: " << peer);
+                  append_net_address(m_seed_nodes, peer, cryptonote::get_config(m_nettype).P2P_DEFAULT_PORT);
+                }
               }
+              shlock.lock();
             }
             if (current_index == m_seed_nodes.size() - 1)
             {

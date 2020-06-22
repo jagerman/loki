@@ -1725,10 +1725,15 @@ namespace cryptonote { namespace rpc {
   {
     // TODO - support bootstrapping via a remote LMQ RPC; requires some argument fiddling
 
-    if (m_bootstrap_daemon_address.empty() || !m_should_use_bootstrap_daemon)
-      return {};
+    if (!m_should_use_bootstrap_daemon)
+        return {};
 
-    std::unique_lock<std::shared_mutex> lock{m_bootstrap_daemon_mutex};
+    std::unique_lock lock{m_bootstrap_daemon_mutex};
+    if (!m_bootstrap_daemon)
+    {
+      lock.unlock();
+      return lock;
+    }
 
     auto current_time = std::chrono::system_clock::now();
     if (!m_p2p.get_payload_object().no_sync() &&

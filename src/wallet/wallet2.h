@@ -126,7 +126,7 @@ private:
     wallet2 &w;
     bool locked;
     crypto::chacha_key key;
-    static boost::mutex lockers_lock;
+    static std::mutex lockers_mutex;
     static unsigned int lockers;
   };
 
@@ -1635,7 +1635,7 @@ private:
 
 
     std::atomic<bool> m_long_poll_disabled;
-    static std::string get_default_daemon_address() { CRITICAL_REGION_LOCAL(default_daemon_address_lock); return default_daemon_address; }
+    static std::string get_default_daemon_address() { std::lock_guard lock{default_daemon_address_mutex}; return default_daemon_address; }
 
   private:
     /*!
@@ -1870,7 +1870,7 @@ private:
 
     crypto::chacha_key m_cache_key;
     std::optional<epee::wipeable_string> m_encrypt_keys_after_refresh;
-    boost::mutex m_decrypt_keys_lock;
+    std::mutex m_decrypt_keys_mutex;
     unsigned int m_decrypt_keys_lockers;
 
     bool m_unattended;
@@ -1881,7 +1881,7 @@ private:
 
     ExportFormat m_export_format;
 
-    static boost::mutex default_daemon_address_lock;
+    static std::mutex default_daemon_address_mutex;
     static std::string default_daemon_address;
   };
 

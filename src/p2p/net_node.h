@@ -446,8 +446,8 @@ namespace nodetool
     std::list<epee::net_utils::network_address>   m_priority_peers;
     std::vector<epee::net_utils::network_address> m_exclusive_peers;
     std::vector<epee::net_utils::network_address> m_seed_nodes;
-    bool m_seed_nodes_initialized = false;
-    boost::shared_mutex m_seed_nodes_lock;
+    std::atomic<bool> m_seed_nodes_initialized{false};
+    std::shared_mutex m_seed_nodes_mutex;
     std::atomic_flag m_fallback_seed_nodes_added;
     std::vector<nodetool::peerlist_entry> m_command_line_peers;
     uint64_t m_peer_livetime;

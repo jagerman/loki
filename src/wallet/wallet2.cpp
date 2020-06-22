@@ -153,7 +153,7 @@ static const std::string MULTISIG_EXTRA_INFO_MAGIC = "MultisigxV1";
 
 static const std::string ASCII_OUTPUT_MAGIC = "MoneroAsciiDataV1";
 
-boost::mutex tools::wallet2::default_daemon_address_lock;
+std::mutex tools::wallet2::default_daemon_address_mutex;
 std::string tools::wallet2::default_daemon_address = "";
 
 namespace
@@ -1003,13 +1003,13 @@ uint64_t gamma_picker::pick()
   return first_rct + crypto::rand_idx(n_rct);
 };
 
-boost::mutex wallet_keys_unlocker::lockers_lock;
+std::mutex wallet_keys_unlocker::lockers_mutex;
 unsigned int wallet_keys_unlocker::lockers = 0;
 wallet_keys_unlocker::wallet_keys_unlocker(wallet2 &w, const std::optional<tools::password_container> &password):
   w(w),
   locked((bool) password)
 {
-  boost::lock_guard<boost::mutex> lock(lockers_lock);
+  std::lock_guard lock{lockers_mutex};
   if (lockers++ > 0)
     locked = false;
   if (!locked || w.is_unattended() || w.ask_password() != tools::wallet2::AskPasswordToDecrypt || w.watch_only())
@@ -1026,7 +1026,7 @@ wallet_keys_unlocker::wallet_keys_unlocker(wallet2 &w, bool locked, const epee::
   w(w),
   locked(locked)
 {
-  boost::lock_guard<boost::mutex> lock(lockers_lock);
+  std::lock_guard lock{lockers_mutex};
   if (lockers++ > 0)
     locked = false;
   if (!locked)
@@ -1039,7 +1039,7 @@ wallet_keys_unlocker::~wallet_keys_unlocker()
 {
   try
   {
-    boost::lock_guard<boost::mutex> lock(lockers_lock);
+    std::lock_guard lock{lockers_mutex};
     if (lockers == 0)
     {
       MERROR("There are no lockers in wallet_keys_unlocker dtor");
@@ -1278,7 +1278,7 @@ bool wallet2::set_daemon(std::string daemon_address, std::optional<epee::net_uti
   bool ret =  m_http_client->set_server(address, get_daemon_login(), std::move(ssl_options));
   if (ret)
   {
-    CRITICAL_REGION_LOCAL(default_daemon_address_lock);
+    std::lock_guard lock{default_daemon_address_mutex};
     default_daemon_address = address;
   }
   return ret;
@@ -1738,8 +1738,9 @@ void wallet2::scan_output(const cryptonote::transaction &tx, bool miner_tx, cons
   // if keys are encrypted, ask for password
   if (m_ask_password == AskPasswordToDecrypt && !m_unattended && !m_watch_only && !m_multisig_rescan_k)
   {
-    static epee::critical_section password_lock;
-    CRITICAL_REGION_LOCAL(password_lock);
+    static std::recursive_mutex password_mutex;
+    std::lock_guard lock{password_mutex};
+
     if (!m_encrypt_keys_after_refresh)
     {
       char const blink_reason[] = "(blink output received in pool) - use the refresh command";
@@ -4583,7 +4584,7 @@ bool wallet2::verify_password(const std::string& keys_file_name, const epee::wip
 
 void wallet2::encrypt_keys(const crypto::chacha_key &key)
 {
-  boost::lock_guard<boost::mutex> lock(m_decrypt_keys_lock);
+  std::lock_guard lock{m_decrypt_keys_mutex};
   if (--m_decrypt_keys_lockers) // another lock left ?
     return;
   m_account.encrypt_keys(key);
@@ -4592,7 +4593,7 @@ void wallet2::encrypt_keys(const crypto::chacha_key &key)
 
 void wallet2::decrypt_keys(const crypto::chacha_key &key)
 {
-  boost::lock_guard<boost::mutex> lock(m_decrypt_keys_lock);
+  std::lock_guard lock{m_decrypt_keys_mutex};
   if (m_decrypt_keys_lockers++) // already unlocked ?
     return;
   m_account.encrypt_viewkey(key);
