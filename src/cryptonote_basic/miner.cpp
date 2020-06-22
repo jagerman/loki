@@ -29,18 +29,16 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include <sstream>
 #include <numeric>
-#include <boost/algorithm/string.hpp>
+#include "lokimq/base64.h"
 #include "misc_language.h"
 #include "syncobj.h"
-#include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
-#include "cryptonote_core/cryptonote_tx_utils.h"
 #include "misc_os_dependent.h"
 #include "file_io_utils.h"
 #include "common/command_line.h"
 #include "common/util.h"
+#include "common/string_util.h"
 #include "string_coding.h"
 #include "string_tools.h"
 #include "storages/portable_storage_template_helper.h"
@@ -251,15 +249,20 @@ namespace cryptonote
       std::string buff;
       bool r = epee::file_io_utils::load_file_to_string(command_line::get_arg(vm, arg_extra_messages), buff);
       CHECK_AND_ASSERT_MES(r, false, "Failed to load file with extra messages: " << command_line::get_arg(vm, arg_extra_messages));
-      std::vector<std::string> extra_vec;
-      boost::split(extra_vec, buff, boost::is_any_of("\n"), boost::token_compress_on );
+      auto extra_vec = tools::split_any(buff, "\n"sv, true);
       m_extra_messages.resize(extra_vec.size());
       for(size_t i = 0; i != extra_vec.size(); i++)
       {
-        epee::string_tools::trim(extra_vec[i]);
+        tools::trim(extra_vec[i]);
         if(!extra_vec[i].size())
           continue;
-        std::string buff = epee::string_encoding::base64_decode(extra_vec[i]);
+        if (!lokimq::is_base64(extra_vec[i]))
+        {
+          MWARNING("Invalid (non-base64) extra message `" << extra_vec[i] << "'");
+          continue;
+        }
+
+        std::string buff = lokimq::from_base64(extra_vec[i]);
         if(buff != "0")
           m_extra_messages[i] = buff;
       }

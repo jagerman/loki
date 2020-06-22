@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <iostream>
 #include <mutex>
-#include <boost/algorithm/string.hpp>
 
 static void install_line_handler();
 static void remove_line_handler();
@@ -165,7 +164,9 @@ static void handle_line(char* line)
     line_stat = rdln::full;
     the_line = line;
     std::string test_line = line;
-    boost::trim_right(test_line);
+    auto pos = test_line.find_last_not_of(" \t\r\n");
+    if (pos != std::string::npos)
+      test_line.resize(pos + 1);
     if(!test_line.empty())
     {
       add_history(test_line.c_str());

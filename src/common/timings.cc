@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <time.h>
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
+#include "common/string_util.h"
 #include "misc_log_ex.h"
 #include "timings.h"
 
@@ -48,14 +48,18 @@ bool TimingsDatabase::load()
       continue;
     }
     const std::string name = std::string(s, tab - s);
-    std::vector<std::string> fields;
     char *ptr = tab + 1;
-    boost::split(fields, ptr, boost::is_any_of(" "));
-    if (fields.size() != N_EXPECTED_FIELDS)
+    auto fields_sv = tools::split(ptr, " ");
+
+    if (fields_sv.size() != N_EXPECTED_FIELDS)
     {
-      MERROR("Bad format: wrong number of fields: got " << fields.size() << " expected " << N_EXPECTED_FIELDS);
+      MERROR("Bad format: wrong number of fields: got " << fields_sv.size() << " expected " << N_EXPECTED_FIELDS);
       continue;
     }
+    // We need C strings for the below, so make copies
+    std::vector<std::string> fields;
+    fields.reserve(fields_sv.size());
+    for (auto& f : fields_sv) fields.emplace_back(f);
 
     instance i;
 

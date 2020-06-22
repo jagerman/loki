@@ -29,6 +29,7 @@
 
 #include "common/dns_utils.h"
 // check local first (in the event of static or in-source compilation of libunbound)
+#include "common/string_util.h"
 #include "unbound.h"
 
 #include <chrono>
@@ -44,13 +45,14 @@
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "net.dns"
 
-static const char *DEFAULT_DNS_PUBLIC_ADDR[] =
+using namespace std::literals;
+static constexpr std::array DEFAULT_DNS_PUBLIC_ADDR =
 {
-  "194.150.168.168",    // CCC (Germany)
-  "80.67.169.40",       // FDN (France)
-  "89.233.43.71",       // http://censurfridns.dk (Denmark)
-  "109.69.8.51",        // punCAT (Spain)
-  "193.58.251.251",     // SkyDNS (Russia)
+  "194.150.168.168"sv,    // CCC (Germany)
+  "80.67.169.40"sv,       // FDN (France)
+  "89.233.43.71"sv,       // http://censurfridns.dk (Denmark)
+  "109.69.8.51"sv,        // punCAT (Spain)
+  "193.58.251.251"sv,     // SkyDNS (Russia)
 };
 
 namespace
@@ -447,17 +449,21 @@ namespace dns_utils
 // TODO: parse the string in a less stupid way, probably with regex
 std::string address_from_txt_record(std::string_view s)
 {
-  // make sure the txt record has "oa1:xmr" and find it
-  if (auto pos = s.find("oa1:xmr"); pos == std::string_view::npos)
-    return {};
-  s.remove_prefix(7); // eat it
+  // make sure the txt record has the addr_type and find it
+  constexpr auto addr_type = "oa1:xmr"sv;
+  if (auto pos = s.find(addr_type); pos != std::string_view::npos)
+    s.remove_prefix(pos + addr_type.size()); // remove it and everything before it
+  else
+    return {}; // not found.
 
-  if (auto pos = s.find("recipient_address="); pos == std::string_view::npos)
-    return {};
-  s.remove_prefix(18); // eat it
+  constexpr auto recipient_address = "recipient_address="sv;
+  if (auto pos = s.find(recipient_address); pos != std::string_view::npos)
+    s.remove_prefix(pos + recipient_address.size()); // delete it and everything up to it
+  else
+    return {}; // not found
 
   // find the next semicolon
-  if (auto pos = s.find(";"); pos != std::string::npos)
+  if (auto pos = s.find(';'); pos != std::string::npos)
   {
     // length of address == 95, we can at least validate that much here
     if (pos == 95)
@@ -636,10 +642,10 @@ std::vector<std::string> parse_dns_public(const char *s)
   unsigned ip0, ip1, ip2, ip3;
   char c;
   std::vector<std::string> dns_public_addr;
-  if (s != "tcp"sv)
+  if (s == "tcp"sv)
   {
-    for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
-      dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
+    for (auto& default_dns : DEFAULT_DNS_PUBLIC_ADDR)
+      dns_public_addr.emplace_back(default_dns);
     LOG_PRINT_L0("Using default public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
   }
   else if (std::sscanf(s, "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
@@ -650,7 +656,7 @@ std::vector<std::string> parse_dns_public(const char *s)
     }
     else
     {
-      dns_public_addr.push_back(std::string(s + "tcp://"sv.size()));
+      dns_public_addr.emplace_back(s + 6);
     }
   }
   else

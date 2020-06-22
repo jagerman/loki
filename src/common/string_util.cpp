@@ -1,6 +1,10 @@
 #include "string_util.h"
+#include <cassert>
 
 namespace tools {
+
+using namespace std::literals;
+
 std::vector<std::string_view> split(std::string_view str, const std::string_view delim, bool trim)
 { 
   std::vector<std::string_view> results;
@@ -48,6 +52,20 @@ std::vector<std::string_view> split_any(std::string_view str, const std::string_
     while (!results.empty() && results.back().empty())
       results.pop_back();
   return results;
+}
+
+void trim(std::string_view& s)
+{
+  constexpr auto simple_whitespace = " \t\r\n"sv;
+  auto pos = s.find_first_not_of(simple_whitespace);
+  if (pos == std::string_view::npos) { // whole string is whitespace
+    s.remove_prefix(s.size());
+    return;
+  }
+  s.remove_prefix(pos);
+  pos = s.find_last_not_of(simple_whitespace);
+  assert(pos != std::string_view::npos);
+  s.remove_suffix(s.size() - (pos + 1));
 }
 
 std::string lowercase_ascii_string(std::string src)

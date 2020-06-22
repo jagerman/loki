@@ -144,6 +144,20 @@ TEST(common_string_util, split_any)
   ASSERT_EQ(tools::split_any("abcdedf", "dcx"), std::vector<std::string_view>({"ab", "e", "f"}));
 }
 
+TEST(common_string_util, trim)
+{
+  std::array abc{
+    "abc"sv, "abc "sv, " abc"sv, " abc "sv, "\tabc\n\n\n \t\r\r"sv, "\n\r\t \t \r\nabc"sv
+  };
+  for (auto& s : abc) {
+    tools::trim(s);
+    ASSERT_EQ(s, "abc"sv);
+  }
+  std::string_view def{" \n\rd e \t\r\nf   \t"};
+  tools::trim(def);
+  ASSERT_EQ(def, "d e \t\r\nf"sv);
+}
+
 TEST(common_string_util, string_iequal)
 {
   ASSERT_TRUE(tools::string_iequal("abc", "abc"));

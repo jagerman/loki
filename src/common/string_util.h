@@ -53,6 +53,10 @@ std::vector<std::string_view> split(std::string_view str, std::string_view delim
 ///     auto v = split_any("abcdedf", "dcx"); // v is {"ab", "e", "f"}
 std::vector<std::string_view> split_any(std::string_view str, std::string_view delims, bool trim = false);
 
+/// Simple version of whitespace trimming: mutates the given string view to remove leading
+/// space, \t, \r, \n.  (More exotic and locale-dependent whitespace is not removed).
+void trim(std::string_view& s);
+
 /// Parses an integer of some sort from a string, requiring that the entire string be consumed
 /// during parsing.  Return false if parsing failed, sets `value` and returns true if the entire
 /// string was consumed.
