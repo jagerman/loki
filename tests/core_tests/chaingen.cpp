@@ -28,6 +28,7 @@
 // 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+#include <limits>
 #include <vector>
 #include <iostream>
 #include <sstream>
@@ -458,13 +459,13 @@ cryptonote::transaction loki_chain_generator::create_state_change_tx(service_nod
   std::vector<crypto::public_key> const &validator_service_nodes = quorums.obligations->validators;
   std::vector<crypto::public_key> const &worker_service_nodes    = quorums.obligations->workers;
 
-  size_t worker_index = UINT64_MAX;
+  size_t worker_index = std::numeric_limits<size_t>::max();
   for (size_t i = 0; i < worker_service_nodes.size(); i++)
   {
     crypto::public_key const &check_key = worker_service_nodes[i];
     if (pub_key == check_key) worker_index = i;
   }
-  assert(worker_index != UINT64_MAX);
+  assert(worker_index < worker_service_nodes.size());
 
   cryptonote::tx_extra_service_node_state_change state_change_extra(state, height, worker_index);
   if (voters.size())
