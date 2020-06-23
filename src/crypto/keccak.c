@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "int-util.h"
 #include "hash-ops.h"
