@@ -77,12 +77,6 @@ namespace cryptonote
       FIELD(signatures)
       FIELD(prev_height)
     END_SERIALIZE()
-
-   // TODO(loki): idk exactly if I want to implement this, but need for core tests to compile. Not sure I care about serializing for core tests at all.
-   private:
-    friend class boost::serialization::access;
-    template <class Archive>
-    void serialize(Archive &ar, const unsigned int /*version*/) { }
   };
 
   struct height_to_hash
