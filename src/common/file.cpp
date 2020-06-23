@@ -35,6 +35,7 @@
 #include <cstdio>
 
 #ifdef WIN32
+#include "string_tools.h"
 #ifndef STRSAFE_NO_DEPRECATE
 #define STRSAFE_NO_DEPRECATE
 #endif
