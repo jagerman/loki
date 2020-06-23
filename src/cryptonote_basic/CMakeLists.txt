@@ -38,7 +38,6 @@ add_library(cryptonote_basic
 target_link_libraries(cryptonote_basic
   PRIVATE
     common
-    checkpoints
     device
     Boost::date_time
     Boost::program_options
