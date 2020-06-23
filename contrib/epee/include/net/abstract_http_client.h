@@ -53,9 +53,8 @@ namespace net_utils
   int get_index(const char *s, char c);
   std::string hex_to_dec_2bytes(const char *s);
   std::string convert(char val);
-  std::string conver_to_url_format(const std::string& uri);
-  std::string convert_from_url_format(const std::string& uri);
-  std::string convert_to_url_format_force_all(const std::string& uri);
+  std::string convert_to_url_format(std::string_view uri);
+  std::string convert_from_url_format(std::string_view uri);
 
 namespace http
 {

@@ -67,6 +67,7 @@
 #include "wallet_light_rpc.h"
 
 #include "common/loki_integration_test_hooks.h"
+#include "wipeable_string.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "wallet.wallet2"
@@ -1000,9 +1001,9 @@ private:
     std::string sign_tx_dump_to_str(unsigned_tx_set &exported_txs, std::vector<wallet2::pending_tx> &ptx, signed_tx_set &signed_txes);
     // load unsigned_tx_set from file. 
     bool load_unsigned_tx(const std::string &unsigned_filename, unsigned_tx_set &exported_txs) const;
-    bool parse_unsigned_tx_from_str(const std::string &unsigned_tx_st, unsigned_tx_set &exported_txs) const;
+    bool parse_unsigned_tx_from_str(std::string_view unsigned_tx_st, unsigned_tx_set &exported_txs) const;
     bool load_tx(const std::string &signed_filename, std::vector<tools::wallet2::pending_tx> &ptx, std::function<bool(const signed_tx_set&)> accept_func = NULL);
-    bool parse_tx_from_str(const std::string &signed_tx_st, std::vector<tools::wallet2::pending_tx> &ptx, std::function<bool(const signed_tx_set &)> accept_func);
+    bool parse_tx_from_str(std::string_view signed_tx_st, std::vector<tools::wallet2::pending_tx> &ptx, std::function<bool(const signed_tx_set &)> accept_func);
     std::vector<wallet2::pending_tx> create_transactions_2(std::vector<cryptonote::tx_destination_entry> dsts, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra_base, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices, cryptonote::loki_construct_tx_params &tx_params);
 
     std::vector<wallet2::pending_tx> create_transactions_all(uint64_t below, const cryptonote::account_public_address &address, bool is_subaddress, const size_t outputs, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices, cryptonote::txtype tx_type = cryptonote::txtype::standard);
@@ -1014,7 +1015,7 @@ private:
     void cold_sign_tx(const std::vector<pending_tx>& ptx_vector, signed_tx_set &exported_txs, std::vector<cryptonote::address_parse_info> const &dsts_info, std::vector<std::string> & tx_device_aux);
     uint64_t cold_key_image_sync(uint64_t &spent, uint64_t &unspent);
     void device_show_address(uint32_t account_index, uint32_t address_index, const std::optional<crypto::hash8> &payment_id);
-    bool parse_multisig_tx_from_str(std::string multisig_tx_st, multisig_tx_set &exported_txs) const;
+    bool parse_multisig_tx_from_str(std::string_view multisig_tx_st, multisig_tx_set &exported_txs) const;
     bool load_multisig_tx(cryptonote::blobdata blob, multisig_tx_set &exported_txs, std::function<bool(const multisig_tx_set&)> accept_func = NULL);
     bool load_multisig_tx_from_file(const std::string &filename, multisig_tx_set &exported_txs, std::function<bool(const multisig_tx_set&)> accept_func = NULL);
     bool sign_multisig_tx_from_file(const std::string &filename, std::vector<crypto::hash> &txids, std::function<bool(const multisig_tx_set&)> accept_func);
@@ -1202,10 +1203,10 @@ private:
      * \param  file_path      Wallet file path
      * \return                Whether path is valid format
      */
-    static bool wallet_valid_path_format(const std::string& file_path);
-    static bool parse_long_payment_id(const std::string& payment_id_str, crypto::hash& payment_id);
-    static bool parse_short_payment_id(const std::string& payment_id_str, crypto::hash8& payment_id);
-    static bool parse_payment_id(const std::string& payment_id_str, crypto::hash& payment_id);
+    static bool wallet_valid_path_format(std::string_view file_path);
+    static bool parse_long_payment_id(std::string_view payment_id_str, crypto::hash& payment_id);
+    static bool parse_short_payment_id(std::string_view payment_id_str, crypto::hash8& payment_id);
+    static bool parse_payment_id(std::string_view payment_id_str, crypto::hash& payment_id);
 
     bool always_confirm_transfers() const { return m_always_confirm_transfers; }
     void always_confirm_transfers(bool always) { m_always_confirm_transfers = always; }
@@ -1260,13 +1261,13 @@ private:
     void check_tx_key(const crypto::hash &txid, const crypto::secret_key &tx_key, const std::vector<crypto::secret_key> &additional_tx_keys, const cryptonote::account_public_address &address, uint64_t &received, bool &in_pool, uint64_t &confirmations);
     void check_tx_key_helper(const crypto::hash &txid, const crypto::key_derivation &derivation, const std::vector<crypto::key_derivation> &additional_derivations, const cryptonote::account_public_address &address, uint64_t &received, bool &in_pool, uint64_t &confirmations);
     void check_tx_key_helper(const cryptonote::transaction &tx, const crypto::key_derivation &derivation, const std::vector<crypto::key_derivation> &additional_derivations, const cryptonote::account_public_address &address, uint64_t &received) const;
-    std::string get_tx_proof(const crypto::hash &txid, const cryptonote::account_public_address &address, bool is_subaddress, const std::string &message);
-    std::string get_tx_proof(const cryptonote::transaction &tx, const crypto::secret_key &tx_key, const std::vector<crypto::secret_key> &additional_tx_keys, const cryptonote::account_public_address &address, bool is_subaddress, const std::string &message) const;
-    bool check_tx_proof(const crypto::hash &txid, const cryptonote::account_public_address &address, bool is_subaddress, const std::string &message, const std::string &sig_str, uint64_t &received, bool &in_pool, uint64_t &confirmations);
-    bool check_tx_proof(const cryptonote::transaction &tx, const cryptonote::account_public_address &address, bool is_subaddress, const std::string &message, const std::string &sig_str, uint64_t &received) const;
+    std::string get_tx_proof(const crypto::hash &txid, const cryptonote::account_public_address &address, bool is_subaddress, std::string_view message);
+    std::string get_tx_proof(const cryptonote::transaction &tx, const crypto::secret_key &tx_key, const std::vector<crypto::secret_key> &additional_tx_keys, const cryptonote::account_public_address &address, bool is_subaddress, std::string_view message) const;
+    bool check_tx_proof(const crypto::hash &txid, const cryptonote::account_public_address &address, bool is_subaddress, std::string_view message, std::string_view sig_str, uint64_t &received, bool &in_pool, uint64_t &confirmations);
+    bool check_tx_proof(const cryptonote::transaction &tx, const cryptonote::account_public_address &address, bool is_subaddress, std::string_view message, std::string_view sig_str, uint64_t &received) const;
 
-    std::string get_spend_proof(const crypto::hash &txid, const std::string &message);
-    bool check_spend_proof(const crypto::hash &txid, const std::string &message, const std::string &sig_str);
+    std::string get_spend_proof(const crypto::hash &txid, std::string_view message);
+    bool check_spend_proof(const crypto::hash &txid, std::string_view message, std::string_view sig_str);
 
     /*!
      * \brief  Generates a proof that proves the reserve of unspent funds
@@ -1275,7 +1276,7 @@ private:
      * \param  message                  Arbitrary challenge message to be signed together
      * \return                          Signature string
      */
-    std::string get_reserve_proof(const std::optional<std::pair<uint32_t, uint64_t>> &account_minreserve, const std::string &message);
+    std::string get_reserve_proof(const std::optional<std::pair<uint32_t, uint64_t>> &account_minreserve, std::string message);
     /*!
      * \brief  Verifies a proof of reserve
      * \param  address                  The signer's address
@@ -1285,7 +1286,7 @@ private:
      * \param  spent                    [OUT] the sum of spent funds included in the signature
      * \return                          true if the signature verifies correctly
      */
-    bool check_reserve_proof(const cryptonote::account_public_address &address, const std::string &message, const std::string_view sig_str, uint64_t &total, uint64_t &spent);
+    bool check_reserve_proof(const cryptonote::account_public_address &address, std::string_view message, std::string_view sig_str, uint64_t &total, uint64_t &spent);
 
    /*!
     * \brief GUI Address book get/store
@@ -1349,8 +1350,8 @@ private:
      */
     void set_account_tag_description(const std::string& tag, const std::string& description);
 
-    std::string sign(const std::string &data, cryptonote::subaddress_index index = {0, 0}) const;
-    bool verify(const std::string &data, const cryptonote::account_public_address &address, const std::string &signature) const;
+    std::string sign(std::string_view data, cryptonote::subaddress_index index = {0, 0}) const;
+    bool verify(std::string_view data, const cryptonote::account_public_address &address, std::string_view signature) const;
 
     /*!
      * \brief sign_multisig_participant signs given message with the multisig public signer key
@@ -1358,7 +1359,7 @@ private:
      * \throws                          if wallet is not multisig
      * \return                          signature
      */
-    std::string sign_multisig_participant(const std::string& data) const;
+    std::string sign_multisig_participant(std::string_view data) const;
     /*!
      * \brief verify_with_public_key verifies message was signed with given public key
      * \param data                   message
@@ -1366,13 +1367,13 @@ private:
      * \param signature              signature of the message
      * \return                       true if the signature is correct
      */
-    bool verify_with_public_key(const std::string &data, const crypto::public_key &public_key, const std::string &signature) const;
+    bool verify_with_public_key(std::string_view data, const crypto::public_key &public_key, std::string_view signature) const;
 
     // Import/Export wallet data
     std::pair<size_t, std::vector<tools::wallet2::transfer_details>> export_outputs(bool all = false) const;
     std::string export_outputs_to_str(bool all = false) const;
     size_t import_outputs(const std::pair<size_t, std::vector<tools::wallet2::transfer_details>> &outputs);
-    size_t import_outputs_from_str(const std::string &outputs_st);
+    size_t import_outputs_from_str(std::string outputs_st);
     payment_container export_payments() const;
     void import_payments(const payment_container &payments);
     void import_payments_out(const std::list<std::pair<crypto::hash,wallet2::confirmed_transfer_details>> &confirmed_payments);
@@ -1415,16 +1416,14 @@ private:
 
     void remove_obsolete_pool_txs(const std::vector<crypto::hash> &tx_hashes);
 
-    std::string encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated = true) const;
+    std::string encrypt(std::string_view plaintext, const crypto::secret_key &skey, bool authenticated = true) const;
     std::string encrypt(const epee::span<char> &span, const crypto::secret_key &skey, bool authenticated = true) const;
-    std::string encrypt(const std::string &plaintext, const crypto::secret_key &skey, bool authenticated = true) const;
-    std::string encrypt(const epee::wipeable_string &plaintext, const crypto::secret_key &skey, bool authenticated = true) const;
-    std::string encrypt_with_view_secret_key(const std::string &plaintext, bool authenticated = true) const;
-    template<typename T=std::string> T decrypt(const std::string &ciphertext, const crypto::secret_key &skey, bool authenticated = true) const;
-    std::string decrypt_with_view_secret_key(const std::string &ciphertext, bool authenticated = true) const;
+    std::string encrypt_with_view_secret_key(std::string_view plaintext, bool authenticated = true) const;
+    epee::wipeable_string decrypt(std::string_view ciphertext, const crypto::secret_key &skey, bool authenticated = true) const;
+    epee::wipeable_string decrypt_with_view_secret_key(std::string_view ciphertext, bool authenticated = true) const;
 
     std::string make_uri(const std::string &address, const std::string &payment_id, uint64_t amount, const std::string &tx_description, const std::string &recipient_name, std::string &error) const;
-    bool parse_uri(const std::string &uri, std::string &address, std::string &payment_id, uint64_t &amount, std::string &tx_description, std::string &recipient_name, std::vector<std::string> &unknown_parameters, std::string &error);
+    bool parse_uri(std::string_view uri, std::string &address, std::string &payment_id, uint64_t &amount, std::string &tx_description, std::string &recipient_name, std::vector<std::string> &unknown_parameters, std::string &error);
 
     uint64_t get_blockchain_height_by_date(uint16_t year, uint8_t month, uint8_t day);    // 1<=month<=12, 1<=day<=31
 
@@ -1894,7 +1893,7 @@ private:
   // TODO(loki): The better question is if anyone is ever going to try use
   // register service node funded by multiple subaddresses. This is unlikely.
   constexpr std::array<const char* const, 6> allowed_priority_strings = {{"default", "unimportant", "normal", "elevated", "priority", "blink"}};
-  bool parse_subaddress_indices(const std::string& arg, std::set<uint32_t>& subaddr_indices, std::string *err_msg = nullptr);
+  bool parse_subaddress_indices(std::string_view arg, std::set<uint32_t>& subaddr_indices, std::string *err_msg = nullptr);
   bool parse_priority          (const std::string& arg, uint32_t& priority);
 
 }

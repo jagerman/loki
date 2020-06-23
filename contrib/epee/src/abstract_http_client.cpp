@@ -78,7 +78,7 @@ namespace net_utils
     return  csRet;
   }
   //----------------------------------------------------------------------------------------------------
-  std::string conver_to_url_format(const std::string& uri)
+  std::string convert_to_url_format(std::string_view uri)
   {
 
     std::string result;
@@ -95,7 +95,7 @@ namespace net_utils
     return result;
   }
   //----------------------------------------------------------------------------------------------------
-  std::string convert_from_url_format(const std::string& uri)
+  std::string convert_from_url_format(std::string_view uri)
   {
 
     std::string result;
@@ -104,7 +104,7 @@ namespace net_utils
     {
       if(uri[i] == '%' && i + 2 < uri.size())
       {
-        result += hex_to_dec_2bytes(uri.c_str() + i + 1);
+        result += hex_to_dec_2bytes(uri.data() + i + 1);
         i += 2;
       }
       else
@@ -112,17 +112,6 @@ namespace net_utils
 
     }
 
-    return result;
-  }
-  //----------------------------------------------------------------------------------------------------
-  std::string convert_to_url_format_force_all(const std::string& uri)
-  {
-    std::string result;
-
-    for(size_t i = 0; i!= uri.size(); i++)
-    {
-        result += convert(uri[i]);
-    }
     return result;
   }
 

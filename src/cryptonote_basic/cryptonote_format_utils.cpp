@@ -376,39 +376,68 @@ namespace cryptonote
     return total;
   }
   //---------------------------------------------------------------
-  bool parse_amount(uint64_t& amount, const std::string& str_amount_)
+  bool parse_amount(uint64_t& amount, std::string_view str_amount)
   {
-    std::string str_amount = str_amount_;
-    boost::algorithm::trim(str_amount);
+    tools::trim(str_amount);
 
-    size_t point_index = str_amount.find_first_of('.');
-    size_t fraction_size;
-    if (std::string::npos != point_index)
-    {
-      fraction_size = str_amount.size() - point_index - 1;
-      while (default_decimal_point < fraction_size && '0' == str_amount.back())
-      {
-        str_amount.erase(str_amount.size() - 1, 1);
-        --fraction_size;
-      }
-      if (default_decimal_point < fraction_size)
+    auto parts = tools::split(str_amount, "."sv);
+    if (parts.size() > 2)
+      return false; // 123.456.789 no thanks.
+
+    if (parts.size() == 2 && parts[1].empty())
+      parts.pop_back(); // allow "123." (treat it as as "123")
+
+    if (parts[0].find_first_not_of("0123456789"sv) != std::string::npos)
+      return false; // whole part contains non-digit
+
+    const unsigned int decimal_point = default_decimal_point; // to avoid needing a bunch of atomic reads below
+
+    if (parts[0].empty()) {
+      // Only allow an empty whole number part if there is a fractional part.
+      if (parts.size() == 1)
         return false;
-      str_amount.erase(point_index, 1);
+      amount = 0;
     }
     else
     {
-      fraction_size = 0;
+      if (!tools::parse_int(parts[0], amount))
+        return false;
+
+      // Scale up the number (e.g. 12 from "12.45") to atomic units.
+      //
+      // TODO: get rid of the user-configurable default_decimal_point nonsense and just multiply
+      // this value by the `COIN` constant.
+      for (size_t i = 0; i < decimal_point; i++)
+        amount *= 10;
     }
 
-    if (str_amount.empty())
+    if (parts.size() == 1)
+      return true;
+
+    if (parts[1].find_first_not_of("0123456789"sv) != std::string::npos)
+      return false; // fractional part contains non-digit
+
+    // If too long, but with insignificant 0's, trim them off
+    while (parts[1].size() > decimal_point && parts[1].back() == '0')
+      parts[1].remove_suffix(1);
+
+    if (parts[1].size() > decimal_point)
+      return false; // fractional part has too many significant digits
+
+    uint64_t fractional;
+    if (!tools::parse_int(parts[1], fractional))
       return false;
 
-    if (fraction_size < default_decimal_point)
-    {
-      str_amount.append(default_decimal_point - fraction_size, '0');
-    }
+    // Scale up the value if it wasn't a full fractional value, e.g. if we have "10.45" then we
+    // need to convert the 45 we just parsed to 450'000'000.
+    for (size_t i = parts[1].size(); i < decimal_point; i++)
+      fractional *= 10;
 
-    return epee::string_tools::get_xtype_from_string(amount, str_amount);
+    if (fractional > std::numeric_limits<uint64_t>::max() - amount)
+      return false; // would overflow
+
+    amount += fractional;
+    return true;
   }
   //---------------------------------------------------------------
   uint64_t get_transaction_weight(const transaction &tx, size_t blob_size)

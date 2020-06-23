@@ -2541,7 +2541,7 @@ bool simple_wallet::set_inactivity_lock_timeout(const std::vector<std::string> &
   if (pwd_container)
   {
     uint32_t r;
-    if (epee::string_tools::get_xtype_from_string(r, args[1]))
+    if (tools::parse_int(args[1], r))
     {
       m_wallet->inactivity_lock_timeout(r);
       m_wallet->rewrite(m_wallet_file, pwd_container->password());
@@ -3602,7 +3602,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
           crypto::secret_key key;
           crypto::cn_slow_hash(seed_pass.data(), seed_pass.size(), (crypto::hash&)key, crypto::cn_slow_hash_type::heavy_v1);
           sc_reduce32((unsigned char*)key.data);
-          multisig_keys = m_wallet->decrypt<epee::wipeable_string>(std::string(multisig_keys.data(), multisig_keys.size()), key, true);
+          multisig_keys = m_wallet->decrypt(std::string(multisig_keys.data(), multisig_keys.size()), key, true);
         }
         else
           m_recovery_key = cryptonote::decrypt_key(m_recovery_key, seed_pass);

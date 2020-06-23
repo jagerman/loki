@@ -203,7 +203,7 @@ namespace cryptonote
   uint64_t get_outs_money_amount(const transaction& tx);
   bool check_inputs_types_supported(const transaction& tx);
   bool check_outs_valid(const transaction& tx);
-  bool parse_amount(uint64_t& amount, const std::string& str_amount);
+  bool parse_amount(uint64_t& amount, std::string_view str_amount);
   uint64_t get_transaction_weight(const transaction &tx);
   uint64_t get_transaction_weight(const transaction &tx, size_t blob_size);
   uint64_t get_pruned_transaction_weight(const transaction &tx);
