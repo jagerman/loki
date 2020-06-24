@@ -6006,8 +6006,8 @@ void wallet2::store_to(const std::string &path, const epee::wipeable_string &pas
     bool success = false;
     try {
       serialization::binary_string_archiver oar;
-      serialization::serialize(oar, cache_file_data.get());
-      success = save_to_file(new_file, oss.str());
+      serialization::serialize(oar, *cache_file_data);
+      success = save_to_file(new_file, oar.str());
     } catch (...) {}
     THROW_WALLET_EXCEPTION_IF(!success, error::file_save_error, new_file);
 #else
