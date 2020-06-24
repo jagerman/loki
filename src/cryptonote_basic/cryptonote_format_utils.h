@@ -313,4 +313,13 @@ namespace cryptonote
   CHECK_AND_ASSERT_MES(std::holds_alternative<specific_type>(variant_var), fail_return_val, \
           "wrong variant type: " << tools::type_name(tools::variant_type(variant_var)) << ", expected " << tools::type_name<specific_type>()); \
   auto& variable_name = std::get<specific_type>(variant_var);
+
+  // Provide an inline header implementation of this function because device_default needs it (but
+  // it doesn't link to us, rather we link to it).
+  inline void get_transaction_prefix_hash(const transaction_prefix& tx, crypto::hash& h)
+  {
+    std::string str = serialization::dump_binary(const_cast<transaction_prefix&>(tx));
+    crypto::cn_fast_hash(str.data(), str.size(), h);
+  }
+
 }

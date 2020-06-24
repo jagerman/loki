@@ -123,12 +123,6 @@ namespace cryptonote
     return h;
   }
   
-  //---------------------------------------------------------------  
-  void get_transaction_prefix_hash(const transaction_prefix& tx, crypto::hash& h)
-  {
-    std::string str = serialization::dump_binary(const_cast<transaction_prefix&>(tx));
-    crypto::cn_fast_hash(str.data(), str.size(), h);
-  }
   //---------------------------------------------------------------
   crypto::hash get_transaction_prefix_hash(const transaction_prefix& tx)
   {
