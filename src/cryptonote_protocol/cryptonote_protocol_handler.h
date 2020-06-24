@@ -70,6 +70,8 @@ namespace cryptonote
 
     t_cryptonote_protocol_handler(t_core& rcore, bool offline = false);
 
+    virtual ~t_cryptonote_protocol_handler() = default;
+
     BEGIN_INVOKE_MAP2(cryptonote_protocol_handler)
       HANDLE_NOTIFY_T2(NOTIFY_NEW_TRANSACTIONS, handle_notify_new_transactions)
       HANDLE_NOTIFY_T2(NOTIFY_REQUEST_GET_BLOCKS, handle_request_get_blocks)
