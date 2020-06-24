@@ -174,7 +174,7 @@ local static_build_deps='autoconf automake make qttools5-dev file libtool gperf 
 [
     // Various debian builds
     debian_pipeline("Debian sid (w/ tests) (amd64)", "debian:sid", lto=true, run_tests=true),
-    debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug', lto=true),
+    debian_pipeline("Debian sid/Debug (amd64)", "debian:sid", build_type='Debug'),
     debian_pipeline("Debian sid/clang-10 (amd64)", "debian:sid", deps='clang-10 '+default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=clang-10 -DCMAKE_CXX_COMPILER=clang++-10 ', lto=true),
     debian_pipeline("Debian sid/gcc-10 (amd64)", "debian:sid", deps='g++-10 '+default_deps_base,
