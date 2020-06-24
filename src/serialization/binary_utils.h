@@ -44,13 +44,12 @@ namespace serialization {
 ///
 /// Note that the `view` must be kept valid for the lifetime of the buffer.
 ///
-/// Also note that seeking on the istream (for example to seek to the end to determine the length)
-/// is unreliable -- libc++, in particular, fails.  (We do not rely on that here).
+/// Note that this very limited implementation does not support seeking at all.
 ///
-class one_shot_read_buffer : public std::stringbuf {
+class one_shot_read_buffer : public std::streambuf {
 public:
     /// Construct from string_view
-    explicit one_shot_read_buffer(std::string_view in) : std::stringbuf(std::ios::in) {
+    explicit one_shot_read_buffer(std::string_view in) {
         // We won't actually modify it, but setg needs non-const
         auto *s = const_cast<char *>(in.data());
         setg(s, s, s+in.size());
@@ -58,6 +57,15 @@ public:
 
     /// Explicitly disallow construction with std::string temporary
     explicit one_shot_read_buffer(const std::string &&s) = delete;
+
+    /// seekoff implementation that can be used *only* to obtain the current input position (i.e.
+    /// using off=0, dir=cur, and which=in).  Anything else returns -1.
+    pos_type seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which) override {
+        if ((which & (std::ios_base::in | std::ios_base::out)) != std::ios_base::in
+                || dir != std::ios_base::cur || off != 0)
+            return pos_type(-1);
+        return gptr() - eback();
+    }
 };
 
 
