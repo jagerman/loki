@@ -406,8 +406,12 @@ build_external(hidapi
 )
 set(HIDAPI_FOUND TRUE)
 add_static_target(hidapi_libusb hidapi_external ${hidapi_libusb_lib})
+set(hidapi_links "libusb_vendor;libudev")
+if(WIN32)
+  list(APPEND hidapi_links setupapi)
+endif()
 set_target_properties(hidapi_libusb PROPERTIES
-    INTERFACE_LINK_LIBRARIES "libusb_vendor;libudev"
+    INTERFACE_LINK_LIBRARIES "${hidapi_links}"
     INTERFACE_COMPILE_DEFINITIONS HAVE_HIDAPI)
 
 
