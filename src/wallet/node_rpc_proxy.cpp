@@ -328,7 +328,7 @@ std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> NodeRPCProxy::g
 {
   std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> result{};
 
-  uint64_t height;
+  uint64_t height{0};
   failed = get_height(height);
   if (failed)
     return result;
