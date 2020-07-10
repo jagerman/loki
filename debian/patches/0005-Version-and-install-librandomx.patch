@@ -7,7 +7,7 @@ Subject: Version and install librandomx
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index b82cb9a..1b70a80 100644
+index 0e15506..4a85af8 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
 @@ -123,7 +123,12 @@ add_subdirectory(easylogging++)
