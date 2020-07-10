@@ -1,3 +1,9 @@
+loki (7.1.9-2~deb9) stretch; urgency=medium
+
+  * Fix AES compilation mode (to fix CN-pico syncing)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Thu, 09 Jul 2020 23:02:15 -0300
+
 loki (7.1.9-1~deb9) stretch; urgency=medium
 
   * Add grace to required difficulty - fix 526484
