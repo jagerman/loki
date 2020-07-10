@@ -81,7 +81,7 @@ index 035b24b..357984d 100644
 +    COMPONENT development
 +    FILES_MATCHING PATTERN "*.h" PATTERN "*.inl")
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 9f4aa92..0ad50fa 100644
+index 55c3cc5..6c56c1b 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
 @@ -120,3 +120,9 @@ endif()
