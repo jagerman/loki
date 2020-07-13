@@ -1,3 +1,39 @@
+loki (7.1.10-1~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
+  * Fix signed-unsigned warning
+
+  [ Doyle ]
+  * LNS: Commit to db more conservatively instead of every block
+  * LNS: Switch to WAL mode + synchronous
+  * LNS: Respect read-only flag
+  * recalculate_difficulty: Batch work, avoid LMDB paging error (#1150)
+  * LNS: Commit the transaction on exit, don't ignore (#1154)
+
+  [ Jason Rhinelander ]
+  * Boost 1.73 compatibility fixes
+  * Make false positive logical-op warning non-fatal
+  * Work around gcc-5 internal compiler error
+  * LNS: avoid segfault during destruction in unit_tests
+  * Add another missing boost::placeholders
+  * Add missing deps to freebsd one-liner
+  * Update LokiMQ with bsd build fix
+
+  [ Noel O'Donnell ]
+  * Define _WANT_SEMUN for FreeBSD to ensure `union semun` is defined
+
+  [ Jason Rhinelander ]
+  * Link blocks to extra interface
+
+  [ Doyle ]
+  * The portable implementation doesn't use the light parameter causing inconsistent results. I desk checked against the ARM64 implementation that does NOT used the +crypto extensions, meaning it is emulated in software- That implementation is essentially the same as the portable implementation, some minor differences in the pre-amble but correctly uses the light flag.
+
+  [ Jason Rhinelander ]
+  * AES redux for cn-pico & cn-heavy
+  * Fix (and rename) override check
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 13 Jul 2020 00:39:29 -0300
+
 loki (7.1.9-2~deb10) buster; urgency=medium
 
   * Fix AES compilation mode (to fix CN-pico syncing)
