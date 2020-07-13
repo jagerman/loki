@@ -863,7 +863,7 @@ namespace cryptonote
       m_checkpoints_path = checkpoint_json_hashfile_fullpath.string();
     }
 
-    sqlite3 *lns_db = lns::init_loki_name_system(lns_db_file_path.c_str());
+    sqlite3 *lns_db = lns::init_loki_name_system(lns_db_file_path.c_str(), db->is_read_only());
     if (!lns_db) return false;
 
     const difficulty_type fixed_difficulty = command_line::get_arg(vm, arg_fixed_difficulty);
@@ -1714,7 +1714,7 @@ namespace cryptonote
     std::vector<std::pair<crypto::hash, cryptonote::blobdata>> txs;
     if (m_mempool.get_relayable_transactions(txs) && !txs.empty())
     {
-      cryptonote_connection_context fake_context{};
+      cryptonote_connection_context fake_context;
       tx_verification_context tvc{};
       NOTIFY_NEW_TRANSACTIONS::request r;
       for (auto it = txs.begin(); it != txs.end(); ++it)
