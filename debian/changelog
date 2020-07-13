@@ -1,6 +1,16 @@
 loki (7.1.10-1~deb10) buster; urgency=medium
 
   [ Jason Rhinelander ]
+  * remove applied patches
+
+  [ Doyle ]
+  * Increment version patch to 7.1.10 (#1197)
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 13 Jul 2020 13:14:37 -0300
+
+loki (7.1.10-1~deb10) buster; urgency=medium
+
+  [ Jason Rhinelander ]
   * Fix signed-unsigned warning
 
   [ Doyle ]
