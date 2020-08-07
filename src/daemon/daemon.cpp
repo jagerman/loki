@@ -179,7 +179,7 @@ daemon::~daemon()
   MGINFO_BLUE("Deinitialization complete");
 }
 
-void daemon::init_options(boost::program_options::options_description& option_spec)
+void daemon::init_options(boost::program_options::options_description& option_spec, boost::program_options::options_description& hidden)
 {
   static bool called = false;
   if (called)
@@ -188,7 +188,7 @@ void daemon::init_options(boost::program_options::options_description& option_sp
     called = true;
   cryptonote::core::init_options(option_spec);
   node_server::init_options(option_spec);
-  cryptonote::rpc::core_rpc_server::init_options(option_spec);
+  cryptonote::rpc::core_rpc_server::init_options(option_spec, hidden);
   cryptonote::rpc::http_server::init_options(option_spec);
   cryptonote::rpc::init_lmq_options(option_spec);
   quorumnet::init_core_callbacks();

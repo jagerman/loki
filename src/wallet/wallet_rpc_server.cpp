@@ -3326,7 +3326,7 @@ int main(int argc, char **argv)
   command_line::add_arg(desc_params, arg_rpc_bind_port);
   command_line::add_arg(desc_params, arg_disable_rpc_login);
   command_line::add_arg(desc_params, arg_restricted);
-  cryptonote::rpc_args::init_options(desc_params);
+  cryptonote::rpc_args::init_options(desc_params, hidden_params);
   command_line::add_arg(desc_params, arg_wallet_file);
   command_line::add_arg(desc_params, arg_from_json);
   command_line::add_arg(desc_params, arg_wallet_dir);

@@ -54,7 +54,7 @@ namespace cryptonote
 
   const char* rpc_args::tr(const char* str) { return i18n_translate(str, "cryptonote::rpc_args"); }
 
-  void rpc_args::init_options(boost::program_options::options_description& desc)
+  void rpc_args::init_options(boost::program_options::options_description& desc, boost::program_options::options_description& hidden)
   {
     const descriptors arg{};
     command_line::add_arg(desc, arg.rpc_bind_ip);
@@ -64,6 +64,8 @@ namespace cryptonote
     command_line::add_arg(desc, arg.rpc_login);
     command_line::add_arg(desc, arg.confirm_external_bind);
     command_line::add_arg(desc, arg.rpc_access_control_origins);
+    command_line::add_arg(hidden, arg.zmq_rpc_bind_ip);
+    command_line::add_arg(hidden, arg.zmq_rpc_bind_port);
   }
 
   // Checks an IP address for validity; throws on problem.

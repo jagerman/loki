@@ -63,7 +63,7 @@ namespace cryptonote
     };
 
     static const char* tr(const char* str);
-    static void init_options(boost::program_options::options_description& desc);
+    static void init_options(boost::program_options::options_description& desc, boost::program_options::options_description& hidden);
 
     //! \return Arguments specified by user.  Throws on error.
     static rpc_args process(const boost::program_options::variables_map& vm);

@@ -172,7 +172,7 @@ namespace cryptonote { namespace rpc {
       , nodetool::node_server<cryptonote::t_cryptonote_protocol_handler<cryptonote::core> >& p2p
       );
 
-    static void init_options(boost::program_options::options_description& desc);
+    static void init_options(boost::program_options::options_description& desc, boost::program_options::options_description& hidden);
     void init(const boost::program_options::variables_map& vm);
 
     /// Returns a reference to the owning cryptonote core object

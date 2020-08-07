@@ -91,7 +91,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(core_settings, daemon_args::arg_max_concurrency);
 
       daemonizer::init_options(hidden_options, visible_options);
-      daemonize::daemon::init_options(core_settings);
+      daemonize::daemon::init_options(core_settings, hidden_options);
 
       // Hidden options
       command_line::add_arg(hidden_options, daemon_args::arg_command);

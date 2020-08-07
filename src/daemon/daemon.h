@@ -50,7 +50,7 @@ namespace daemonize
 
 class daemon {
 public:
-  static void init_options(boost::program_options::options_description & option_spec);
+  static void init_options(boost::program_options::options_description& option_spec, boost::program_options::options_description& hidden);
 
   daemon(boost::program_options::variables_map vm);
   ~daemon();

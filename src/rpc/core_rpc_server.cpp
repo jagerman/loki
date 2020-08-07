@@ -198,11 +198,11 @@ namespace cryptonote { namespace rpc {
     };
 
   //-----------------------------------------------------------------------------------
-  void core_rpc_server::init_options(boost::program_options::options_description& desc)
+  void core_rpc_server::init_options(boost::program_options::options_description& desc, boost::program_options::options_description& hidden)
   {
     command_line::add_arg(desc, arg_bootstrap_daemon_address);
     command_line::add_arg(desc, arg_bootstrap_daemon_login);
-    cryptonote::rpc_args::init_options(desc);
+    cryptonote::rpc_args::init_options(desc, hidden);
   }
   //------------------------------------------------------------------------------------------------------------------------------
   core_rpc_server::core_rpc_server(
