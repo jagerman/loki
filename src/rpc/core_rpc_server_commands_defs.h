@@ -315,7 +315,8 @@ namespace rpc {
 
       std::optional<std::string> pubkey;            // The tx extra public key
       std::optional<uint64_t> burn_amount;          // The amount of LOKI that this transaction burns
-      std::optional<std::string> extra_nonce;       // Optional extra nonce value (in hex)
+      std::optional<std::string> extra_nonce;       // Optional extra nonce value (in hex); will be empty if nonce is recognized as a payment id
+      std::optional<std::string> payment_id;        // The payment ID, if present. This is either a 16 hex character (8-byte) encrypted payment id, or a 64 hex character (32-byte) deprecated, unencrypted payment ID
       std::optional<uint32_t> mm_depth;             // (Merge-mining) the merge-mined depth
       std::optional<std::string> mm_root;           // (Merge-mining) the merge mining merkle root hash
       std::vector<std::string> additional_pubkeys;  // Additional public keys

@@ -704,7 +704,13 @@ namespace cryptonote { namespace rpc {
       const network_type nettype;
 
       void operator()(const tx_extra_pub_key& x) { entry.pubkey = tools::type_to_hex(x.pub_key); }
-      void operator()(const tx_extra_nonce& x) { entry.extra_nonce = lokimq::to_hex(x.nonce); }
+      void operator()(const tx_extra_nonce& x) {
+        if ((x.nonce.size() == sizeof(crypto::hash) + 1 && x.nonce[0] == TX_EXTRA_NONCE_PAYMENT_ID)
+            || (x.nonce.size() == sizeof(crypto::hash8) + 1 && x.nonce[0] == TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID))
+          entry.payment_id = lokimq::to_hex(x.nonce.begin() + 1, x.nonce.end());
+        else
+          entry.extra_nonce = lokimq::to_hex(x.nonce);
+      }
       void operator()(const tx_extra_merge_mining_tag& x) { entry.mm_depth = x.depth; entry.mm_root = tools::type_to_hex(x.merkle_root); }
       void operator()(const tx_extra_additional_pub_keys& x) { entry.additional_pubkeys = hexify(x.data); }
       void operator()(const tx_extra_burn& x) { entry.burn_amount = x.amount; }
