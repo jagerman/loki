@@ -52,8 +52,6 @@
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "cn"
 
-// #define ENABLE_HASH_CASH_INTEGRITY_CHECK
-
 using namespace crypto;
 
 static std::atomic<unsigned int> default_decimal_point(CRYPTONOTE_DISPLAY_DECIMAL_POINT);
@@ -1378,9 +1376,6 @@ namespace cryptonote
   {
     if (t.is_hash_valid())
     {
-#ifdef ENABLE_HASH_CASH_INTEGRITY_CHECK
-      CHECK_AND_ASSERT_THROW_MES(!calculate_transaction_hash(t, res, blob_size) || t.hash == res, "tx hash cash integrity failure");
-#endif
       res = t.hash;
       if (blob_size)
       {
@@ -1432,9 +1427,6 @@ namespace cryptonote
   {
     if (b.is_hash_valid())
     {
-#ifdef ENABLE_HASH_CASH_INTEGRITY_CHECK
-      CHECK_AND_ASSERT_THROW_MES(!calculate_block_hash(b, res) || b.hash == res, "block hash cash integrity failure");
-#endif
       res = b.hash;
       ++block_hashes_cached_count;
       return true;

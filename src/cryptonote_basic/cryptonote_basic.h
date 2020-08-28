@@ -262,7 +262,7 @@ namespace cryptonote
   class transaction: public transaction_prefix
   {
   private:
-    // hash cash
+    // hash cache
     mutable std::atomic<bool> hash_valid;
     mutable std::atomic<bool> blob_size_valid;
 
@@ -270,7 +270,7 @@ namespace cryptonote
     std::vector<std::vector<crypto::signature> > signatures; //count signatures  always the same as inputs count
     rct::rctSig rct_signatures;
 
-    // hash cash
+    // hash cache
     mutable crypto::hash hash;
     mutable size_t blob_size;
 
@@ -473,7 +473,7 @@ namespace cryptonote
   struct block: public block_header
   {
   private:
-    // hash cash
+    // hash cache
     mutable std::atomic<bool> hash_valid{false};
     void copy_hash(const block &b) { bool v = b.is_hash_valid(); hash = b.hash; set_hash_valid(v); }
 
@@ -490,7 +490,7 @@ namespace cryptonote
     transaction miner_tx;
     std::vector<crypto::hash> tx_hashes;
 
-    // hash cash
+    // hash cache
     mutable crypto::hash hash;
     std::vector<service_nodes::quorum_signature> signatures;
 
