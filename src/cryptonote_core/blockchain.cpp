@@ -947,6 +947,17 @@ bool Blockchain::get_block_by_hash(const crypto::hash &h, block &blk, bool *orph
   return false;
 }
 //------------------------------------------------------------------
+bool Blockchain::get_block_by_height(uint64_t height, block &blk) const
+{
+  try
+  {
+    blk = m_db->get_block_from_height(height);
+    return true;
+  }
+  catch (const BLOCK_DNE& e) { }
+  return false;
+}
+//------------------------------------------------------------------
 // This function aggregates the cumulative difficulties and timestamps of the
 // last DIFFICULTY_BLOCKS_COUNT blocks and passes them to next_difficulty,
 // returning the result of that call.  Ignores the genesis block, and can use

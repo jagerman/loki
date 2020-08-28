@@ -544,6 +544,13 @@ namespace cryptonote
      bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
      /**
+      * @copydoc Blockchain::get_block_by_height
+      *
+      * @note see Blockchain::get_block_by_height
+      */
+     bool get_block_by_height(uint64_t height, block &blk) const;
+
+     /**
       * @copydoc Blockchain::get_alternative_blocks
       *
       * @note see Blockchain::get_alternative_blocks(std::vector<block>&) const

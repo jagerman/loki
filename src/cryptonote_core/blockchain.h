@@ -236,6 +236,16 @@ namespace cryptonote
     bool get_block_by_hash(const crypto::hash &h, block &blk, bool *orphan = NULL) const;
 
     /**
+     * @brief gets the block at the given height
+     *
+     * @param h the hash to look for
+     * @param blk return-by-reference variable to put result block in
+     *
+     * @return true if the block was found, else false
+     */
+    bool get_block_by_height(uint64_t height, block &blk) const;
+
+    /**
      * @brief performs some preprocessing on a group of incoming blocks to speed up verification
      *
      * @param blocks_entry a list of incoming blocks

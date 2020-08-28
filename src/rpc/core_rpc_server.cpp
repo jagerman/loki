@@ -1898,7 +1898,7 @@ namespace cryptonote { namespace rpc {
     crypto::hash last_block_hash;
     m_core.get_blockchain_top(last_block_height, last_block_hash);
     block last_block;
-    bool have_last_block = m_core.get_block_by_hash(last_block_hash, last_block);
+    bool have_last_block = m_core.get_block_by_height(last_block_height, last_block);
     if (!have_last_block)
       throw rpc_error{ERROR_INTERNAL, "Internal error: can't get last block."};
     fill_block_header_response(last_block, false, last_block_height, last_block_hash, res.block_header, req.fill_pow_hash && context.admin, req.get_tx_hashes);
@@ -1954,19 +1954,18 @@ namespace cryptonote { namespace rpc {
       throw rpc_error{ERROR_TOO_BIG_HEIGHT, "Invalid start/end heights."};
     for (uint64_t h = req.start_height; h <= req.end_height; ++h)
     {
-      crypto::hash block_hash = m_core.get_block_id_by_height(h);
       block blk;
-      bool have_block = m_core.get_block_by_hash(block_hash, blk);
+      bool have_block = m_core.get_block_by_height(h, blk);
       if (!have_block)
         throw rpc_error{ERROR_INTERNAL, 
-          "Internal error: can't get block by height. Height = " + std::to_string(h) + ". Hash = " + epee::string_tools::pod_to_hex(block_hash) + '.'};
+          "Internal error: can't get block by height. Height = " + std::to_string(h) + "."};
       if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
         throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
       uint64_t block_height = std::get<txin_gen>(blk.miner_tx.vin.front()).height;
       if (block_height != h)
         throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong height"};
       res.headers.push_back(block_header_response());
-      fill_block_header_response(blk, false, block_height, block_hash, res.headers.back(), req.fill_pow_hash && context.admin, req.get_tx_hashes);
+      fill_block_header_response(blk, false, block_height, get_block_hash(blk), res.headers.back(), req.fill_pow_hash && context.admin, req.get_tx_hashes);
     }
     res.status = STATUS_OK;
     return res;
@@ -1983,12 +1982,11 @@ namespace cryptonote { namespace rpc {
     if(m_core.get_current_blockchain_height() <= req.height)
       throw rpc_error{ERROR_TOO_BIG_HEIGHT,
         "Requested block height: " + std::to_string(req.height) + " greater than current top block height: " +  std::to_string(m_core.get_current_blockchain_height() - 1)};
-    crypto::hash block_hash = m_core.get_block_id_by_height(req.height);
     block blk;
-    bool have_block = m_core.get_block_by_hash(block_hash, blk);
+    bool have_block = m_core.get_block_by_height(req.height, blk);
     if (!have_block)
       throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by height. Height = " + std::to_string(req.height) + '.'};
-    fill_block_header_response(blk, false, req.height, block_hash, res.block_header, req.fill_pow_hash && context.admin, req.get_tx_hashes);
+    fill_block_header_response(blk, false, req.height, get_block_hash(blk), res.block_header, req.fill_pow_hash && context.admin, req.get_tx_hashes);
     res.status = STATUS_OK;
     return res;
   }
@@ -2001,33 +1999,35 @@ namespace cryptonote { namespace rpc {
     if (use_bootstrap_daemon_if_necessary<GET_BLOCK>(req, res))
       return res;
 
+    block blk;
+    uint64_t block_height;
+    bool orphan = false;
     crypto::hash block_hash;
     if (!req.hash.empty())
     {
       bool hash_parsed = parse_hash256(req.hash, block_hash);
       if(!hash_parsed)
         throw rpc_error{ERROR_WRONG_PARAM, "Failed to parse hex representation of block hash. Hex = " + req.hash + '.'};
+      if (!m_core.get_block_by_hash(block_hash, blk, &orphan))
+        throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by hash. Hash = " + req.hash + '.'};
+      if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
+        throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
+      block_height = std::get<txin_gen>(blk.miner_tx.vin.front()).height;
     }
     else
     {
-      if(m_core.get_current_blockchain_height() <= req.height)
-        throw rpc_error{ERROR_TOO_BIG_HEIGHT, std::string("Requested block height: ") + std::to_string(req.height) + " greater than current top block height: " +  std::to_string(m_core.get_current_blockchain_height() - 1)};
-      block_hash = m_core.get_block_id_by_height(req.height);
+      if (auto curr_height = m_core.get_current_blockchain_height(); req.height >= curr_height)
+        throw rpc_error{ERROR_TOO_BIG_HEIGHT, std::string("Requested block height: ") + std::to_string(req.height) + " greater than current top block height: " +  std::to_string(curr_height - 1)};
+      if (!m_core.get_block_by_height(req.height, blk))
+        throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by height. Height = " + std::to_string(req.height) + '.'};
+      block_hash = get_block_hash(blk);
+      block_height = req.height;
     }
-    block blk;
-    bool orphan = false;
-    bool have_block = m_core.get_block_by_hash(block_hash, blk, &orphan);
-    if (!have_block)
-      throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by hash. Hash = " + req.hash + '.'};
-    if (blk.miner_tx.vin.size() != 1 || !std::holds_alternative<txin_gen>(blk.miner_tx.vin.front()))
-      throw rpc_error{ERROR_INTERNAL, "Internal error: coinbase transaction in the block has the wrong type"};
-    uint64_t block_height = std::get<txin_gen>(blk.miner_tx.vin.front()).height;
     fill_block_header_response(blk, orphan, block_height, block_hash, res.block_header, req.fill_pow_hash && context.admin, false /*tx hashes*/);
-    for (size_t n = 0; n < blk.tx_hashes.size(); ++n)
-    {
-      res.tx_hashes.push_back(epee::string_tools::pod_to_hex(blk.tx_hashes[n]));
-    }
-    res.blob = string_tools::buff_to_hex_nodelimer(t_serializable_object_to_blob(blk));
+    res.tx_hashes.reserve(blk.tx_hashes.size());
+    for (const auto& tx_hash : blk.tx_hashes)
+        res.tx_hashes.push_back(tools::type_to_hex(tx_hash));
+    res.blob = lokimq::to_hex(t_serializable_object_to_blob(blk));
     res.json = obj_to_json_str(blk);
     res.status = STATUS_OK;
     return res;

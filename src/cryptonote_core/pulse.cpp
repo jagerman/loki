@@ -672,25 +672,23 @@ bool pulse::get_round_timings(cryptonote::Blockchain const &blockchain, uint64_t
 {
   times = {};
 
-  crypto::hash top_hash       = blockchain.get_block_id_by_height(height - 1);
-  cryptonote::block top_block = {};
-  if (bool orphan = false; !blockchain.get_block_by_hash(top_hash, top_block, &orphan) || orphan)
+  cryptonote::block top_block;
+  if (!blockchain.get_block_by_height(height - 1, top_block))
     return false;
 
   static uint64_t const hf16_height = blockchain.get_earliest_ideal_height_for_version(cryptonote::network_version_16);
   if (hf16_height == std::numeric_limits<uint64_t>::max())
     return false;
 
-  crypto::hash genesis_hash       = blockchain.get_block_id_by_height(hf16_height - 1);
-  cryptonote::block genesis_block = {};
-  if (bool orphaned = false; !blockchain.get_block_by_hash(genesis_hash, genesis_block, &orphaned) || orphaned)
+  cryptonote::block genesis_block;
+  if (!blockchain.get_block_by_height(hf16_height - 1, genesis_block))
     return false;
 
 #if 1
   uint64_t const delta_height = height - cryptonote::get_block_height(genesis_block);
   times.genesis_timestamp     = pulse::time_point(std::chrono::seconds(genesis_block.timestamp));
 
-  times.prev_hash      = top_hash;
+  times.prev_hash      = get_block_hash(top_block);
   times.prev_timestamp = pulse::time_point(std::chrono::seconds(top_block.timestamp));
 
   times.ideal_timestamp = pulse::time_point(times.genesis_timestamp + (TARGET_BLOCK_TIME * delta_height));
