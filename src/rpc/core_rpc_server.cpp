@@ -38,6 +38,7 @@
 #include <type_traits>
 #include <variant>
 #include "cryptonote_basic/tx_extra.h"
+#include "cryptonote_core/pulse.h"
 #include "include_base_utils.h"
 #include "string_tools.h"
 #include "core_rpc_server.h"
@@ -365,6 +366,11 @@ namespace cryptonote { namespace rpc {
     ++res.height; // turn top block height into blockchain height
     res.top_block_hash = string_tools::pod_to_hex(top_hash);
     res.target_height = m_core.get_target_blockchain_height();
+
+    if (pulse::timings t; pulse::get_round_timings(m_core.get_blockchain_storage(), res.height, t)) {
+      res.pulse_ideal_timestamp = tools::to_seconds(t.ideal_timestamp.time_since_epoch());
+      res.pulse_target_timestamp = tools::to_seconds(t.r0_timestamp.time_since_epoch());
+    }
 
     res.immutable_height = 0;
     cryptonote::checkpoint_t checkpoint;

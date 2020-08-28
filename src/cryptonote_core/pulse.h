@@ -12,6 +12,7 @@ namespace cryptonote
 {
 class core;
 class transaction;
+class Blockchain;
 struct block;
 struct checkpoint_t;
 };

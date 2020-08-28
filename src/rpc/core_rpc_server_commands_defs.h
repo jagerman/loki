@@ -606,6 +606,8 @@ namespace rpc {
       uint64_t height;                      // Current length of longest chain known to daemon.
       uint64_t target_height;               // The height of the next block in the chain.
       uint64_t immutable_height;            // The latest height in the blockchain that can not be reorganized from (backed by atleast 2 Service Node, or 1 hardcoded checkpoint, 0 if N/A).
+      uint64_t pulse_ideal_timestamp;       // For pulse blocks this is the ideal timestamp of the next block, that is, the timestamp if the network was operating with perfect 2-minute blocks since the pulse hard fork.
+      uint64_t pulse_target_timestamp;      // For pulse blocks this is the target timestamp of the next block, which targets 2 minutes after the previous block but will be slightly faster/slower if the previous block is behind/ahead of the ideal timestamp.
       uint64_t difficulty;                  // Network difficulty (analogous to the strength of the network).
       uint64_t target;                      // Current target for next proof of work.
       uint64_t tx_count;                    // Total number of non-coinbase transaction in the chain.
