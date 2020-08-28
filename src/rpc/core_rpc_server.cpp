@@ -1797,7 +1797,8 @@ namespace cryptonote { namespace rpc {
     response.miner_reward = blk.miner_tx.vout[0].amount;
     response.block_size = response.block_weight = m_core.get_blockchain_storage().get_db().get_block_weight(height);
     response.num_txes = blk.tx_hashes.size();
-    response.pow_hash = fill_pow_hash ? string_tools::pod_to_hex(get_block_longhash_w_blockchain(m_core.get_nettype(), &(m_core.get_blockchain_storage()), blk, height, 0)) : "";
+    if (fill_pow_hash)
+      response.pow_hash = string_tools::pod_to_hex(get_block_longhash_w_blockchain(m_core.get_nettype(), &(m_core.get_blockchain_storage()), blk, height, 0));
     response.long_term_weight = m_core.get_blockchain_storage().get_db().get_block_long_term_weight(height);
     response.miner_tx_hash = string_tools::pod_to_hex(cryptonote::get_transaction_hash(blk.miner_tx));
     response.service_node_winner = string_tools::pod_to_hex(cryptonote::get_service_node_winner_from_tx_extra(blk.miner_tx.extra));
@@ -1932,7 +1933,7 @@ namespace cryptonote { namespace rpc {
     };
 
     if (!req.hash.empty())
-      get(req.hash, res.block_header);
+      get(req.hash, res.block_header.emplace());
 
     res.block_headers.reserve(req.hashes.size());
     for (const std::string &hash: req.hashes)
@@ -1980,14 +1981,25 @@ namespace cryptonote { namespace rpc {
     if (use_bootstrap_daemon_if_necessary<GET_BLOCK_HEADER_BY_HEIGHT>(req, res))
       return res;
 
-    if(m_core.get_current_blockchain_height() <= req.height)
-      throw rpc_error{ERROR_TOO_BIG_HEIGHT,
-        "Requested block height: " + std::to_string(req.height) + " greater than current top block height: " +  std::to_string(m_core.get_current_blockchain_height() - 1)};
-    block blk;
-    bool have_block = m_core.get_block_by_height(req.height, blk);
-    if (!have_block)
-      throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by height. Height = " + std::to_string(req.height) + '.'};
-    fill_block_header_response(blk, false, req.height, get_block_hash(blk), res.block_header, req.fill_pow_hash && context.admin, req.get_tx_hashes);
+    auto get = [this, curr_height=m_core.get_current_blockchain_height(), pow=req.fill_pow_hash && context.admin, tx_hashes=req.get_tx_hashes]
+        (uint64_t height, block_header_response& bhr) {
+      if (height >= curr_height)
+        throw rpc_error{ERROR_TOO_BIG_HEIGHT,
+          "Requested block height: " + std::to_string(height) + " greater than current top block height: " +  std::to_string(curr_height - 1)};
+      block blk;
+      bool have_block = m_core.get_block_by_height(height, blk);
+      if (!have_block)
+        throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by height. Height = " + std::to_string(height) + '.'};
+      fill_block_header_response(blk, false, height, get_block_hash(blk), bhr, pow, tx_hashes);
+    };
+
+    if (req.height)
+      get(*req.height, res.block_header.emplace());
+    if (!req.heights.empty())
+      res.block_headers.reserve(req.heights.size());
+    for (auto height : req.heights)
+      get(height, res.block_headers.emplace_back());
+
     res.status = STATUS_OK;
     return res;
   }

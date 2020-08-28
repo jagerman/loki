@@ -158,7 +158,7 @@ namespace {
       << "hash: " << header.hash << "\n"
       << "difficulty: " << boost::lexical_cast<std::string>(header.difficulty) << "\n"
       << "cumulative_difficulty: " << boost::lexical_cast<std::string>(header.cumulative_difficulty) << "\n"
-      << "POW hash: " << header.pow_hash << "\n"
+      << "POW hash: " << header.pow_hash.value_or("N/A") << "\n"
       << "block size: " << header.block_size << "\n"
       << "block weight: " << header.block_weight << "\n"
       << "long term weight: " << header.long_term_weight << "\n"
