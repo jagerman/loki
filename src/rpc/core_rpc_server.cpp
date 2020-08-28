@@ -1080,7 +1080,7 @@ namespace cryptonote { namespace rpc {
     {
       crypto::hash hash;
       crypto::key_image spent_key_image;
-      if (parse_hash256(i->id_hash, hash))
+      if (tools::hex_to_type(i->id_hash, hash))
       {
         memcpy(&spent_key_image, &hash, sizeof(hash)); // a bit dodgy, should be other parse functions somewhere
         for (size_t n = 0; n < res.spent_status.size(); ++n)
@@ -1095,6 +1095,8 @@ namespace cryptonote { namespace rpc {
           }
         }
       }
+      else
+        MERROR("Invalid hash: " << i->id_hash);
     }
 
     res.status = STATUS_OK;
@@ -1916,8 +1918,7 @@ namespace cryptonote { namespace rpc {
 
     auto get = [this, &req, admin=context.admin](const std::string &hash, block_header_response &block_header) {
       crypto::hash block_hash;
-      bool hash_parsed = parse_hash256(hash, block_hash);
-      if(!hash_parsed)
+      if (!tools::hex_to_type(hash, block_hash))
         throw rpc_error{ERROR_WRONG_PARAM, "Failed to parse hex representation of block hash. Hex = " + hash + '.'};
       block blk;
       bool orphan = false;
@@ -2005,8 +2006,7 @@ namespace cryptonote { namespace rpc {
     crypto::hash block_hash;
     if (!req.hash.empty())
     {
-      bool hash_parsed = parse_hash256(req.hash, block_hash);
-      if(!hash_parsed)
+      if (!tools::hex_to_type(req.hash, block_hash))
         throw rpc_error{ERROR_WRONG_PARAM, "Failed to parse hex representation of block hash. Hex = " + req.hash + '.'};
       if (!m_core.get_block_by_hash(block_hash, blk, &orphan))
         throw rpc_error{ERROR_INTERNAL, "Internal error: can't get block by hash. Hash = " + req.hash + '.'};

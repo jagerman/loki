@@ -31,6 +31,7 @@
 
 #include "common/dns_utils.h"
 #include "common/command_line.h"
+#include "common/hex.h"
 #include "version.h"
 #include "daemon/command_parser_executor.h"
 #include "rpc/core_rpc_server_commands_defs.h"
@@ -387,10 +388,9 @@ bool command_parser_executor::print_block(const std::vector<std::string>& args)
   catch (const boost::bad_lexical_cast&)
   {
     crypto::hash block_hash;
-    if (parse_hash256(arg, block_hash))
-    {
+    if (tools::hex_to_type(arg, block_hash))
       return m_executor.print_block_by_hash(block_hash, include_hex);
-    }
+    MERROR("Invalid hash or height value: " << arg);
   }
 
   return false;
@@ -424,10 +424,10 @@ bool command_parser_executor::print_transaction(const std::vector<std::string>& 
 
   const std::string& str_hash = args.front();
   crypto::hash tx_hash;
-  if (parse_hash256(str_hash, tx_hash))
-  {
+  if (tools::hex_to_type(str_hash, tx_hash))
     m_executor.print_transaction(tx_hash, include_metadata, include_hex, include_json);
-  }
+  else
+    MERROR("Invalid transaction hash: " << str_hash);
 
   return true;
 }
@@ -443,11 +443,13 @@ bool command_parser_executor::is_key_image_spent(const std::vector<std::string>&
   const std::string& str = args.front();
   crypto::key_image ki;
   crypto::hash hash;
-  if (parse_hash256(str, hash))
+  if (tools::hex_to_type(str, hash))
   {
     memcpy(&ki, &hash, sizeof(ki));
     m_executor.is_key_image_spent(ki);
   }
+  else
+    MERROR("invalid key image hash: " << str);
 
   return true;
 }
@@ -751,9 +753,9 @@ bool command_parser_executor::flush_txpool(const std::vector<std::string>& args)
   if (args.size() == 1)
   {
     crypto::hash hash;
-    if (!parse_hash256(args[0], hash))
+    if (!tools::hex_to_type(args[0], hash))
     {
-      std::cout << "failed to parse tx id" << std::endl;
+      std::cout << "failed to parse tx id: " << args[0] << "\n";
       return true;
     }
     txid = args[0];
@@ -878,9 +880,9 @@ bool command_parser_executor::relay_tx(const std::vector<std::string>& args)
 
   std::string txid;
   crypto::hash hash;
-  if (!parse_hash256(args[0], hash))
+  if (!tools::hex_to_type(args[0], hash))
   {
-    std::cout << "failed to parse tx id" << std::endl;
+    std::cout << "failed to parse tx id: " << args[0] << std::endl;
     return true;
   }
   txid = args[0];

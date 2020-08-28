@@ -299,20 +299,3 @@ namespace cryptonote {
     return cryptonote::get_block_hash(a) == cryptonote::get_block_hash(b);
   }
 }
-
-//--------------------------------------------------------------------------------
-bool parse_hash256(const std::string &str_hash, crypto::hash& hash)
-{
-  std::string buf;
-  bool res = epee::string_tools::parse_hexstr_to_binbuff(str_hash, buf);
-  if (!res || buf.size() != sizeof(crypto::hash))
-  {
-    MERROR("invalid hash format: " << str_hash);
-    return false;
-  }
-  else
-  {
-    buf.copy(reinterpret_cast<char *>(&hash), sizeof(crypto::hash));
-    return true;
-  }
-}
