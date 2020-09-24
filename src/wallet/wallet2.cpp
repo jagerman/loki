@@ -6616,7 +6616,7 @@ bool wallet2::is_transfer_unlocked(uint64_t unlock_time, uint64_t block_height, 
   if(block_height + CRYPTONOTE_DEFAULT_TX_SPENDABLE_AGE > blockchain_height)
     return false;
 
-  if (!m_offline)
+  if (m_offline)
     return true;
 
   if (!key_image) // TODO(loki): Try make all callees always pass in a key image for accuracy
