@@ -1797,11 +1797,6 @@ end:
     //baseline empty block
     loki_block_reward_context block_reward_context = {};
     block_reward_context.height                    = height;
-    if (!m_blockchain.calc_batched_governance_reward(height, block_reward_context.batched_governance))
-    {
-      MERROR("Failed to calculated batched governance reward");
-      return false;
-    }
 
     block_reward_parts reward_parts = {};
     if (!get_loki_block_reward(median_weight, total_weight, already_generated_coins, version, reward_parts, block_reward_context))
@@ -1809,8 +1804,7 @@ end:
       MERROR("Failed to get block reward for empty block");
       return false;
     }
-    uint64_t best_block_producer_reward =
-        version >= cryptonote::network_version_16_pulse ? reward_parts.base_miner_fee : reward_parts.base_miner;
+    uint64_t best_reward = version >= cryptonote::network_version_16_pulse ? 0 : reward_parts.base_miner;
     size_t const max_total_weight = 2 * median_weight - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
     std::unordered_set<crypto::key_image> k_images;
 
@@ -1818,7 +1812,7 @@ end:
 
     LockedTXN lock(m_blockchain);
 
-    uint64_t reward = 0;
+    uint64_t next_reward = 0;
     for (auto sorted_it : m_txs_by_fee_and_receive_time)
     {
       txpool_tx_meta_t meta;
@@ -1827,7 +1821,7 @@ end:
         MERROR("  failed to find tx meta");
         continue;
       }
-      LOG_PRINT_L2("Considering " << sorted_it.second << ", weight " << meta.weight << ", current block weight " << total_weight << "/" << max_total_weight << ", current coinbase " << print_money(best_block_producer_reward));
+      LOG_PRINT_L2("Considering " << sorted_it.second << ", weight " << meta.weight << ", current block weight " << total_weight << "/" << max_total_weight << ", current reward " << print_money(best_reward));
 
       // Can not exceed maximum block weight
       if (max_total_weight < total_weight + meta.weight)
@@ -1836,19 +1830,19 @@ end:
         continue;
       }
 
-      // If we're getting lower coinbase tx, stop including more tx
-      block_reward_parts reward_parts_other = {};
-      if(!get_loki_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, reward_parts_other, block_reward_context))
+      // If we're getting lower reward tx, stop including more tx
+      block_reward_parts next_reward_parts = {};
+      if(!get_loki_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, next_reward_parts, block_reward_context))
       {
         LOG_PRINT_L2("Block reward calculation bug");
         return false;
       }
 
-      uint64_t const block_producer_reward = version >= cryptonote::network_version_16_pulse ? reward_parts_other.base_miner_fee : reward_parts_other.base_miner;
-      reward = block_producer_reward + fee + meta.fee;
-      if (reward < best_block_producer_reward)
+      uint64_t const next_coinbase = version >= cryptonote::network_version_16_pulse ? 0 : next_reward_parts.base_miner;
+      next_reward = next_coinbase + fee + meta.fee;
+      if (next_reward < best_reward)
       {
-        LOG_PRINT_L2("  would decrease coinbase to " << print_money(reward));
+        LOG_PRINT_L2("  would decrease reward to " << print_money(next_reward));
         continue;
       }
 
@@ -1895,15 +1889,15 @@ end:
       bl.tx_hashes.push_back(sorted_it.second);
       total_weight += meta.weight;
       fee += meta.fee;
-      best_block_producer_reward = reward;
+      best_reward = next_reward;
       append_key_images(k_images, tx);
-      LOG_PRINT_L2("  added, new block weight " << total_weight << "/" << max_total_weight << ", coinbase " << print_money(best_block_producer_reward));
+      LOG_PRINT_L2("  added, new block weight " << total_weight << "/" << max_total_weight << ", reward " << print_money(best_reward));
     }
     lock.commit();
 
-    expected_reward = best_block_producer_reward;
+    expected_reward = best_reward;
     LOG_PRINT_L2("Block template filled with " << bl.tx_hashes.size() << " txes, weight "
-        << total_weight << "/" << max_total_weight << ", coinbase " << print_money(best_block_producer_reward)
+        << total_weight << "/" << max_total_weight << ", reward " << print_money(best_reward)
         << " (including " << print_money(fee) << " in fees)");
     return true;
   }
