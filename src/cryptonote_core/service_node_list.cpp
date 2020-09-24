@@ -2453,6 +2453,8 @@ namespace service_nodes
       }
     }
 
+    MFATAL("REWARD_PARTS: " << reward_parts.base_miner << ", " << reward_parts.base_miner_fee << ", " << reward_parts.original_base_reward << ", " << reward_parts.service_node_paid << ", " << reward_parts.service_node_total);
+
     // NOTE: Verify Coinbase Amounts
     switch(mode)
     {
