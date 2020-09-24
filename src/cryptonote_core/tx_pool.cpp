@@ -1791,20 +1791,24 @@ end:
   {
     auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);
 
-    total_weight      = 0;
-    fee               = 0;
-
-    //baseline empty block
-    loki_block_reward_context block_reward_context = {};
-    block_reward_context.height                    = height;
-
-    block_reward_parts reward_parts = {};
-    if (!get_loki_block_reward(median_weight, total_weight, already_generated_coins, version, reward_parts, block_reward_context))
+    total_weight         = 0;
+    fee                  = 0;
+    uint64_t best_reward = 0;
     {
-      MERROR("Failed to get block reward for empty block");
-      return false;
+      // NOTE: Calculate base line empty block reward
+      loki_block_reward_context block_reward_context = {};
+      block_reward_context.height                    = height;
+
+      block_reward_parts reward_parts = {};
+      if (!get_loki_block_reward(median_weight, total_weight, already_generated_coins, version, reward_parts, block_reward_context))
+      {
+        MERROR("Failed to get block reward for empty block");
+        return false;
+      }
+
+      best_reward = version >= cryptonote::network_version_16_pulse ? 0 /*Empty block, starts with 0 fee*/ : reward_parts.base_miner;
     }
-    uint64_t best_reward = version >= cryptonote::network_version_16_pulse ? 0 : reward_parts.base_miner;
+
     size_t const max_total_weight = 2 * median_weight - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
     std::unordered_set<crypto::key_image> k_images;
 
@@ -1830,16 +1834,24 @@ end:
         continue;
       }
 
-      // If we're getting lower reward tx, stop including more tx
-      block_reward_parts next_reward_parts = {};
-      if(!get_loki_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, next_reward_parts, block_reward_context))
+      // NOTE: Calculate the next block reward for the block producer
+      loki_block_reward_context next_block_reward_context = {};
+      next_block_reward_context.height                    = height;
+      next_block_reward_context.fee                       = fee + meta.fee;
+
+      block_reward_parts next_reward_parts           = {};
+      if(!get_loki_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, next_reward_parts, next_block_reward_context))
       {
         LOG_PRINT_L2("Block reward calculation bug");
         return false;
       }
 
-      uint64_t const next_coinbase = version >= cryptonote::network_version_16_pulse ? 0 : next_reward_parts.base_miner;
-      next_reward = next_coinbase + fee + meta.fee;
+      if (version >= cryptonote::network_version_16_pulse)
+        next_reward = next_reward_parts.base_miner_fee;
+      else
+        next_reward = next_reward_parts.base_miner + next_reward_parts.base_miner_fee;
+
+      // If we're getting lower reward tx, don't include this TX
       if (next_reward < best_reward)
       {
         LOG_PRINT_L2("  would decrease reward to " << print_money(next_reward));
@@ -1888,7 +1900,7 @@ end:
 
       bl.tx_hashes.push_back(sorted_it.second);
       total_weight += meta.weight;
-      fee += meta.fee;
+      fee         = next_reward_parts.base_miner_fee;
       best_reward = next_reward;
       append_key_images(k_images, tx);
       LOG_PRINT_L2("  added, new block weight " << total_weight << "/" << max_total_weight << ", reward " << print_money(best_reward));
