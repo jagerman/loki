@@ -1419,11 +1419,15 @@ round_state send_block_template(round_context &context, void *quorumnet_state, s
   {
     uint64_t height                              = 0;
     service_nodes::payout block_producer_payouts = service_nodes::service_node_info_to_payout(key.pub, *info);
-    blockchain.create_next_pulse_block_template(block,
-                                                block_producer_payouts,
-                                                context.prepare_for_round.round,
-                                                context.transient.wait_for_handshake_bitsets.best_bitset,
-                                                height);
+    if (!blockchain.create_next_pulse_block_template(block,
+                                                     block_producer_payouts,
+                                                     context.prepare_for_round.round,
+                                                     context.transient.wait_for_handshake_bitsets.best_bitset,
+                                                     height))
+    {
+      MERROR(log_prefix(context) << "Failed to generate a block template, waiting until next round");
+      return goto_preparing_for_next_round(context);
+    }
 
     if (context.wait_for_next_block.height != height)
     {
