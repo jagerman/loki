@@ -385,8 +385,8 @@ namespace cryptonote
      * @param median_weight the current median block weight
      * @param already_generated_coins the current total number of coins "minted"
      * @param total_weight return-by-reference the total weight of the new block
-     * @param fee return-by-reference the total of fees from the included transactions
-     * @param expected_reward return-by-reference the total reward awarded to the block producer finding this block, including transaction fees
+     * @param fee return-by-reference the total of fees from the included transactions.  Note that this does not subtract any large block penalty fees; this is just the raw sum of fees of included txes.
+     * @param expected_reward return-by-reference the total reward awarded to the block producer finding this block, including transaction fees and, if applicable, a large block reward penalty.
      * @param version hard fork version to use for consensus rules
      *
      * @return true

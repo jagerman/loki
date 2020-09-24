@@ -1900,7 +1900,7 @@ end:
 
       bl.tx_hashes.push_back(sorted_it.second);
       total_weight += meta.weight;
-      fee         = next_reward_parts.base_miner_fee;
+      fee += meta.fee;
       best_reward = next_reward;
       append_key_images(k_images, tx);
       LOG_PRINT_L2("  added, new block weight " << total_weight << "/" << max_total_weight << ", reward " << print_money(best_reward));
