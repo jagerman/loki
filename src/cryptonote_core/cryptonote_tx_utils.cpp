@@ -509,6 +509,7 @@ namespace cryptonote
       if (!loki_context.testnet_override)
       {
         uint64_t const penalty = base_reward_unpenalized - base_reward;
+        MFATAL("GLBR " << penalty << " = " << base_reward_unpenalized << " - " << base_reward);
         result.base_miner_fee  = penalty >= loki_context.fee ? 0 : loki_context.fee - penalty;
       }
     }
