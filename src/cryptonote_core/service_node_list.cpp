@@ -2484,6 +2484,7 @@ namespace service_nodes
       case verify_mode::pulse_block_leader_is_producer:
       {
         uint64_t total_reward = reward_parts.service_node_total + reward_parts.base_miner_fee;
+        MFATAL("LEADER IS PRODUCER - TOTAL REWARD = " << total_reward);
         assert(total_reward > 0);
         for (size_t vout_index = 0; vout_index < block_leader.payouts.size(); vout_index++)
         {
@@ -2506,6 +2507,7 @@ namespace service_nodes
           if (contributor.address == block_producer->operator_address)
             portions += block_producer->portions_for_operator;
 
+          MFATAL("BACKUP PRODUCER - BMF = " << reward_parts.base_miner_fee);
           uint64_t const reward = cryptonote::get_portion_of_reward(portions, reward_parts.base_miner_fee);
           if (reward)
           {
