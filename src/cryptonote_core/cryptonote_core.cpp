@@ -2011,8 +2011,14 @@ namespace cryptonote
       m_miner.on_block_chain_update();
     }
 
-    CHECK_AND_ASSERT_MES(!bvc.m_verifivation_failed, false, "mined block failed verification");
-    if(bvc.m_added_to_main_chain)
+    if (bvc.m_verifivation_failed)
+    {
+      bool pulse = cryptonote::block_has_pulse_components(b);
+      MERROR_VER(pulse ? "Pulse" : "Mined" << " block failed verification\n" << cryptonote::obj_to_json_str(b));
+      return false;
+    }
+
+    else if(bvc.m_added_to_main_chain)
     {
       std::vector<crypto::hash> missed_txs;
       std::vector<cryptonote::blobdata> txs;
