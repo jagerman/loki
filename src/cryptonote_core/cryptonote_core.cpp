@@ -2014,10 +2014,9 @@ namespace cryptonote
     if (bvc.m_verifivation_failed)
     {
       bool pulse = cryptonote::block_has_pulse_components(b);
-      MERROR_VER(pulse ? "Pulse" : "Mined" << " block failed verification\n" << cryptonote::obj_to_json_str(b));
+      MERROR_VER((pulse ? "Pulse" : "Mined") << " block failed verification\n" << cryptonote::obj_to_json_str(b));
       return false;
     }
-
     else if(bvc.m_added_to_main_chain)
     {
       std::vector<crypto::hash> missed_txs;
