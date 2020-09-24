@@ -509,15 +509,7 @@ namespace cryptonote
       if (!loki_context.testnet_override)
       {
         uint64_t const penalty = base_reward_unpenalized - base_reward;
-        if (penalty > loki_context.fee)
-        {
-          MERROR("Block reward penalty is greater than the fee that would be received, penalty "
-                 << cryptonote::print_money(penalty) << ", fee "
-                 << cryptonote::print_money(loki_context.fee));
-          return false;
-        }
-
-        result.base_miner_fee = loki_context.fee - penalty;
+        result.base_miner_fee  = penalty >= loki_context.fee ? 0 : loki_context.fee - penalty;
       }
     }
 
