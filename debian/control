@@ -11,7 +11,7 @@ Homepage: https://loki.network
 
 Package: libloki-core8.0.1
 Architecture: any
-Depends: libminiupnpc17 (>= 2.1), ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Loki shared libraries
  This package contains the common Loki library code used by the various loki
  binaries.
@@ -72,9 +72,8 @@ Architecture: any
 Multi-Arch: same
 Section: libdevel
 Depends: libloki-core-wallet8.0.1 (= ${binary:Version}), libloki-core8.0.1 (= ${binary:Version}),
- libboost-dev (>= 1.65), libboost-filesystem-dev,libboost-thread-dev, libboost-serialization-dev, libboost-program-options-dev,
- libunbound-dev (>= 1.4.16), libminiupnpc-dev, libssl-dev, libsodium-dev, libreadline-dev, libhidapi-dev, liblokimq-dev (>= 1.2.0~),
- libsqlite3-dev, libcurl4-dev, ${misc:Depends}
+ libunbound-dev (>= 1.4.16), libssl-dev, libsodium-dev, libreadline-dev, libhidapi-dev, liblokimq-dev (>= 1.2.0~),
+ libsqlite3-dev, ${misc:Depends}
 Description: Loki development files
  This contains the headers needed to compile code that uses the loki libraries.
 
