@@ -33,8 +33,8 @@ override_dh_auto_configure:
 		-DLOKI_VERSION_TAG=$(call dpkg_late_eval,LOKI_VERSION_TAG,echo '$(DEB_VERSION)' | sed -e 's/.*-//')
 
 override_dh_install:
-	dh_install
 	cp obj-x86_64-linux-gnu/static-deps/lib/libboost_*.so.* $(DESTDIR)/usr/lib/$(DEB_HOST_MULTIARCH)/loki-core
+	dh_install
 
 override_dh_shlibdeps:
 	dh_shlibdeps -l/usr/lib/$(DEB_HOST_MULTIARCH)/loki-core
