@@ -7,7 +7,7 @@ Subject: boost shared lib hackery
  1 file changed, 20 insertions(+), 32 deletions(-)
 
 diff --git a/cmake/StaticXenial.cmake b/cmake/StaticXenial.cmake
-index 98245dd..154c7f7 100644
+index 0cc5987..8628b83 100644
 --- a/cmake/StaticXenial.cmake
 +++ b/cmake/StaticXenial.cmake
 @@ -54,6 +54,14 @@ function(add_static_target target ext_target libname)

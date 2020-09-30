@@ -10,7 +10,7 @@ Subject: Build static boost+cmake for xenial
  create mode 100644 cmake/StaticXenial.cmake
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index be70fd6..594711e 100644
+index 5454e36..6c84fe7 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -348,6 +348,8 @@ endif()
@@ -24,7 +24,7 @@ index be70fd6..594711e 100644
  if(MSVC OR MINGW OR BUILD_STATIC_DEPS)
 diff --git a/cmake/StaticXenial.cmake b/cmake/StaticXenial.cmake
 new file mode 100644
-index 0000000..bb21a51
+index 0000000..a959d0d
 --- /dev/null
 +++ b/cmake/StaticXenial.cmake
 @@ -0,0 +1,196 @@
@@ -222,7 +222,7 @@ index 0000000..bb21a51
 +)
 +add_static_target(CURL::libcurl curl_external libcurl.a)
 +set_target_properties(CURL::libcurl PROPERTIES
-+  INTERFACE_LINK_LIBRARIES "${libcurl_link_libs}"
++  INTERFACE_LINK_LIBRARIES z
 +  INTERFACE_COMPILE_DEFINITIONS "CURL_STATICLIB")
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
 index 4f1abc8..2272f10 100644

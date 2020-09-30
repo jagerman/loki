@@ -11,7 +11,7 @@ Patch the loki cmake files to properly build and install shared libs.
  4 files changed, 32 insertions(+), 4 deletions(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 04e02ae..0568941 100644
+index 5415225..fca23ef 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -53,7 +53,7 @@ if(CCACHE_PROGRAM)

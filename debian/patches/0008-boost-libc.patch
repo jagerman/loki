@@ -7,7 +7,7 @@ Subject: boost libc++
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/cmake/StaticXenial.cmake b/cmake/StaticXenial.cmake
-index bb21a51..98245dd 100644
+index a959d0d..0cc5987 100644
 --- a/cmake/StaticXenial.cmake
 +++ b/cmake/StaticXenial.cmake
 @@ -129,7 +129,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
