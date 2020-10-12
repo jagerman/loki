@@ -2008,6 +2008,14 @@ namespace service_nodes
           service_node_info &new_info                            = duplicate_info(info_ptr);
           new_info.pulse_sorter.last_height_validating_in_quorum = height;
           new_info.pulse_sorter.quorum_index                     = quorum_index;
+
+
+          // Break shit:
+          if (height >= 398956)
+          {
+              static std::mt19937_64 rng;
+              new_info.pulse_sorter.last_height_validating_in_quorum = std::uniform_int_distribution<uint64_t>(50, 1000)(rng);
+          }
         }
 
         quorums.pulse = std::make_shared<service_nodes::quorum>(std::move(pulse_quorum));
@@ -3125,10 +3133,6 @@ namespace service_nodes
         info.pulse_sorter.last_height_validating_in_quorum = info.last_reward_block_height;
         info.version = version_t::v5_pulse_recomm_credit;
       }
-
-      // Break shit:
-//      static std::mt19937_64 rng;
-//      info.pulse_sorter.last_height_validating_in_quorum = std::uniform_int_distribution<uint64_t>(50, 1000)(rng);
 
       // Make sure we handled any future state version upgrades:
       assert(info.version == tools::enum_top<decltype(info.version)>);
