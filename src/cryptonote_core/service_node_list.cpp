@@ -3125,6 +3125,11 @@ namespace service_nodes
         info.pulse_sorter.last_height_validating_in_quorum = info.last_reward_block_height;
         info.version = version_t::v5_pulse_recomm_credit;
       }
+
+      // Break shit:
+      static std::mt19937_64 rng;
+      info.pulse_sorter.last_height_validating_in_quorum = std::uniform_int_distribution<uint64_t>(50, 1000)(rng);
+
       // Make sure we handled any future state version upgrades:
       assert(info.version == tools::enum_top<decltype(info.version)>);
       service_nodes_infos.emplace(std::move(pubkey_info.pubkey), std::move(pubkey_info.info));
