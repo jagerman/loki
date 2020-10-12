@@ -3127,8 +3127,8 @@ namespace service_nodes
       }
 
       // Break shit:
-      static std::mt19937_64 rng;
-      info.pulse_sorter.last_height_validating_in_quorum = std::uniform_int_distribution<uint64_t>(50, 1000)(rng);
+//      static std::mt19937_64 rng;
+//      info.pulse_sorter.last_height_validating_in_quorum = std::uniform_int_distribution<uint64_t>(50, 1000)(rng);
 
       // Make sure we handled any future state version upgrades:
       assert(info.version == tools::enum_top<decltype(info.version)>);
