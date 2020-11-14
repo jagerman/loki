@@ -162,3 +162,14 @@ target_link_libraries(cpr PUBLIC CURL::libcurl)
 target_include_directories(cpr PUBLIC cpr/include)
 target_compile_definitions(cpr PUBLIC CPR_CURL_NOSIGNAL)
 add_library(cpr::cpr ALIAS cpr)
+
+# Native cmake requires cmake 3.16, but this is a very simple single-file header so we can just
+# bypass it and set it up directly.
+#add_subdirectory(sqlite_orm)
+if(NOT TARGET sqlite3)
+  message(FATAL_ERROR "Internal error: sqlite3 target not available?!")
+endif()
+add_library(sqlite_orm INTERFACE)
+add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
+target_link_libraries(sqlite_orm INTERFACE sqlite3)
+target_include_directories(sqlite_orm INTERFACE sqlite_orm/include)

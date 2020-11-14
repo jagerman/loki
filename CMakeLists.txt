@@ -492,6 +492,20 @@ if (WITH_SYSTEMD AND NOT BUILD_STATIC_DEPS)
 endif()
 
 
+if(BUILD_STATIC_DEPS)
+  # sqlite3 target already set up
+else()
+  add_library(sqlite3 INTERFACE)
+  if (NOT SQLITE3_LIBRARIES)
+    pkg_check_modules(SQLITE3 REQUIRED sqlite3)
+  endif()
+  find_library(sqlite3_link_libs NAMES ${SQLITE3_LIBRARIES} PATHS ${SQLITE3_LIBRARY_DIRS})
+  message(STATUS "sqlite3: ${SQLITE3_LIBRARIES} ${sqlite3_link_libs}")
+  target_link_libraries(sqlite3 INTERFACE ${sqlite3_link_libs})
+  target_include_directories(sqlite3 INTERFACE ${SQLITE3_INCLUDE_DIRS})
+endif()
+
+
 add_subdirectory(external)
 
 target_compile_definitions(easylogging PRIVATE AUTO_INITIALIZE_EASYLOGGINGPP)
@@ -899,19 +913,6 @@ if (LOKI_DEBUG_SHORT_PROOFS)
   add_definitions(-DUPTIME_PROOF_BASE_MINUTE=3) # 20x faster uptime proofs
 endif()
 
-
-if(BUILD_STATIC_DEPS)
-  # sqlite3 target already set up
-else()
-  add_library(sqlite3 INTERFACE)
-  if (NOT SQLITE3_LIBRARIES)
-    pkg_check_modules(SQLITE3 REQUIRED sqlite3)
-  endif()
-  find_library(sqlite3_link_libs NAMES ${SQLITE3_LIBRARIES} PATHS ${SQLITE3_LIBRARY_DIRS})
-  message(STATUS "sqlite3: ${SQLITE3_LIBRARIES} ${sqlite3_link_libs}")
-  target_link_libraries(sqlite3 INTERFACE ${sqlite3_link_libs})
-  target_include_directories(sqlite3 INTERFACE ${SQLITE3_INCLUDE_DIRS})
-endif()
 
 add_subdirectory(contrib)
 add_subdirectory(src)
