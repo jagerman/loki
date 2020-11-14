@@ -416,11 +416,6 @@ struct mdb_block_info_2 : mdb_block_info_1
   uint64_t bi_cum_rct;
 };
 
-struct mdb_block_info_3 : mdb_block_info_2
-{
-  uint8_t bi_pulse;
-};
-
 struct mdb_block_info : mdb_block_info_2
 {
   uint64_t bi_long_term_block_weight;
