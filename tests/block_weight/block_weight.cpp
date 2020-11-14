@@ -36,7 +36,7 @@
 #include "cryptonote_core/cryptonote_core.h"
 #include "cryptonote_core/uptime_proof.h"
 #include "blockchain_utilities/blockchain_objects.h"
-#include "blockchain_db/testdb.h"
+#include "../unit_tests/testdb.h"
 
 #define LONG_TERM_BLOCK_WEIGHT_WINDOW 5000
 

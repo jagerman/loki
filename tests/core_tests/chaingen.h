@@ -59,7 +59,7 @@
 #include "serialization/boost_std_variant.h"
 #include "serialization/boost_std_optional.h"
 
-#include "blockchain_db/testdb.h"
+#include "../unit_tests/testdb.h"
 
 #include "../blockchain_sqlite_test.h"
 
