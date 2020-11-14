@@ -543,7 +543,7 @@ namespace cryptonote
   }
   //------------------------------------------------------------------------------------------------------------------------
     template<class t_core>
-    bool t_cryptonote_protocol_handler<t_core>::get_payload_sync_data(blobdata& data)
+    bool t_cryptonote_protocol_handler<t_core>::get_payload_sync_data(std::string& data)
   {
     CORE_SYNC_DATA hsd{};
     get_payload_sync_data(hsd);
@@ -590,7 +590,7 @@ namespace cryptonote
         }
       }      
       
-      std::vector<blobdata> have_tx;
+      std::vector<std::string> have_tx;
       
       // Instead of requesting missing transactions by hash like BTC, 
       // we do it by index (thanks to a suggestion from moneromooo) because
@@ -722,7 +722,7 @@ namespace cryptonote
       size_t tx_idx = 0;
       for(auto& tx_hash: new_block.tx_hashes)
       {
-        cryptonote::blobdata txblob;
+        std::string txblob;
         if(m_core.get_pool().get_transaction(tx_hash, txblob))
         {
           have_tx.push_back(txblob);
@@ -926,8 +926,8 @@ namespace cryptonote
   {
     MLOG_P2P_MESSAGE("Received NOTIFY_REQUEST_FLUFFY_MISSING_TX (" << arg.missing_tx_indices.size() << " txes), block hash " << arg.block_hash);
     
-    std::vector<std::pair<cryptonote::blobdata, block>> local_blocks;
-    std::vector<cryptonote::blobdata> local_txs;
+    std::vector<std::pair<std::string, block>> local_blocks;
+    std::vector<std::string> local_txs;
 
     block b;
     if (!m_core.get_block_by_hash(arg.block_hash, b))
@@ -1067,7 +1067,7 @@ namespace cryptonote
 
       // Even if !all_okay (which means we want to drop the connection) we may still have added some
       // incoming txs and so still need to finish handling/relaying them
-      std::vector<cryptonote::blobdata> newtxs;
+      std::vector<std::string> newtxs;
       newtxs.reserve(arg.txs.size());
       auto &unknown_txs = parsed_blinks.second;
       for (size_t i = 0; i < arg.txs.size(); ++i)

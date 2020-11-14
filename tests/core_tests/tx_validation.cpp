@@ -734,7 +734,7 @@ bool gen_tx_signatures_are_invalid::generate(std::vector<test_event_entry>& even
 
   // TX without signatures
   DO_CALLBACK(events, "mark_invalid_tx");
-  blobdata sr_tx = t_serializable_object_to_blob(static_cast<transaction_prefix>(miner_tx));
+  std::string sr_tx = t_serializable_object_to_blob(static_cast<transaction_prefix>(miner_tx));
   events.push_back(serialized_transaction(sr_tx));
 
   // TX have a few inputs, and not enough signatures

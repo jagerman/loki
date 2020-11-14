@@ -118,7 +118,7 @@ namespace cryptonote
     uint64_t height{};
     uint64_t expected_reward; //only used for RPC calls - could possibly be useful here too?
 
-    cryptonote::blobdata extra_nonce;
+    std::string extra_nonce;
     if(m_extra_messages.size() && m_config.current_extra_message_index < m_extra_messages.size())
     {
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];

@@ -809,7 +809,7 @@ bool loki_core_test_deregister_preferred::generate(std::vector<test_event_entry>
       cryptonote::difficulty_type diffic;
       uint64_t height;
       uint64_t expected_reward;
-      cryptonote::blobdata extra_nonce;
+      std::string extra_nonce;
       c.create_next_miner_block_template(full_blk, miner.get_keys().m_account_address, diffic, height, expected_reward, extra_nonce);
     }
 

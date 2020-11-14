@@ -1201,7 +1201,7 @@ bool simple_wallet::export_multisig_main(const std::vector<std::string> &args, b
 
   try
   {
-    cryptonote::blobdata ciphertext = m_wallet->export_multisig();
+    std::string ciphertext = m_wallet->export_multisig();
 
     if (called_by_mms)
     {
@@ -1259,7 +1259,7 @@ bool simple_wallet::import_multisig_main(const std::vector<std::string> &args, b
     return false;
   }
 
-  std::vector<cryptonote::blobdata> info;
+  std::vector<std::string> info;
   for (size_t n = 0; n < args.size(); ++n)
   {
     if (called_by_mms)
@@ -3830,7 +3830,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
       {
         std::vector<crypto::secret_key> multisig_secret_spendkeys(multisig_n);
         epee::wipeable_string spendkey_string;
-        cryptonote::blobdata spendkey_data;
+        std::string spendkey_data;
         // get N secret spend keys from user
         for(unsigned int i=0; i<multisig_n; ++i)
         {
@@ -6351,7 +6351,7 @@ bool simple_wallet::query_locked_stakes(bool print_result)
     }
 
     bool once_only = true;
-    cryptonote::blobdata binary_buf;
+    std::string binary_buf;
     binary_buf.reserve(sizeof(crypto::key_image));
     for (size_t i = 0; i < response.size(); ++i)
     {
@@ -9487,7 +9487,7 @@ bool simple_wallet::set_tx_note(const std::vector<std::string> &args)
     return true;
   }
 
-  cryptonote::blobdata txid_data;
+  std::string txid_data;
   if(!epee::string_tools::parse_hexstr_to_binbuff(args.front(), txid_data) || txid_data.size() != sizeof(crypto::hash))
   {
     fail_msg_writer() << tr("failed to parse txid");
@@ -9515,7 +9515,7 @@ bool simple_wallet::get_tx_note(const std::vector<std::string> &args)
     return true;
   }
 
-  cryptonote::blobdata txid_data;
+  std::string txid_data;
   if(!epee::string_tools::parse_hexstr_to_binbuff(args.front(), txid_data) || txid_data.size() != sizeof(crypto::hash))
   {
     fail_msg_writer() << tr("failed to parse txid");
@@ -10001,7 +10001,7 @@ bool simple_wallet::show_transfer(const std::vector<std::string> &args)
     return true;
   }
 
-  cryptonote::blobdata txid_data;
+  std::string txid_data;
   if(!epee::string_tools::parse_hexstr_to_binbuff(args.front(), txid_data) || txid_data.size() != sizeof(crypto::hash))
   {
     fail_msg_writer() << tr("failed to parse txid");
@@ -10191,7 +10191,7 @@ void simple_wallet::commit_or_save(std::vector<tools::wallet2::pending_tx>& ptx_
     const crypto::hash txid = get_transaction_hash(ptx.tx);
     if (do_not_relay)
     {
-      cryptonote::blobdata blob;
+      std::string blob;
       tx_to_blob(ptx.tx, blob);
       const std::string blob_hex = lokimq::to_hex(blob);
       fs::path filename = fs::u8path("raw_loki_tx");

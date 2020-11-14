@@ -1064,7 +1064,7 @@ namespace tools
     if(m_wallet->watch_only())
       throw wallet_rpc_error{error_code::WATCH_ONLY, "command not supported by watch-only wallet"};
 
-    cryptonote::blobdata blob;
+    std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.unsigned_txset, blob))
       throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
 
@@ -1119,7 +1119,7 @@ namespace tools
     if (!req.unsigned_txset.empty()) {
       try {
         wallet::unsigned_tx_set exported_txs;
-        cryptonote::blobdata blob;
+        std::string blob;
         if (!epee::string_tools::parse_hexstr_to_binbuff(req.unsigned_txset, blob))
           throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
         if (!m_wallet->parse_unsigned_tx_from_str(blob, exported_txs))
@@ -1132,7 +1132,7 @@ namespace tools
     } else if (!req.multisig_txset.empty()) {
       try {
         wallet::multisig_tx_set exported_txs;
-        cryptonote::blobdata blob;
+        std::string blob;
         if (!epee::string_tools::parse_hexstr_to_binbuff(req.multisig_txset, blob))
           throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
         if (!m_wallet->parse_multisig_tx_from_str(blob, exported_txs))
@@ -1265,7 +1265,7 @@ namespace tools
     if (m_wallet->key_on_device())
       throw wallet_rpc_error{error_code::UNKNOWN_ERROR, "command not supported by HW wallet"};
 
-    cryptonote::blobdata blob;
+    std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.tx_data_hex, blob))
       throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
 
@@ -1386,7 +1386,7 @@ namespace tools
     require_open();
     RELAY_TX::response res{};
 
-    cryptonote::blobdata blob;
+    std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.hex, blob))
       throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
 
@@ -1484,7 +1484,7 @@ namespace tools
     GET_PAYMENTS::response res{};
     crypto::hash payment_id;
     crypto::hash8 payment_id8;
-    cryptonote::blobdata payment_id_blob;
+    std::string payment_id_blob;
     if(!epee::string_tools::parse_hexstr_to_binbuff(req.payment_id, payment_id_blob))
       throw wallet_rpc_error{error_code::WRONG_PAYMENT_ID, "Payment ID has invalid format"};
 
@@ -1552,7 +1552,7 @@ namespace tools
     {
       crypto::hash payment_id;
       crypto::hash8 payment_id8;
-      cryptonote::blobdata payment_id_blob;
+      std::string payment_id_blob;
 
       // TODO - should the whole thing fail because of one bad id?
       bool r;
@@ -1729,7 +1729,7 @@ namespace tools
     std::list<std::string>::const_iterator i = req.txids.begin();
     while (i != req.txids.end())
     {
-      cryptonote::blobdata txid_blob;
+      std::string txid_blob;
       if(!epee::string_tools::parse_hexstr_to_binbuff(*i++, txid_blob) || txid_blob.size() != sizeof(crypto::hash))
         throw wallet_rpc_error{error_code::WRONG_TXID, "TX ID has invalid format"};
 
@@ -1756,7 +1756,7 @@ namespace tools
     std::list<std::string>::const_iterator i = req.txids.begin();
     while (i != req.txids.end())
     {
-      cryptonote::blobdata txid_blob;
+      std::string txid_blob;
       if(!epee::string_tools::parse_hexstr_to_binbuff(*i++, txid_blob) || txid_blob.size() != sizeof(crypto::hash))
         throw wallet_rpc_error{error_code::WRONG_TXID, "TX ID has invalid format"};
 
@@ -2027,7 +2027,7 @@ namespace tools
     GET_TRANSFER_BY_TXID::response res{};
 
     crypto::hash txid;
-    cryptonote::blobdata txid_blob;
+    std::string txid_blob;
     if(!epee::string_tools::parse_hexstr_to_binbuff(req.txid, txid_blob))
       throw wallet_rpc_error{error_code::WRONG_TXID, "Transaction ID has invalid format"};
 
@@ -2105,7 +2105,7 @@ namespace tools
     if (m_wallet->key_on_device())
       throw wallet_rpc_error{error_code::UNKNOWN_ERROR, "command not supported by HW wallet"};
 
-    cryptonote::blobdata blob;
+    std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.outputs_data_hex, blob))
       throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
 
@@ -2676,7 +2676,7 @@ namespace {
     if (!ready)
       throw wallet_rpc_error{error_code::NOT_MULTISIG, "This wallet is multisig, but not yet finalized"};
 
-    cryptonote::blobdata info;
+    std::string info;
     info = m_wallet->export_multisig();
 
     res.info = lokimq::to_hex(info);
@@ -2698,7 +2698,7 @@ namespace {
     if (req.info.size() < threshold - 1)
       throw wallet_rpc_error{error_code::THRESHOLD_NOT_REACHED, "Needs multisig export info from more participants"};
 
-    std::vector<cryptonote::blobdata> info;
+    std::vector<std::string> info;
     info.resize(req.info.size());
     for (size_t n = 0; n < info.size(); ++n)
     {
@@ -2777,7 +2777,7 @@ namespace {
     if (!ready)
       throw wallet_rpc_error{error_code::NOT_MULTISIG, "This wallet is multisig, but not yet finalized"};
 
-    cryptonote::blobdata blob;
+    std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.tx_data_hex, blob))
       throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
 
@@ -2819,7 +2819,7 @@ namespace {
     if (!ready)
       throw wallet_rpc_error{error_code::NOT_MULTISIG, "This wallet is multisig, but not yet finalized"};
 
-    cryptonote::blobdata blob;
+    std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.tx_data_hex, blob))
       throw wallet_rpc_error{error_code::BAD_HEX, "Failed to parse hex."};
 

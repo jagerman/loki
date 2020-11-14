@@ -94,7 +94,7 @@ namespace cryptonote
       uint64_t fee,
       transaction& tx,
       const loki_miner_tx_context &miner_context,
-      const blobdata& extra_nonce = blobdata(),
+      const std::string& extra_nonce = std::string(),
       uint8_t hard_fork_version = 1);
 
   struct block_reward_parts

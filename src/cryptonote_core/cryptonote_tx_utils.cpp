@@ -263,7 +263,7 @@ namespace cryptonote
       uint64_t fee,
       transaction& tx,
       const loki_miner_tx_context &miner_tx_context,
-      const blobdata& extra_nonce,
+      const std::string& extra_nonce,
       uint8_t hard_fork_version)
   {
     tx.vin.clear();
@@ -1167,7 +1167,7 @@ namespace cryptonote
     }
     else
     {
-      blobdata bd = get_block_hashing_blob(b);
+      std::string bd = get_block_hashing_blob(b);
       rx_slow_hash(randomx_context.current_blockchain_height, randomx_context.seed_height, randomx_context.seed_block_hash.data, bd.data(), bd.size(), result.data, 0, 1);
     }
 
@@ -1193,7 +1193,7 @@ namespace cryptonote
   crypto::hash get_block_longhash(cryptonote::network_type nettype, randomx_longhash_context const &randomx_context, const block& b, uint64_t height, int miners)
   {
     crypto::hash result      = {};
-    const blobdata bd        = get_block_hashing_blob(b);
+    const std::string bd        = get_block_hashing_blob(b);
     const uint8_t hf_version = b.major_version;
 
 #if defined(LOKI_INTEGRATION_TESTS)

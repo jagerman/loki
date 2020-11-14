@@ -118,8 +118,8 @@ TEST(JsonSerialization, MinerTransaction)
     ASSERT_TRUE(cryptonote::get_transaction_hash(miner_tx_copy, tx_copy_hash));
     EXPECT_EQ(tx_hash, tx_copy_hash);
 
-    cryptonote::blobdata tx_bytes{};
-    cryptonote::blobdata tx_copy_bytes{};
+    std::string tx_bytes{};
+    std::string tx_copy_bytes{};
 
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(miner_tx, tx_bytes));
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(miner_tx_copy, tx_copy_bytes));
@@ -153,8 +153,8 @@ TEST(JsonSerialization, RegularTransaction)
     ASSERT_TRUE(cryptonote::get_transaction_hash(tx_copy, tx_copy_hash));
     EXPECT_EQ(tx_hash, tx_copy_hash);
 
-    cryptonote::blobdata tx_bytes{};
-    cryptonote::blobdata tx_copy_bytes{};
+    std::string tx_bytes{};
+    std::string tx_copy_bytes{};
 
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx, tx_bytes));
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx_copy, tx_copy_bytes));
@@ -188,8 +188,8 @@ TEST(JsonSerialization, RingctTransaction)
     ASSERT_TRUE(cryptonote::get_transaction_hash(tx_copy, tx_copy_hash));
     EXPECT_EQ(tx_hash, tx_copy_hash);
 
-    cryptonote::blobdata tx_bytes{};
-    cryptonote::blobdata tx_copy_bytes{};
+    std::string tx_bytes{};
+    std::string tx_copy_bytes{};
 
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx, tx_bytes));
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx_copy, tx_copy_bytes));
@@ -223,8 +223,8 @@ TEST(JsonSerialization, BulletproofTransaction)
     ASSERT_TRUE(cryptonote::get_transaction_hash(tx_copy, tx_copy_hash));
     EXPECT_EQ(tx_hash, tx_copy_hash);
 
-    cryptonote::blobdata tx_bytes{};
-    cryptonote::blobdata tx_copy_bytes{};
+    std::string tx_bytes{};
+    std::string tx_copy_bytes{};
 
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx, tx_bytes));
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx_copy, tx_copy_bytes));
@@ -258,8 +258,8 @@ TEST(JsonSerialization, Version3PerOutputUnlockTransaction)
     ASSERT_TRUE(cryptonote::get_transaction_hash(tx_copy, tx_copy_hash));
     EXPECT_EQ(tx_hash, tx_copy_hash);
 
-    cryptonote::blobdata tx_bytes{};
-    cryptonote::blobdata tx_copy_bytes{};
+    std::string tx_bytes{};
+    std::string tx_copy_bytes{};
 
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx, tx_bytes));
     ASSERT_TRUE(cryptonote::t_serializable_object_to_blob(tx_copy, tx_copy_bytes));

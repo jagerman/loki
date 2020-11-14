@@ -34,7 +34,6 @@
 #include "epee/serialization/keyvalue_serialization.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "epee/net/net_utils_base.h"
-#include "cryptonote_basic/blobdatatype.h"
 
 #include "common/loki.h"
 
@@ -115,9 +114,9 @@ namespace cryptonote
   LOKI_RPC_DOC_INTROSPECT
   struct block_complete_entry
   {
-    blobdata block;
-    std::vector<blobdata> txs;
-    blobdata checkpoint;
+    std::string block;
+    std::vector<std::string> txs;
+    std::string checkpoint;
     std::vector<serializable_blink_metadata> blinks;
     KV_MAP_SERIALIZABLE
   };
@@ -131,7 +130,7 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<blobdata> txs;
+      std::vector<std::string> txs;
       std::vector<serializable_blink_metadata> blinks;
       bool requested = false;
       std::string _; // padding

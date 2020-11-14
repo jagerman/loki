@@ -27,10 +27,10 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <set>
-#include "cryptonote_basic/blobdatatype.h"
+#include <string>
 
 namespace cryptonote
 {
-  bool tx_sanity_check(const cryptonote::blobdata &tx_blob, uint64_t rct_outs_available);
+  bool tx_sanity_check(const std::string &tx_blob, uint64_t rct_outs_available);
   bool tx_sanity_check(const std::set<uint64_t> &rct_indices, size_t n_indices, uint64_t rct_outs_available);
 }

@@ -1941,7 +1941,7 @@ namespace nodetool
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
-  epee::net_utils::zone node_server<t_payload_net_handler>::send_txs(std::vector<cryptonote::blobdata> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source, const bool pad_txs)
+  epee::net_utils::zone node_server<t_payload_net_handler>::send_txs(std::vector<std::string> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source, const bool pad_txs)
   {
     namespace enet = epee::net_utils;
 

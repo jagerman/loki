@@ -83,7 +83,7 @@ const std::vector<std::vector<std::string>> t_transactions =
     }
   };
 
-// if the return type (blobdata for now) of block_to_blob ever changes
+// if the return type (std::string for now) of block_to_blob ever changes
 // from std::string, this might break.
 bool compare_blocks(const block& a, const block& b)
 {
@@ -103,7 +103,7 @@ void print_block(const block& blk, const std::string& prefix = "")
   ;
 }
 
-// if the return type (blobdata for now) of tx_to_blob ever changes
+// if the return type (std::string for now) of tx_to_blob ever changes
 // from std::string, this might break.
 bool compare_txs(const transaction& a, const transaction& b)
 {
@@ -161,17 +161,17 @@ protected:
     for (auto& i : t_blocks)
     {
       block bl;
-      blobdata bd = h2b(i);
+      std::string bd = h2b(i);
       CHECK_AND_ASSERT_THROW_MES(parse_and_validate_block_from_blob(bd, bl), "Invalid block");
       m_blocks.push_back(std::make_pair(bl, bd));
     }
     for (auto& i : t_transactions)
     {
-      std::vector<std::pair<transaction, blobdata>> txs;
+      std::vector<std::pair<transaction, std::string>> txs;
       for (auto& j : i)
       {
         transaction tx;
-        blobdata bd = h2b(j);
+        std::string bd = h2b(j);
         CHECK_AND_ASSERT_THROW_MES(parse_and_validate_tx_from_blob(bd, tx), "Invalid transaction");
         txs.push_back(std::make_pair(tx, bd));
       }
@@ -187,8 +187,8 @@ protected:
   BlockchainDB* m_db;
   HardFork m_hardfork;
   fs::path m_prefix;
-  std::vector<std::pair<block, blobdata>> m_blocks;
-  std::vector<std::vector<std::pair<transaction, blobdata>>> m_txs;
+  std::vector<std::pair<block, std::string>> m_blocks;
+  std::vector<std::vector<std::pair<transaction, std::string>>> m_txs;
   std::vector<fs::path> m_filenames;
 
   void init_hard_fork()

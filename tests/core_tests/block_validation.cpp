@@ -660,13 +660,13 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
     crypto::hash(), diffic, transaction(), tx_hashes, txs_weight))
     return false;
 
-  blobdata blob = t_serializable_object_to_blob(blk_test);
+  std::string blob = t_serializable_object_to_blob(blk_test);
   for (size_t i = 0; i < blob.size(); ++i)
   {
-    for (size_t bit_idx = 0; bit_idx < sizeof(blobdata::value_type) * 8; ++bit_idx)
+    for (size_t bit_idx = 0; bit_idx < sizeof(std::string::value_type) * 8; ++bit_idx)
     {
       serialized_block sr_block(blob);
-      blobdata::value_type& ch = sr_block.data[i];
+      std::string::value_type& ch = sr_block.data[i];
       ch ^= 1 << bit_idx;
 
       events.push_back(sr_block);

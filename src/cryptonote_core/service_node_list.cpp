@@ -1431,7 +1431,7 @@ namespace service_nodes
       // ignore not found block, try alt db
       LOG_PRINT_L1("Block " << hash << " not found in main DB, searching alt DB");
       cryptonote::alt_block_data_t alt_data;
-      cryptonote::blobdata blob;
+      std::string blob;
       if (!db.get_alt_block(hash, &alt_data, &blob, nullptr))
       {
         MERROR("Failed to find block " << hash);

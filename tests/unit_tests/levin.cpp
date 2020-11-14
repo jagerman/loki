@@ -457,7 +457,7 @@ TEST_F(levin_notify, flood)
         EXPECT_FALSE(status.connections_filled); // not tracked
     }
 
-    std::vector<cryptonote::blobdata> txs(2);
+    std::vector<std::string> txs(2);
     txs[0].resize(100, 'f');
     txs[1].resize(200, 'e');
 
@@ -524,7 +524,7 @@ TEST_F(levin_notify, private_flood)
         EXPECT_FALSE(status.connections_filled); // not tracked
     }
 
-    std::vector<cryptonote::blobdata> txs(2);
+    std::vector<std::string> txs(2);
     txs[0].resize(100, 'f');
     txs[1].resize(200, 'e');
 
@@ -580,7 +580,7 @@ TEST_F(levin_notify, noise)
     for (unsigned count = 0; count < 10; ++count)
         add_connection(count % 2 == 0);
 
-    std::vector<cryptonote::blobdata> txs(1);
+    std::vector<std::string> txs(1);
     txs[0].resize(1900, 'h');
 
     const boost::uuids::uuid incoming_id = random_generator_();

@@ -170,7 +170,7 @@ int main(int argc, char* argv[])
 
   mlog_configure("", true);
 
-  cryptonote::blobdata blob;
+  std::string blob;
   if (epee::string_tools::parse_hexstr_to_binbuff(input, blob))
   {
     bool full;

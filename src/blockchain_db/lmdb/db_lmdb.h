@@ -29,7 +29,6 @@
 #include <atomic>
 
 #include "blockchain_db/blockchain_db.h"
-#include "cryptonote_basic/blobdatatype.h" // for type blobdata
 #include "ringct/rctTypes.h"
 #include "common/fs.h"
 #include <boost/thread/thread.hpp>
@@ -208,9 +207,9 @@ public:
 
   block_header get_block_header_from_height(uint64_t height) const override;
 
-  cryptonote::blobdata get_block_blob(const crypto::hash& h) const override;
+  std::string get_block_blob(const crypto::hash& h) const override;
 
-  cryptonote::blobdata get_block_blob_from_height(uint64_t height) const override;
+  std::string get_block_blob_from_height(uint64_t height) const override;
 
   std::vector<uint64_t> get_block_cumulative_rct_outputs(const std::vector<uint64_t> &heights) const override;
 
@@ -249,10 +248,10 @@ public:
 
   uint64_t get_tx_unlock_time(const crypto::hash& h) const override;
 
-  bool get_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const override;
-  bool get_pruned_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const override;
-  bool get_pruned_tx_blobs_from(const crypto::hash& h, size_t count, std::vector<cryptonote::blobdata> &bd) const override;
-  bool get_prunable_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const override;
+  bool get_tx_blob(const crypto::hash& h, std::string &tx) const override;
+  bool get_pruned_tx_blob(const crypto::hash& h, std::string &tx) const override;
+  bool get_pruned_tx_blobs_from(const crypto::hash& h, size_t count, std::vector<std::string> &bd) const override;
+  bool get_prunable_tx_blob(const crypto::hash& h, std::string &tx) const override;
   bool get_prunable_tx_hash(const crypto::hash& tx_hash, crypto::hash &prunable_hash) const override;
 
   uint64_t get_tx_count() const override;
@@ -277,40 +276,40 @@ public:
 
   bool has_key_image(const crypto::key_image& img) const override;
 
-  void add_txpool_tx(const crypto::hash &txid, const cryptonote::blobdata &blob, const txpool_tx_meta_t& meta) override;
+  void add_txpool_tx(const crypto::hash &txid, const std::string &blob, const txpool_tx_meta_t& meta) override;
   void update_txpool_tx(const crypto::hash &txid, const txpool_tx_meta_t& meta) override;
   uint64_t get_txpool_tx_count(bool include_unrelayed_txes = true) const override;
   bool txpool_has_tx(const crypto::hash &txid) const override;
   void remove_txpool_tx(const crypto::hash& txid) override;
   bool get_txpool_tx_meta(const crypto::hash& txid, txpool_tx_meta_t &meta) const override;
-  bool get_txpool_tx_blob(const crypto::hash& txid, cryptonote::blobdata &bd) const override;
-  cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid) const override;
+  bool get_txpool_tx_blob(const crypto::hash& txid, std::string &bd) const override;
+  std::string get_txpool_tx_blob(const crypto::hash& txid) const override;
   uint32_t get_blockchain_pruning_seed() const override;
   bool prune_blockchain(uint32_t pruning_seed = 0) override;
   bool update_pruning() override;
   bool check_pruning() override;
 
-  void add_alt_block(const crypto::hash &blkid, const cryptonote::alt_block_data_t &data, const cryptonote::blobdata &blob, const cryptonote::blobdata *checkpoint) override;
-  bool get_alt_block(const crypto::hash &blkid, alt_block_data_t *data, cryptonote::blobdata *blob, cryptonote::blobdata *checkpoint) const override;
+  void add_alt_block(const crypto::hash &blkid, const cryptonote::alt_block_data_t &data, const std::string &blob, const std::string *checkpoint) override;
+  bool get_alt_block(const crypto::hash &blkid, alt_block_data_t *data, std::string *blob, std::string *checkpoint) const override;
   void remove_alt_block(const crypto::hash &blkid) override;
   uint64_t get_alt_block_count() override;
   void drop_alt_blocks() override;
 
-  bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const cryptonote::blobdata*)> f, bool include_blob = false, bool include_unrelayed_txes = true) const override;
+  bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const std::string*)> f, bool include_blob = false, bool include_unrelayed_txes = true) const override;
 
   bool for_all_key_images(std::function<bool(const crypto::key_image&)>) const override;
   bool for_blocks_range(height_range h, std::function<bool(uint64_t, const crypto::hash&, const cryptonote::block&)>) const override;
   bool for_all_transactions(std::function<bool(const crypto::hash&, const cryptonote::transaction&)>, bool pruned) const override;
   bool for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, uint64_t height, size_t tx_idx)> f) const override;
   bool for_all_outputs(uint64_t amount, const std::function<bool(uint64_t height)> &f) const override;
-  bool for_all_alt_blocks(std::function<bool(const crypto::hash &blkid, const alt_block_data_t &data, const cryptonote::blobdata *block_blob, const cryptonote::blobdata *checkpoint_blob)> f, bool include_blob = false) const override;
+  bool for_all_alt_blocks(std::function<bool(const crypto::hash &blkid, const alt_block_data_t &data, const std::string *block_blob, const std::string *checkpoint_blob)> f, bool include_blob = false) const override;
 
-  uint64_t add_block( const std::pair<block, blobdata>& blk
+  uint64_t add_block( const std::pair<block, std::string>& blk
                             , size_t block_weight
                             , uint64_t long_term_block_weight
                             , difficulty_type cumulative_difficulty
                             , uint64_t coins_generated
-                            , const std::vector<std::pair<transaction, blobdata>>& txs
+                            , const std::vector<std::pair<transaction, std::string>>& txs
                             ) override;
   void update_block_checkpoint(checkpoint_t const &checkpoint) override;
   void remove_block_checkpoint(uint64_t height) override;
@@ -376,7 +375,7 @@ private:
 
   void remove_block() override;
 
-  uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) override;
+  uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, std::string>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) override;
 
   void remove_transaction_data(const crypto::hash& tx_hash, const transaction& tx) override;
 
@@ -452,7 +451,7 @@ private:
   template <typename T,
             std::enable_if_t<std::is_same_v<T, cryptonote::block> ||
                              std::is_same_v<T, cryptonote::block_header> ||
-                             std::is_same_v<T, cryptonote::blobdata>, int> = 0>
+                             std::is_same_v<T, std::string>, int> = 0>
   T get_and_convert_block_blob_from_height(uint64_t height) const;
 
   MDB_env* m_env;

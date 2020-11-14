@@ -728,7 +728,7 @@ namespace trezor {
     void device_trezor::transaction_check(const protocol::tx::TData & tdata, const hw::tx_aux_data & aux_data)
     {
       // Simple serialization check
-      cryptonote::blobdata tx_blob;
+      std::string tx_blob;
       cryptonote::transaction tx_deserialized;
       bool r = cryptonote::t_serializable_object_to_blob(tdata.tx, tx_blob);
       CHECK_AND_ASSERT_THROW_MES(r, "Transaction serialization failed");

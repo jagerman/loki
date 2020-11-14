@@ -341,7 +341,7 @@ bool Wallet::keyValid(const std::string &secret_key_string, const std::string &a
       return false;
   }
   
-  cryptonote::blobdata key_data;
+  std::string key_data;
   if(!epee::string_tools::parse_hexstr_to_binbuff(secret_key_string, key_data) || key_data.size() != sizeof(crypto::secret_key))
   {
       error = tr("Failed to parse key");
@@ -594,7 +594,7 @@ bool WalletImpl::recoverFromKeysWithPassword(std::string_view path_,
     crypto::secret_key spendkey;
     bool has_spendkey = false;
     if (!spendkey_string.empty()) {
-        cryptonote::blobdata spendkey_data;
+        std::string spendkey_data;
         if(!epee::string_tools::parse_hexstr_to_binbuff(spendkey_string, spendkey_data) || spendkey_data.size() != sizeof(crypto::secret_key))
         {
             setStatusError(tr("failed to parse secret spend key"));
@@ -617,7 +617,7 @@ bool WalletImpl::recoverFromKeysWithPassword(std::string_view path_,
         }
     }
     if(has_viewkey) {
-      cryptonote::blobdata viewkey_data;
+      std::string viewkey_data;
       if(!epee::string_tools::parse_hexstr_to_binbuff(viewkey_string, viewkey_data) || viewkey_data.size() != sizeof(crypto::secret_key))
       {
           setStatusError(tr("failed to parse secret view key"));
@@ -1703,7 +1703,7 @@ std::string WalletImpl::getCacheAttribute(const std::string &key) const
 
 bool WalletImpl::setUserNote(const std::string &txid, const std::string &note)
 {
-    cryptonote::blobdata txid_data;
+    std::string txid_data;
     if(!epee::string_tools::parse_hexstr_to_binbuff(txid, txid_data) || txid_data.size() != sizeof(crypto::hash))
       return false;
     const crypto::hash htxid = *reinterpret_cast<const crypto::hash*>(txid_data.data());
@@ -1714,7 +1714,7 @@ bool WalletImpl::setUserNote(const std::string &txid, const std::string &note)
 
 std::string WalletImpl::getUserNote(const std::string &txid) const
 {
-    cryptonote::blobdata txid_data;
+    std::string txid_data;
     if(!epee::string_tools::parse_hexstr_to_binbuff(txid, txid_data) || txid_data.size() != sizeof(crypto::hash))
       return "";
     const crypto::hash htxid = *reinterpret_cast<const crypto::hash*>(txid_data.data());
@@ -1985,7 +1985,7 @@ bool WalletImpl::verifyMessageWithPublicKey(const std::string &message, const st
 {
     clearStatus();
 
-    cryptonote::blobdata pkeyData;
+    std::string pkeyData;
     if(!epee::string_tools::parse_hexstr_to_binbuff(publicKey, pkeyData) || pkeyData.size() != sizeof(crypto::public_key))
         return setStatusError(tr("Given string is not a key"));
 

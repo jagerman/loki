@@ -32,7 +32,6 @@
 
 #include <atomic>
 #include <thread>
-#include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/verification_context.h"
 #include "cryptonote_basic/difficulty.h"
@@ -51,7 +50,7 @@ namespace cryptonote
   struct i_miner_handler
   {
     virtual bool handle_block_found(block& b, block_verification_context &bvc) = 0;
-    virtual bool create_next_miner_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce) = 0;
+    virtual bool create_next_miner_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const std::string& ex_nonce) = 0;
   protected:
     ~i_miner_handler(){};
   };
@@ -122,7 +121,7 @@ namespace cryptonote
     tools::periodic_task m_update_block_template_interval{5s};
     tools::periodic_task m_update_merge_hr_interval{2s};
     tools::periodic_task m_autodetect_interval{1s};
-    std::vector<blobdata> m_extra_messages;
+    std::vector<std::string> m_extra_messages;
     miner_config m_config;
     fs::path m_config_dir;
     std::atomic<uint64_t> m_last_hr_merge_time;

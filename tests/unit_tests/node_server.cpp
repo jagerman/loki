@@ -56,13 +56,13 @@ public:
   bool get_short_chain_history(std::list<crypto::hash>& ids) const { return true; }
   bool have_block(const crypto::hash& id) const {return true;}
   void get_blockchain_top(uint64_t& height, crypto::hash& top_id)const{height=0;top_id=crypto::null_hash;}
-  std::vector<cryptonote::core::tx_verification_batch_info> parse_incoming_txs(const std::vector<cryptonote::blobdata>& tx_blobs, const cryptonote::tx_pool_options &opts) { return {}; }
+  std::vector<cryptonote::core::tx_verification_batch_info> parse_incoming_txs(const std::vector<std::string>& tx_blobs, const cryptonote::tx_pool_options &opts) { return {}; }
   bool handle_parsed_txs(std::vector<cryptonote::core::tx_verification_batch_info> &parsed_txs, const cryptonote::tx_pool_options &opts, uint64_t *blink_rollback_height = nullptr) { if (blink_rollback_height) *blink_rollback_height = 0; return true; }
-  std::vector<cryptonote::core::tx_verification_batch_info> handle_incoming_txs(const std::vector<cryptonote::blobdata>& tx_blobs, const cryptonote::tx_pool_options &opts) { return {}; }
-  bool handle_incoming_tx(const cryptonote::blobdata& tx_blob, cryptonote::tx_verification_context& tvc, const cryptonote::tx_pool_options &opts) { return true; }
+  std::vector<cryptonote::core::tx_verification_batch_info> handle_incoming_txs(const std::vector<std::string>& tx_blobs, const cryptonote::tx_pool_options &opts) { return {}; }
+  bool handle_incoming_tx(const std::string& tx_blob, cryptonote::tx_verification_context& tvc, const cryptonote::tx_pool_options &opts) { return true; }
   std::pair<std::vector<std::shared_ptr<cryptonote::blink_tx>>, std::unordered_set<crypto::hash>> parse_incoming_blinks(const std::vector<cryptonote::serializable_blink_metadata> &blinks) { return {}; }
   int add_blinks(const std::vector<std::shared_ptr<cryptonote::blink_tx>> &blinks) { return 0; }
-  bool handle_incoming_block(const cryptonote::blobdata& block_blob, const cryptonote::block *block, cryptonote::block_verification_context& bvc, cryptonote::checkpoint_t const *checkpoint, bool update_miner_blocktemplate = true) { return true; }
+  bool handle_incoming_block(const std::string& block_blob, const cryptonote::block *block, cryptonote::block_verification_context& bvc, cryptonote::checkpoint_t const *checkpoint, bool update_miner_blocktemplate = true) { return true; }
   bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation) { return false; }
   void pause_mine(){}
   void resume_mine(){}
@@ -76,9 +76,9 @@ public:
   bool cleanup_handle_incoming_blocks(bool force_sync = false) { return true; }
   uint64_t get_target_blockchain_height() const { return 1; }
   size_t get_block_sync_size(uint64_t height) const { return BLOCKS_SYNCHRONIZING_DEFAULT_COUNT; }
-  virtual crypto::hash on_transaction_relayed(const cryptonote::blobdata& tx) { return crypto::null_hash; }
+  virtual crypto::hash on_transaction_relayed(const std::string& tx) { return crypto::null_hash; }
   cryptonote::network_type get_nettype() const { return cryptonote::MAINNET; }
-  bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<cryptonote::blobdata, cryptonote::block>>& blocks, std::vector<cryptonote::blobdata>& txs) const { return false; }
+  bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<std::string, cryptonote::block>>& blocks, std::vector<std::string>& txs) const { return false; }
   bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::transaction>& txs, std::vector<crypto::hash>& missed_txs) const { return false; }
   bool get_block_by_hash(const crypto::hash &h, cryptonote::block &blk, bool *orphan = NULL) const { return false; }
   uint8_t get_ideal_hard_fork_version() const { return 0; }
@@ -110,7 +110,7 @@ public:
       void unlock() {}
       bool try_lock() { return true; }
       std::shared_ptr<cryptonote::blink_tx> get_blink(crypto::hash &) { return nullptr; }
-      bool get_transaction(const crypto::hash& id, cryptonote::blobdata& tx_blob) const { return false; }
+      bool get_transaction(const crypto::hash& id, std::string& tx_blob) const { return false; }
       bool have_tx(const crypto::hash &txid) const { return false; }
       std::map<uint64_t, crypto::hash> get_blink_checksums() const { return {}; }
       std::vector<crypto::hash> get_mined_blinks(const std::set<uint64_t> &) const { return {}; }

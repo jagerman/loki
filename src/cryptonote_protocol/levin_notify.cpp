@@ -92,7 +92,7 @@ namespace levin
       return outs;
     }
 
-    std::string make_tx_payload(std::vector<blobdata>&& txs, const bool pad)
+    std::string make_tx_payload(std::vector<std::string>&& txs, const bool pad)
     {
       NOTIFY_NEW_TRANSACTIONS::request request{};
       request.txs = std::move(txs);
@@ -540,7 +540,7 @@ namespace levin
       channel.next_noise.cancel();
   }
 
-  bool notify::send_txs(std::vector<blobdata> txs, const boost::uuids::uuid& source, const bool pad_txs)
+  bool notify::send_txs(std::vector<std::string> txs, const boost::uuids::uuid& source, const bool pad_txs)
   {
     if (!zone_)
       return false;

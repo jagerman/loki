@@ -745,8 +745,8 @@ namespace rpc {
       std::string prev_hash;       // Hash of the most recent block on which to mine the next block.
       std::string seed_hash;       // RandomX current seed hash
       std::string next_seed_hash;  // RandomX upcoming seed hash
-      blobdata blocktemplate_blob; // Blob on which to try to mine a new block.
-      blobdata blockhashing_blob;  // Blob on which to try to find a valid nonce.
+      std::string blocktemplate_blob; // Blob on which to try to mine a new block.
+      std::string blockhashing_blob;  // Blob on which to try to find a valid nonce.
       std::string status;          // General RPC error code. "OK" means everything looks good.
       bool untrusted;              // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
 
