@@ -34,7 +34,7 @@
 
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "checkpoints/checkpoints.cpp"
-#include "blockchain_db/testdb.h"
+#include "testdb.h"
 
 
 using namespace cryptonote;

@@ -57,7 +57,7 @@
 #include "serialization/boost_std_optional.h"
 #include "epee/misc_language.h"
 
-#include "blockchain_db/testdb.h"
+#include "../unit_tests/testdb.h"
 
 #undef LOKI_DEFAULT_LOG_CATEGORY
 #define LOKI_DEFAULT_LOG_CATEGORY "tests.core"

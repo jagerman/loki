@@ -34,7 +34,7 @@
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/hardfork.h"
-#include "blockchain_db/testdb.h"
+#include "testdb.h"
 #include "checkpoints/checkpoints.h"
 
 using namespace cryptonote;
