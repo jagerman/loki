@@ -321,14 +321,14 @@ TYPED_TEST(BlockchainDBTest, RetrieveBlockData)
   ASSERT_HASH_EQ(get_block_hash(this->m_blocks[0].first), this->m_db->get_block_hash_from_height(0));
 
   std::vector<block> blks;
-  ASSERT_NO_THROW(blks = this->m_db->get_blocks_range(0, 1));
+  ASSERT_NO_THROW(blks = this->m_db->get_blocks_range({0, 1}));
   ASSERT_EQ(2, blks.size());
   
   ASSERT_HASH_EQ(get_block_hash(this->m_blocks[0].first), get_block_hash(blks[0]));
   ASSERT_HASH_EQ(get_block_hash(this->m_blocks[1].first), get_block_hash(blks[1]));
 
   std::vector<crypto::hash> hashes;
-  ASSERT_NO_THROW(hashes = this->m_db->get_hashes_range(0, 1));
+  ASSERT_NO_THROW(hashes = this->m_db->get_hashes_range({0, 1}));
   ASSERT_EQ(2, hashes.size());
 
   ASSERT_HASH_EQ(get_block_hash(this->m_blocks[0].first), hashes[0]);

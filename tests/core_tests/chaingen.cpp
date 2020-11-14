@@ -153,16 +153,15 @@ oxen_chain_generator_db::get_checkpoints_range(uint64_t start, uint64_t end, siz
   return result;
 }
 
-std::vector<cryptonote::block> oxen_chain_generator_db::get_blocks_range(const uint64_t &h1,
-                                                                         const uint64_t &h2) const
+std::vector<cryptonote::block> oxen_chain_generator_db::get_blocks_range(cryptonote::height_range h) const
 {
-  assert(h1 <= h2);
+  assert(h.first <= h.second);
   std::vector<cryptonote::block> result;
-  result.reserve(h2 - h1);
-  for (uint64_t height = h1; height <= h2; height++)
+  result.reserve(h.second - h.first);
+  for (; h.first <= h.second; h.first++)
   {
-    result.push_back(blocks[height].block);
-    assert(cryptonote::get_block_height(result.back()) == height);
+    result.push_back(blocks[h.first].block);
+    assert(cryptonote::get_block_height(result.back()) == h.first);
   }
   return result;
 }

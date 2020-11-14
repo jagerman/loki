@@ -213,29 +213,29 @@ public:
 
   std::vector<uint64_t> get_block_cumulative_rct_outputs(const std::vector<uint64_t> &heights) const override;
 
-  uint64_t get_block_timestamp(const uint64_t& height) const override;
+  uint64_t get_block_timestamp(uint64_t height) const override;
 
   uint64_t get_top_block_timestamp() const override;
 
-  size_t get_block_weight(const uint64_t& height) const override;
+  size_t get_block_weight(uint64_t height) const override;
 
   std::vector<uint64_t> get_block_weights(uint64_t start_height, size_t count) const override;
 
-  difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const override;
+  difficulty_type get_block_cumulative_difficulty(uint64_t height) const override;
 
-  difficulty_type get_block_difficulty(const uint64_t& height) const override;
+  difficulty_type get_block_difficulty(uint64_t height) const override;
 
-  uint64_t get_block_already_generated_coins(const uint64_t& height) const override;
+  uint64_t get_block_already_generated_coins(uint64_t height) const override;
 
-  uint64_t get_block_long_term_weight(const uint64_t& height) const override;
+  uint64_t get_block_long_term_weight(uint64_t height) const override;
 
   std::vector<uint64_t> get_long_term_block_weights(uint64_t start_height, size_t count) const override;
 
-  crypto::hash get_block_hash_from_height(const uint64_t& height) const override;
+  crypto::hash get_block_hash_from_height(uint64_t height) const override;
 
-  std::vector<block> get_blocks_range(const uint64_t& h1, const uint64_t& h2) const override;
+  std::vector<block> get_blocks_range(height_range h) const override;
 
-  std::vector<crypto::hash> get_hashes_range(const uint64_t& h1, const uint64_t& h2) const override;
+  std::vector<crypto::hash> get_hashes_range(height_range h) const override;
 
   crypto::hash top_block_hash(uint64_t *block_height = nullptr) const override;
 
@@ -260,17 +260,17 @@ public:
 
   std::vector<uint64_t> get_tx_block_heights(const std::vector<crypto::hash>& hlist) const override;
 
-  uint64_t get_num_outputs(const uint64_t& amount) const override;
+  uint64_t get_num_outputs(uint64_t amount) const override;
 
-  output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool include_commitmemt) const override;
+  output_data_t get_output_key(uint64_t amount, uint64_t index, bool include_commitmemt) const override;
   void get_output_key(const epee::span<const uint64_t> &amounts, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool allow_partial = false) const override;
 
-  tx_out_index get_output_tx_and_index_from_global(const uint64_t& index) const override;
+  tx_out_index get_output_tx_and_index_from_global(uint64_t index) const override;
   void get_output_tx_and_index_from_global(const std::vector<uint64_t> &global_indices,
       std::vector<tx_out_index> &tx_out_indices) const;
 
-  tx_out_index get_output_tx_and_index(const uint64_t& amount, const uint64_t& index) const override;
-  void get_output_tx_and_index(const uint64_t& amount, const std::vector<uint64_t> &offsets, std::vector<tx_out_index> &indices) const override;
+  tx_out_index get_output_tx_and_index(uint64_t amount, uint64_t index) const override;
+  void get_output_tx_and_index(uint64_t amount, const std::vector<uint64_t> &offsets, std::vector<tx_out_index> &indices) const override;
 
   std::vector<std::vector<uint64_t>> get_tx_amount_output_indices(const uint64_t tx_id, size_t n_txes) const override;
 
@@ -298,7 +298,7 @@ public:
   bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const std::string*)> f, bool include_blob = false, bool include_unrelayed_txes = true) const override;
 
   bool for_all_key_images(std::function<bool(const crypto::key_image&)>) const override;
-  bool for_blocks_range(const uint64_t& h1, const uint64_t& h2, std::function<bool(uint64_t, const crypto::hash&, const cryptonote::block&)>) const override;
+  bool for_blocks_range(height_range h, std::function<bool(uint64_t, const crypto::hash&, const cryptonote::block&)>) const override;
   bool for_all_transactions(std::function<bool(const crypto::hash&, const cryptonote::transaction&)>, bool pruned) const override;
   bool for_all_outputs(std::function<bool(uint64_t amount, const crypto::hash &tx_hash, uint64_t height, size_t tx_idx)> f) const override;
   bool for_all_outputs(uint64_t amount, const std::function<bool(uint64_t height)> &f) const override;
@@ -307,8 +307,8 @@ public:
   uint64_t add_block( const std::pair<block, std::string>& blk
                             , size_t block_weight
                             , uint64_t long_term_block_weight
-                            , const difficulty_type& cumulative_difficulty
-                            , const uint64_t& coins_generated
+                            , difficulty_type cumulative_difficulty
+                            , uint64_t coins_generated
                             , const std::vector<std::pair<transaction, std::string>>& txs
                             ) override;
   void update_block_checkpoint(checkpoint_t const &checkpoint) override;
@@ -367,8 +367,8 @@ private:
   void add_block( const block& blk
                 , size_t block_weight
                 , uint64_t long_term_block_weight
-                , const difficulty_type& cumulative_difficulty
-                , const uint64_t& coins_generated
+                , difficulty_type cumulative_difficulty
+                , uint64_t coins_generated
                 , uint64_t num_rct_outs
                 , const crypto::hash& block_hash
                 ) override;
@@ -381,8 +381,8 @@ private:
 
   uint64_t add_output(const crypto::hash& tx_hash,
       const tx_out& tx_output,
-      const uint64_t& local_index,
-      const uint64_t unlock_time,
+      uint64_t local_index,
+      uint64_t unlock_time,
       const rct::key *commitment
       ) override;
 
@@ -392,7 +392,7 @@ private:
 
   void remove_tx_outputs(const uint64_t tx_id, const transaction& tx);
 
-  void remove_output(const uint64_t amount, const uint64_t& out_index);
+  void remove_output(uint64_t amount, uint64_t out_index);
 
   void prune_outputs(uint64_t amount) override;
 

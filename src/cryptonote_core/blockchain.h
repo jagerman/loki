@@ -851,13 +851,12 @@ namespace cryptonote
     /**
      * @brief perform a check on all blocks in the blockchain in the given range
      *
-     * @param h1 the start height
-     * @param h2 the end height
+     * @param h the {start height, end height} pair
      * @param std::function the check to perform, pass/fail
      *
      * @return false if any block fails the check, otherwise true
      */
-    bool for_blocks_range(const uint64_t& h1, const uint64_t& h2, std::function<bool(uint64_t, const crypto::hash&, const block&)>) const;
+    bool for_blocks_range(height_range h, std::function<bool(uint64_t, const crypto::hash&, const block&)>) const;
 
     /**
      * @brief perform a check on all transactions in the blockchain

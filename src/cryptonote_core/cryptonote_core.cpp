@@ -1780,7 +1780,7 @@ namespace cryptonote
     }
 
     const uint64_t end = start_offset + count - 1;
-    m_blockchain_storage.for_blocks_range(start_offset, end,
+    m_blockchain_storage.for_blocks_range({start_offset, end},
       [this, &cache_to, &result, &cache_build_started](uint64_t height, const crypto::hash& hash, const block& b){
       auto& [emission_amount, total_fee_amount, burnt_oxen] = result;
       std::vector<transaction> txs;
