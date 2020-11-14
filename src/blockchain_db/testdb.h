@@ -88,7 +88,7 @@ public:
   virtual crypto::hash get_block_hash_from_height(const uint64_t& height) const override { return crypto::hash(); }
   virtual std::vector<cryptonote::block> get_blocks_range(const uint64_t& h1, const uint64_t& h2) const override { return std::vector<cryptonote::block>(); }
   virtual std::vector<crypto::hash> get_hashes_range(const uint64_t& h1, const uint64_t& h2) const override { return std::vector<crypto::hash>(); }
-  virtual crypto::hash top_block_hash(uint64_t *block_height = NULL) const override { if (block_height) *block_height = 0; return crypto::hash(); }
+  virtual crypto::hash top_block_hash(uint64_t *block_height = nullptr) const override { if (block_height) *block_height = 0; return crypto::hash(); }
   virtual cryptonote::block get_top_block() const override { return cryptonote::block(); }
   virtual uint64_t height() const override { return 1; }
   virtual bool tx_exists(const crypto::hash& h) const override { return false; }
