@@ -543,7 +543,7 @@ protected:
    * @param tx_hash_ptr the hash of the transaction, if already calculated
    * @param tx_prunable_hash_ptr the hash of the prunable part of the transaction, if already calculated
    */
-  void add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash* tx_hash_ptr = NULL, const crypto::hash* tx_prunable_hash_ptr = NULL);
+  void add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash* tx_hash_ptr = nullptr, const crypto::hash* tx_prunable_hash_ptr = nullptr);
 
   mutable uint64_t time_tx_exists = 0;  //!< a performance metric
   uint64_t time_commit1 = 0;  //!< a performance metric
@@ -556,7 +556,7 @@ public:
   /**
    * @brief An empty constructor.
    */
-  BlockchainDB(): m_hardfork(NULL), m_open(false) { }
+  BlockchainDB(): m_hardfork(nullptr), m_open(false) { }
 
   /**
    * @brief An empty destructor.
@@ -842,11 +842,11 @@ public:
    * @brief checks if a block exists
    *
    * @param h the hash of the requested block
-   * @param height if non NULL, returns the block's height if found
+   * @param height if non nullptr, returns the block's height if found
    *
    * @return true of the block exists, otherwise false
    */
-  virtual bool block_exists(const crypto::hash& h, uint64_t *height = NULL) const = 0;
+  virtual bool block_exists(const crypto::hash& h, uint64_t *height = nullptr) const = 0;
 
   /**
    * @brief fetches the block with the given hash
@@ -1120,11 +1120,11 @@ public:
    *
    * The subclass should return the hash of the most recent block
    *
-   * @param block_height if non NULL, returns the height of that block (ie, the blockchain height minus 1)
+   * @param block_height if non nullptr, returns the height of that block (ie, the blockchain height minus 1)
    *
    * @return the top block's hash
    */
-  virtual crypto::hash top_block_hash(uint64_t *block_height = NULL) const = 0;
+  virtual crypto::hash top_block_hash(uint64_t *block_height = nullptr) const = 0;
 
   /**
    * @brief fetch the top block
