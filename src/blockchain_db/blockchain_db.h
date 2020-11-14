@@ -106,7 +106,9 @@ namespace cryptonote
 struct checkpoint_t;
 
 /** a pair of <transaction hash, output index>, typedef for convenience */
-typedef std::pair<crypto::hash, uint64_t> tx_out_index;
+using tx_out_index = std::pair<crypto::hash, uint64_t>;
+
+using height_range = std::pair<uint64_t, uint64_t>;
 
 extern const command_line::arg_descriptor<std::string> arg_db_sync_mode;
 extern const command_line::arg_descriptor<bool, false> arg_db_salvage;
@@ -377,8 +379,8 @@ private:
   virtual void add_block( const block& blk
                 , size_t block_weight
                 , uint64_t long_term_block_weight
-                , const difficulty_type& cumulative_difficulty
-                , const uint64_t& coins_generated
+                , difficulty_type cumulative_difficulty
+                , uint64_t coins_generated
                 , uint64_t num_rct_outs
                 , const crypto::hash& blk_hash
                 ) = 0;
@@ -388,7 +390,7 @@ private:
    *
    * The subclass implementing this will remove the block data from the top
    * block in the chain.  The data to be removed is that which was added in
-   * BlockchainDB::add_block(const block& blk, size_t block_weight, uint64_t long_term_block_weight, const difficulty_type& cumulative_difficulty, const uint64_t& coins_generated, const crypto::hash& blk_hash)
+   * BlockchainDB::add_block(const block& blk, size_t block_weight, uint64_t long_term_block_weight, difficulty_type cumulative_difficulty, uint64_t coins_generated, const crypto::hash& blk_hash)
    *
    * If any of this cannot be done, the subclass should throw the corresponding
    * subclass of DB_EXCEPTION
@@ -461,7 +463,7 @@ private:
    * @param commitment the rct commitment to the output amount
    * @return amount output index
    */
-  virtual uint64_t add_output(const crypto::hash& tx_hash, const tx_out& tx_output, const uint64_t& local_index, const uint64_t unlock_time, const rct::key *commitment) = 0;
+  virtual uint64_t add_output(const crypto::hash& tx_hash, const tx_out& tx_output, uint64_t local_index, uint64_t unlock_time, const rct::key *commitment) = 0;
 
   /**
    * @brief store amount output indices for a tx's outputs
@@ -476,7 +478,7 @@ private:
    * @param tx_id ID of the transaction containing these outputs
    * @param amount_output_indices the amount output indices of the transaction
    */
-  virtual void add_tx_amount_output_indices(const uint64_t tx_id, const std::vector<uint64_t>& amount_output_indices) = 0;
+  virtual void add_tx_amount_output_indices(uint64_t tx_id, const std::vector<uint64_t>& amount_output_indices) = 0;
 
   /**
    * @brief store a spent key
@@ -823,8 +825,8 @@ public:
   virtual uint64_t add_block( const std::pair<block, blobdata>& blk
                             , size_t block_weight
                             , uint64_t long_term_block_weight
-                            , const difficulty_type& cumulative_difficulty
-                            , const uint64_t& coins_generated
+                            , difficulty_type cumulative_difficulty
+                            , uint64_t coins_generated
                             , const std::vector<std::pair<transaction, blobdata>>& txs
                             );
 
@@ -953,7 +955,7 @@ public:
    *
    * @return the timestamp
    */
-  virtual uint64_t get_block_timestamp(const uint64_t& height) const = 0;
+  virtual uint64_t get_block_timestamp(uint64_t height) const = 0;
 
   /**
    * @brief fetch a block's cumulative number of rct outputs
@@ -990,7 +992,7 @@ public:
    *
    * @return the weight
    */
-  virtual size_t get_block_weight(const uint64_t& height) const = 0;
+  virtual size_t get_block_weight(uint64_t height) const = 0;
 
   /**
    * @brief fetch the last N blocks' weights
@@ -1015,7 +1017,7 @@ public:
    *
    * @return the cumulative difficulty
    */
-  virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const = 0;
+  virtual difficulty_type get_block_cumulative_difficulty(uint64_t height) const = 0;
 
   /**
    * @brief fetch a block's difficulty
@@ -1029,7 +1031,7 @@ public:
    *
    * @return the difficulty
    */
-  virtual difficulty_type get_block_difficulty(const uint64_t& height) const = 0;
+  virtual difficulty_type get_block_difficulty(uint64_t height) const = 0;
 
   /**
    * @brief fetch a block's already generated coins
@@ -1043,7 +1045,7 @@ public:
    *
    * @return the already generated coins
    */
-  virtual uint64_t get_block_already_generated_coins(const uint64_t& height) const = 0;
+  virtual uint64_t get_block_already_generated_coins(uint64_t height) const = 0;
 
   /**
    * @brief fetch a block's long term weight
@@ -1054,7 +1056,7 @@ public:
    *
    * @return the long term weight
    */
-  virtual uint64_t get_block_long_term_weight(const uint64_t& height) const = 0;
+  virtual uint64_t get_block_long_term_weight(uint64_t height) const = 0;
 
   /**
    * @brief fetch the last N blocks' long term weights
@@ -1079,7 +1081,7 @@ public:
    *
    * @return the hash
    */
-  virtual crypto::hash get_block_hash_from_height(const uint64_t& height) const = 0;
+  virtual crypto::hash get_block_hash_from_height(uint64_t height) const = 0;
 
   /**
    * @brief fetch a list of blocks
@@ -1096,7 +1098,7 @@ public:
    *
    * @return a vector of blocks
    */
-  virtual std::vector<block> get_blocks_range(const uint64_t& h1, const uint64_t& h2) const = 0;
+  virtual std::vector<block> get_blocks_range(height_range h) const = 0;
 
   /**
    * @brief fetch a list of block hashes
@@ -1113,7 +1115,7 @@ public:
    *
    * @return a vector of block hashes
    */
-  virtual std::vector<crypto::hash> get_hashes_range(const uint64_t& h1, const uint64_t& h2) const = 0;
+  virtual std::vector<crypto::hash> get_hashes_range(height_range h) const = 0;
 
   /**
    * @brief fetch the top block's hash
@@ -1211,7 +1213,7 @@ public:
    *
    * @return the unlock time/height
    */
-  uint64_t get_output_unlock_time(const uint64_t amount, const uint64_t global_index) const;
+  uint64_t get_output_unlock_time(uint64_t amount, uint64_t global_index) const;
 
   // return tx with hash <h>
   // throw if no such tx exists
@@ -1401,7 +1403,7 @@ public:
    *
    * @return the number of outputs of the given amount
    */
-  virtual uint64_t get_num_outputs(const uint64_t& amount) const = 0;
+  virtual uint64_t get_num_outputs(uint64_t amount) const = 0;
 
   /**
    * @brief return index of the first element (should be hidden, but isn't)
@@ -1426,7 +1428,7 @@ public:
    *
    * @return the requested output data
    */
-  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool include_commitmemt = true) const = 0;
+  virtual output_data_t get_output_key(uint64_t amount, uint64_t index, bool include_commitmemt = true) const = 0;
 
   /**
    * @brief gets an output's tx hash and index
@@ -1438,7 +1440,7 @@ public:
    *
    * @return the tx hash and output index
    */
-  virtual tx_out_index get_output_tx_and_index_from_global(const uint64_t& index) const = 0;
+  virtual tx_out_index get_output_tx_and_index_from_global(uint64_t index) const = 0;
 
   /**
    * @brief gets an output's tx hash and index
@@ -1452,26 +1454,26 @@ public:
    *
    * @return the tx hash and output index
    */
-  virtual tx_out_index get_output_tx_and_index(const uint64_t& amount, const uint64_t& index) const = 0;
+  virtual tx_out_index get_output_tx_and_index(uint64_t amount, uint64_t index) const = 0;
 
   /**
    * @brief gets some outputs' tx hashes and indices
    *
    * This function is a mirror of
-   * get_output_tx_and_index(const uint64_t& amount, const uint64_t& index),
+   * get_output_tx_and_index(uint64_t amount, uint64_t index),
    * but for a list of outputs rather than just one.
    *
    * @param amount an output amount
    * @param offsets a list of amount-specific output indices
    * @param indices return-by-reference a list of tx hashes and output indices (as pairs)
    */
-  virtual void get_output_tx_and_index(const uint64_t& amount, const std::vector<uint64_t> &offsets, std::vector<tx_out_index> &indices) const = 0;
+  virtual void get_output_tx_and_index(uint64_t amount, const std::vector<uint64_t> &offsets, std::vector<tx_out_index> &indices) const = 0;
 
   /**
    * @brief gets outputs' data
    *
    * This function is a mirror of
-   * get_output_data(const uint64_t& amount, const uint64_t& index)
+   * get_output_data(uint64_t amount, uint64_t index)
    * but for a list of outputs rather than just one.
    *
    * @param amounts an output amount, or as many as offsets
@@ -1501,7 +1503,7 @@ public:
    *
    * @return a list of amount-specific output indices
    */
-  virtual std::vector<std::vector<uint64_t>> get_tx_amount_output_indices(const uint64_t tx_id, size_t n_txes = 1) const = 0;
+  virtual std::vector<std::vector<uint64_t>> get_tx_amount_output_indices(uint64_t tx_id, size_t n_txes = 1) const = 0;
 
   /**
    * @brief check if a key image is stored as spent
@@ -1716,7 +1718,7 @@ public:
    *
    * @return false if the function returns false for any block, otherwise true
    */
-  virtual bool for_blocks_range(const uint64_t& h1, const uint64_t& h2, std::function<bool(uint64_t, const crypto::hash&, const cryptonote::block&)>) const = 0;
+  virtual bool for_blocks_range(height_range h, std::function<bool(uint64_t, const crypto::hash&, const cryptonote::block&)>) const = 0;
 
   /**
    * @brief runs a function over all transactions stored
