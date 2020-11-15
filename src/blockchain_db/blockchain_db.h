@@ -547,7 +547,6 @@ protected:
 
   mutable uint64_t time_tx_exists = 0;  //!< a performance metric
   uint64_t time_commit1 = 0;  //!< a performance metric
-  bool m_auto_remove_logs = true;  //!< whether or not to automatically remove old logs
 
 public:
 
@@ -1850,16 +1849,6 @@ public:
                                                 std::vector<uint64_t> &difficulties,
                                                 uint64_t chain_height,
                                                 uint64_t timestamps_difficulty_height) const;
-
-  /**
-   * @brief set whether or not to automatically remove logs
-   *
-   * This function is only relevant for one implementation (BlockchainBDB), but
-   * is here to keep BlockchainDB users implementation-agnostic.
-   *
-   * @param auto_remove whether or not to auto-remove logs
-   */
-  void set_auto_remove_logs(bool auto_remove) { m_auto_remove_logs = auto_remove; }
 
   bool m_open = false;  //!< Whether or not the BlockchainDB is open/ready for use
 
