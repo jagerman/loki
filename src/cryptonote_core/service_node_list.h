@@ -515,7 +515,9 @@ namespace service_nodes
     cryptonote::NOTIFY_UPTIME_PROOF::request generate_uptime_proof(uint32_t public_ip,
                                                                    uint16_t storage_port,
                                                                    uint16_t storage_lmq_port,
-                                                                   uint16_t quorumnet_port) const;
+                                                                   std::array<uint16_t, 3> ss_version,
+                                                                   uint16_t quorumnet_port,
+                                                                   std::array<uint16_t, 3> lokinet_version) const;
     bool handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 
     void record_checkpoint_participation(crypto::public_key const &pubkey, uint64_t height, bool participated);
