@@ -1164,8 +1164,8 @@ namespace cryptonote
      oxenmq::TaggedThreadID const &pulse_thread_id() const { return *m_pulse_thread_id; }
 
      /// Service Node's storage server and lokinet version
-     std::array<uint16_t, 3> ss_version;
-     std::array<uint16_t, 3> lokinet_version;
+     std::array<int, 3> ss_version;
+     std::array<int, 3> lokinet_version;
 
  private:
 
