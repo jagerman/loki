@@ -2768,10 +2768,15 @@ namespace service_nodes
     result.public_ip                                = public_ip;
     result.storage_port                             = storage_port;
     result.storage_lmq_port                         = storage_lmq_port;
-    result.storage_version                          = ss_version;
     result.qnet_port                                = quorumnet_port;
-    result.lokinet_version                          = lokinet_version;
     result.pubkey_ed25519                           = keys.pub_ed25519;
+
+    constexpr std::array<uint16_t, 3> MIN_LOKID_VERSION{8,1,5};
+    if (proof.version >= MIN_LOKID_VERSION){
+      result.storage_version                          = ss_version;
+      result.lokinet_version                          = lokinet_version;
+    }
+
 
     crypto::hash hash = hash_uptime_proof(result, m_blockchain.get_current_hard_fork_version());
     crypto::generate_signature(hash, keys.pub, keys.key, result.sig);

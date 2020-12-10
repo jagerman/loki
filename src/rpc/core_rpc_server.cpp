@@ -3313,7 +3313,7 @@ namespace cryptonote { namespace rpc {
   //------------------------------------------------------------------------------------------------------------------------------
   LOKINET_PING::response core_rpc_server::invoke(LOKINET_PING::request&& req, rpc_context context)
   {
-    m_core.lokinet_version = req.version;
+    std::copy(req.version.begin(),req.version.end(),m_core.lokinet_version.begin());
     return handle_ping<LOKINET_PING>(
         req.version, service_nodes::MIN_LOKINET_VERSION,
         "Lokinet", m_core.m_last_lokinet_ping, LOKINET_PING_LIFETIME,
