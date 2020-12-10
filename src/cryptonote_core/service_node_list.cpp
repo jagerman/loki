@@ -2772,7 +2772,7 @@ namespace service_nodes
     result.pubkey_ed25519                           = keys.pub_ed25519;
 
     constexpr std::array<uint16_t, 3> MIN_LOKID_VERSION{8,1,5};
-    if (proof.version >= MIN_LOKID_VERSION){
+    if (LOKI_VERSION >= MIN_LOKID_VERSION){
       result.storage_version                          = ss_version;
       result.lokinet_version                          = lokinet_version;
     }
