@@ -252,8 +252,8 @@ namespace cryptonote
     struct request
     {
       std::array<uint16_t, 3> snode_version;
-      std::array<int, 3> storage_version;
-      std::array<int, 3> lokinet_version;
+      std::array<uint16_t, 3> storage_version;
+      std::array<uint16_t, 3> lokinet_version;
 
       uint64_t timestamp;
       crypto::public_key pubkey;

@@ -2757,7 +2757,7 @@ namespace service_nodes
   }
 
   cryptonote::NOTIFY_UPTIME_PROOF::request service_node_list::generate_uptime_proof(
-      uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<int, 3> ss_version, uint16_t quorumnet_port, std::array<int, 3> lokinet_version) const
+      uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version) const
   {
     assert(m_service_node_keys);
     const auto& keys = *m_service_node_keys;
