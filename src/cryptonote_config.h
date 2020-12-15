@@ -194,6 +194,7 @@ constexpr uint64_t BLOCKS_EXPECTED_IN_YEARS(int years) { return BLOCKS_EXPECTED_
 #define HF_VERSION_EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY cryptonote::network_version_16_pulse
 #define HF_VERSION_PULSE cryptonote::network_version_16_pulse
 #define HF_VERSION_CLSAG                        cryptonote::network_version_16_pulse
+#define HF_VERSION_PROOF_VERSION                cryptonote::network_version_17
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS        8
 
