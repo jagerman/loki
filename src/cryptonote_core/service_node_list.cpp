@@ -58,6 +58,7 @@ extern "C" {
 #include "service_node_list.h"
 #include "service_node_rules.h"
 #include "service_node_swarm.h"
+#include <lokimq/bt_serialize.h>
 #include "version.h"
 
 #undef OXEN_DEFAULT_LOG_CATEGORY
@@ -2742,18 +2743,39 @@ namespace service_nodes
     m_transient.state_added_to_archive = false;
     return true;
   }
+  static std::string serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof)
+  {
+    lokimq::bt_dict bt_proof{
+      {"version", lokimq::bt_list{{proof.snode_version[0], proof.snode_version[1], proof.snode_version[2]}}},
+      {"pubkey",  tools::view_guts(proof.pubkey)},
+      {"timestamp",proof.timestamp},
+      {"public_ip",proof.public_ip},
+      {"storage_port",proof.storage_port},
+      {"pubkey_ed25519",tools::view_guts(proof.pubkey_ed25519)},
+      {"qnet_port",proof.qnet_port},
+      {"storage_lmq_port",proof.storage_lmq_port},
+      {"storage_version", lokimq::bt_list{{proof.storage_version[0], proof.storage_version[1], proof.storage_version[2]}}},
+      {"lokinet_version", lokimq::bt_list{{proof.lokinet_version[0], proof.lokinet_version[1], proof.lokinet_version[2]}}},
+    };
+    std::string buf = lokimq::bt_serialize(bt_proof);
+    return buf;
+  }
 
   static crypto::hash hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, uint8_t hf_version)
   {
-    auto buf = tools::memcpy_le(proof.pubkey.data, proof.timestamp, proof.public_ip, proof.storage_port, proof.pubkey_ed25519.data, proof.qnet_port, proof.storage_lmq_port, proof.storage_version, proof.lokinet_version);
-    size_t buf_size = buf.size();
-
-    //TODO - Can be removed post-HF17
-    if (hf_version < HF_VERSION_PROOF_VERSION)
-      buf_size -= (sizeof(proof.storage_version) + sizeof(proof.lokinet_version));
-
+    std::string serialized_proof = serialize_uptime_proof(proof);
+    size_t buf_size = serialized_proof.size();
     crypto::hash result;
-    crypto::cn_fast_hash(buf.data(), buf_size, result);
+
+    //TODO: remove after HF17
+    if (hf_version < HF_VERSION_PROOF_VERSION) {
+      auto buf = tools::memcpy_le(proof.pubkey.data, proof.timestamp, proof.public_ip, proof.storage_port, proof.pubkey_ed25519.data, proof.qnet_port, proof.storage_lmq_port);
+      buf_size = buf.size();
+      crypto::cn_fast_hash(buf.data(), buf_size, result);
+      return result;
+    }
+
+    crypto::cn_fast_hash(serialized_proof.data(), buf_size, result);
     return result;
   }
 
@@ -2772,11 +2794,14 @@ namespace service_nodes
     result.qnet_port                                = quorumnet_port;
     result.pubkey_ed25519                           = keys.pub_ed25519;
 
-    result.storage_version                          = ss_version;
-    result.lokinet_version                          = lokinet_version;
+    auto hf_version = m_blockchain.get_current_hard_fork_version();
+    if (hf_version < HF_VERSION_PROOF_VERSION) {
+      result.storage_version                          = ss_version;
+      result.lokinet_version                          = lokinet_version;
+    }
 
 
-    crypto::hash hash = hash_uptime_proof(result, m_blockchain.get_current_hard_fork_version());
+    crypto::hash hash = hash_uptime_proof(result, hf_version);
     crypto::generate_signature(hash, keys.pub, keys.key, result.sig);
     crypto_sign_detached(result.sig_ed25519.data, NULL, reinterpret_cast<unsigned char *>(hash.data), sizeof(hash.data), keys.key_ed25519.data);
     return result;

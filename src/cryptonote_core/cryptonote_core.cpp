@@ -1925,6 +1925,17 @@ namespace cryptonote
     return true;
   }
   //-----------------------------------------------------------------------------------------------
+  std::string core::wrap_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof)
+  {
+    auto wrapper = lokimq::bt_serialize(lokimq::bt_dict{{
+      {"proof": serialize_uptime_proof(proof)},
+      {"sig": tools::view_guts(proof.sig)},
+      {"ed_sig": tools::view_guts(proof.ed_sig)}
+    }});
+
+    return wrapper;
+  }
+  //-----------------------------------------------------------------------------------------------
   bool core::submit_uptime_proof()
   {
     if (!m_service_node)
@@ -1933,7 +1944,15 @@ namespace cryptonote
     NOTIFY_UPTIME_PROOF::request req = m_service_node_list.generate_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, ss_version, m_quorumnet_port, lokinet_version);
 
     cryptonote_connection_context fake_context{};
-    bool relayed = get_protocol()->relay_uptime_proof(req, fake_context);
+    bool relayed;
+    auto height = get_current_blockchain_height();
+    auto hf_version = get_hard_fork_version(height);
+    if (hf_version < HF_VERSION_PROOF_VERSION) {
+      relayed = get_protocol()->relay_uptime_proof(req, fake_context);
+    } else {
+      auto wrapped_uptime_proof = wrap_uptime_proof(req);
+      relayed = relay_to_synchronized_peers<std::string>(wrapped_uptime_proof, fake_context);
+    }
     if (relayed)
       MGINFO("Submitted uptime-proof for Service Node (yours): " << m_service_keys.pub);
 
