@@ -511,6 +511,11 @@ namespace service_nodes
     void set_quorum_history_storage(uint64_t hist_size); // 0 = none (default), 1 = unlimited, N = # of blocks
     bool store();
 
+    /// Converts uptime proof into bt_encoded string, excludes the signature
+    std::string serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const;
+    
+    crypto::hash hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, uint8_t hf_version) const;
+
     /// Record public ip and storage port and add them to the service node list
     cryptonote::NOTIFY_UPTIME_PROOF::request generate_uptime_proof(uint32_t public_ip,
                                                                    uint16_t storage_port,

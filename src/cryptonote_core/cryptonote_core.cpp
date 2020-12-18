@@ -1927,12 +1927,12 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   std::string core::wrap_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof)
   {
-    auto wrapper = lokimq::bt_serialize(lokimq::bt_dict{{
-      {"proof": serialize_uptime_proof(proof)},
-      {"sig": tools::view_guts(proof.sig)},
-      {"ed_sig": tools::view_guts(proof.ed_sig)}
-    }});
-
+    lokimq::bt_dict wrapped_bt_proof{
+      {"proof", m_service_node_list.serialize_uptime_proof(proof)},
+      {"sig", tools::view_guts(proof.sig)},
+      {"ed_sig", tools::view_guts(proof.sig_ed25519)}
+    };
+    auto wrapper = lokimq::bt_serialize(lokimq::bt_dict{wrapped_bt_proof});
     return wrapper;
   }
   //-----------------------------------------------------------------------------------------------
@@ -1951,7 +1951,7 @@ namespace cryptonote
       relayed = get_protocol()->relay_uptime_proof(req, fake_context);
     } else {
       auto wrapped_uptime_proof = wrap_uptime_proof(req);
-      relayed = relay_to_synchronized_peers<std::string>(wrapped_uptime_proof, fake_context);
+      relayed = get_protocol()->relay_wrapped_uptime_proof(wrapped_uptime_proof, fake_context);
     }
     if (relayed)
       MGINFO("Submitted uptime-proof for Service Node (yours): " << m_service_keys.pub);

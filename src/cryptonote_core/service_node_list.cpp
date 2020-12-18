@@ -2743,7 +2743,8 @@ namespace service_nodes
     m_transient.state_added_to_archive = false;
     return true;
   }
-  static std::string serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof)
+
+  std::string service_node_list::serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const
   {
     lokimq::bt_dict bt_proof{
       {"version", lokimq::bt_list{{proof.snode_version[0], proof.snode_version[1], proof.snode_version[2]}}},
@@ -2761,9 +2762,9 @@ namespace service_nodes
     return buf;
   }
 
-  static crypto::hash hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, uint8_t hf_version)
+  crypto::hash service_node_list::hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, uint8_t hf_version) const
   {
-    std::string serialized_proof = serialize_uptime_proof(proof);
+    std::string serialized_proof = this->serialize_uptime_proof(proof);
     size_t buf_size = serialized_proof.size();
     crypto::hash result;
 
@@ -2795,7 +2796,7 @@ namespace service_nodes
     result.pubkey_ed25519                           = keys.pub_ed25519;
 
     auto hf_version = m_blockchain.get_current_hard_fork_version();
-    if (hf_version < HF_VERSION_PROOF_VERSION) {
+    if (hf_version >= HF_VERSION_PROOF_VERSION) {
       result.storage_version                          = ss_version;
       result.lokinet_version                          = lokinet_version;
     }

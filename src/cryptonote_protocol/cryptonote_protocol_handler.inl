@@ -2526,6 +2526,30 @@ skip:
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
+  bool t_cryptonote_protocol_handler<t_core>::relay_wrapped_uptime_proof(std::string arg, cryptonote_connection_context& exclude_context)
+  {
+    LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(exclude_context) << "]");
+    std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections;
+    m_p2p->for_each_connection([&exclude_context, &connections](connection_context& context, nodetool::peerid_type peer_id, uint32_t support_flags)
+    {
+      if (context.m_state > cryptonote_connection_context::state_synchronizing)
+      {
+        epee::net_utils::zone zone = context.m_remote_address.get_zone();
+        if (peer_id && exclude_context.m_connection_id != context.m_connection_id)
+          connections.push_back({zone, context.m_connection_id});
+      }
+      return true;
+    });
+
+    if (connections.size())
+    {
+      return m_p2p->relay_notify_to_list(NOTIFY_UPTIME_PROOF::ID, epee::strspan<uint8_t>(arg), std::move(connections));
+    }
+
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------
+  template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::relay_service_node_votes(NOTIFY_NEW_SERVICE_NODE_VOTE::request& arg, cryptonote_connection_context& exclude_context)
   {
     bool result = relay_to_synchronized_peers<NOTIFY_NEW_SERVICE_NODE_VOTE>(arg, exclude_context);
