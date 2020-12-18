@@ -936,12 +936,6 @@ namespace cryptonote
      const service_keys& get_service_keys() const { return m_service_keys; }
 
      /**
-      * @brief attempts serialises an uptime proof excluding its signature
-      *
-      * @return true
-      */
-     std::string serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof);
-     /**
       * @brief attempts serialises an uptime proof into bt_encoding splitting the proof from its signature
       *
       * @return true
