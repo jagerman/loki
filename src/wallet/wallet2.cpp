@@ -5901,6 +5901,7 @@ void wallet2::store_to(const fs::path &path, const epee::wipeable_string &passwo
     if (!parent_path.empty() &&  !fs::exists(parent_path))
       fs::create_directories(parent_path);
   }
+  else MWARNING("IS SAME FILE " << m_wallet_file);
 
   // get wallet cache data
   std::optional<wallet2::cache_file_data> cache_file_data = get_cache_file_data(password);
