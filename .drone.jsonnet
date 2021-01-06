@@ -189,6 +189,7 @@ local gui_wallet_step_darwin = {
 
 
 [
+/*
     // Various debian builds
     debian_pipeline("Debian (w/ tests) (amd64)", "debian:sid", lto=true, run_tests=true),
     debian_pipeline("Debian Debug (amd64)", "debian:sid", build_type='Debug'),
@@ -208,14 +209,14 @@ local gui_wallet_step_darwin = {
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DARCH=x86-64',
                     build_tests=false, lto=true, extra_cmds=static_check_and_upload,
                     extra_steps=[gui_wallet_step('ubuntu:bionic')]),
-
+*/
     // Static mingw build (on focal) which gets uploaded to builds.lokinet.dev:
     debian_pipeline("Static (win64)", "ubuntu:focal", deps='g++ g++-mingw-w64-x86-64 '+static_build_deps,
                     cmake_extra='-DCMAKE_TOOLCHAIN_FILE=../cmake/64-bit-toolchain.cmake -DBUILD_STATIC_DEPS=ON -DARCH=x86-64',
                     build_tests=false, lto=false, test_oxend=false, extra_cmds=[
                         'ninja strip_binaries', 'ninja create_zip', '../utils/build_scripts/drone-static-upload.sh'],
                     extra_steps=[gui_wallet_step('debian:stable', wine=true)]),
-
+/*
     // Macos builds:
     mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DARCH=core2 -DARCH_ID=amd64',
                 build_tests=false, lto=true, extra_cmds=static_check_and_upload, extra_steps=[gui_wallet_step_darwin]),
@@ -274,4 +275,5 @@ local gui_wallet_step_darwin = {
             ]
         }]
     },
+    */
 ]

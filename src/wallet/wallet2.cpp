@@ -5892,6 +5892,8 @@ void wallet2::store_to(const fs::path &path, const epee::wipeable_string &passwo
 
   if (!same_file)
   {
+      MWARNING("NOT SAME FILE: " << m_wallet_file << " vs. " << path);
+
     // check if we want to store to directory which doesn't exists yet
     auto parent_path = path.parent_path();
 
