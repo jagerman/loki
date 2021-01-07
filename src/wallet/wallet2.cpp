@@ -5954,6 +5954,12 @@ void wallet2::store_to(const fs::path &path, const epee::wipeable_string &passwo
 
     // here we have "*.new" file, we need to rename it to be without ".new"
     std::error_code e;
+#ifdef WIN32
+    // std::filesystem on Windows seems buggy: the standard requires that it overwrites
+    // (atomically), but it doesn't and instead fails when the file already exists, so manually
+    // remove it first.  If it fails then just ignore it and let the rename try anyway.
+    fs::remove(m_wallet_file, e);
+#endif
     fs::rename(new_file, m_wallet_file, e);
     THROW_WALLET_EXCEPTION_IF(e, error::file_save_error, m_wallet_file, e);
   }
