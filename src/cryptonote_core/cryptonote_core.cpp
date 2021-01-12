@@ -1947,7 +1947,7 @@ namespace cryptonote
     bool relayed;
     auto height = get_current_blockchain_height();
     auto hf_version = get_hard_fork_version(height);
-    if (hf_version < HF_VERSION_PROOF_VERSION) {
+    if (hf_version < HF_VERSION_PROOF_BTENC) {
       relayed = get_protocol()->relay_uptime_proof(req, fake_context);
     } else {
       auto wrapped_uptime_proof = wrap_uptime_proof(req);

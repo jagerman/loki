@@ -38,6 +38,8 @@
 #include "cryptonote_core/service_node_quorum_cop.h"
 #include "common/util.h"
 
+#include <lokimq/bt_serialize.h>
+
 namespace cryptonote
 {
 class Blockchain;
@@ -512,6 +514,7 @@ namespace service_nodes
     bool store();
 
     /// Converts uptime proof into bt_encoded string, excludes the signature
+    lokimq::bt_dict btencode_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const;
     std::string serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const;
     
     crypto::hash hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, uint8_t hf_version) const;
