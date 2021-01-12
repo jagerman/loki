@@ -1928,7 +1928,7 @@ namespace cryptonote
   std::string core::wrap_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof)
   {
     lokimq::bt_dict wrapped_bt_proof{
-      {"proof", m_service_node_list.serialize_uptime_proof(proof)},
+      {"proof", m_service_node_list.btencode_uptime_proof(proof)},
       {"sig", tools::view_guts(proof.sig)},
       {"ed_sig", tools::view_guts(proof.sig_ed25519)}
     };
