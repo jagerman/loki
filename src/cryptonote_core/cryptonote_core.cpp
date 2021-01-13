@@ -1974,6 +1974,19 @@ namespace cryptonote
     return result;
   }
   //-----------------------------------------------------------------------------------------------
+  bool core::handle_btencoded_uptime_proof(const NOTIFY_BTENCODED_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation)
+  {
+    crypto::x25519_public_key pkey = {};
+    bool result = m_service_node_list.handle_btencoded_uptime_proof(proof, my_uptime_proof_confirmation, pkey);
+    if (result && m_service_node_list.is_service_node(proof.pubkey, true /*require_active*/) && pkey)
+    {
+      lokimq::pubkey_set added;
+      added.insert(tools::copy_guts(pkey));
+      m_lmq->update_active_sns(added, {} /*removed*/);
+    }
+    return result;
+  }
+  //-----------------------------------------------------------------------------------------------
   crypto::hash core::on_transaction_relayed(const cryptonote::blobdata& tx_blob)
   {
     std::vector<std::pair<crypto::hash, cryptonote::blobdata>> txs;
