@@ -2526,7 +2526,7 @@ skip:
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
-  bool t_cryptonote_protocol_handler<t_core>::relay_wrapped_uptime_proof(std::string arg, cryptonote_connection_context& exclude_context)
+  bool t_cryptonote_protocol_handler<t_core>::relay_btencoded_uptime_proof(std::string& arg, cryptonote_connection_context& exclude_context)
   {
     LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(exclude_context) << "]");
     std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections;
@@ -2543,7 +2543,7 @@ skip:
 
     if (connections.size())
     {
-      return m_p2p->relay_notify_to_list(NOTIFY_UPTIME_PROOF::ID, epee::strspan<uint8_t>(arg), std::move(connections));
+      return m_p2p->relay_notify_to_list(NOTIFY_BTENCODED_UPTIME_PROOF::ID, epee::strspan<uint8_t>(arg), std::move(connections));
     }
 
     return true;

@@ -2744,7 +2744,7 @@ namespace service_nodes
     return true;
   }
 
-  lokimq::bt_dict service_node_list::btencode_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const
+  lokimq::bt_dict service_node_list::btencode_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof) const
   {
     return lokimq::bt_dict {
       {"version", lokimq::bt_list{{proof.snode_version[0], proof.snode_version[1], proof.snode_version[2]}}},
@@ -2760,33 +2760,30 @@ namespace service_nodes
     };
   }
 
-  std::string service_node_list::serialize_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const
-  {
-    std::string buf = lokimq::bt_serialize(btencode_uptime_proof(proof));
-    return buf;
-  }
-
-  crypto::hash service_node_list::hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, uint8_t hf_version) const
+  //TODO: remove after HF17
+  crypto::hash service_node_list::hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const
   {
     size_t buf_size;
     crypto::hash result;
 
-    //TODO: remove after HF17
-    if (hf_version < HF_VERSION_PROOF_BTENC) {
-      auto buf = tools::memcpy_le(proof.pubkey.data, proof.timestamp, proof.public_ip, proof.storage_port, proof.pubkey_ed25519.data, proof.qnet_port, proof.storage_lmq_port);
-      buf_size = buf.size();
-      crypto::cn_fast_hash(buf.data(), buf_size, result);
-      return result;
-    }
+    auto buf = tools::memcpy_le(proof.pubkey.data, proof.timestamp, proof.public_ip, proof.storage_port, proof.pubkey_ed25519.data, proof.qnet_port, proof.storage_lmq_port);
+    buf_size = buf.size();
+    crypto::cn_fast_hash(buf.data(), buf_size, result);
+    return result;
+  }
 
-    std::string serialized_proof = this->serialize_uptime_proof(proof);
-    buf_size = serialized_proof.size();
+  crypto::hash service_node_list::hash_btencoded_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof) const
+  {
+    crypto::hash result;
+
+    std::string serialized_proof = lokimq::bt_serialize(btencode_uptime_proof(proof));
+    size_t buf_size = serialized_proof.size();
     crypto::cn_fast_hash(serialized_proof.data(), buf_size, result);
     return result;
   }
 
   cryptonote::NOTIFY_UPTIME_PROOF::request service_node_list::generate_uptime_proof(
-      uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version) const
+      uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, uint16_t quorumnet_port) const
   {
     assert(m_service_node_keys);
     const auto& keys = *m_service_node_keys;
@@ -2800,14 +2797,30 @@ namespace service_nodes
     result.qnet_port                                = quorumnet_port;
     result.pubkey_ed25519                           = keys.pub_ed25519;
 
-    auto hf_version = m_blockchain.get_current_hard_fork_version();
-    if (hf_version >= HF_VERSION_PROOF_BTENC) {
-      result.storage_version                          = ss_version;
-      result.lokinet_version                          = lokinet_version;
-    }
+    crypto::hash hash = hash_uptime_proof(result);
+    crypto::generate_signature(hash, keys.pub, keys.key, result.sig);
+    crypto_sign_detached(result.sig_ed25519.data, NULL, reinterpret_cast<unsigned char *>(hash.data), sizeof(hash.data), keys.key_ed25519.data);
+    return result;
+  }
 
+  cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request service_node_list::generate_btencoded_uptime_proof(
+      uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version) const
+  {
+    assert(m_service_node_keys);
+    const auto& keys = *m_service_node_keys;
+    cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request result = {};
+    result.snode_version                            = LOKI_VERSION;
+    result.timestamp                                = time(nullptr);
+    result.pubkey                                   = keys.pub;
+    result.public_ip                                = public_ip;
+    result.storage_port                             = storage_port;
+    result.storage_lmq_port                         = storage_lmq_port;
+    result.qnet_port                                = quorumnet_port;
+    result.pubkey_ed25519                           = keys.pub_ed25519;
+    result.storage_version                          = ss_version;
+    result.lokinet_version                          = lokinet_version;
 
-    crypto::hash hash = hash_uptime_proof(result, hf_version);
+    crypto::hash hash = hash_btencoded_uptime_proof(result);
     crypto::generate_signature(hash, keys.pub, keys.key, result.sig);
     crypto_sign_detached(result.sig_ed25519.data, NULL, reinterpret_cast<unsigned char *>(hash.data), sizeof(hash.data), keys.key_ed25519.data);
     return result;
@@ -2914,7 +2927,7 @@ namespace service_nodes
     //
     // Validate proof signature
     //
-    crypto::hash hash = hash_uptime_proof(proof, hf_version);
+    crypto::hash hash = hash_uptime_proof(proof);
 
     if (!crypto::check_signature(hash, proof.pubkey, proof.sig))
       REJECT_PROOF("signature validation failed");

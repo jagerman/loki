@@ -940,7 +940,7 @@ namespace cryptonote
       *
       * @return true
       */
-     std::string wrap_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof);
+     std::string wrap_uptime_proof(const NOTIFY_BTENCODED_UPTIME_PROOF::request &proof);
 
      /**
       * @brief attempts to submit an uptime proof to the network, if this is running in service node mode
