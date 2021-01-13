@@ -2809,7 +2809,7 @@ namespace service_nodes
     assert(m_service_node_keys);
     const auto& keys = *m_service_node_keys;
     cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request result = {};
-    result.snode_version                            = LOKI_VERSION;
+    result.snode_version                            = OXEN_VERSION;
     result.timestamp                                = time(nullptr);
     result.pubkey                                   = keys.pub;
     result.public_ip                                = public_ip;
@@ -2991,6 +2991,11 @@ namespace service_nodes
     if (derived_x25519_pubkey && (old_x25519 != derived_x25519_pubkey))
       x25519_pkey = derived_x25519_pubkey;
 
+    return true;
+  }
+
+  bool service_node_list::handle_btencoded_uptime_proof(cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
+  {
     return true;
   }
 

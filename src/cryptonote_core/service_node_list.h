@@ -537,6 +537,8 @@ namespace service_nodes
     //TODO: remove after HF17
     bool handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 
+    bool handle_btencoded_uptime_proof(cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
+
     void record_checkpoint_participation(crypto::public_key const &pubkey, uint64_t height, bool participated);
 
     // Called every hour to remove proofs for expired SNs from memory and the database.

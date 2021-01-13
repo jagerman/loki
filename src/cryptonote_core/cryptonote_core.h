@@ -945,12 +945,18 @@ namespace cryptonote
      const service_keys& get_service_keys() const { return m_service_keys; }
 
      /**
-      * @brief attempts serialises an uptime proof into bt_encoding splitting the proof from its signature
+      * @brief attempts to serialize an uptime proof into bt_encoding splitting the proof from its signature
       *
-      * @return true
+      * @return string of the bt-encoded proof
       */
      std::string wrap_uptime_proof(const NOTIFY_BTENCODED_UPTIME_PROOF::request &proof);
 
+     /**
+      * @brief attempts to deserialize an uptime proof into bt_encoding splitting the proof from its signature
+      *
+      * @return proof btencoded structure
+      */
+     NOTIFY_BTENCODED_UPTIME_PROOF::request unwrap_uptime_proof(const std::string &serialized_proof);
      /**
       * @brief attempts to submit an uptime proof to the network, if this is running in service node mode
       *

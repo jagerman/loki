@@ -878,7 +878,7 @@ namespace cryptonote
   }
   //------------------------------------------------------------------------------------------------------------------------  
   template<class t_core>
-  int t_cryptonote_protocol_handler<t_core>::handle_btencoded_uptime_proof(int command, NOTIFY_BTENCODED_UPTIME_PROOF::request& arg, cryptonote_connection_context& context)
+  int t_cryptonote_protocol_handler<t_core>::handle_btencoded_uptime_proof(int command, std::string& arg, cryptonote_connection_context& context)
   {
     MLOG_P2P_MESSAGE("Received NOTIFY_BTENCODED_UPTIME_PROOF");
     // NOTE: Don't relay your own uptime proof, otherwise we have the following situation
@@ -894,7 +894,9 @@ namespace cryptonote
 
     (void)context;
     bool my_uptime_proof_confirmation = false;
-    if (m_core.handle_uptime_proof(arg, my_uptime_proof_confirmation))
+
+    NOTIFY_BTENCODED_UPTIME_PROOF::request proof = core::unwrap_uptime_proof(arg)
+    if (m_core.handle_btencoded_uptime_proof(proof, my_uptime_proof_confirmation))
     {
       if (!my_uptime_proof_confirmation)
       {

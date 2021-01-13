@@ -1936,6 +1936,18 @@ namespace cryptonote
     return wrapper;
   }
   //-----------------------------------------------------------------------------------------------
+  NOTIFY_BTENCODED_UPTIME_PROOF::request core::unwrap_uptime_proof(const std::string &serialized_proof)
+  {
+    NOTIFY_BTENCODED_UPTIME_PROOF::request proof_received;
+    try {
+      lokimq::bt_dict wrapped_bt_proof = lokimq::bt_deserialize<lokimq::bt_dict>(serialized_proof);
+      proof_received = wrapped_bt_proof.proof;
+    } catch (const std::exception& e) {
+      std::cerr << "deserialization failed: " << e.what();
+    }
+    return proof_received;
+  }
+  //-----------------------------------------------------------------------------------------------
   bool core::submit_uptime_proof()
   {
     if (!m_service_node)
