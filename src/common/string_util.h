@@ -1,6 +1,7 @@
 #pragma once
 #include <string_view>
 #include <vector>
+#include <cstring>
 #include <iterator>
 #include <charconv>
 #include <sstream>
@@ -107,6 +108,19 @@ std::string_view view_guts(const T& val) {
 template <typename T>
 std::string copy_guts(const T& val) {
   return std::string{view_guts(val)};
+}
+
+/// Function to reverse the above view_guts
+template <typename T>
+T make_from_guts(std::string_view s) {
+    static_assert((std::is_standard_layout_v<T> && std::has_unique_object_representations_v<T>)
+        || epee::is_byte_spannable<T>,
+        "cannot safely reconstitute a non-trivial class from data");
+    if (s.size() != sizeof(T))
+        throw std::runtime_error("Cannot reconstitute type: wrong type content size");
+    T x;
+    std::memcpy(&x, s.data(), sizeof(T));
+    return x;
 }
 
 std::string lowercase_ascii_string(std::string_view src);

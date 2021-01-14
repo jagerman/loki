@@ -247,6 +247,12 @@ bool tests::proxy_core::handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROO
   return false; // never relay these for tests.
 }
 
+bool tests::proxy_core::handle_btencoded_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation)
+{
+  // TODO: add tests for core uptime proof checking.
+  return false; // never relay these for tests.
+}
+
 bool tests::proxy_core::get_short_chain_history(std::list<crypto::hash>& ids) {
     build_short_history(ids, m_lastblk);
     return true;

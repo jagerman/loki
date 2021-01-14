@@ -1967,8 +1967,8 @@ namespace cryptonote
   {
     crypto::x25519_public_key pkey = {};
     auto proof = uptime_proof::Proof(req.proof);
-    proof.sig = req.sig;
-    proof.sig_ed25519 = req.sig_ed25519;
+    proof.sig = tools::make_from_guts<crypto::signature>(req.sig);
+    proof.sig_ed25519 = tools::make_from_guts<crypto::ed25519_signature>(req.ed_sig);
     bool result = m_service_node_list.handle_btencoded_uptime_proof(proof, my_uptime_proof_confirmation, pkey);
     if (result && m_service_node_list.is_service_node(proof.pubkey, true /*require_active*/) && pkey)
     {
