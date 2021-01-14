@@ -1963,9 +1963,12 @@ namespace cryptonote
     return result;
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::handle_btencoded_uptime_proof(const NOTIFY_BTENCODED_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation)
+  bool core::handle_btencoded_uptime_proof(const NOTIFY_BTENCODED_UPTIME_PROOF::request &req, bool &my_uptime_proof_confirmation)
   {
     crypto::x25519_public_key pkey = {};
+    auto proof = uptime_proof::Proof(req.proof);
+    proof.sig = req.sig;
+    proof.sig_ed25519 = req.sig_ed25519;
     bool result = m_service_node_list.handle_btencoded_uptime_proof(proof, my_uptime_proof_confirmation, pkey);
     if (result && m_service_node_list.is_service_node(proof.pubkey, true /*require_active*/) && pkey)
     {

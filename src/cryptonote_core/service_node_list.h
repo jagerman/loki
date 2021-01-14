@@ -34,6 +34,7 @@
 #include "serialization/serialization.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "cryptonote_core/service_node_rules.h"
+#include "cryptonote_core/uptime_proof.h"
 #include "cryptonote_core/service_node_voting.h"
 #include "cryptonote_core/service_node_quorum_cop.h"
 #include "common/util.h"
@@ -525,7 +526,7 @@ namespace service_nodes
     //TODO: remove after HF17
     bool handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 
-    bool handle_btencoded_uptime_proof(cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
+    bool handle_btencoded_uptime_proof(uptime_proof::Proof const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 
     void record_checkpoint_participation(crypto::public_key const &pubkey, uint64_t height, bool participated);
 

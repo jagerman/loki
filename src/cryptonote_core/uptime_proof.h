@@ -26,8 +26,7 @@ public:
 
   Proof(uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version);
 
-private:
-  const service_nodes::service_node_keys      *m_service_node_keys;
+  Proof(const std::string& serialized_proof);
 
 };
 

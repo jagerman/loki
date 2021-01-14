@@ -56,6 +56,7 @@ extern "C" {
 
 #include "pulse.h"
 #include "service_node_list.h"
+#include "uptime_proof.h"
 #include "service_node_rules.h"
 #include "service_node_swarm.h"
 #include <lokimq/bt_serialize.h>
@@ -2946,7 +2947,7 @@ namespace service_nodes
     return true;
   }
 
-  bool service_node_list::handle_btencoded_uptime_proof(cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
+  bool service_node_list::handle_btencoded_uptime_proof(uptime_proof::Proof const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
     return true;
   }
