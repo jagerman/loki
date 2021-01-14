@@ -276,19 +276,11 @@ namespace cryptonote
 
     struct request
     {
-      std::array<uint16_t, 3> snode_version;
-      std::array<uint16_t, 3> storage_version;
-      std::array<uint16_t, 3> lokinet_version;
 
-      uint64_t timestamp;
-      crypto::public_key pubkey;
-      crypto::signature sig;
-      crypto::ed25519_public_key pubkey_ed25519;
-      crypto::ed25519_signature sig_ed25519;
-      uint32_t public_ip;
-      uint16_t storage_port;
-      uint16_t storage_lmq_port;
-      uint16_t qnet_port;
+      // BT-Encoded string of the Uptime Proof
+      std::string proof;
+      std::string sig;
+      std::string ed_sig;
 
       KV_MAP_SERIALIZABLE
     };

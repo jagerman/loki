@@ -878,7 +878,7 @@ namespace cryptonote
   }
   //------------------------------------------------------------------------------------------------------------------------  
   template<class t_core>
-  int t_cryptonote_protocol_handler<t_core>::handle_btencoded_uptime_proof(int command, std::string& arg, cryptonote_connection_context& context)
+  int t_cryptonote_protocol_handler<t_core>::handle_btencoded_uptime_proof(int command, NOTIFY_BTENCODED_UPTIME_PROOF::request& arg, cryptonote_connection_context& context)
   {
     MLOG_P2P_MESSAGE("Received NOTIFY_BTENCODED_UPTIME_PROOF");
     // NOTE: Don't relay your own uptime proof, otherwise we have the following situation
@@ -895,8 +895,7 @@ namespace cryptonote
     (void)context;
     bool my_uptime_proof_confirmation = false;
 
-    NOTIFY_BTENCODED_UPTIME_PROOF::request proof = core::unwrap_uptime_proof(arg)
-    if (m_core.handle_btencoded_uptime_proof(proof, my_uptime_proof_confirmation))
+    if (m_core.handle_btencoded_uptime_proof(arg, my_uptime_proof_confirmation))
     {
       if (!my_uptime_proof_confirmation)
       {
@@ -2560,27 +2559,10 @@ skip:
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
-  bool t_cryptonote_protocol_handler<t_core>::relay_btencoded_uptime_proof(std::string& arg, cryptonote_connection_context& exclude_context)
+  bool t_cryptonote_protocol_handler<t_core>::relay_btencoded_uptime_proof(NOTIFY_BTENCODED_UPTIME_PROOF::request& arg, cryptonote_connection_context& exclude_context)
   {
-    LOG_PRINT_L2("[" << epee::net_utils::print_connection_context_short(exclude_context) << "]");
-    std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections;
-    m_p2p->for_each_connection([&exclude_context, &connections](connection_context& context, nodetool::peerid_type peer_id, uint32_t support_flags)
-    {
-      if (context.m_state > cryptonote_connection_context::state_synchronizing)
-      {
-        epee::net_utils::zone zone = context.m_remote_address.get_zone();
-        if (peer_id && exclude_context.m_connection_id != context.m_connection_id)
-          connections.push_back({zone, context.m_connection_id});
-      }
-      return true;
-    });
-
-    if (connections.size())
-    {
-      return m_p2p->relay_notify_to_list(NOTIFY_BTENCODED_UPTIME_PROOF::ID, epee::strspan<uint8_t>(arg), std::move(connections));
-    }
-
-    return true;
+    bool result = relay_to_synchronized_peers<NOTIFY_BTENCODED_UPTIME_PROOF>(arg, exclude_context);
+    return result;
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>

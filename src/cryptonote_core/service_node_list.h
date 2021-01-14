@@ -513,13 +513,8 @@ namespace service_nodes
     void set_quorum_history_storage(uint64_t hist_size); // 0 = none (default), 1 = unlimited, N = # of blocks
     bool store();
 
-    /// Converts uptime proof into bt_encoded string, excludes the signature
-    lokimq::bt_dict btencode_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof) const;
-    
     //TODO: remove after HF17
     crypto::hash hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const;
-
-    crypto::hash hash_btencoded_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof) const;
 
     /// Record public ip and storage port and add them to the service node list
     //TODO: remove after HF17
@@ -527,13 +522,6 @@ namespace service_nodes
                                                                    uint16_t storage_port,
                                                                    uint16_t storage_lmq_port,
                                                                    uint16_t quorumnet_port) const;
-    /// Record public ip and storage port and add them to the service node list
-    cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request generate_btencoded_uptime_proof(uint32_t public_ip,
-                                                                   uint16_t storage_port,
-                                                                   uint16_t storage_lmq_port,
-                                                                   std::array<uint16_t, 3> ss_version,
-                                                                   uint16_t quorumnet_port,
-                                                                   std::array<uint16_t, 3> lokinet_version) const;
     //TODO: remove after HF17
     bool handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 

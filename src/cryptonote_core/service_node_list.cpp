@@ -2744,22 +2744,6 @@ namespace service_nodes
     return true;
   }
 
-  lokimq::bt_dict service_node_list::btencode_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof) const
-  {
-    return lokimq::bt_dict {
-      {"version", lokimq::bt_list{{proof.snode_version[0], proof.snode_version[1], proof.snode_version[2]}}},
-      {"pubkey",  (proof.pubkey == proof.pubkey_ed25519) ? "" : tools::view_guts(proof.pubkey)},
-      {"timestamp",proof.timestamp},
-      {"public_ip",proof.public_ip},
-      {"storage_port",proof.storage_port},
-      {"pubkey_ed25519",tools::view_guts(proof.pubkey_ed25519)},
-      {"qnet_port",proof.qnet_port},
-      {"storage_lmq_port",proof.storage_lmq_port},
-      {"storage_version", lokimq::bt_list{{proof.storage_version[0], proof.storage_version[1], proof.storage_version[2]}}},
-      {"lokinet_version", lokimq::bt_list{{proof.lokinet_version[0], proof.lokinet_version[1], proof.lokinet_version[2]}}},
-    };
-  }
-
   //TODO: remove after HF17
   crypto::hash service_node_list::hash_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof) const
   {
@@ -2769,16 +2753,6 @@ namespace service_nodes
     auto buf = tools::memcpy_le(proof.pubkey.data, proof.timestamp, proof.public_ip, proof.storage_port, proof.pubkey_ed25519.data, proof.qnet_port, proof.storage_lmq_port);
     buf_size = buf.size();
     crypto::cn_fast_hash(buf.data(), buf_size, result);
-    return result;
-  }
-
-  crypto::hash service_node_list::hash_btencoded_uptime_proof(const cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request &proof) const
-  {
-    crypto::hash result;
-
-    std::string serialized_proof = lokimq::bt_serialize(btencode_uptime_proof(proof));
-    size_t buf_size = serialized_proof.size();
-    crypto::cn_fast_hash(serialized_proof.data(), buf_size, result);
     return result;
   }
 
@@ -2798,29 +2772,6 @@ namespace service_nodes
     result.pubkey_ed25519                           = keys.pub_ed25519;
 
     crypto::hash hash = hash_uptime_proof(result);
-    crypto::generate_signature(hash, keys.pub, keys.key, result.sig);
-    crypto_sign_detached(result.sig_ed25519.data, NULL, reinterpret_cast<unsigned char *>(hash.data), sizeof(hash.data), keys.key_ed25519.data);
-    return result;
-  }
-
-  cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request service_node_list::generate_btencoded_uptime_proof(
-      uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version) const
-  {
-    assert(m_service_node_keys);
-    const auto& keys = *m_service_node_keys;
-    cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request result = {};
-    result.snode_version                            = OXEN_VERSION;
-    result.timestamp                                = time(nullptr);
-    result.pubkey                                   = keys.pub;
-    result.public_ip                                = public_ip;
-    result.storage_port                             = storage_port;
-    result.storage_lmq_port                         = storage_lmq_port;
-    result.qnet_port                                = quorumnet_port;
-    result.pubkey_ed25519                           = keys.pub_ed25519;
-    result.storage_version                          = ss_version;
-    result.lokinet_version                          = lokinet_version;
-
-    crypto::hash hash = hash_btencoded_uptime_proof(result);
     crypto::generate_signature(hash, keys.pub, keys.key, result.sig);
     crypto_sign_detached(result.sig_ed25519.data, NULL, reinterpret_cast<unsigned char *>(hash.data), sizeof(hash.data), keys.key_ed25519.data);
     return result;
@@ -2908,6 +2859,7 @@ namespace service_nodes
 
 #define REJECT_PROOF(log) do { LOG_PRINT_L2("Rejecting uptime proof from " << proof.pubkey << ": " log); return false; } while (0)
 
+  //TODO remove after HF17
   bool service_node_list::handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
     uint8_t const hf_version = m_blockchain.get_current_hard_fork_version();

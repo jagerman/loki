@@ -49,6 +49,7 @@ extern "C" {
 #include <sqlite3.h>
 
 #include "cryptonote_core.h"
+#include "uptime_proof.h"
 #include "common/file.h"
 #include "common/sha256sum.h"
 #include "common/threadpool.h"
@@ -1925,34 +1926,10 @@ namespace cryptonote
     return true;
   }
   //-----------------------------------------------------------------------------------------------
-  std::string core::wrap_uptime_proof(const NOTIFY_BTENCODED_UPTIME_PROOF::request &proof)
-  {
-    lokimq::bt_dict wrapped_bt_proof{
-      {"proof", m_service_node_list.btencode_uptime_proof(proof)},
-      {"sig", tools::view_guts(proof.sig)},
-      {"ed_sig", tools::view_guts(proof.sig_ed25519)}
-    };
-    auto wrapper = lokimq::bt_serialize(lokimq::bt_dict{wrapped_bt_proof});
-    return wrapper;
-  }
-  //-----------------------------------------------------------------------------------------------
-  NOTIFY_BTENCODED_UPTIME_PROOF::request core::unwrap_uptime_proof(const std::string &serialized_proof)
-  {
-    NOTIFY_BTENCODED_UPTIME_PROOF::request proof_received;
-    try {
-      lokimq::bt_dict wrapped_bt_proof = lokimq::bt_deserialize<lokimq::bt_dict>(serialized_proof);
-      proof_received = wrapped_bt_proof.proof;
-    } catch (const std::exception& e) {
-      std::cerr << "deserialization failed: " << e.what();
-    }
-    return proof_received;
-  }
-  //-----------------------------------------------------------------------------------------------
   bool core::submit_uptime_proof()
   {
     if (!m_service_node)
       return true;
-
 
     cryptonote_connection_context fake_context{};
     bool relayed;
@@ -1963,9 +1940,9 @@ namespace cryptonote
       NOTIFY_UPTIME_PROOF::request req = m_service_node_list.generate_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, m_quorumnet_port);
       relayed = get_protocol()->relay_uptime_proof(req, fake_context);
     } else {
-      NOTIFY_BTENCODED_UPTIME_PROOF::request req = m_service_node_list.generate_btencoded_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, ss_version, m_quorumnet_port, lokinet_version);
-      auto wrapped_uptime_proof = wrap_uptime_proof(req);
-      relayed = get_protocol()->relay_btencoded_uptime_proof(wrapped_uptime_proof, fake_context);
+      auto proof = uptime_proof::Proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, ss_version, m_quorumnet_port, lokinet_version);
+      NOTIFY_BTENCODED_UPTIME_PROOF::request req = uptime_proof::generate_request(proof);
+      relayed = get_protocol()->relay_btencoded_uptime_proof(req, fake_context);
     }
     if (relayed)
       MGINFO("Submitted uptime-proof for Service Node (yours): " << m_service_keys.pub);
