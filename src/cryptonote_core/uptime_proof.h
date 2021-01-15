@@ -2,6 +2,7 @@
 
 #include "service_node_list.h"
 #include "../cryptonote_protocol/cryptonote_protocol_defs.h"
+#include <lokimq/lokimq.h>
 
 namespace uptime_proof
 {
@@ -24,13 +25,13 @@ public:
   uint16_t storage_lmq_port;
   uint16_t qnet_port;
 
-  Proof(uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version);
+  Proof(uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version, const service_nodes::service_node_keys& keys);
 
   Proof(const std::string& serialized_proof);
 
 };
 
-std::string bt_encode_uptime_proof(const Proof& proof);
+lokimq::bt_dict bt_encode_uptime_proof(const Proof& proof);
 
 crypto::hash hash_uptime_proof(const Proof& proof);
 

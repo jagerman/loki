@@ -2778,6 +2778,12 @@ namespace service_nodes
     return result;
   }
 
+  uptime_proof::Proof service_node_list::generate_uptime_proof(uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version) const
+  {
+    const auto& keys = *m_service_node_keys;
+    return uptime_proof::Proof(public_ip, storage_port, storage_lmq_port, ss_version, quorumnet_port, lokinet_version, keys);
+  }
+
 #ifdef __cpp_lib_erase_if // # (C++20)
   using std::erase_if;
 #else
@@ -2947,7 +2953,7 @@ namespace service_nodes
     return true;
   }
 
-  bool service_node_list::handle_btencoded_uptime_proof(uptime_proof::Proof const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
+  bool service_node_list::handle_btencoded_uptime_proof(const uptime_proof::Proof &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
     return true;
   }

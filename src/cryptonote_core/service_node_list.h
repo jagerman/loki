@@ -48,6 +48,11 @@ class BlockchainDB;
 struct checkpoint_t;
 }; // namespace cryptonote
 
+namespace uptime_proof
+{
+  class Proof;
+}
+
 namespace service_nodes
 {
   constexpr uint64_t INVALID_HEIGHT = static_cast<uint64_t>(-1);
@@ -523,10 +528,13 @@ namespace service_nodes
                                                                    uint16_t storage_port,
                                                                    uint16_t storage_lmq_port,
                                                                    uint16_t quorumnet_port) const;
+    
+    uptime_proof::Proof generate_uptime_proof(uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_port, std::array<uint16_t, 3> ss_version, uint16_t quorumnet_port, std::array<uint16_t, 3> lokinet_version) const;
+
     //TODO: remove after HF17
     bool handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 
-    bool handle_btencoded_uptime_proof(uptime_proof::Proof const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
+    bool handle_btencoded_uptime_proof(const uptime_proof::Proof &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey);
 
     void record_checkpoint_participation(crypto::public_key const &pubkey, uint64_t height, bool participated);
 

@@ -40,7 +40,8 @@ add_library(cryptonote_core
   tx_pool.cpp
   tx_sanity_check.cpp
   cryptonote_tx_utils.cpp
-  pulse.cpp)
+  pulse.cpp
+  uptime_proof.cpp)
 
 target_link_libraries(cryptonote_core
   PUBLIC

@@ -1940,7 +1940,7 @@ namespace cryptonote
       NOTIFY_UPTIME_PROOF::request req = m_service_node_list.generate_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, m_quorumnet_port);
       relayed = get_protocol()->relay_uptime_proof(req, fake_context);
     } else {
-      auto proof = uptime_proof::Proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, ss_version, m_quorumnet_port, lokinet_version);
+      auto proof = m_service_node_list.generate_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, ss_version, m_quorumnet_port, lokinet_version);
       NOTIFY_BTENCODED_UPTIME_PROOF::request req = uptime_proof::generate_request(proof);
       relayed = get_protocol()->relay_btencoded_uptime_proof(req, fake_context);
     }
