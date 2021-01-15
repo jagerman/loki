@@ -950,32 +950,28 @@ namespace cryptonote
     // backwards compatibility with existing active service nodes.)  The legacy key consists of
     // *just* the private point, but not the seed, and so cannot be used for full Ed25519 signatures
     // (which rely on the seed for signing).
-    if (m_service_node) {
-      if (std::error_code ec; !fs::exists(m_config_folder / "key", ec)) {
-        epee::wipeable_string privkey_signhash;
-        privkey_signhash.resize(crypto_hash_sha512_BYTES);
-        unsigned char* pk_sh_data = reinterpret_cast<unsigned char*>(privkey_signhash.data());
-        crypto_hash_sha512(pk_sh_data, keys.key_ed25519.data, 32 /* first 32 bytes are the seed to be SHA512 hashed (the last 32 are just the pubkey) */);
-        // Clamp private key (as libsodium does and expects -- see https://www.jcraige.com/an-explainer-on-ed25519-clamping if you want the broader reasons)
-        pk_sh_data[0] &= 248;
-        pk_sh_data[31] &= 63; // (some implementations put 127 here, but with the |64 in the next line it is the same thing)
-        pk_sh_data[31] |= 64;
-        // Monero crypto requires a pointless check that the secret key is < basepoint, so calculate
-        // it mod basepoint to make it happy:
-        sc_reduce32(pk_sh_data);
-        std::memcpy(keys.key.data, pk_sh_data, 32);
-        if (!crypto::secret_key_to_public_key(keys.key, keys.pub))
-          throw std::runtime_error{"Failed to derive primary key from ed25519 key"};
-        assert(0 == std::memcmp(keys.pub.data, keys.pub_ed25519.data, 32));
-      } else if (!init_key(m_config_folder / "key", keys.key, keys.pub,
-          crypto::secret_key_to_public_key,
-          [](crypto::secret_key &key, crypto::public_key &pubkey) {
-            throw std::runtime_error{"Internal error: old-style public keys are no longer generated"};
-          }))
-        return false;
-    } else {
-      keys.key = crypto::null_skey;
-      keys.pub = crypto::null_pkey;
+    if (std::error_code ec; !fs::exists(m_config_folder / "key", ec)) {
+      epee::wipeable_string privkey_signhash;
+      privkey_signhash.resize(crypto_hash_sha512_BYTES);
+      unsigned char* pk_sh_data = reinterpret_cast<unsigned char*>(privkey_signhash.data());
+      crypto_hash_sha512(pk_sh_data, keys.key_ed25519.data, 32 /* first 32 bytes are the seed to be SHA512 hashed (the last 32 are just the pubkey) */);
+      // Clamp private key (as libsodium does and expects -- see https://www.jcraige.com/an-explainer-on-ed25519-clamping if you want the broader reasons)
+      pk_sh_data[0] &= 248;
+      pk_sh_data[31] &= 63; // (some implementations put 127 here, but with the |64 in the next line it is the same thing)
+      pk_sh_data[31] |= 64;
+      // Monero crypto requires a pointless check that the secret key is < basepoint, so calculate
+      // it mod basepoint to make it happy:
+      sc_reduce32(pk_sh_data);
+      std::memcpy(keys.key.data, pk_sh_data, 32);
+      if (!crypto::secret_key_to_public_key(keys.key, keys.pub))
+        throw std::runtime_error{"Failed to derive primary key from ed25519 key"};
+      assert(0 == std::memcmp(keys.pub.data, keys.pub_ed25519.data, 32));
+    } else if (!init_key(m_config_folder / "key", keys.key, keys.pub,
+        crypto::secret_key_to_public_key,
+        [](crypto::secret_key &key, crypto::public_key &pubkey) {
+          throw std::runtime_error{"Internal error: old-style public keys are no longer generated"};
+        })) {
+      return false;
     }
 
     if (m_service_node) {
