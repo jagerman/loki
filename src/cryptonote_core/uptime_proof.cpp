@@ -1,8 +1,6 @@
 #include "uptime_proof.h"
 #include "common/string_util.h"
 #include "version.h"
-#include <boost/range/adaptor/indexed.hpp>
-#include <algorithm>
 
 extern "C"
 {
@@ -36,11 +34,12 @@ uptime_proof::Proof::Proof(const std::string& serialized_proof)
 {
   try {
     lokimq::bt_dict bt_proof = lokimq::bt_deserialize<lokimq::bt_dict>(serialized_proof);
-    //snode_version 
+    //snode_version <X,X,X>
     lokimq::bt_list& bt_version = var::get<lokimq::bt_list>(bt_proof["version"]);
-    std::copy(bt_version.begin(), bt_version.end(), snode_version);
-    //pubkey
-    //pubkey = bt_proof.pubkey ? bt_proof.pubkey : bt_proof.pubkey_ed25519;
+    int k = 0;
+    for (lokimq::bt_value const &i: bt_version){
+      snode_version[k++] = static_cast<uint16_t>(lokimq::get_int<unsigned>(i));
+    }
     //timestamp
     timestamp = lokimq::get_int<unsigned>(bt_proof["timestamp"]);
     //public_ip
@@ -49,16 +48,25 @@ uptime_proof::Proof::Proof(const std::string& serialized_proof)
     storage_port = static_cast<uint16_t>(lokimq::get_int<unsigned>(bt_proof["storage_port"]));
     //pubkey_ed25519
     pubkey_ed25519 = tools::make_from_guts<crypto::ed25519_public_key>(var::get<std::string>(bt_proof["pubkey_ed25519"]));
+    //pubkey
+    std::string pubkey_str = var::get<std::string>(bt_proof["pubkey_ed25519"]);
+    pubkey = (!pubkey_str.empty()) ? tools::make_from_guts<crypto::public_key>(pubkey_str) :tools::make_from_guts<crypto::public_key>(var::get<std::string>(bt_proof["pubkey_ed25519"]));
     //qnet_port
     qnet_port = lokimq::get_int<unsigned>(bt_proof["qnet_port"]);
     //storage_lmq_port
     storage_lmq_port = lokimq::get_int<unsigned>(bt_proof["storage_lmq_port"]);
     //storage_version
     lokimq::bt_list& bt_storage_version = var::get<lokimq::bt_list>(bt_proof["storage_version"]);
-    std::copy(bt_storage_version.begin(), bt_storage_version.end(), storage_version);
+    k = 0;
+    for (lokimq::bt_value const &i: bt_storage_version){
+      storage_version[k++] = static_cast<uint16_t>(lokimq::get_int<unsigned>(i));
+    }
     //lokinet_version
     lokimq::bt_list& bt_lokinet_version = var::get<lokimq::bt_list>(bt_proof["lokinet_version"]);
-    std::copy(bt_lokinet_version.begin(), bt_lokinet_version.end(), lokinet_version);
+    k = 0;
+    for (lokimq::bt_value const &i: bt_lokinet_version){
+      lokinet_version[k++] = static_cast<uint16_t>(lokimq::get_int<unsigned>(i));
+    }
   } catch (const std::exception& e) {
     std::cerr << "deserialization failed: " << e.what();
   }

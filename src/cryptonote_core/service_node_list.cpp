@@ -2955,6 +2955,87 @@ namespace service_nodes
 
   bool service_node_list::handle_btencoded_uptime_proof(const uptime_proof::Proof &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
+    uint8_t const hf_version = m_blockchain.get_current_hard_fork_version();
+    uint64_t const now       = time(nullptr);
+
+    // Validate proof version, timestamp range,
+    if ((proof.timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (proof.timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS))
+      REJECT_PROOF("timestamp is too far from now");
+
+    for (auto const &min : MIN_UPTIME_PROOF_VERSIONS)
+      if (hf_version >= min.hardfork && proof.snode_version < min.version)
+        REJECT_PROOF("v" << min.version[0] << "." << min.version[1] << "." << min.version[2] << "+ oxen version is required for v" << std::to_string(hf_version) << "+ network proofs");
+
+    if (!debug_allow_local_ips && !epee::net_utils::is_ip_public(proof.public_ip))
+      REJECT_PROOF("public_ip is not actually public");
+
+    //
+    // Validate proof signature
+    //
+    crypto::hash hash = uptime_proof::hash_uptime_proof(proof);
+
+    if (!crypto::check_signature(hash, proof.pubkey, proof.sig))
+      REJECT_PROOF("signature validation failed");
+
+    crypto::x25519_public_key derived_x25519_pubkey = crypto::x25519_public_key::null();
+    if (!proof.pubkey_ed25519)
+      REJECT_PROOF("required ed25519 auxiliary pubkey " << proof.pubkey_ed25519 << " not included in proof");
+
+    if (0 != crypto_sign_verify_detached(proof.sig_ed25519.data, reinterpret_cast<unsigned char *>(hash.data), sizeof(hash.data), proof.pubkey_ed25519.data))
+      REJECT_PROOF("ed25519 signature validation failed");
+
+    if (0 != crypto_sign_ed25519_pk_to_curve25519(derived_x25519_pubkey.data, proof.pubkey_ed25519.data)
+        || !derived_x25519_pubkey)
+      REJECT_PROOF("invalid ed25519 pubkey included in proof (x25519 derivation failed)");
+
+    if (proof.qnet_port == 0)
+      REJECT_PROOF("invalid quorumnet port in uptime proof");
+
+    auto locks = tools::unique_locks(m_blockchain, m_sn_mutex, m_x25519_map_mutex);
+    auto it = m_state.service_nodes_infos.find(proof.pubkey);
+    if (it == m_state.service_nodes_infos.end())
+      REJECT_PROOF("no such service node is currently registered");
+
+    auto &iproof = proofs[proof.pubkey];
+
+    if (iproof.timestamp >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2))
+      REJECT_PROOF("already received one uptime proof for this node recently");
+
+    if (m_service_node_keys && proof.pubkey == m_service_node_keys->pub)
+    {
+      my_uptime_proof_confirmation = true;
+      MGINFO("Received uptime-proof confirmation back from network for Service Node (yours): " << proof.pubkey);
+    }
+    else
+    {
+      my_uptime_proof_confirmation = false;
+      LOG_PRINT_L2("Accepted uptime proof from " << proof.pubkey);
+
+      if (m_service_node_keys && proof.pubkey_ed25519 == m_service_node_keys->pub_ed25519)
+        MGINFO_RED("Uptime proof from SN " << proof.pubkey << " is not us, but is using our ed/x25519 keys; "
+            "this is likely to lead to deregistration of one or both service nodes.");
+    }
+
+    auto old_x25519 = iproof.pubkey_x25519;
+    if (iproof.update(now, proof.public_ip, proof.storage_port, proof.storage_lmq_port, proof.qnet_port, proof.snode_version, proof.pubkey_ed25519, derived_x25519_pubkey))
+      iproof.store(proof.pubkey, m_blockchain);
+
+    if ((uint64_t) x25519_map_last_pruned + X25519_MAP_PRUNING_INTERVAL <= now)
+    {
+      time_t cutoff = now - X25519_MAP_PRUNING_LAG;
+      erase_if(x25519_to_pub, [&cutoff](const decltype(x25519_to_pub)::value_type &x) { return x.second.second < cutoff; });
+      x25519_map_last_pruned = now;
+    }
+
+    if (old_x25519 && old_x25519 != derived_x25519_pubkey)
+      x25519_to_pub.erase(old_x25519);
+
+    if (derived_x25519_pubkey)
+      x25519_to_pub[derived_x25519_pubkey] = {proof.pubkey, now};
+
+    if (derived_x25519_pubkey && (old_x25519 != derived_x25519_pubkey))
+      x25519_pkey = derived_x25519_pubkey;
+
     return true;
   }
 
