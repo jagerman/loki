@@ -3300,7 +3300,7 @@ namespace cryptonote { namespace rpc {
   //------------------------------------------------------------------------------------------------------------------------------
   STORAGE_SERVER_PING::response core_rpc_server::invoke(STORAGE_SERVER_PING::request&& req, rpc_context context)
   {
-    m_core.ss_version = {req.version_major, req.version_minor, req.version_patch};
+    m_core.ss_version = {static_cast<uint16_t>(req.version_major), static_cast<uint16_t>(req.version_minor), static_cast<uint16_t>(req.version_patch)};
     return handle_ping<STORAGE_SERVER_PING>(
       {req.version_major, req.version_minor, req.version_patch}, service_nodes::MIN_STORAGE_SERVER_VERSION,
       "Storage Server", m_core.m_last_storage_server_ping, STORAGE_SERVER_PING_LIFETIME,
