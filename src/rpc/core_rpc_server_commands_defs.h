@@ -2183,9 +2183,9 @@ namespace rpc {
 
     struct request
     {
-      int version_major; // Storage Server Major version
-      int version_minor; // Storage Server Minor version
-      int version_patch; // Storage Server Patch version
+      uint16_t version_major; // Storage Server Major version
+      uint16_t version_minor; // Storage Server Minor version
+      uint16_t version_patch; // Storage Server Patch version
       uint16_t storage_lmq_port; // Storage Server lmq port to include in uptime proofs
       KV_MAP_SERIALIZABLE
     };
@@ -2200,7 +2200,7 @@ namespace rpc {
 
     struct request
     {
-      std::array<int, 3> version; // Lokinet version
+      std::array<uint16_t, 3> version; // Lokinet version
       KV_MAP_SERIALIZABLE
     };
 
