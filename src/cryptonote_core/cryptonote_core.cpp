@@ -1972,7 +1972,7 @@ namespace cryptonote
     bool result = m_service_node_list.handle_btencoded_uptime_proof(proof, my_uptime_proof_confirmation, pkey);
     if (result && m_service_node_list.is_service_node(proof.pubkey, true /*require_active*/) && pkey)
     {
-      lokimq::pubkey_set added;
+      oxenmq::pubkey_set added;
       added.insert(tools::copy_guts(pkey));
       m_lmq->update_active_sns(added, {} /*removed*/);
     }

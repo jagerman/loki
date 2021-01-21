@@ -35,6 +35,7 @@ Proof::Proof(uint32_t public_ip, uint16_t storage_port, uint16_t storage_lmq_por
 //Deserialize from a btencoded string into our Proof instance
 Proof::Proof(const std::string& serialized_proof)
 {
+  MWARNING("Deserializing Proof");
   try {
     lokimq::bt_dict bt_proof = lokimq::bt_deserialize<lokimq::bt_dict>(serialized_proof);
     //snode_version <X,X,X>
@@ -43,35 +44,46 @@ Proof::Proof(const std::string& serialized_proof)
     for (lokimq::bt_value const &i: bt_version){
       snode_version[k++] = static_cast<uint16_t>(lokimq::get_int<unsigned>(i));
     }
+    MDEBUG("snode_version: " <<  snode_version[0] << snode_version[1] << snode_version[2]);
     //timestamp
     timestamp = lokimq::get_int<unsigned>(bt_proof["timestamp"]);
+    MDEBUG("timestamp: " <<  timestamp);
     //public_ip
-    public_ip = lokimq::get_int<unsigned>(bt_proof["public_ip"]);
+    bool succeeded = epee::string_tools::get_ip_int32_from_string(public_ip, var::get<std::string>(bt_proof["public_ip"]));
+    MDEBUG("public_ip - int: " <<  public_ip);
+    MDEBUG("public_ip - str: " <<  var::get<std::string>(bt_proof["public_ip"]));
     //storage_port
     storage_port = static_cast<uint16_t>(lokimq::get_int<unsigned>(bt_proof["storage_port"]));
+    MDEBUG("storage_port: " <<  storage_port);
     //pubkey_ed25519
     pubkey_ed25519 = tools::make_from_guts<crypto::ed25519_public_key>(var::get<std::string>(bt_proof["pubkey_ed25519"]));
+    MDEBUG("pubkey_ed25519: " <<  pubkey_ed25519);
     //pubkey
     if (auto it = bt_proof.find("pubkey"); it != bt_proof.end())
       pubkey = tools::make_from_guts<crypto::public_key>(var::get<std::string>(bt_proof["pubkey"]));
     else
       std::memcpy(pubkey.data, pubkey_ed25519.data, 32);
+    MDEBUG("pubkey: " <<  pubkey);
     //qnet_port
     qnet_port = lokimq::get_int<unsigned>(bt_proof["qnet_port"]);
+    MDEBUG("storage qnet port: " <<  qnet_port);
     //storage_lmq_port
     storage_lmq_port = lokimq::get_int<unsigned>(bt_proof["storage_lmq_port"]);
+    MDEBUG("storage lmq port: " <<  storage_lmq_port);
     //storage_version
     lokimq::bt_list& bt_storage_version = var::get<lokimq::bt_list>(bt_proof["storage_version"]);
     k = 0;
     for (lokimq::bt_value const &i: bt_storage_version){
       storage_version[k++] = static_cast<uint16_t>(lokimq::get_int<unsigned>(i));
     }
+    MDEBUG("storage_version: " <<  storage_version[0] << storage_version[1] << storage_version[2]);
     //lokinet_version
     lokimq::bt_list& bt_lokinet_version = var::get<lokimq::bt_list>(bt_proof["lokinet_version"]);
     k = 0;
     for (lokimq::bt_value const &i: bt_lokinet_version){
       lokinet_version[k++] = static_cast<uint16_t>(lokimq::get_int<unsigned>(i));
     }
+    MDEBUG("lokinet_version: " <<  lokinet_version[0] << lokinet_version[1] << lokinet_version[2]);
   } catch (const std::exception& e) {
     MWARNING("deserialization failed: " <<  e.what());
     throw;
@@ -93,7 +105,7 @@ lokimq::bt_dict bt_encode_uptime_proof(const Proof& proof)
   lokimq::bt_dict encoded_proof{
     {"version", lokimq::bt_list{{proof.snode_version[0], proof.snode_version[1], proof.snode_version[2]}}},
     {"timestamp", proof.timestamp},
-    {"public_ip", proof.public_ip},
+    {"public_ip", epee::string_tools::get_ip_string_from_int32(proof.public_ip)},
     {"storage_port", proof.storage_port},
     {"pubkey_ed25519", tools::view_guts(proof.pubkey_ed25519)},
     {"qnet_port", proof.qnet_port},
