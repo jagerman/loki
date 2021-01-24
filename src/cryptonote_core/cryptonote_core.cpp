@@ -1937,11 +1937,13 @@ namespace cryptonote
     auto hf_version = get_hard_fork_version(height);
     //TODO: remove after HF17
     if (hf_version < HF_VERSION_PROOF_BTENC) {
+      MGINFO("Generating Uptime Proof");
       NOTIFY_UPTIME_PROOF::request req = m_service_node_list.generate_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, m_quorumnet_port);
       relayed = get_protocol()->relay_uptime_proof(req, fake_context);
     } else {
+      MGINFO("Generating BT-Encoded Uptime Proof");
       auto proof = m_service_node_list.generate_uptime_proof(m_sn_public_ip, m_storage_port, m_storage_lmq_port, ss_version, m_quorumnet_port, lokinet_version);
-      NOTIFY_BTENCODED_UPTIME_PROOF::request req = uptime_proof::generate_request(proof);
+      NOTIFY_BTENCODED_UPTIME_PROOF::request req = proof.generate_request();
       relayed = get_protocol()->relay_btencoded_uptime_proof(req, fake_context);
     }
     if (relayed)

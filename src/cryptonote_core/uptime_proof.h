@@ -29,12 +29,13 @@ public:
 
   Proof(const std::string& serialized_proof);
 
+  lokimq::bt_dict bt_encode_uptime_proof() const;
+
+  crypto::hash hash_uptime_proof() const;
+
+  cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request generate_request() const;
 };
 
-lokimq::bt_dict bt_encode_uptime_proof(const Proof& proof);
 
-crypto::hash hash_uptime_proof(const Proof& proof);
-
-cryptonote::NOTIFY_BTENCODED_UPTIME_PROOF::request generate_request(const Proof& proof);
 
 }

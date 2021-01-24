@@ -2972,7 +2972,7 @@ namespace service_nodes
     //
     // Validate proof signature
     //
-    crypto::hash hash = uptime_proof::hash_uptime_proof(proof);
+    crypto::hash hash = proof.hash_uptime_proof();
 
     if (!crypto::check_signature(hash, proof.pubkey, proof.sig))
       REJECT_PROOF("signature validation failed");
