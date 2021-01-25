@@ -1679,6 +1679,12 @@ static void append_printable_service_node_list_entry(cryptonote::network_type ne
     stream << ")\n";
 
     //
+    // NOTE: Component Versions
+    //
+    stream << indent2 << "Storage Server Version: " << tools::join(".", entry.storage_server_version) << "\n";
+    stream << indent2 << "Lokinet Router Version: " << tools::join(".", entry.lokinet_version) << "\n";
+
+    //
     // NOTE: Node Credits
     //
     stream << indent2;

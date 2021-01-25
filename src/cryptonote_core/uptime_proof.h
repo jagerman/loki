@@ -11,8 +11,8 @@ class Proof
 {
   
 public:
-  std::array<uint16_t, 3> snode_version;
-  std::array<uint16_t, 3> storage_version;
+  std::array<uint16_t, 3> version;
+  std::array<uint16_t, 3> storage_server_version;
   std::array<uint16_t, 3> lokinet_version;
 
   uint64_t timestamp;

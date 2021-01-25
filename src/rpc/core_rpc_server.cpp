@@ -3038,6 +3038,8 @@ namespace cryptonote { namespace rpc {
 
     m_core.get_service_node_list().access_proof(sn_info.pubkey, [&entry](const auto &proof) {
         entry.service_node_version     = proof.version;
+        entry.lokinet_version          = proof.lokinet_version;
+        entry.storage_server_version   = proof.storage_server_version;
         entry.public_ip                = epee::string_tools::get_ip_string_from_int32(proof.public_ip);
         entry.storage_port             = proof.storage_port;
         entry.storage_lmq_port         = proof.storage_lmq_port;
