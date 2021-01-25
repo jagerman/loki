@@ -2873,6 +2873,7 @@ namespace service_nodes
   //TODO remove after HF17
   bool service_node_list::handle_uptime_proof(cryptonote::NOTIFY_UPTIME_PROOF::request const &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
+    MGINFO("Received uptime proof from: " << x25519_pkey);
     uint8_t const hf_version = m_blockchain.get_current_hard_fork_version();
     uint64_t const now       = time(nullptr);
 
@@ -2959,6 +2960,9 @@ namespace service_nodes
 
   bool service_node_list::handle_btencoded_uptime_proof(const uptime_proof::Proof &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
+    MGINFO("Received btencoded uptime proof from: " << x25519_pkey);
+    MGINFO("Storage Server Version: " << tools::join(".", proof.storage_server_version) );
+    MGINFO("Lokinet Router Version: " << tools::join(".", proof.lokinet_version) );
     uint8_t const hf_version = m_blockchain.get_current_hard_fork_version();
     uint64_t const now       = time(nullptr);
 
