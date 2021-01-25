@@ -6250,6 +6250,8 @@ struct service_node_proof_serialized
       storage_lmq_port{native_to_little(info.storage_lmq_port)},
       quorumnet_port{native_to_little(info.quorumnet_port)},
       version{native_to_little(info.version[0]), native_to_little(info.version[1]), native_to_little(info.version[2])},
+      storage_server_version{native_to_little(info.storage_server_version[0]), native_to_little(info.storage_server_version[1]), native_to_little(info.storage_server_version[2])},
+      lokinet_version{native_to_little(info.lokinet_version[0]), native_to_little(info.lokinet_version[1]), native_to_little(info.lokinet_version[2])},
       pubkey_ed25519{info.pubkey_ed25519}
   {}
   void update(service_nodes::proof_info &info) const
@@ -6262,7 +6264,11 @@ struct service_node_proof_serialized
     info.storage_lmq_port = little_to_native(storage_lmq_port);
     info.quorumnet_port = little_to_native(quorumnet_port);
     for (size_t i = 0; i < info.version.size(); i++)
+    {
       info.version[i] = little_to_native(version[i]);
+      info.storage_server_version[i] = little_to_native(storage_server_version[i]);
+      info.lokinet_version[i] = little_to_native(lokinet_version[i]);
+    }
     info.update_pubkey(pubkey_ed25519);
   }
   operator service_nodes::proof_info() const
@@ -6277,10 +6283,12 @@ struct service_node_proof_serialized
   uint16_t storage_port;
   uint16_t quorumnet_port;
   uint16_t version[3];
+  uint16_t storage_server_version[3];
+  uint16_t lokinet_version[3];
   uint16_t storage_lmq_port;
   crypto::ed25519_public_key pubkey_ed25519;
 };
-static_assert(sizeof(service_node_proof_serialized) == 56, "service node serialization struct has unexpected size and/or padding");
+static_assert(sizeof(service_node_proof_serialized) == 72, "service node serialization struct has unexpected size and/or padding");
 
 bool BlockchainLMDB::get_service_node_proof(const crypto::public_key &pubkey, service_nodes::proof_info &proof) const
 {

@@ -2832,8 +2832,8 @@ namespace service_nodes
     update_db |= update_val(storage_lmq_port, s_lmq_port);
     update_db |= update_val(quorumnet_port, q_port);
     update_db |= update_val(version, ver);
-    //update_db |= update_val(storage_server_version, ss_ver);
-    //update_db |= update_val(lokinet_version, lokinet_ver);
+    update_db |= update_val(storage_server_version, ss_ver);
+    update_db |= update_val(lokinet_version, lokinet_ver);
     update_db |= update_val(pubkey_ed25519, pk_ed);
     effective_timestamp = timestamp;
     pubkey_x25519 = pk_x2;
