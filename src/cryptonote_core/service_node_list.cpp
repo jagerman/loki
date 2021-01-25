@@ -2960,7 +2960,9 @@ namespace service_nodes
 
   bool service_node_list::handle_btencoded_uptime_proof(const uptime_proof::Proof &proof, bool &my_uptime_proof_confirmation, crypto::x25519_public_key &x25519_pkey)
   {
-    MGINFO("Received btencoded uptime proof from: " << x25519_pkey);
+    MGINFO("Received btencoded uptime proof from: " << proof.pubkey);
+    MGINFO("Timestamp: " << proof.timestamp);
+    MGINFO("Public IP: " << proof.public_ip);
     MGINFO("Storage Server Version: " << tools::join(".", proof.storage_server_version) );
     MGINFO("Lokinet Router Version: " << tools::join(".", proof.lokinet_version) );
     uint8_t const hf_version = m_blockchain.get_current_hard_fork_version();
