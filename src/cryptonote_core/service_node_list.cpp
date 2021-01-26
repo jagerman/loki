@@ -43,6 +43,7 @@ extern "C" {
 #include "cryptonote_tx_utils.h"
 #include "cryptonote_basic/tx_extra.h"
 #include "cryptonote_basic/hardfork.h"
+#include "cryptonote_core/uptime_proof.h"
 #include "epee/int-util.h"
 #include "common/scoped_message_writer.h"
 #include "common/i18n.h"
