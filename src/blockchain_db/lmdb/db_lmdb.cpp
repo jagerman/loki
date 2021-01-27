@@ -33,6 +33,8 @@
 #include <boost/endian/conversion.hpp>
 #include <memory>
 #include <cstring>
+#include <type_traits>
+#include <variant>
 
 #include "epee/string_tools.h"
 #include "common/file.h"
@@ -269,8 +271,15 @@ void lmdb_db_open(MDB_txn* txn, const char* name, int flags, MDB_dbi& dbi, const
     throw0(cryptonote::DB_OPEN_FAILURE((lmdb_error(error_string + " : ", res) + std::string(" - you may want to start with --db-salvage")).c_str()));
 }
 
+template <typename T, typename...>
+struct first_type { using type = T; };
+template <typename... T>
+using first_type_t = typename first_type<T...>::type;
+
 // Lets you iterator over all the pairs of K/V pairs in a database
-template <typename K, typename V>
+// If multiple V are provided then value will be a variant<V1*, V2*, ...> with the populated pointer
+// matched by size of the record.
+template <typename K, typename... V>
 class iterable_db {
 private:
   MDB_cursor* cursor;
@@ -281,13 +290,13 @@ public:
 
   class iterator {
   public:
-    using value_type = std::pair<K*, V*>;
+    using value_type = std::pair<K*, std::conditional_t<sizeof...(V) == 1, first_type_t<V...>*, std::variant<V*...>>>;
     using reference = value_type&;
     using pointer = value_type*;
     using difference_type = ptrdiff_t;
     using iterator_category = std::input_iterator_tag;
 
-    constexpr iterator() : element{nullptr, nullptr} {}
+    constexpr iterator() : element{} {}
     iterator(MDB_cursor* c, MDB_cursor_op op_start, MDB_cursor_op op_incr) : cursor{c}, op_incr{op_incr} {
       next(op_start);
     }
@@ -302,14 +311,29 @@ public:
     bool operator!=(const iterator& i) const { return !(*this == i); }
 
   private:
+    template <typename T, typename... More>
+    void load_variant() {
+      if (v.mv_size == sizeof(T))
+        element.second = static_cast<T*>(v.mv_data);
+      else if constexpr (sizeof...(More))
+        load_variant<More...>();
+      else {
+        MWARNING("Invalid stored type size in iterable_db: stored size (" << v.mv_size <<
+            ") matched none of " << tools::type_name<value_type>());
+        std::get<0>(element.second) = nullptr;
+      }
+    }
+
     void next(MDB_cursor_op op) {
       int result = mdb_cursor_get(cursor, &k, &v, op);
       if (result == MDB_NOTFOUND) {
-        element.first = nullptr;
-        element.second = nullptr;
+        element = {};
       } else if (result == MDB_SUCCESS) {
         element.first = static_cast<K*>(k.mv_data);
-        element.second = static_cast<V*>(v.mv_data);
+        if constexpr (sizeof...(V) == 1)
+          element.second = static_cast<typename value_type::second_type*>(v.mv_data);
+        else
+          load_variant<V...>();
       } else {
         throw0(cryptonote::DB_ERROR(lmdb_error("enumeration failed: ", result)));
       }
@@ -318,7 +342,7 @@ public:
     MDB_cursor* cursor = nullptr;
     const MDB_cursor_op op_incr = MDB_NEXT;
     MDB_val k, v;
-    std::pair<K*, V*> element;
+    value_type element;
   };
 
   iterator begin() { return {cursor, op_start, op_incr}; }
@@ -6376,8 +6400,13 @@ std::unordered_map<crypto::public_key, service_nodes::proof_info> BlockchainLMDB
   RCURSOR(service_node_proofs);
 
   std::unordered_map<crypto::public_key, service_nodes::proof_info> result;
-  for (const auto &pair : iterable_db<crypto::public_key, service_node_proof_serialized>(m_cursors->service_node_proofs))
-    result.emplace(*pair.first, *pair.second);
+  for (const auto &pair : iterable_db<crypto::public_key, service_node_proof_serialized, service_node_proof_serialized_old>(
+        m_cursors->service_node_proofs)) {
+    if (std::holds_alternative<service_node_proof_serialized*>(pair.second))
+      result.emplace(*pair.first, *var::get<service_node_proof_serialized*>(pair.second));
+    else
+      result.emplace(*pair.first, service_node_proof_serialized{*var::get<service_node_proof_serialized_old*>(pair.second)});
+  }
 
   return result;
 }
