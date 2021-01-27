@@ -6240,20 +6240,43 @@ void BlockchainLMDB::clear_service_node_data()
   }
 }
 
-struct service_node_proof_serialized
+template <typename T, size_t N>
+std::array<T, N> native_to_little_array(const std::array<T, N>& a) {
+  std::array<T, N> result;
+  for (size_t i = 0; i < N; i++)
+    result[i] = native_to_little(a[i]);
+  return result;
+}
+
+template <typename T, size_t N>
+std::array<T, N> little_to_native_array(const std::array<T, N>& a) {
+  std::array<T, N> result;
+  for (size_t i = 0; i < N; i++)
+    result[i] = little_to_native(a[i]);
+  return result;
+}
+
+// Old database format, before 9.x, doesn't include SS/lokinet versions
+struct service_node_proof_serialized_old
 {
-  service_node_proof_serialized() = default;
-  service_node_proof_serialized(const service_nodes::proof_info &info)
+  uint64_t timestamp;
+  uint32_t ip;
+  uint16_t storage_port;
+  uint16_t quorumnet_port;
+  std::array<uint16_t, 3> version;
+  uint16_t storage_lmq_port;
+  crypto::ed25519_public_key pubkey_ed25519;
+
+  service_node_proof_serialized_old(const service_nodes::proof_info& info)
     : timestamp{native_to_little(info.timestamp)},
       ip{native_to_little(info.public_ip)},
       storage_port{native_to_little(info.storage_port)},
       storage_lmq_port{native_to_little(info.storage_lmq_port)},
       quorumnet_port{native_to_little(info.quorumnet_port)},
-      version{native_to_little(info.version[0]), native_to_little(info.version[1]), native_to_little(info.version[2])},
-      storage_server_version{native_to_little(info.storage_server_version[0]), native_to_little(info.storage_server_version[1]), native_to_little(info.storage_server_version[2])},
-      lokinet_version{native_to_little(info.lokinet_version[0]), native_to_little(info.lokinet_version[1]), native_to_little(info.lokinet_version[2])},
+      version{native_to_little_array(info.version)},
       pubkey_ed25519{info.pubkey_ed25519}
   {}
+
   void update(service_nodes::proof_info &info) const
   {
     info.timestamp = little_to_native(timestamp);
@@ -6263,14 +6286,37 @@ struct service_node_proof_serialized
     info.storage_port = little_to_native(storage_port);
     info.storage_lmq_port = little_to_native(storage_lmq_port);
     info.quorumnet_port = little_to_native(quorumnet_port);
-    for (size_t i = 0; i < info.version.size(); i++)
-    {
-      info.version[i] = little_to_native(version[i]);
-      info.storage_server_version[i] = little_to_native(storage_server_version[i]);
-      info.lokinet_version[i] = little_to_native(lokinet_version[i]);
-    }
+    info.version = little_to_native_array(version);
     info.update_pubkey(pubkey_ed25519);
   }
+};
+// New database structure extends the above with SS and lokinet versions.
+struct service_node_proof_serialized : service_node_proof_serialized_old
+{
+  service_node_proof_serialized() = default;
+
+  // Constructs from an old proof format without ss/lokinet versions: they get set to 0.
+  service_node_proof_serialized(const service_node_proof_serialized_old& p)
+    : service_node_proof_serialized_old(p),
+    storage_server_version{},
+    lokinet_version{}
+  {}
+
+  // Loads a serialization struct from a proof_info
+  service_node_proof_serialized(const service_nodes::proof_info &info)
+    : service_node_proof_serialized_old{info},
+      storage_server_version{native_to_little_array(info.storage_server_version)},
+      lokinet_version{native_to_little_array(info.lokinet_version)}
+  {}
+
+  // Updates the fields in a proof_info from this serialization struct
+  void update(service_nodes::proof_info &info) const
+  {
+    service_node_proof_serialized_old::update(info);
+    info.storage_server_version = little_to_native_array(storage_server_version);
+    info.lokinet_version = little_to_native_array(lokinet_version);
+  }
+  // Implicit conversion of this serialization struct into a proof_info
   operator service_nodes::proof_info() const
   {
     service_nodes::proof_info info{};
@@ -6278,15 +6324,9 @@ struct service_node_proof_serialized
     return info;
   }
 
-  uint64_t timestamp;
-  uint32_t ip;
-  uint16_t storage_port;
-  uint16_t quorumnet_port;
-  uint16_t version[3];
-  uint16_t storage_server_version[3];
-  uint16_t lokinet_version[3];
-  uint16_t storage_lmq_port;
-  crypto::ed25519_public_key pubkey_ed25519;
+  std::array<uint16_t, 3> storage_server_version;
+  std::array<uint16_t, 3> lokinet_version;
+  char _padding[4];
 };
 static_assert(sizeof(service_node_proof_serialized) == 72, "service node serialization struct has unexpected size and/or padding");
 
