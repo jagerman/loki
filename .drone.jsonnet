@@ -211,12 +211,12 @@ local gui_wallet_step_darwin = {
                     build_tests=false, lto=true, extra_cmds=static_check_and_upload,
                     extra_steps=[gui_wallet_step(docker_base+'ubuntu-bionic')]),
 
-    // Static mingw build (on focal) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (win64)", docker_base+"ubuntu-focal", deps='g++ g++-mingw-w64-x86-64 '+static_build_deps,
+    // Static mingw build (on debian testing) which gets uploaded to builds.lokinet.dev:
+    debian_pipeline("Static (win64)", docker_base+"debian-win32-cross", deps='g++ g++-mingw-w64-x86-64 '+static_build_deps,
                     cmake_extra='-DCMAKE_TOOLCHAIN_FILE=../cmake/64-bit-toolchain.cmake -DBUILD_STATIC_DEPS=ON -DARCH=x86-64',
                     build_tests=false, lto=false, test_oxend=false, extra_cmds=[
                         'ninja strip_binaries', 'ninja create_zip', '../utils/build_scripts/drone-static-upload.sh'],
-                    extra_steps=[gui_wallet_step(docker_base+'ubuntu-focal', wine=true)]),
+                    extra_steps=[gui_wallet_step(docker_base+'lokinet-ci-electron-builder', wine=true)]),
 
     // Macos builds:
     mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DARCH=core2 -DARCH_ID=amd64',
