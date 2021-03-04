@@ -4,6 +4,8 @@ local default_deps_base='libsystemd-dev libboost-thread-dev libgtest-dev ' +
     'pkg-config libsqlite3-dev qttools5-dev libcurl4-openssl-dev';
 local default_deps='g++ ' + default_deps_base; // g++ sometimes needs replacement
 
+local docker_base = 'registry.oxen.rocks/lokinet-ci-';
+
 local gtest_filter='-AddressFromURL.Failure:DNSResolver.DNSSEC*';
 
 local submodules_commands = ['git fetch --tags', 'git submodule update --init --recursive --depth=1'];
@@ -190,31 +192,31 @@ local gui_wallet_step_darwin = {
 
 [
     // Various debian builds
-    debian_pipeline("Debian (w/ tests) (amd64)", "debian:sid", lto=true, run_tests=true),
-    debian_pipeline("Debian Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian clang-11 (amd64)", "debian:sid", deps='clang-11 '+default_deps_base,
+    debian_pipeline("Debian (w/ tests) (amd64)", docker_base+"debian-sid", lto=true, run_tests=true),
+    debian_pipeline("Debian Debug (amd64)", docker_base+"debian-sid", build_type='Debug'),
+    debian_pipeline("Debian clang-11 (amd64)", docker_base+"debian-sid", deps='clang-11 '+default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 ', lto=true),
     debian_pipeline("Debian gcc-10 (amd64)", "debian:testing", deps='g++-10 '+default_deps_base,
                     cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DBUILD_DEBUG_UTILS=ON'),
     debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON -DARCH_ID=i386'),
-    debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
+    debian_pipeline("Ubuntu focal (amd64)", docker_base+"ubuntu-focal"),
 
     // ARM builds (ARM64 and armhf)
     debian_pipeline("Debian (ARM64)", "debian:sid", arch="arm64", build_tests=false),
     debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", build_tests=false, cmake_extra='-DDOWNLOAD_SODIUM=ON -DARCH_ID=armhf'),
 
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 '+static_build_deps,
+    debian_pipeline("Static (bionic amd64)", docker_base+"ubuntu-bionic", deps='g++-8 '+static_build_deps,
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DARCH=x86-64',
                     build_tests=false, lto=true, extra_cmds=static_check_and_upload,
-                    extra_steps=[gui_wallet_step('ubuntu:bionic')]),
+                    extra_steps=[gui_wallet_step(docker_base+'ubuntu-bionic')]),
 
     // Static mingw build (on focal) which gets uploaded to builds.lokinet.dev:
-    debian_pipeline("Static (win64)", "ubuntu:focal", deps='g++ g++-mingw-w64-x86-64 '+static_build_deps,
+    debian_pipeline("Static (win64)", docker_base+"ubuntu-focal", deps='g++ g++-mingw-w64-x86-64 '+static_build_deps,
                     cmake_extra='-DCMAKE_TOOLCHAIN_FILE=../cmake/64-bit-toolchain.cmake -DBUILD_STATIC_DEPS=ON -DARCH=x86-64',
                     build_tests=false, lto=false, test_oxend=false, extra_cmds=[
                         'ninja strip_binaries', 'ninja create_zip', '../utils/build_scripts/drone-static-upload.sh'],
-                    extra_steps=[gui_wallet_step('debian:stable', wine=true)]),
+                    extra_steps=[gui_wallet_step(docker_base+'ubuntu-focal', wine=true)]),
 
     // Macos builds:
     mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DARCH=core2 -DARCH_ID=amd64',
