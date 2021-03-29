@@ -2378,13 +2378,11 @@ bool rpc_command_executor::prepare_registration()
         }
         else if (amount_left > 0)
         {
-          std::cout << "\nActual amounts may differ slightly from specification. This is due to\n" << std::endl;
-          std::cout << "limitations on the way fractions are represented internally.\n" << std::endl;
+          std::cout << "\nActual amounts may differ slightly from specification. This is due to\n";
+          std::cout << "limitations on the way fractions are represented internally.\n";
         }
 
-        std::cout << "\nBecause the actual requirement will depend on the time that you register, the\n";
-        std::cout << "amounts shown here are used as a guide only, and the percentages will remain\n";
-        std::cout << "the same." << std::endl << std::endl;
+        std::cout << std::endl;
 
         last_input_result = input_line_yes_no_back_cancel("Do you confirm the information above is correct?");
         if(last_input_result == input_line_result::no || last_input_result == input_line_result::cancel)
