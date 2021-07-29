@@ -513,12 +513,10 @@ namespace cryptonote { namespace rpc {
       if (req.no_miner_tx)
         res.output_indices.back().indices.push_back(GET_BLOCKS_FAST::tx_output_indices());
       res.blocks.back().txs.reserve(bd.second.size());
-      for (std::vector<std::pair<crypto::hash, cryptonote::blobdata>>::iterator i = bd.second.begin(); i != bd.second.end(); ++i)
+      for (auto& [txhash, txdata] : bd.second)
       {
-        res.blocks.back().txs.push_back({std::move(i->second), crypto::null_hash});
-        i->second.clear();
-        i->second.shrink_to_fit();
-        size += res.blocks.back().txs.back().size();
+        auto& entry = res.blocks.back().txs.emplace_back(std::move(txdata), crypto::null_hash);
+        size += entry.size();
       }
 
       const size_t n_txes_to_lookup = bd.second.size() + (req.no_miner_tx ? 0 : 1);
