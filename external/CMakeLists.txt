@@ -45,7 +45,7 @@ if(NOT STATIC AND NOT BUILD_STATIC_DEPS)
   if(WITH_MINIUPNPC)
       pkg_check_modules(MINIUPNPC miniupnpc>=2.1 IMPORTED_TARGET)
   endif()
-  pkg_check_modules(OXENMQ liboxenmq>=1.2.3 IMPORTED_TARGET)
+  pkg_check_modules(OXENMQ liboxenmq>=1.2.7 IMPORTED_TARGET)
 endif()
 
 if(NOT WITH_MINIUPNPC)
