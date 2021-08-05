@@ -51,6 +51,10 @@
 #include "cryptonote_core/service_node_list.h"
 #include "common/oxen.h"
 
+#include <nlohmann/json.hpp>
+#include <oxenmq/bt_serialize.h>
+#include <type_traits>
+
 namespace cryptonote {
 
 /// Namespace for core RPC commands.  Every RPC commands gets defined here (including its name(s),
@@ -98,30 +102,126 @@ namespace rpc {
     }
   }
 
-  /// Base command that all RPC commands must inherit from (either directly or via one or more of
-  /// the below tags).  Inheriting from this (and no others) gives you a private, json, non-legacy
-  /// RPC command.  For LMQ RPC the command will be available at `admin.whatever`; for HTTP RPC
-  /// it'll be at `whatever`.
-  struct RPC_COMMAND {};
+  // Wrapper around a nlohmann::json 
+  class json_binary_proxy {
+    nlohmann::json& e;
+    enum class fmt { bt, hex, base64 } format;
+    friend struct RPC_COMMAND;
+    explicit json_binary_proxy(nlohmann::json& elem, fmt format)
+      : e{elem}, format{format} {}
+    json_binary_proxy() = delete;
+
+    public:
+    json_binary_proxy(const json_binary_proxy&) = default;
+    json_binary_proxy(json_binary_proxy&&) = default;
+
+    /// Dereferencing a proxy element accesses the underlying nlohmann::json
+    nlohmann::json& operator*() { return e; }
+    nlohmann::json* operator->() { return &e; }
+
+    /// Descends into the json object, returning a new binary value proxy around the child element.
+    template <typename T>
+    json_binary_proxy operator[](T&& key) {
+      return json_binary_proxy{e[std::forward<T>(key)], format};
+    }
+
+    /// Assigns binary data from a string_view/string/etc.
+    nlohmann::json& operator=(std::string_view binary_data);
+
+    /// Assigns binary data from a string_view over a 1-byte, non-char type (e.g. unsigned char or
+    /// uint8_t).
+    template <typename Char, std::enable_if_t<sizeof(Char) == 1 && !std::is_same_v<Char, char>, int> = 0>
+    nlohmann::json& operator=(std::basic_string_view<Char> binary_data) {
+      return *this = std::string_view{reinterpret_cast<const char*>(binary_data.data()), binary_data.size()};
+    }
+
+    /// Takes a trivial, no-padding data structure (e.g. a crypto::hash) as the value and dumps its
+    /// contents as the binary value.
+    template <typename T, std::enable_if_t<
+          std::is_standard_layout_v<T> && !std::is_scalar_v<T> && std::is_trivial_v<T> && std::has_unique_object_representations_v<T>, int> = 0>
+    nlohmann::json& operator=(const T& val) {
+      return *this = std::string_view{reinterpret_cast<const char*>(&val), sizeof(val)};
+    }
+  };
+
+  /// Base class that all RPC commands must inherit from (either directly or via one or more of the
+  /// below tags).  Inheriting from this (and no others) gives you a private, json, non-legacy RPC
+  /// command.  For LMQ RPC the command will be available at `admin.whatever`; for HTTP RPC it'll be
+  /// at `whatever`.  This base class is also where response objects are stored.
+  struct RPC_COMMAND {
+    private:
+      bool bt = false;
+    public:
+      /// Indicates whether this response is to be bt (true) or json (false) encoded.  Do not set.
+      bool is_bt() const { return bt; }
+
+      /// Called early in the request to indicate that this request is a bt-encoded one.
+      void set_bt();
+
+      /// The response data.  For bt-encoded responses we convert this on the fly, with the
+      /// following notes:
+      /// - boolean values become 0 or 1
+      /// - key-value pairs with null values are omitted from the object
+      /// - other null values are not permitted at all: an exception will be raised if the json
+      /// contains such a value.
+      /// - double values are not permitted; if a double is absolutely needed then check `is_bt`
+      /// and, when bt, encode it in some documented, endpoint-specific way.
+      /// - binary values in strings *are* permitted, but the caller must take care because they
+      /// will not be permitted for actual json responses (json serialization will fail): the caller
+      /// is expected to do something like:
+      ///
+      ///     std::string binary = some_binary_data();
+      ///     cmd.response["binary_value"] = is_bt ? binary : oxenmq::to_hex(binary);
+      ///
+      /// or, more conveniently, using one of the shortcut methods:
+      ///
+      ///     cmd.response_binary(cmd.response["binary_value"], some_binary_data());
+      ///     cmd.response_binary("binary_value", some_binary_data());
+      ///
+      nlohmann::json response;
+
+      /// Proxy object that is used to set binary data in `response`, encoding it as hex if this
+      /// data is being returned as json.  If this response is to be bt-encoded then the binary
+      /// value is left as-is (which isn't valid for json, but can be transported inside the json
+      /// value as we never dump() when going to bt-encoded).
+      ///
+      /// Usage:
+      ///   std::string data = "abc";
+      ///   rpc.response_hex["foo"]["bar"] = data; // json: "616263", bt: "abc"
+      json_binary_proxy response_hex{response, json_binary_proxy::fmt::hex};
+
+      /// Proxy object that encodes binary data as base64 for json, leaving it as binary for
+      /// bt-encoded responses.
+      ///
+      /// Usage:
+      ///   std::string data = "abc";
+      ///   rpc.response_b64["foo"]["bar"] = data; // json: "YWJj", bt: "abc"
+      json_binary_proxy response_b64{response, json_binary_proxy::fmt::base64};
+  };
 
   /// Tag types that are used (via inheritance) to set rpc endpoint properties
 
   /// Specifies that the RPC call is public (i.e. available through restricted rpc).  If this is
   /// *not* inherited from then the command is restricted (i.e. only available to admins).  For LMQ,
   /// PUBLIC commands are available at `rpc.command` (versus non-PUBLIC ones at `admin.command`).
-  struct PUBLIC : RPC_COMMAND {};
+  struct PUBLIC : virtual RPC_COMMAND {};
 
-  /// Specifies that the RPC call is binary input/ouput.  If not given then the command is JSON.
-  /// For HTTP RPC this also means the command is *not* available via the HTTP JSON RPC.
-  struct BINARY : RPC_COMMAND {};
+  /// Specifies that the RPC call is legacy, deprecated Monero custom binary input/ouput.  If not
+  /// given then the command is JSON/bt-encoded values.  For HTTP RPC this also means the command is
+  /// *not* available via the HTTP JSON RPC.
+  struct BINARY : virtual RPC_COMMAND {};
+
+  /// Specifies that the RPC call takes no input arguments.  (A dictionary of parameters may still
+  /// be passed, but will be ignored).
+  struct NO_ARGS : virtual RPC_COMMAND {};
 
   /// Specifies a "legacy" JSON RPC command, available via HTTP JSON at /whatever (in addition to
   /// json_rpc as "whatever").  When accessed via legacy mode the result is just the .result element
   /// of the JSON RPC response.  (Only applies to the HTTP RPC interface, and does nothing if BINARY
   /// if specified).
-  struct LEGACY : RPC_COMMAND {};
+  struct LEGACY : virtual RPC_COMMAND {};
 
-
+  
   /// (Not a tag). Generic, serializable, no-argument request type, use as `struct request : EMPTY {};`
   struct EMPTY { KV_MAP_SERIALIZABLE };
 
@@ -133,40 +233,40 @@ namespace rpc {
     KV_MAP_SERIALIZABLE
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get the node's current height.
-  struct GET_HEIGHT : PUBLIC, LEGACY
+  /// Get the node's current height.
+  ///
+  /// Inputs: none.
+  ///
+  /// Outputs:
+  ///
+  /// height -- The current blockchain height according to the queried daemon.
+  /// status -- Generic RPC error code. "OK" is the success value.
+  /// untrusted -- If the result is obtained using bootstrap mode then this will be set to true, otherwise will be omitted.
+  /// hash -- Hash of the block at the current height
+  /// immutable_height -- The latest height in the blockchain that cannot be reorganized because of a hardcoded checkpoint or 2 SN checkpoints.  Omitted if not available.
+  /// immutable_hash -- Hash of the highest block in the chain that cannot be reorganized.
+  struct GET_HEIGHT : PUBLIC, LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_height", "getheight"); }
-
-    struct request : EMPTY {};
-    struct response
-    {
-      uint64_t height;            // The current blockchain height according to the queried daemon.
-      std::string status;         // Generic RPC error code. "OK" is the success value.
-      bool untrusted;             // If the result is obtained using bootstrap mode, and therefore not trusted `true`, or otherwise `false`.
-      std::string hash;           // Hash of the block at the current height
-      uint64_t immutable_height;  // The latest height in the blockchain that can not be reorganized from (backed by atleast 2 Service Node, or 1 hardcoded checkpoint, 0 if N/A).
-      std::string immutable_hash; // Hash of the highest block in the chain that can not be reorganized.
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get all blocks info. Binary request.
-  struct GET_BLOCKS_FAST : PUBLIC, BINARY
+  /// Get all blocks info. Deprecated, Monero custom binary request.  See the (FIXME) RPC endpoint
+  /// instead.
+  ///
+  /// Inputs:
+  /// block_ids -- descending list of block IDs used to detect reorganizations and network status:
+  /// the first 10 are the 10 most recent blocks, after which height decreases by a power of 2.
+  struct GET_BLOCKS_BIN : PUBLIC, BINARY
   {
     static constexpr auto names() { return NAMES("get_blocks.bin", "getblocks.bin"); }
 
     static constexpr size_t MAX_COUNT = 1000;
 
-    struct request
-    {
-      std::list<crypto::hash> block_ids; // First 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block
-      uint64_t    start_height;          // The starting block's height.
-      bool        prune;                 // Prunes the blockchain, drops off 7/8 off the block iirc.
-      bool        no_miner_tx;           // Optional (false by default).
+    struct request {
+      std::list<crypto::hash> block_ids; // Descending list of block IDs used to detect reorganizations and network: the first 10 blocks id are sequential, then height drops by a power of 2 (2, 4, 8, 16, etc.) down to height 1, and then finally the genesis block id.
+      uint64_t    start_height;          // The height of the first block to fetch.
+      bool        prune;                 // Prunes the blockchain, dropping off 7/8ths of the blocks.
+      bool        no_miner_tx;           // If specified and true, don't include miner transactions in transaction results.
 
       KV_MAP_SERIALIZABLE
     };
@@ -200,7 +300,7 @@ namespace rpc {
 
   OXEN_RPC_DOC_INTROSPECT
   // Get blocks by height. Binary request.
-  struct GET_BLOCKS_BY_HEIGHT : PUBLIC, BINARY
+  struct GET_BLOCKS_BY_HEIGHT_BIN : PUBLIC, BINARY
   {
     static constexpr auto names() { return NAMES("get_blocks_by_height.bin", "getblocks_by_height.bin"); }
 
@@ -224,7 +324,7 @@ namespace rpc {
 
   OXEN_RPC_DOC_INTROSPECT
   // Get the known blocks hashes which are not on the main chain.
-  struct GET_ALT_BLOCKS_HASHES : PUBLIC, BINARY
+  struct GET_ALT_BLOCKS_HASHES_BIN : PUBLIC, BINARY
   {
     static constexpr auto names() { return NAMES("get_alt_blocks_hashes.bin"); }
 
@@ -241,7 +341,7 @@ namespace rpc {
 
   OXEN_RPC_DOC_INTROSPECT
   // Get hashes. Binary request.
-  struct GET_HASHES_FAST : PUBLIC, BINARY
+  struct GET_HASHES_BIN : PUBLIC, BINARY
   {
     static constexpr auto names() { return NAMES("get_hashes.bin", "gethashes.bin"); }
 
@@ -415,7 +515,7 @@ namespace rpc {
 
   OXEN_RPC_DOC_INTROSPECT
   // Get global outputs of transactions. Binary request.
-  struct GET_TX_GLOBAL_OUTPUTS_INDEXES : PUBLIC, BINARY
+  struct GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN : PUBLIC, BINARY
   {
     static constexpr auto names() { return NAMES("get_o_indexes.bin"); }
 
@@ -603,60 +703,83 @@ namespace rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Retrieve general information about the state of your node and the network.
-  // Note that all of the std::optional<> fields here are not included if the request is a public
-  // (restricted) RPC request.
-  struct GET_INFO : PUBLIC, LEGACY
+  /// Retrieve general information about the state of the node and the network.
+  ///
+  /// Inputs: none.
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \arg \c status General RPC status string. `"OK"` means everything looks good.
+  /// \arg \c height Current length of longest chain known to daemon.
+  /// \arg \c target_height The height of the next block in the chain.
+  /// \arg \c immutable_height The latest height in the blockchain that can not be reorganized (i.e.
+  ///   is backed by at least 2 Service Node, or 1 hardcoded checkpoint, 0 if N/A).  Omitted if it
+  ///   cannot be determined (typically because the node is still syncing).
+  /// \arg \c pulse will be true if the next expected block is a pulse block, false otherwise.
+  /// \arg \c pulse_ideal_timestamp For pulse blocks this is the ideal timestamp of the next block,
+  ///   that is, the timestamp if the network was operating with perfect 2-minute blocks since the
+  ///   pulse hard fork.
+  /// \arg \c pulse_target_timestamp For pulse blocks this is the target timestamp of the next
+  ///   block, which targets 2 minutes after the previous block but will be slightly faster/slower
+  ///   if the previous block is behind/ahead of the ideal timestamp.
+  /// \arg \c difficulty Network mining difficulty; omitted when the network is expecting a pulse
+  ///   block.
+  /// \arg \c target Current target for next proof of work.
+  /// \arg \c tx_count Total number of non-coinbase transaction in the chain.
+  /// \arg \c tx_pool_size Number of transactions that have been broadcast but not included in a
+  ///   block.
+  /// \arg \c mainnet Indicates whether the node is on the main network (`true`) or not (`false`).
+  /// \arg \c testnet Indicates that the node is on the test network (`true`). Will be omitted for
+  /// non-testnet.
+  /// \arg \c devnet Indicates that the node is on the dev network (`true`). Will be omitted for
+  /// non-devnet.
+  /// \arg \c fakechain States that the node is running in "fakechain" mode (`true`).  Omitted
+  /// otherwise.
+  /// \arg \c nettype String value of the network type (mainnet, testnet, devnet, or fakechain).
+  /// \arg \c top_block_hash Hash of the highest block in the chain.  Will be hex for JSON requests,
+  /// 32-byte binary value for bt requests.
+  /// \arg \c immutable_block_hash Hash of the highest block in the chain that can not be
+  ///   reorganized.  Hex string for json, bytes for bt.
+  /// \arg \c cumulative_difficulty Cumulative difficulty of all blocks in the blockchain.
+  /// \arg \c block_size_limit Maximum allowed block size.
+  /// \arg \c block_size_median Median block size of latest 100 blocks.
+  /// \arg \c ons_counts ONS registration counts, as a three-element list: [session, wallet, lokinet]
+  /// \arg \c offline Indicates that the node is offline, if true.  Omitted for online nodes.
+  /// \arg \c untrusted Indicates that the result was obtained using a bootstrap mode, and is therefore
+  ///   not trusted (`true`).  Omitted for non-bootstrap responses.
+  /// \arg \c database_size Current size of Blockchain data.  Over public RPC this is rounded up to
+  ///   the next-largest GB value.
+  /// \arg \c version Current version of this daemon, as a string.  For a public node this will just
+  ///   be the major and minor version (e.g. "9"); for an admin rpc endpoint this will return the
+  ///   full version (e.g. "9.2.1").
+  /// \arg \c status_line A short one-line summary string of the node (requires an
+  ///   admin/unrestricted connection for most details)
+  ///
+  /// If the endpoint is a restricted (i.e. admin) endpoint then the following fields are also
+  /// included:
+  ///
+  /// \arg \c alt_blocks_count Number of alternative blocks to main chain.
+  /// \arg \c outgoing_connections_count Number of peers that you are connected to and getting
+  ///   information from.
+  /// \arg \c incoming_connections_count Number of peers connected to and pulling from your node.
+  /// \arg \c white_peerlist_size White Peerlist Size
+  /// \arg \c grey_peerlist_size Grey Peerlist Size
+  /// \arg \c service_node Will be true if the node is running in --service-node mode.
+  /// \arg \c start_time Start time of the daemon, as UNIX time.
+  /// \arg \c last_storage_server_ping Last ping time of the storage server (0 if never or not
+  ///   running as a service node)
+  /// \arg \c last_lokinet_ping Last ping time of lokinet (0 if never or not running as a service
+  ///   node)
+  /// \arg \c free_space Available disk space on the node.
+  /// \arg \c bootstrap_daemon_address Bootstrap node to give immediate usability to wallets while
+  ///   syncing by proxying RPC to it. (Note: the replies may be untrustworthy).
+  /// \arg \c height_without_bootstrap Current length of the local chain of the daemon.  Only
+  ///   included if a bootstrap daemon is configured.
+  /// \arg \c was_bootstrap_ever_used States if the bootstrap node has ever been used since the daemon
+  ///   started.  Omitted if no bootstrap node is configured.
+  struct GET_INFO : PUBLIC, LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_info", "getinfo"); }
-
-    struct request : EMPTY {};
-    struct response
-    {
-      std::string status;                   // General RPC error code. "OK" means everything looks good.
-      uint64_t height;                      // Current length of longest chain known to daemon.
-      uint64_t target_height;               // The height of the next block in the chain.
-      uint64_t immutable_height;            // The latest height in the blockchain that can not be reorganized from (backed by atleast 2 Service Node, or 1 hardcoded checkpoint, 0 if N/A).
-      uint64_t pulse_ideal_timestamp;       // For pulse blocks this is the ideal timestamp of the next block, that is, the timestamp if the network was operating with perfect 2-minute blocks since the pulse hard fork.
-      uint64_t pulse_target_timestamp;      // For pulse blocks this is the target timestamp of the next block, which targets 2 minutes after the previous block but will be slightly faster/slower if the previous block is behind/ahead of the ideal timestamp.
-      uint64_t difficulty;                  // Network difficulty (analogous to the strength of the network).
-      uint64_t target;                      // Current target for next proof of work.
-      uint64_t tx_count;                    // Total number of non-coinbase transaction in the chain.
-      uint64_t tx_pool_size;                // Number of transactions that have been broadcast but not included in a block.
-      std::optional<uint64_t> alt_blocks_count;            // Number of alternative blocks to main chain.
-      std::optional<uint64_t> outgoing_connections_count;  // Number of peers that you are connected to and getting information from.
-      std::optional<uint64_t> incoming_connections_count;  // Number of peers connected to and pulling from your node.
-      std::optional<uint64_t> white_peerlist_size;         // White Peerlist Size
-      std::optional<uint64_t> grey_peerlist_size;          // Grey Peerlist Size
-      bool mainnet;                         // States if the node is on the mainnet (`true`) or not (`false`).
-      bool testnet;                         // States if the node is on the testnet (`true`) or not (`false`).
-      bool devnet;                          // States if the node is on the devnet (`true`) or not (`false`).
-      std::string nettype;                  // Nettype value used.
-      std::string top_block_hash;           // Hash of the highest block in the chain.
-      std::string immutable_block_hash;     // Hash of the highest block in the chain that can not be reorganized.
-      uint64_t cumulative_difficulty;       // Cumulative difficulty of all blocks in the blockchain.
-      uint64_t block_size_limit;            // Maximum allowed block size.
-      uint64_t block_weight_limit;          // Maximum allowed block weight.
-      uint64_t block_size_median;           // Median block size of latest 100 blocks.
-      uint64_t block_weight_median;         // Median block weight of latest 100 blocks.
-      std::array<int, 3> ons_counts;        // ONS registration counts, [session, wallet, lokinet]
-      std::optional<bool> service_node;                    // Will be true if the node is running in --service-node mode.
-      std::optional<uint64_t> start_time;                  // Start time of the daemon, as UNIX time.
-      std::optional<uint64_t> last_storage_server_ping;    // Last ping time of the storage server (0 if never or not running as a service node)
-      std::optional<uint64_t> last_lokinet_ping;           // Last ping time of lokinet (0 if never or not running as a service node)
-      std::optional<uint64_t> free_space;                  // Available disk space on the node.
-      bool offline;                         // States if the node is offline (`true`) or online (`false`).
-      bool untrusted;                       // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-      std::optional<std::string> bootstrap_daemon_address; // Bootstrap node to give immediate usability to wallets while syncing by proxying RPC to it. (Note: the replies may be untrustworthy).
-      std::optional<uint64_t> height_without_bootstrap;    // Current length of the local chain of the daemon.
-      std::optional<bool> was_bootstrap_ever_used;         // States if a bootstrap node has ever been used since the daemon started.
-      uint64_t database_size;               // Current size of Blockchain data.  Over public RPC this is rounded up to the next-largest GB value.
-      std::string version;                  // Current version of software running.
-      std::string status_line;              // A short one-line summary status of the node (requires an admin/unrestricted connection for most details)
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   //-----------------------------------------------
@@ -2261,7 +2384,7 @@ namespace rpc {
 
   OXEN_RPC_DOC_INTROSPECT
   // Get information on output blacklist.
-  struct GET_OUTPUT_BLACKLIST : PUBLIC, BINARY
+  struct GET_OUTPUT_BLACKLIST_BIN : PUBLIC, BINARY
   {
     static constexpr auto names() { return NAMES("get_output_blacklist.bin"); }
     struct request : EMPTY {};
@@ -2515,44 +2638,39 @@ namespace rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Performs a simple ONS lookup of a BLAKE2b-hashed name.  This RPC method is meant for simple,
-  // single-value resolutions that do not care about registration details, etc.; if you need more
-  // information use ONS_NAMES_TO_OWNERS instead.
-  //
-  // Technical details: the returned value is encrypted using the name itself so that neither this
-  // oxend responding to the RPC request nor any other blockchain observers can (easily) obtain the
-  // name of registered addresses or the registration details.  Thus, from a client's point of view,
-  // resolving an ONS record involves:
-  //
-  // - Lower-case the name.
-  // - Calculate the name hash as a null-key, 32-byte BLAKE2b hash of the lower-case name.
-  // - Obtain the encrypted value and the nonce from this RPC call (or ONS_NAMES_TO_OWNERS); (encode
-  //   the name hash using either hex or base64.).
-  // - Calculate the decryption key as a 32-byte BLAKE2b keyed hash of the name using the
-  //   (unkeyed) name hash calculated above as the hash key.
-  // - Decrypt (and verify) using XChaCha20-Poly1305 (for example libsodium's
-  //   crypto_aead_xchacha20poly1305_ietf_decrypt) using the above decryption key and using the
-  //   first 24 bytes of the name hash as the public nonce.
+  /// Performs a simple ONS lookup of a BLAKE2b-hashed name.  This RPC method is meant for simple,
+  /// single-value resolutions that do not care about registration details, etc.; if you need more
+  /// information use ONS_NAMES_TO_OWNERS instead.
+  ///
+  /// Returned values:
+  ///
+  /// \arg \c encrypted_value The encrypted ONS value, in hex.  Will be omitted from the response if
+  ///   the given name_hash is not registered.
+  /// \arg \c nonce The nonce value used for encryption, in hex.  Will be omitted if the given name
+  ///   is not registered.
+  ///
+  /// Technical details: the returned value is encrypted using the name itself so that neither this
+  /// oxend responding to the RPC request nor any other blockchain observers can (easily) obtain the
+  /// name of registered addresses or the registration details.  Thus, from a client's point of view,
+  /// resolving an ONS record involves:
+  ///
+  /// 1. Lower-case the name.
+  /// 2. Calculate the name hash as a null-key, 32-byte BLAKE2b hash of the lower-case name.
+  /// 3. Obtain the encrypted value and the nonce from this RPC call (or ONS_NAMES_TO_OWNERS); when
+  ///    using json encode the name hash using either hex or base64.
+  /// 4. Calculate the decryption key as a 32-byte BLAKE2b *keyed* hash of the name using the
+  ///    (unkeyed) name hash calculated above (in step 2) as the hash key.
+  /// 5. Decrypt (and verify) using XChaCha20-Poly1305 (for example libsodium's
+  ///    crypto_aead_xchacha20poly1305_ietf_decrypt) using the above decryption key and using the
+  ///    first 24 bytes of the name hash as the public nonce.
   struct ONS_RESOLVE : PUBLIC
   {
     static constexpr auto names() { return NAMES("ons_resolve", "lns_resolve"); }
 
-    struct request
-    {
-      uint16_t type;         // The ONS type (mandatory); currently supported values are: 0 = session, 1 = wallet, 2 = lokinet.
-      std::string name_hash; // The 32-byte BLAKE2b hash of the name to look up, encoded as 64 hex digits or 44/43 base64 characters (with/without padding).
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::optional<std::string> encrypted_value; // The encrypted ONS value, in hex.  Will be omitted from the response if the given name_hash is not registered.
-      std::optional<std::string> nonce; // The nonce value used for encryption, in hex.
-
-      KV_MAP_SERIALIZABLE
-    };
+    struct request_parameters {
+      int type = -1;         ///< The ONS type (mandatory); currently supported values are: 0 = session, 1 = wallet, 2 = lokinet.
+      std::string name_hash; ///< The 32-byte BLAKE2b hash of the name to look up, encoded as 64 hex digits or 44/43 base64 characters (with/without padding).  For bt-encoded requests this can also be the raw 32 bytes.
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2577,20 +2695,29 @@ namespace rpc {
   /// <TYPE>::response does not.
   using core_rpc_types = tools::type_list<
     GET_HEIGHT,
-    GET_BLOCKS_FAST,
-    GET_BLOCKS_BY_HEIGHT,
-    GET_ALT_BLOCKS_HASHES,
-    GET_HASHES_FAST,
+    GET_INFO,
+    ONS_RESOLVE,
+
+    // Deprecated Monero NIH binary endpoints:
+    GET_ALT_BLOCKS_HASHES_BIN,
+    GET_BLOCKS_BIN,
+    GET_BLOCKS_BY_HEIGHT_BIN,
+    GET_HASHES_BIN,
+    GET_OUTPUTS_BIN,
+    GET_OUTPUT_BLACKLIST_BIN,
+    GET_OUTPUT_DISTRIBUTION_BIN,
+    GET_TRANSACTION_POOL_HASHES_BIN,
+    GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN
+  >;
+
+  using FIXME_old_rpc_types = tools::type_list<
     GET_TRANSACTIONS,
     IS_KEY_IMAGE_SPENT,
-    GET_TX_GLOBAL_OUTPUTS_INDEXES,
-    GET_OUTPUTS_BIN,
     GET_OUTPUTS,
     SEND_RAW_TX,
     START_MINING,
     STOP_MINING,
     MINING_STATUS,
-    GET_INFO,
     GET_NET_STATS,
     SAVE_BC,
     GETBLOCKCOUNT,
@@ -2608,7 +2735,6 @@ namespace rpc {
     SET_LOG_LEVEL,
     SET_LOG_CATEGORIES,
     GET_TRANSACTION_POOL,
-    GET_TRANSACTION_POOL_HASHES_BIN,
     GET_TRANSACTION_POOL_HASHES,
     GET_TRANSACTION_POOL_BACKLOG,
     GET_TRANSACTION_POOL_STATS,
@@ -2633,7 +2759,6 @@ namespace rpc {
     RELAY_TX,
     SYNC_INFO,
     GET_OUTPUT_DISTRIBUTION,
-    GET_OUTPUT_DISTRIBUTION_BIN,
     POP_BLOCKS,
     PRUNE_BLOCKCHAIN,
     GET_QUORUM_STATE,
@@ -2647,7 +2772,6 @@ namespace rpc {
     LOKINET_PING,
     GET_STAKING_REQUIREMENT,
     GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES,
-    GET_OUTPUT_BLACKLIST,
     GET_CHECKPOINTS,
     GET_SN_STATE_CHANGES,
     REPORT_PEER_STATUS,
@@ -2655,7 +2779,6 @@ namespace rpc {
     TEST_TRIGGER_UPTIME_PROOF,
     ONS_NAMES_TO_OWNERS,
     ONS_OWNERS_TO_NAMES,
-    ONS_RESOLVE,
     FLUSH_CACHE
   >;
 

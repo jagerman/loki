@@ -1,6 +1,23 @@
 #include "core_rpc_server_commands_defs.h"
+#include <nlohmann/json.hpp>
+#include <oxenmq/base64.h>
 
 namespace cryptonote::rpc {
+
+nlohmann::json& json_binary_proxy::operator=(std::string_view binary_data) {
+  switch (format) {
+    case fmt::bt: return e = binary_data;
+    case fmt::hex: return e = oxenmq::to_hex(binary_data);
+    case fmt::base64: return e = oxenmq::to_base64(binary_data);
+  }
+  throw std::runtime_error{"Internal error: invalid binary encoding"};
+}
+
+void RPC_COMMAND::set_bt() {
+  bt = true;
+  response_b64.format = json_binary_proxy::fmt::bt;
+  response_hex.format = json_binary_proxy::fmt::bt;
+}
 
 KV_SERIALIZE_MAP_CODE_BEGIN(STATUS)
   KV_SERIALIZE(status)
@@ -11,6 +28,8 @@ KV_SERIALIZE_MAP_CODE_BEGIN(EMPTY)
 KV_SERIALIZE_MAP_CODE_END()
 
 
+
+    /*
 KV_SERIALIZE_MAP_CODE_BEGIN(GET_HEIGHT::response)
   KV_SERIALIZE(height)
   KV_SERIALIZE(status)
@@ -19,27 +38,27 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_HEIGHT::response)
   KV_SERIALIZE(immutable_height)
   KV_SERIALIZE(immutable_hash)
 KV_SERIALIZE_MAP_CODE_END()
+*/
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_FAST::request)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BIN::request)
   KV_SERIALIZE_CONTAINER_POD_AS_BLOB(block_ids)
   KV_SERIALIZE(start_height)
   KV_SERIALIZE(prune)
   KV_SERIALIZE_OPT(no_miner_tx, false)
 KV_SERIALIZE_MAP_CODE_END()
 
-
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_FAST::tx_output_indices)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BIN::tx_output_indices)
   KV_SERIALIZE(indices)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_FAST::block_output_indices)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BIN::block_output_indices)
   KV_SERIALIZE(indices)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_FAST::response)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BIN::response)
   KV_SERIALIZE(blocks)
   KV_SERIALIZE(start_height)
   KV_SERIALIZE(current_height)
@@ -49,32 +68,32 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_FAST::response)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BY_HEIGHT::request)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BY_HEIGHT_BIN::request)
   KV_SERIALIZE(heights)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BY_HEIGHT::response)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_BLOCKS_BY_HEIGHT_BIN::response)
   KV_SERIALIZE(blocks)
   KV_SERIALIZE(status)
   KV_SERIALIZE(untrusted)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_ALT_BLOCKS_HASHES::response)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_ALT_BLOCKS_HASHES_BIN::response)
   KV_SERIALIZE(blks_hashes)
   KV_SERIALIZE(status)
   KV_SERIALIZE(untrusted)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_HASHES_FAST::request)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_HASHES_BIN::request)
   KV_SERIALIZE_CONTAINER_POD_AS_BLOB(block_ids)
   KV_SERIALIZE(start_height)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_HASHES_FAST::response)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_HASHES_BIN::response)
   KV_SERIALIZE_CONTAINER_POD_AS_BLOB(m_block_ids)
   KV_SERIALIZE(start_height)
   KV_SERIALIZE(current_height)
@@ -188,12 +207,12 @@ KV_SERIALIZE_MAP_CODE_BEGIN(IS_KEY_IMAGE_SPENT::response)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_TX_GLOBAL_OUTPUTS_INDEXES::request)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request)
   KV_SERIALIZE_VAL_POD_AS_BLOB(txid)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_TX_GLOBAL_OUTPUTS_INDEXES::response)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response)
   KV_SERIALIZE(o_indexes)
   KV_SERIALIZE(status)
   KV_SERIALIZE(untrusted)
@@ -290,48 +309,48 @@ KV_SERIALIZE_MAP_CODE_BEGIN(MINING_STATUS::response)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_INFO::response)
-  KV_SERIALIZE(status)
-  KV_SERIALIZE(height)
-  KV_SERIALIZE(target_height)
-  KV_SERIALIZE(immutable_height)
-  KV_SERIALIZE(pulse_ideal_timestamp)
-  KV_SERIALIZE(pulse_target_timestamp)
-  KV_SERIALIZE(difficulty)
-  KV_SERIALIZE(target)
-  KV_SERIALIZE(tx_count)
-  KV_SERIALIZE(tx_pool_size)
-  KV_SERIALIZE(alt_blocks_count)
-  KV_SERIALIZE(outgoing_connections_count)
-  KV_SERIALIZE(incoming_connections_count)
-  KV_SERIALIZE(white_peerlist_size)
-  KV_SERIALIZE(grey_peerlist_size)
-  KV_SERIALIZE(mainnet)
-  KV_SERIALIZE(testnet)
-  KV_SERIALIZE(devnet)
-  KV_SERIALIZE(nettype)
-  KV_SERIALIZE(top_block_hash)
-  KV_SERIALIZE(immutable_block_hash)
-  KV_SERIALIZE(cumulative_difficulty)
-  KV_SERIALIZE(block_size_limit)
-  KV_SERIALIZE(block_weight_limit)
-  KV_SERIALIZE(block_size_median)
-  KV_SERIALIZE(block_weight_median)
-  KV_SERIALIZE(ons_counts)
-  KV_SERIALIZE(start_time)
-  KV_SERIALIZE(service_node)
-  KV_SERIALIZE(last_storage_server_ping)
-  KV_SERIALIZE(last_lokinet_ping)
-  KV_SERIALIZE(free_space)
-  KV_SERIALIZE(offline)
-  KV_SERIALIZE(untrusted)
-  KV_SERIALIZE(bootstrap_daemon_address)
-  KV_SERIALIZE(height_without_bootstrap)
-  KV_SERIALIZE(was_bootstrap_ever_used)
-  KV_SERIALIZE(database_size)
-  KV_SERIALIZE(version)
-  KV_SERIALIZE(status_line)
-KV_SERIALIZE_MAP_CODE_END()
+//KV_SERIALIZE_MAP_CODE_BEGIN(GET_INFO::response)
+//  KV_SERIALIZE(status)
+//  KV_SERIALIZE(height)
+//  KV_SERIALIZE(target_height)
+//  KV_SERIALIZE(immutable_height)
+//  KV_SERIALIZE(pulse_ideal_timestamp)
+//  KV_SERIALIZE(pulse_target_timestamp)
+//  KV_SERIALIZE(difficulty)
+//  KV_SERIALIZE(target)
+//  KV_SERIALIZE(tx_count)
+//  KV_SERIALIZE(tx_pool_size)
+//  KV_SERIALIZE(alt_blocks_count)
+//  KV_SERIALIZE(outgoing_connections_count)
+//  KV_SERIALIZE(incoming_connections_count)
+//  KV_SERIALIZE(white_peerlist_size)
+//  KV_SERIALIZE(grey_peerlist_size)
+//  KV_SERIALIZE(mainnet)
+//  KV_SERIALIZE(testnet)
+//  KV_SERIALIZE(devnet)
+//  KV_SERIALIZE(nettype)
+//  KV_SERIALIZE(top_block_hash)
+//  KV_SERIALIZE(immutable_block_hash)
+//  KV_SERIALIZE(cumulative_difficulty)
+//  KV_SERIALIZE(block_size_limit)
+//  KV_SERIALIZE(block_weight_limit)
+//  KV_SERIALIZE(block_size_median)
+//  KV_SERIALIZE(block_weight_median)
+//  KV_SERIALIZE(ons_counts)
+//  KV_SERIALIZE(start_time)
+//  KV_SERIALIZE(service_node)
+//  KV_SERIALIZE(last_storage_server_ping)
+//  KV_SERIALIZE(last_lokinet_ping)
+//  KV_SERIALIZE(free_space)
+//  KV_SERIALIZE(offline)
+//  KV_SERIALIZE(untrusted)
+//  KV_SERIALIZE(bootstrap_daemon_address)
+//  KV_SERIALIZE(height_without_bootstrap)
+//  KV_SERIALIZE(was_bootstrap_ever_used)
+//  KV_SERIALIZE(database_size)
+//  KV_SERIALIZE(version)
+//  KV_SERIALIZE(status_line)
+//KV_SERIALIZE_MAP_CODE_END()
 
 
 KV_SERIALIZE_MAP_CODE_BEGIN(GET_NET_STATS::response)
@@ -1255,7 +1274,7 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::response)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_OUTPUT_BLACKLIST::response)
+KV_SERIALIZE_MAP_CODE_BEGIN(GET_OUTPUT_BLACKLIST_BIN::response)
   KV_SERIALIZE(blacklist)
   KV_SERIALIZE(status)
   KV_SERIALIZE(untrusted)
@@ -1372,16 +1391,16 @@ KV_SERIALIZE_MAP_CODE_BEGIN(ONS_OWNERS_TO_NAMES::response)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(ONS_RESOLVE::request)
-  KV_SERIALIZE(name_hash)
-  KV_SERIALIZE_OPT(type, static_cast<uint16_t>(-1))
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(ONS_RESOLVE::response)
-  KV_SERIALIZE(encrypted_value)
-  KV_SERIALIZE(nonce)
-KV_SERIALIZE_MAP_CODE_END()
+//KV_SERIALIZE_MAP_CODE_BEGIN(ONS_RESOLVE::request)
+//  KV_SERIALIZE(name_hash)
+//  KV_SERIALIZE_OPT(type, static_cast<uint16_t>(-1))
+//KV_SERIALIZE_MAP_CODE_END()
+//
+//
+//KV_SERIALIZE_MAP_CODE_BEGIN(ONS_RESOLVE::response)
+//  KV_SERIALIZE(encrypted_value)
+//  KV_SERIALIZE(nonce)
+//KV_SERIALIZE_MAP_CODE_END()
 
 
 KV_SERIALIZE_MAP_CODE_BEGIN(FLUSH_CACHE::request)

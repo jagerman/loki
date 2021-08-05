@@ -49,11 +49,10 @@
 
 #include "common/password.h"
 #include "common/signal_handler.h"
-#include "daemon/command_server.h"
-#include "daemon/command_line_args.h"
 #include "net/parse.h"
 #include "version.h"
 
+#include "command_line_args.h"
 #include "command_server.h"
 #include "daemon.h"
 
@@ -320,11 +319,25 @@ bool daemon::run(bool interactive)
       http_rpc_public->start();
     }
 
-    std::unique_ptr<daemonize::command_server> rpc_commands;
+    std::optional<daemonize::command_server> rpc_commands;
     if (interactive)
     {
       MGINFO("Starting command-line processor");
-      rpc_commands = std::make_unique<daemonize::command_server>(*rpc);
+      auto& omq = core->get_omq();
+
+      std::promise<void> p;
+      auto conn = omq.connect_inproc(
+          [&p] (oxenmq::ConnectionID) { p.set_value(); },
+          [&p] (oxenmq::ConnectionID, std::string_view err) {
+            try {
+              throw std::runtime_error{"Internal oxend RPC connection failed: " + std::string{err}};
+            } catch (...) {
+              p.set_exception(std::current_exception());
+            }
+          });
+      p.get_future().get();
+
+      rpc_commands.emplace(omq, std::move(conn));
       rpc_commands->start_handling([this] { stop(); });
     }
 
@@ -341,6 +354,7 @@ bool daemon::run(bool interactive)
     {
       MGINFO("Stopping RPC command processor");
       rpc_commands->stop_handling();
+      rpc_commands.reset();
     }
 
     if (http_rpc_public) {

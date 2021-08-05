@@ -39,6 +39,7 @@
 #include <type_traits>
 #include <variant>
 #include <oxenmq/base64.h>
+#include "common/string_util.h"
 #include "crypto/crypto.h"
 #include "cryptonote_basic/hardfork.h"
 #include "cryptonote_basic/tx_extra.h"
@@ -47,6 +48,9 @@
 #include "oxen_economy.h"
 #include "epee/string_tools.h"
 #include "core_rpc_server.h"
+#include "core_rpc_server_command_parser.h"
+#include "rpc_args.h"
+#include "core_rpc_server_error_codes.h"
 #include "common/command_line.h"
 #include "common/oxen.h"
 #include "common/sha256sum.h"
@@ -61,8 +65,6 @@
 #include "epee/misc_language.h"
 #include "net/parse.h"
 #include "crypto/hash.h"
-#include "rpc/rpc_args.h"
-#include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
 #include "version.h"
 
@@ -70,105 +72,98 @@
 #define OXEN_DEFAULT_LOG_CATEGORY "daemon.rpc"
 
 
-namespace cryptonote { namespace rpc {
+namespace cryptonote::rpc {
 
   namespace {
-    // Helper loaders for RPC registration; this lets us reduce the amount of compiled code by
-    // avoiding the need to instantiate {JSON,binary} loading code for {binary,JSON} commands.
-    // This first one is for JSON, the specialization below is for binary.
-    template <typename RPC, typename JSON = void>
-    struct reg_helper {
-      using Request = typename RPC::request;
 
-      Request load(rpc_request& request) {
-        Request req{};
-        if (auto body = request.body_view()) {
-          if (!epee::serialization::load_t_from_json(req, *body))
-            throw parse_error{"Failed to parse JSON parameters"};
-        } else {
-          // This is nasty.  TODO: get rid of epee's horrible serialization code.
-          auto& epee_stuff = var::get<jsonrpc_params>(request.body);
-          auto& storage_entry = epee_stuff.second;
-          // Epee nomenclature translactions:
-          //
-          // - "storage_entry" is a variant over values (ints, doubles, string, storage_entries, or
-          // array_entry).
-          //
-          // - "array_entry" is a variant over vectors of all of those values.
-          //
-          // Epee's json serialization also has a metric ton of limitations: for example it can't
-          // properly deserialize signed integer (unless *all* values are negative), or doubles
-          // (unless *all* values do not look like ints), and for both serialization and
-          // deserialization doesn't support lists of lists, and any mixed types in lists (for
-          // example '[bool, 1, "hi"]`).
-          //
-          // Conclusion: it needs to go.
-          if (auto* section = std::get_if<epee::serialization::section>(&storage_entry))
-            req.load(epee_stuff.first, section);
-          else
-            throw std::runtime_error{"only top-level JSON object values are currently supported"};
+    oxenmq::bt_value json_to_bt(nlohmann::json&& j) {
+      using namespace oxenmq;
+      if (j.is_object()) {
+        bt_dict res;
+        for (auto& [k, v] : j.items()) {
+          if (v.is_null())
+            continue; // skip k-v pairs with a null v (for other nulls we fail).
+          res[k] = json_to_bt(std::move(v));
         }
-        return req;
+        return res;
       }
-
-      // store_t_to_json can't store a string.  Go epee.
-      template <typename R = typename RPC::response, std::enable_if_t<std::is_same<R, std::string>::value, int> = 0>
-      std::string serialize(std::string&& res) {
-        std::ostringstream o;
-        epee::serialization::dump_as_json(o, std::move(res), 0 /*indent*/, false /*newlines*/);
-        return o.str();
+      if (j.is_array()) {
+        bt_list res;
+        for (auto& v : j)
+          res.push_back(json_to_bt(std::move(v)));
+        return res;
       }
-
-      template <typename R = typename RPC::response, std::enable_if_t<!std::is_same<R, std::string>::value, int> = 0>
-      std::string serialize(typename RPC::response&& res) {
-        std::string response;
-        epee::serialization::store_t_to_json(res, response, 0 /*indent*/, false /*newlines*/);
-        return response;
+      if (j.is_string()) {
+        return std::move(j.get_ref<std::string&>());
       }
-    };
-
-    // binary command specialization
-    template <typename RPC>
-    struct reg_helper<RPC, std::enable_if_t<std::is_base_of<BINARY, RPC>::value>> {
-      using Request = typename RPC::request;
-      Request load(rpc_request& request) {
-        Request req{};
-        std::string_view data;
-        if (auto body = request.body_view())
-          data = *body;
-        else
-          throw std::runtime_error{"Internal error: can't load binary a RPC command with non-string body"};
-        if (!epee::serialization::load_t_from_binary(req, data))
-          throw parse_error{"Failed to parse binary data parameters"};
-        return req;
-      }
-
-      std::string serialize(typename RPC::response&& res) {
-        std::string response;
-        epee::serialization::store_t_to_binary(res, response);
-        return response;
-      }
-    };
+      if (j.is_boolean())
+        return j.get<bool>() ? 1 : 0;
+      if (j.is_number_unsigned())
+        return j.get<uint64_t>();
+      if (j.is_number_integer())
+        return j.get<int64_t>();
+      throw std::domain_error{"internal error: encountered some unhandled/invalid type in json-to-bt translation"};
+    }
 
     template <typename RPC, std::enable_if_t<std::is_base_of_v<RPC_COMMAND, RPC>, int> = 0>
     void register_rpc_command(std::unordered_map<std::string, std::shared_ptr<const rpc_command>>& regs)
     {
-      using Request = typename RPC::request;
-      using Response = typename RPC::response;
-      /// check that core_rpc_server.invoke(Request, rpc_context) returns a Response; the code below
-      /// will fail anyway if this isn't satisfied, but that compilation failure might be more cryptic.
-      using invoke_return_type = decltype(std::declval<core_rpc_server>().invoke(std::declval<Request&&>(), rpc_context{}));
-      static_assert(std::is_same<Response, invoke_return_type>::value,
-          "Unable to register RPC command: core_rpc_server::invoke(Request) is not defined or does not return a Response");
       auto cmd = std::make_shared<rpc_command>();
       cmd->is_public = std::is_base_of_v<PUBLIC, RPC>;
       cmd->is_binary = std::is_base_of_v<BINARY, RPC>;
       cmd->is_legacy = std::is_base_of_v<LEGACY, RPC>;
-      cmd->invoke = [](rpc_request&& request, core_rpc_server& server) {
-        reg_helper<RPC> helper;
-        Response res = server.invoke(helper.load(request), std::move(request.context));
-        return helper.serialize(std::move(res));
-      };
+      if constexpr (!std::is_base_of_v<BINARY, RPC>) {
+        static_assert(!FIXME_has_nested_response_v<RPC>);
+        cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> std::string {
+          RPC rpc;
+          try {
+            if (auto body = request.body_view()) {
+              if (body->front() == 'd') { // Looks like a bt dict
+                rpc.set_bt();
+                parse_request(rpc, oxenmq::bt_dict_consumer{*body});
+              }
+              else
+                parse_request(rpc, nlohmann::json::parse(*body));
+            } else if (auto* json = std::get_if<nlohmann::json>(&request.body)) {
+              parse_request(rpc, std::move(*json));
+            } else {
+              assert(std::holds_alternative<std::monostate>(request.body));
+              parse_request(rpc, std::monostate{});
+            }
+          } catch (const std::exception& e) {
+            throw parse_error{"Failed to parse request parameters: "s + e.what()};
+          }
+
+          server.invoke(rpc, std::move(request.context));
+
+          if (rpc.response.is_null())
+            rpc.response = nlohmann::json::object();
+
+          if (rpc.is_bt())
+            return bt_serialize(json_to_bt(std::move(rpc.response)));
+          else
+            return rpc.response.dump();
+        };
+      } else {
+        // Legacy binary request; these still use epee serialization, and should be considered
+        // deprecated (tentatively to be removed in Oxen 11).
+        cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> std::string {
+          typename RPC::request req{};
+          std::string_view data;
+          if (auto body = request.body_view())
+            data = *body;
+          else
+            throw std::runtime_error{"Internal error: can't load binary a RPC command with non-string body"};
+          if (!epee::serialization::load_t_from_binary(req, data))
+            throw parse_error{"Failed to parse binary data parameters"};
+
+          auto res = server.invoke(std::move(req), std::move(request.context));
+
+          std::string response;
+          epee::serialization::store_t_to_binary(res, response);
+          return response;
+        };
+      }
 
       for (const auto& name : RPC::names())
         regs.emplace(name, cmd);
@@ -316,36 +311,36 @@ namespace cryptonote { namespace rpc {
 #define CHECK_CORE_READY() do { if(!check_core_ready()){ res.status =  STATUS_BUSY; return res; } } while(0)
 
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_HEIGHT::response core_rpc_server::invoke(GET_HEIGHT::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_HEIGHT& get_height, rpc_context context)
   {
-    GET_HEIGHT::response res{};
-
     PERF_TIMER(on_get_height);
+    /* FIXME
     if (use_bootstrap_daemon_if_necessary<GET_HEIGHT>(req, res))
       return res;
+    */
 
     auto [height, hash] = m_core.get_blockchain_top();
-    res.height = height;
-    ++res.height; // block height to chain height
-    res.hash = tools::type_to_hex(hash);
-    res.status = STATUS_OK;
+    
+    ++height; // block height to chain height
+    get_height.response["status"] = STATUS_OK;
+    get_height.response["height"] = height;
+    get_height.response_hex["hash"] = hash;
 
-    res.immutable_height = 0;
+    uint64_t immutable_height = 0;
     cryptonote::checkpoint_t checkpoint;
-    if (m_core.get_blockchain_storage().get_db().get_immutable_checkpoint(&checkpoint, res.height - 1))
+    if (m_core.get_blockchain_storage().get_db().get_immutable_checkpoint(&checkpoint, height - 1))
     {
-      res.immutable_height = checkpoint.height;
-      res.immutable_hash   = tools::type_to_hex(checkpoint.block_hash);
+      get_height.response["immutable_height"] = checkpoint.height;
+      get_height.response_hex["immutable_hash"] = checkpoint.block_hash;
     }
-
-    return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_INFO::response core_rpc_server::invoke(GET_INFO::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_INFO& info, rpc_context context)
   {
-    GET_INFO::response res{};
-
     PERF_TIMER(on_get_info);
+    /*
+     * FIXME
+     *
     if (use_bootstrap_daemon_if_necessary<GET_INFO>(req, res))
     {
       if (context.admin)
@@ -363,94 +358,110 @@ namespace cryptonote { namespace rpc {
       }
       return res;
     }
+    */
 
     auto [top_height, top_hash] = m_core.get_blockchain_top();
-    res.height = top_height;
-    auto prev_ts = m_core.get_blockchain_storage().get_db().get_block_timestamp(res.height);
-    ++res.height; // turn top block height into blockchain height
-    res.top_block_hash = tools::type_to_hex(top_hash);
-    res.target_height = m_core.get_target_blockchain_height();
+
+    auto& bs = m_core.get_blockchain_storage();
+    auto& db = bs.get_db();
+
+    auto prev_ts = db.get_block_timestamp(top_height);
+    auto height = top_height + 1; // turn top block height into blockchain height
+
+    info.response["height"] = height;
+    info.response_hex["top_block_hash"] = top_hash;
+    info.response["target_height"] = m_core.get_target_blockchain_height();
 
     bool next_block_is_pulse = false;
-    if (pulse::timings t; pulse::get_round_timings(m_core.get_blockchain_storage(), res.height, prev_ts, t)) {
-      res.pulse_ideal_timestamp = tools::to_seconds(t.ideal_timestamp.time_since_epoch());
-      res.pulse_target_timestamp = tools::to_seconds(t.r0_timestamp.time_since_epoch());
+    if (pulse::timings t;
+        pulse::get_round_timings(bs, height, prev_ts, t)) {
+      info.response["pulse_ideal_timestamp"] = tools::to_seconds(t.ideal_timestamp.time_since_epoch());
+      info.response["pulse_target_timestamp"] = tools::to_seconds(t.r0_timestamp.time_since_epoch());
       next_block_is_pulse = pulse::clock::now() < t.miner_fallback_timestamp;
     }
 
-    res.immutable_height = 0;
-    cryptonote::checkpoint_t checkpoint;
-    if (m_core.get_blockchain_storage().get_db().get_immutable_checkpoint(&checkpoint, res.height - 1))
+    if (cryptonote::checkpoint_t checkpoint;
+        db.get_immutable_checkpoint(&checkpoint, top_height))
     {
-      res.immutable_height     = checkpoint.height;
-      res.immutable_block_hash = tools::type_to_hex(checkpoint.block_hash);
+      info.response["immutable_height"] = checkpoint.height;
+      info.response_hex["immutable_block_hash"] = checkpoint.block_hash;
     }
 
-    res.difficulty = m_core.get_blockchain_storage().get_difficulty_for_next_block(next_block_is_pulse);
-    res.target = tools::to_seconds(TARGET_BLOCK_TIME);
-    res.tx_count = m_core.get_blockchain_storage().get_total_transactions() - res.height; //without coinbase
-    res.tx_pool_size = m_core.get_pool().get_transactions_count();
+    if (next_block_is_pulse)
+      info.response["pulse"] = true;
+    else
+      info.response["difficulty"] = bs.get_difficulty_for_next_block(next_block_is_pulse);
+
+    info.response["target"] = tools::to_seconds(TARGET_BLOCK_TIME);
+    // This count seems broken: blocks with no outputs (after batching) shouldn't be subtracted, and
+    // 0-output txes (SN state changes) arguably shouldn't be, either.
+    info.response["tx_count"] = m_core.get_blockchain_storage().get_total_transactions() - height; //without coinbase
+    info.response["tx_pool_size"] = m_core.get_pool().get_transactions_count();
     if (context.admin)
     {
-      res.alt_blocks_count = m_core.get_blockchain_storage().get_alternative_blocks_count();
-      uint64_t total_conn = m_p2p.get_public_connections_count();
-      res.outgoing_connections_count = m_p2p.get_public_outgoing_connections_count();
-      res.incoming_connections_count = (total_conn - *res.outgoing_connections_count);
-      res.white_peerlist_size = m_p2p.get_public_white_peers_count();
-      res.grey_peerlist_size = m_p2p.get_public_gray_peers_count();
+      info.response["alt_blocks_count"] = bs.get_alternative_blocks_count();
+      auto total_conn = m_p2p.get_public_connections_count();
+      auto outgoing_conns = m_p2p.get_public_outgoing_connections_count();
+      info.response["outgoing_connections_count"] = outgoing_conns;
+      info.response["incoming_connections_count"] = total_conn - outgoing_conns;
+      info.response["white_peerlist_size"] = m_p2p.get_public_white_peers_count();
+      info.response["grey_peerlist_size"] = m_p2p.get_public_gray_peers_count();
     }
 
     cryptonote::network_type nettype = m_core.get_nettype();
-    res.mainnet = nettype == MAINNET;
-    res.testnet = nettype == TESTNET;
-    res.devnet = nettype == DEVNET;
-    res.nettype = nettype == MAINNET ? "mainnet" : nettype == TESTNET ? "testnet" : nettype == DEVNET ? "devnet" : "fakechain";
+    info.response["mainnet"] = nettype == MAINNET;
+    if (nettype == TESTNET) info.response["testnet"] = true;
+    else if (nettype == DEVNET) info.response["devnet"] = true;
+    else if (nettype != MAINNET) info.response["fakechain"] = true;
+    info.response["nettype"] = nettype == MAINNET ? "mainnet" : nettype == TESTNET ? "testnet" : nettype == DEVNET ? "devnet" : "fakechain";
 
     try
     {
-      res.cumulative_difficulty = m_core.get_blockchain_storage().get_db().get_block_cumulative_difficulty(res.height - 1);
+      auto cd = db.get_block_cumulative_difficulty(top_height);
+      info.response["cumulative_difficulty"] = cd;
     }
     catch(std::exception const &e)
     {
-      res.status = "Error retrieving cumulative difficulty at height " + std::to_string(res.height - 1);
-      return res;
+      info.response["status"] = "Error retrieving cumulative difficulty at height " + std::to_string(top_height);
+      return;
     }
 
-    res.block_size_limit = res.block_weight_limit = m_core.get_blockchain_storage().get_current_cumulative_block_weight_limit();
-    res.block_size_median = res.block_weight_median = m_core.get_blockchain_storage().get_current_cumulative_block_weight_median();
+    info.response["block_size_limit"] = bs.get_current_cumulative_block_weight_limit();
+    info.response["block_size_median"] = bs.get_current_cumulative_block_weight_median();
 
-    auto ons_counts = m_core.get_blockchain_storage().name_system_db().get_mapping_counts(res.height);
-    res.ons_counts = {
+    auto ons_counts = bs.name_system_db().get_mapping_counts(height);
+    info.response["ons_counts"] = std::array{
       ons_counts[ons::mapping_type::session],
       ons_counts[ons::mapping_type::wallet],
       ons_counts[ons::mapping_type::lokinet]};
 
     if (context.admin)
     {
-      res.service_node = m_core.service_node();
-      res.start_time = (uint64_t)m_core.get_start_time();
-      res.last_storage_server_ping = (uint64_t)m_core.m_last_storage_server_ping;
-      res.last_lokinet_ping = (uint64_t)m_core.m_last_lokinet_ping;
-      res.free_space = m_core.get_free_space();
-      res.height_without_bootstrap = res.height;
-      std::shared_lock lock{m_bootstrap_daemon_mutex};
-      if (m_bootstrap_daemon)
-      {
-        res.bootstrap_daemon_address = m_bootstrap_daemon->address();
+      bool sn = m_core.service_node();
+      info.response["service_node"] = sn;
+      info.response["start_time"] = m_core.get_start_time();
+      if (sn) {
+        info.response["last_storage_server_ping"] = m_core.m_last_storage_server_ping.load();
+        info.response["last_lokinet_ping"] = m_core.m_last_lokinet_ping.load();
       }
-      res.was_bootstrap_ever_used = m_was_bootstrap_ever_used;
+      info.response["free_space"] = m_core.get_free_space();
+
+      if (std::shared_lock lock{m_bootstrap_daemon_mutex}; m_bootstrap_daemon) {
+        info.response["bootstrap_daemon_address"] = m_bootstrap_daemon->address();
+        info.response["height_without_bootstrap"] = height;
+        info.response["was_bootstrap_ever_used"] = m_was_bootstrap_ever_used;
+      }
     }
 
-    res.offline = m_core.offline();
-    res.database_size = m_core.get_blockchain_storage().get_db().get_database_size();
-    if (!context.admin)
-      res.database_size = round_up(res.database_size, 1'000'000'000);
-    res.version = context.admin ? OXEN_VERSION_FULL : std::to_string(OXEN_VERSION[0]);
-    res.status_line = context.admin ? m_core.get_status_string() :
-      "v" + std::to_string(OXEN_VERSION[0]) + "; Height: " + std::to_string(res.height);
+    if (m_core.offline())
+      info.response["offline"] = true;
+    auto db_size = db.get_database_size();
+    info.response["database_size"] = context.admin ? db_size : round_up(db_size, 1'000'000'000);
+    info.response["version"] = context.admin ? OXEN_VERSION_FULL : std::to_string(OXEN_VERSION[0]);
+    info.response["status_line"] = context.admin ? m_core.get_status_string() :
+      "v" + std::to_string(OXEN_VERSION[0]) + "; Height: " + std::to_string(height);
 
-    res.status = STATUS_OK;
-    return res;
+    info.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_NET_STATS::response core_rpc_server::invoke(GET_NET_STATS::request&& req, rpc_context context)
@@ -483,17 +494,17 @@ namespace cryptonote { namespace rpc {
   };
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_BLOCKS_FAST::response core_rpc_server::invoke(GET_BLOCKS_FAST::request&& req, rpc_context context)
+  GET_BLOCKS_BIN::response core_rpc_server::invoke(GET_BLOCKS_BIN::request&& req, rpc_context context)
   {
-    GET_BLOCKS_FAST::response res{};
+    GET_BLOCKS_BIN::response res{};
 
     PERF_TIMER(on_get_blocks);
-    if (use_bootstrap_daemon_if_necessary<GET_BLOCKS_FAST>(req, res))
+    if (use_bootstrap_daemon_if_necessary<GET_BLOCKS_BIN>(req, res))
       return res;
 
     std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > > bs;
 
-    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, bs, res.current_height, res.start_height, req.prune, !req.no_miner_tx, GET_BLOCKS_FAST::MAX_COUNT))
+    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, bs, res.current_height, res.start_height, req.prune, !req.no_miner_tx, GET_BLOCKS_BIN::MAX_COUNT))
     {
       res.status = "Failed";
       return res;
@@ -507,11 +518,11 @@ namespace cryptonote { namespace rpc {
       res.blocks.resize(res.blocks.size()+1);
       res.blocks.back().block = bd.first.first;
       size += bd.first.first.size();
-      res.output_indices.push_back(GET_BLOCKS_FAST::block_output_indices());
+      res.output_indices.push_back(GET_BLOCKS_BIN::block_output_indices());
       ntxes += bd.second.size();
       res.output_indices.back().indices.reserve(1 + bd.second.size());
       if (req.no_miner_tx)
-        res.output_indices.back().indices.push_back(GET_BLOCKS_FAST::tx_output_indices());
+        res.output_indices.back().indices.push_back(GET_BLOCKS_BIN::tx_output_indices());
       res.blocks.back().txs.reserve(bd.second.size());
       for (auto& [txhash, txdata] : bd.second)
       {
@@ -538,12 +549,12 @@ namespace cryptonote { namespace rpc {
     res.status = STATUS_OK;
     return res;
   }
-  GET_ALT_BLOCKS_HASHES::response core_rpc_server::invoke(GET_ALT_BLOCKS_HASHES::request&& req, rpc_context context)
+  GET_ALT_BLOCKS_HASHES_BIN::response core_rpc_server::invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context)
   {
-    GET_ALT_BLOCKS_HASHES::response res{};
+    GET_ALT_BLOCKS_HASHES_BIN::response res{};
 
     PERF_TIMER(on_get_alt_blocks_hashes);
-    if (use_bootstrap_daemon_if_necessary<GET_ALT_BLOCKS_HASHES>(req, res))
+    if (use_bootstrap_daemon_if_necessary<GET_ALT_BLOCKS_HASHES_BIN>(req, res))
       return res;
 
     std::vector<block> blks;
@@ -566,12 +577,12 @@ namespace cryptonote { namespace rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_BLOCKS_BY_HEIGHT::response core_rpc_server::invoke(GET_BLOCKS_BY_HEIGHT::request&& req, rpc_context context)
+  GET_BLOCKS_BY_HEIGHT_BIN::response core_rpc_server::invoke(GET_BLOCKS_BY_HEIGHT_BIN::request&& req, rpc_context context)
   {
-    GET_BLOCKS_BY_HEIGHT::response res{};
+    GET_BLOCKS_BY_HEIGHT_BIN::response res{};
 
     PERF_TIMER(on_get_blocks_by_height);
-    if (use_bootstrap_daemon_if_necessary<GET_BLOCKS_BY_HEIGHT>(req, res))
+    if (use_bootstrap_daemon_if_necessary<GET_BLOCKS_BY_HEIGHT_BIN>(req, res))
       return res;
 
     res.status = "Failed";
@@ -601,12 +612,12 @@ namespace cryptonote { namespace rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_HASHES_FAST::response core_rpc_server::invoke(GET_HASHES_FAST::request&& req, rpc_context context)
+  GET_HASHES_BIN::response core_rpc_server::invoke(GET_HASHES_BIN::request&& req, rpc_context context)
   {
-    GET_HASHES_FAST::response res{};
+    GET_HASHES_BIN::response res{};
 
     PERF_TIMER(on_get_hashes);
-    if (use_bootstrap_daemon_if_necessary<GET_HASHES_FAST>(req, res))
+    if (use_bootstrap_daemon_if_necessary<GET_HASHES_BIN>(req, res))
       return res;
 
     res.start_height = req.start_height;
@@ -677,12 +688,12 @@ namespace cryptonote { namespace rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_TX_GLOBAL_OUTPUTS_INDEXES::response core_rpc_server::invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES::request&& req, rpc_context context)
+  GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response core_rpc_server::invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request&& req, rpc_context context)
   {
-    GET_TX_GLOBAL_OUTPUTS_INDEXES::response res{};
+    GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response res{};
 
     PERF_TIMER(on_get_indexes);
-    if (use_bootstrap_daemon_if_necessary<GET_TX_GLOBAL_OUTPUTS_INDEXES>(req, res))
+    if (use_bootstrap_daemon_if_necessary<GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN>(req, res))
       return res;
 
     bool r = m_core.get_tx_outputs_gindexs(req.txid, res.o_indexes);
@@ -1557,13 +1568,13 @@ namespace cryptonote { namespace rpc {
   //
   // Oxen
   //
-  GET_OUTPUT_BLACKLIST::response core_rpc_server::invoke(GET_OUTPUT_BLACKLIST::request&& req, rpc_context context)
+  GET_OUTPUT_BLACKLIST_BIN::response core_rpc_server::invoke(GET_OUTPUT_BLACKLIST_BIN::request&& req, rpc_context context)
   {
-    GET_OUTPUT_BLACKLIST::response res{};
+    GET_OUTPUT_BLACKLIST_BIN::response res{};
 
     PERF_TIMER(on_get_output_blacklist_bin);
 
-    if (use_bootstrap_daemon_if_necessary<GET_OUTPUT_BLACKLIST>(req, res))
+    if (use_bootstrap_daemon_if_necessary<GET_OUTPUT_BLACKLIST_BIN>(req, res))
       return res;
 
     try
@@ -2548,9 +2559,8 @@ namespace cryptonote { namespace rpc {
 
     PERF_TIMER(on_sync_info);
 
-    crypto::hash top_hash;
-    m_core.get_blockchain_top(res.height, top_hash);
-    ++res.height; // turn top block height into blockchain height
+    auto [top_height, top_hash] = m_core.get_blockchain_top();
+    res.height = top_height + 1; // turn top block height into blockchain height
     res.target_height = m_core.get_target_blockchain_height();
     res.next_needed_pruning_seed = m_p2p.get_payload_object().get_next_needed_pruning_stripe().second;
 
@@ -3597,11 +3607,10 @@ namespace cryptonote { namespace rpc {
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
-  ONS_RESOLVE::response core_rpc_server::invoke(ONS_RESOLVE::request&& req, rpc_context context)
+  void core_rpc_server::invoke(ONS_RESOLVE& resolve, rpc_context context)
   {
-    ONS_RESOLVE::response res{};
-
-    if (req.type >= tools::enum_count<ons::mapping_type>)
+    auto& req = resolve.request;
+    if (req.type < 0 || req.type >= tools::enum_count<ons::mapping_type>)
       throw rpc_error{ERROR_WRONG_PARAM, "Unable to resolve ONS address: 'type' parameter not specified"};
 
     auto name_hash = ons::name_hash_input_to_base64(req.name_hash);
@@ -3618,11 +3627,10 @@ namespace cryptonote { namespace rpc {
         type, *name_hash, m_core.get_current_blockchain_height()))
     {
       auto [val, nonce] = mapping->value_nonce(type);
-      res.encrypted_value = oxenmq::to_hex(val);
+      resolve.response_hex["encrypted_value"] = val;
       if (val.size() < mapping->to_view().size())
-        res.nonce = oxenmq::to_hex(nonce);
+        resolve.response_hex["nonce"] = nonce;
     }
-    return res;
   }
 
-} }  // namespace cryptonote
+}  // namespace cryptonote::rpc

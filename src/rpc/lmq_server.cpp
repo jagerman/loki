@@ -2,6 +2,8 @@
 #include "lmq_server.h"
 #include "oxenmq/oxenmq.h"
 
+// FIXME: Rename this to omq_server.{h,cpp}
+
 #undef OXEN_DEFAULT_LOG_CATEGORY
 #define OXEN_DEFAULT_LOG_CATEGORY "daemon.rpc"
 
@@ -197,7 +199,8 @@ omq_rpc::omq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
       request.context.admin = m.access.auth >= AuthLevel::admin;
       request.context.source = rpc_source::omq;
       request.context.remote = m.remote;
-      request.body = m.data.empty() ? ""sv : m.data[0];
+      if (!m.data.empty())
+        request.body = m.data[0];
 
       try {
         m.send_reply(LMQ_OK, call.invoke(std::move(request), rpc_));

@@ -31,10 +31,12 @@
 
 #pragma once
 
+#include <exception>
 #include <optional>
 
 #include "common/common_fwd.h"
 #include "common/scoped_message_writer.h"
+#include "rpc/core_rpc_server_commands_defs.h"
 #include "rpc/http_client.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "rpc/core_rpc_server.h"
@@ -46,36 +48,36 @@ namespace daemonize {
 
 class rpc_command_executor final {
 private:
-  std::optional<cryptonote::rpc::http_client> m_rpc_client;
-  cryptonote::rpc::core_rpc_server* m_rpc_server = nullptr;
-  const cryptonote::rpc::rpc_context m_server_context{true};
+  std::variant<cryptonote::rpc::http_client, oxenmq::ConnectionID> m_rpc;
+  oxenmq::OxenMQ* m_omq = nullptr;
 
 public:
-  /// Executor for remote connection RPC
+  /// Executor for HTTP remote connection RPC
   rpc_command_executor(
-      std::string remote_url,
+      std::string http_url,
       const std::optional<tools::login>& user
     );
-  /// Executor for local daemon RPC
-  rpc_command_executor(cryptonote::rpc::core_rpc_server& rpc_server)
-    : m_rpc_server{&rpc_server} {}
 
+  /// Executor for OMQ RPC, either local (inproc) or remote.
+  rpc_command_executor(oxenmq::OxenMQ& omq, oxenmq::ConnectionID conn);
+
+  /// FIXME: remove this!
+  ///
   /// Runs some RPC command either via json_rpc or a direct core rpc call.
   ///
   /// @param req the request object (rvalue reference)
-  /// @param res the response object (lvalue reference)
   /// @param error print this (and, on exception, the exception message) on failure.  If empty then
   /// nothing is printed on failure.
   /// @param check_status_ok whether we require res.status == STATUS_OK to consider the request
   /// successful
-  template <typename RPC>
+  template <typename RPC, std::enable_if_t<std::is_base_of_v<cryptonote::rpc::RPC_COMMAND, RPC> && cryptonote::rpc::FIXME_has_nested_response_v<RPC>, int> = 0>
   bool invoke(typename RPC::request&& req, typename RPC::response& res, const std::string& error, bool check_status_ok = true)
   {
     try {
-      if (m_rpc_client) {
-        res = m_rpc_client->json_rpc<RPC>(RPC::names()[0], req);
+      if (auto* rpc_client = std::get_if<cryptonote::rpc::http_client>(&m_rpc)) {
+        res = rpc_client->json_rpc<RPC>(RPC::names()[0], req);
       } else {
-        res = m_rpc_server->invoke(std::move(req), m_server_context);
+        throw std::runtime_error{"fixme"};
       }
       if (!check_status_ok || res.status == cryptonote::rpc::STATUS_OK)
         return true;
@@ -87,6 +89,40 @@ public:
     if (!error.empty())
       tools::fail_msg_writer() << error;
     return false;
+  }
+
+  /// Runs some RPC command either via json_rpc or an internal rpc call.  Returns nlohmann::json
+  /// results on success, throws on failure.
+  ///
+  /// Note that for a json_rpc request this is the "result" value inside the json_rpc wrapper, not
+  /// the wrapper itself.
+  ///
+  /// This is the low-level implementing method for `invoke<SOMERPC>(...)`.
+  ///
+  /// @param method the method name, typically `SOMERPC::names()[0]`
+  /// @param public_method true if this is a public rpc request; this is used, in particular, to
+  /// decide whether "rpc." or "admin." should be prefixed if this goes through OMQ RPC.
+  /// @param params the "params" field for the request.  Can be nullopt to pass no "params".
+  /// @param check_status_ok whether we require the result to have a "status" key set to STATUS_OK
+  /// to consider the request successful.  Note that this defaults to *false* if this is called
+  /// directly, unlike the RPC-type-templated version, below.
+  nlohmann::json invoke(
+      std::string_view method,
+      bool public_method,
+      std::optional<nlohmann::json> params,
+      bool check_status_ok = false);
+
+  /// Runs some RPC command either via json_rpc or an internal rpc call.  Returns nlohmann::json
+  /// results on success, throws on failure.
+  ///
+  /// @tparam RPC the rpc type class
+  /// @param params the "params" value to pass to json_rpc, or std::nullopt to omit it
+  /// @param check_status_ok whether we require the result to have a "status" key set to STATUS_OK
+  /// to consider the request successful
+  template <typename RPC, std::enable_if_t<std::is_base_of_v<cryptonote::rpc::RPC_COMMAND, RPC> && !cryptonote::rpc::FIXME_has_nested_response_v<RPC>, int> = 0>
+  nlohmann::json invoke(std::optional<nlohmann::json> params, bool check_status_ok = true)
+  {
+    return invoke(RPC::names()[0], std::is_base_of_v<cryptonote::rpc::PUBLIC, RPC>, std::move(params), check_status_ok);
   }
 
   bool print_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json);
@@ -144,8 +180,6 @@ public:
   bool mining_status();
 
   bool stop_daemon();
-
-  bool print_status();
 
   bool get_limit(bool up = true, bool down = true);
 

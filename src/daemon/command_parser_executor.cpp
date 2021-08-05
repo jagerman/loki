@@ -41,14 +41,6 @@
 
 namespace daemonize {
 
-command_parser_executor::command_parser_executor(std::string daemon_url, const std::optional<tools::login>& login)
-  : m_executor{std::move(daemon_url), login}
-{}
-
-command_parser_executor::command_parser_executor(cryptonote::rpc::core_rpc_server& rpc_server)
-  : m_executor{rpc_server}
-{}
-
 // Consumes an argument from the given list, if present, parsing it into `var`.
 // Returns false upon parse failure, true otherwise.
 template <typename T>
@@ -583,13 +575,6 @@ bool command_parser_executor::stop_daemon(const std::vector<std::string>& args)
   if (!args.empty()) return false;
 
   return m_executor.stop_daemon();
-}
-
-bool command_parser_executor::print_status(const std::vector<std::string>& args)
-{
-  if (!args.empty()) return false;
-
-  return m_executor.print_status();
 }
 
 bool command_parser_executor::set_limit(const std::vector<std::string>& args)

@@ -34,6 +34,10 @@ namespace cryptonote
 
   std::optional<uint64_t> bootstrap_daemon::get_height()
   {
+    // FIXME
+    throw std::runtime_error{"FIXME"};
+
+    /*
     // query bootstrap daemon's height
     rpc::GET_HEIGHT::response res{};
     if (!invoke<rpc::GET_HEIGHT>({}, res))
@@ -47,6 +51,7 @@ namespace cryptonote
     }
 
     return res.height;
+    */
   }
 
   bool bootstrap_daemon::set_server(std::string url, const std::optional<std::pair<std::string_view, std::string_view>> &credentials /* = std::nullopt */)

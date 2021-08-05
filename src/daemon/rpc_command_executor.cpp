@@ -29,6 +29,7 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+#include "common/string_util.h"
 #include "epee/string_tools.h"
 #include "common/password.h"
 #include "common/scoped_message_writer.h"
@@ -41,12 +42,14 @@
 #include "cryptonote_basic/hardfork.h"
 #include "checkpoints/checkpoints.h"
 #include <boost/format.hpp>
+#include <exception>
 #include <oxenmq/base32z.h>
 
 #include "common/oxen_integration_test_hooks.h"
 
 #include <fstream>
 #include <ctime>
+#include <oxenmq/connections.h>
 #include <string>
 #include <numeric>
 #include <stack>
@@ -217,13 +220,70 @@ namespace {
 }
 
 rpc_command_executor::rpc_command_executor(
-    std::string remote_url,
-    const std::optional<tools::login>& login
-  )
+    std::string http_url,
+    const std::optional<tools::login>& login)
+  : m_rpc{std::in_place_type<cryptonote::rpc::http_client>, http_url}
 {
-  m_rpc_client.emplace(remote_url);
   if (login)
-    m_rpc_client->set_auth(login->username, std::string{login->password.password().view()});
+    std::get<cryptonote::rpc::http_client>(m_rpc).set_auth(
+        login->username, std::string{login->password.password().view()});
+}
+
+rpc_command_executor::rpc_command_executor(oxenmq::OxenMQ& omq, oxenmq::ConnectionID conn)
+  : m_rpc{std::move(conn)}, m_omq{&omq}
+{}
+
+template <typename Callback>
+static auto try_running(Callback code, std::string_view error_prefix) -> std::optional<decltype(code())> {
+  try {
+    return code();
+  } catch (const std::exception& e) {
+    tools::fail_msg_writer() << error_prefix << ": " << e.what();
+    return std::nullopt;
+  }
+}
+
+nlohmann::json rpc_command_executor::invoke(
+    std::string_view method,
+    bool public_method,
+    std::optional<nlohmann::json> params,
+    bool check_status_ok) {
+
+  nlohmann::json result;
+
+  if (auto* rpc_client = std::get_if<cryptonote::rpc::http_client>(&m_rpc)) {
+    result = rpc_client->json_rpc(method, std::move(params));
+  } else {
+    assert(m_omq);
+    auto conn = std::get<oxenmq::ConnectionID>(m_rpc);
+    auto endpoint = (public_method ? "rpc." : "admin.") + std::string{method};
+    std::promise<nlohmann::json> result_p;
+    m_omq->request(conn, endpoint, [&result_p](bool success, auto data) {
+        try {
+          if (!success)
+            throw std::runtime_error{"Request timed out"};
+          if (data.size() >= 2 && data[0] == "200")
+            result_p.set_value(nlohmann::json::parse(data[1]));
+          else
+            throw std::runtime_error{"RPC method failed: " + (
+                data.empty() ? "empty response" :
+                tools::join(" ", data))};
+        } catch (...) {
+          result_p.set_exception(std::current_exception());
+        }
+      },
+      params ? params->dump() : "{}");
+
+    result = result_p.get_future().get();
+  }
+
+  if (check_status_ok) {
+    if (auto it = result.find("status");
+        it == result.end() || it->get<std::string_view>() != cryptonote::rpc::STATUS_OK)
+      throw std::runtime_error{"Received status " + (it == result.end() ? "(empty)" : it->get_ref<const std::string&>()) + " != OK"};
+  }
+
+  return result;
 }
 
 bool rpc_command_executor::print_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json)
@@ -392,15 +452,20 @@ bool rpc_command_executor::hide_hash_rate() {
 }
 
 bool rpc_command_executor::show_difficulty() {
-  GET_INFO::response res{};
-  if (!invoke<GET_INFO>({}, res, "Failed to get node info"))
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  if (!maybe_info)
     return false;
+  auto& info = *maybe_info;
 
-  tools::success_msg_writer() <<   "BH: " << res.height
-                              << ", TH: " << res.top_block_hash
-                              << ", DIFF: " << res.difficulty
-                              << ", CUM_DIFF: " << res.cumulative_difficulty
-                              << ", HR: " << res.difficulty / res.target << " H/s";
+  auto msg = tools::success_msg_writer();
+  msg <<   "HEIGHT: " << info["height"].get<uint64_t>()
+      << ", HASH: " << info["top_block_hash"].get<std::string_view>();
+  if (info.value("pulse", false))
+    msg << ", PULSE";
+  else
+    msg << ", DIFF: " << info["difficulty"].get<uint64_t>()
+        << ", CUM_DIFF: " << info["cumulative_difficulty"].get<uint64_t>()
+        << ", HR: " << info["difficulty"].get<uint64_t>() / info["target"].get<uint64_t>() << " H/s";
 
   return true;
 }
@@ -440,13 +505,13 @@ static float get_sync_percentage(uint64_t height, uint64_t target_height)
     return 99.9f; // to avoid 100% when not fully synced
   return pc;
 }
-static float get_sync_percentage(const GET_INFO::response &ires)
-{
-  return get_sync_percentage(ires.height, ires.target_height);
-}
 
 bool rpc_command_executor::show_status() {
-  GET_INFO::response ires{};
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  if (!maybe_info)
+    return false;
+  auto& info = *maybe_info;
+
   HARD_FORK_INFO::request hfreq{};
   HARD_FORK_INFO::response hfres{};
   MINING_STATUS::response mres{};
@@ -454,11 +519,12 @@ bool rpc_command_executor::show_status() {
 
   hfreq.version = 0;
   bool mining_busy = false;
-  if (!invoke<GET_INFO>({}, ires, "Failed to get node info") ||
-      !invoke<HARD_FORK_INFO>(std::move(hfreq), hfres, "Failed to retrieve hard fork info"))
+  if (!invoke<HARD_FORK_INFO>(std::move(hfreq), hfres, "Failed to retrieve hard fork info"))
     return false;
-  if (ires.start_time) // This will only be non-null if we were recognized as admin (which we need for mining info)
+  bool restricted_response = false;
+  if (auto it = info.find("start_time"); it != info.end() && it->get<uint64_t>() > 0) // This will only be non-null if we were recognized as admin (which we need for mining info)
   {
+    restricted_response = true;
     has_mining_info = invoke<MINING_STATUS>({}, mres, "Failed to retrieve mining info", false);
     if (has_mining_info) {
       if (mres.status == STATUS_BUSY)
@@ -475,7 +541,7 @@ bool rpc_command_executor::show_status() {
   uint64_t my_sn_last_uptime = 0;
   bool my_sn_registered = false, my_sn_staked = false, my_sn_active = false;
   uint16_t my_reason_all = 0, my_reason_any = 0;
-  if (ires.service_node && *ires.service_node) {
+  if (info["service_node"].get<bool>()) {
     GET_SERVICE_KEYS::response res{};
 
     if (!invoke<GET_SERVICE_KEYS>({}, res, "Failed to retrieve service node keys"))
@@ -499,25 +565,29 @@ bool rpc_command_executor::show_status() {
     }
   }
 
-  uint64_t net_height = ires.target_height > ires.height ? ires.target_height : ires.height;
+  uint64_t height = info["height"].get<uint64_t>();
+  uint64_t net_height = std::max(info["target_height"].get<uint64_t>(), height);
   std::string bootstrap_msg;
 
   std::ostringstream str;
-  str << "Height: " << ires.height;
-  if (ires.height != net_height)
-      str << "/" << net_height << " (" << boost::format("%.1f") % get_sync_percentage(ires) << "%)";
+  str << "Height: " << height;
+  if (height != net_height)
+      str << "/" << net_height << " (" << boost::format("%.1f") % get_sync_percentage(height, net_height) << "%)";
 
-  if (ires.testnet)     str << " ON TESTNET";
-  else if (ires.devnet) str << " ON DEVNET";
+  auto net = info["nettype"].get<std::string_view>();
+  if (net == "testnet")     str << " ON TESTNET";
+  else if (net == "devnet") str << " ON DEVNET";
 
-  if (ires.height < ires.target_height)
+  if (height < net_height)
     str << ", syncing";
 
-  if (ires.was_bootstrap_ever_used && *ires.was_bootstrap_ever_used && ires.bootstrap_daemon_address)
+  if (info.value("was_bootstrap_ever_used", false))
   {
-    str << ", bootstrap " << *ires.bootstrap_daemon_address;
-    if (ires.untrusted)
-      str << boost::format(", local height: %llu (%.1f%%)") % *ires.height_without_bootstrap % get_sync_percentage(*ires.height_without_bootstrap, net_height);
+    str << ", bootstrap " << info["bootstrap_daemon_address"].get<std::string_view>();
+    if (info.value("untrusted", false)) {
+      auto hwb = info["height_without_bootstrap"].get<uint64_t>();
+      str << boost::format(", local height: %llu (%.1f%%)") % hwb % get_sync_percentage(hwb, net_height);
+    }
     else
       str << " was used";
   }
@@ -528,25 +598,21 @@ bool rpc_command_executor::show_status() {
     str << ", mining at " << get_mining_speed(mres.speed);
 
   if (hfres.version < HF_VERSION_PULSE)
-    str << ", net hash " << get_mining_speed(ires.difficulty / ires.target);
+    str << ", net hash " << get_mining_speed(info["difficulty"].get<uint64_t>() / info["target"].get<uint64_t>());
 
-  str << ", v" << (ires.version.empty() ? "?.?.?" : ires.version);
+  str << ", v" << info["version"].get<std::string_view>();
   str << "(net v" << +hfres.version << ')';
   if (hfres.earliest_height)
-    print_fork_extra_info(str, *hfres.earliest_height, net_height, ires.target);
+    print_fork_extra_info(str, *hfres.earliest_height, net_height, info["target"].get<uint64_t>());
 
   std::time_t now = std::time(nullptr);
 
-  // restricted RPC does not disclose these:
-  if (ires.outgoing_connections_count && ires.incoming_connections_count && ires.start_time)
+  if (restricted_response)
   {
-    std::time_t uptime = now - *ires.start_time;
-    str << ", " << *ires.outgoing_connections_count << "(out)+" << *ires.incoming_connections_count << "(in) connections"
+    std::chrono::seconds uptime{now - info["start_time"].get<std::time_t>()};
+    str << ", " << info["outgoing_connections_count"].get<int>() << "(out)+" << info["incoming_connections_count"].get<int>() << "(in) connections"
       << ", uptime "
-      << (uptime / (24*60*60)) << 'd'
-      << (uptime / (60*60)) % 24 << 'h'
-      << (uptime / 60) % 60 << 'm'
-      << uptime % 60 << 's';
+      << tools::friendly_duration(uptime);
   }
 
   tools::success_msg_writer() << str.str();
@@ -560,14 +626,14 @@ bool rpc_command_executor::show_status() {
       str << (!my_sn_staked ? "awaiting" : my_sn_active ? "active" : "DECOMMISSIONED (" + std::to_string(my_decomm_remaining) + " blocks credit)")
         << ", proof: " << (my_sn_last_uptime ? get_human_time_ago(my_sn_last_uptime, now) : "(never)");
     str << ", last pings: ";
-    if (*ires.last_storage_server_ping > 0)
-        str << get_human_time_ago(*ires.last_storage_server_ping, now, true /*abbreviate*/);
+    if (auto last_ss_ping = info["last_storage_server_ping"].get<uint64_t>(); last_ss_ping > 0)
+        str << get_human_time_ago(last_ss_ping, now, true /*abbreviate*/);
     else
         str << "NOT RECEIVED";
     str << " (storage), ";
 
-    if (*ires.last_lokinet_ping > 0)
-        str << get_human_time_ago(*ires.last_lokinet_ping, now, true /*abbreviate*/);
+    if (auto last_lokinet_ping = info["last_lokinet_ping"].get<uint64_t>(); last_lokinet_ping > 0)
+        str << get_human_time_ago(last_lokinet_ping, now, true /*abbreviate*/);
     else
         str << "NOT RECEIVED";
     str << " (lokinet)";
@@ -720,18 +786,19 @@ bool rpc_command_executor::print_blockchain_info(int64_t start_block_index, uint
   // negative: relative to the end
   if (start_block_index < 0)
   {
-    GET_INFO::response ires;
-    if (!invoke<GET_INFO>(GET_INFO::request{}, ires, "Failed to query daemon info"))
-        return false;
+    auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+    if (!maybe_info)
+      return false;
+    auto& info = *maybe_info;
 
-    if (start_block_index < 0 && (uint64_t)-start_block_index >= ires.height)
+    if (start_block_index < 0 && -start_block_index >= info["height"].get<int64_t>())
     {
       tools::fail_msg_writer() << "start offset is larger than blockchain height";
       return false;
     }
 
-    start_block_index = ires.height + start_block_index;
-    end_block_index = start_block_index + end_block_index - 1;
+    start_block_index += info["height"].get<int64_t>();
+    end_block_index += start_block_index - 1;
   }
 
   req.start_height = start_block_index;
@@ -808,14 +875,13 @@ bool rpc_command_executor::set_log_categories(std::string categories) {
 }
 
 bool rpc_command_executor::print_height() {
-  GET_HEIGHT::response res{};
-
-  if (!invoke<GET_HEIGHT>({}, res, "Failed to retrieve height"))
-    return false;
-
-  tools::success_msg_writer() << res.height;
-
-  return true;
+  if (auto height = try_running([this] {
+    return invoke<GET_HEIGHT>(std::nullopt).at("height").get<int>();
+  }, "Failed to retrieve height")) {
+    tools::success_msg_writer() << *height;
+    return true;
+  }
+  return false;
 }
 
 bool rpc_command_executor::print_block(GET_BLOCK::request&& req, bool include_hex) {
@@ -1024,10 +1090,13 @@ bool rpc_command_executor::print_transaction_pool_short() {
 
 bool rpc_command_executor::print_transaction_pool_stats() {
   GET_TRANSACTION_POOL_STATS::response res{};
-  GET_INFO::response ires{};
+  auto full_reward_zone = try_running([this] {
+    return invoke<GET_INFO>(std::nullopt).at("block_size_limit").get<uint64_t>() / 2;
+  }, "Failed to retrieve node info");
+  if (!full_reward_zone)
+    return false;
 
-  if (!invoke<GET_TRANSACTION_POOL_STATS>({}, res, "Failed to retreive transaction pool statistics") ||
-      !invoke<GET_INFO>({}, ires, "Failed to retrieve node info"))
+  if (!invoke<GET_TRANSACTION_POOL_STATS>({}, res, "Failed to retreive transaction pool statistics"))
     return false;
 
   size_t n_transactions = res.pool_stats.txs_total;
@@ -1035,14 +1104,13 @@ bool rpc_command_executor::print_transaction_pool_stats() {
   size_t avg_bytes = n_transactions ? res.pool_stats.bytes_total / n_transactions : 0;
 
   std::string backlog_message;
-  const uint64_t full_reward_zone = ires.block_weight_limit / 2;
-  if (res.pool_stats.bytes_total <= full_reward_zone)
+  if (res.pool_stats.bytes_total <= *full_reward_zone)
   {
     backlog_message = "no backlog";
   }
   else
   {
-    uint64_t backlog = (res.pool_stats.bytes_total + full_reward_zone - 1) / full_reward_zone;
+    uint64_t backlog = (res.pool_stats.bytes_total + *full_reward_zone - 1) / *full_reward_zone;
     backlog_message = (boost::format("estimated %u block (%u minutes) backlog") % backlog % (backlog * TARGET_BLOCK_TIME / 1min)).str();
   }
 
@@ -1121,23 +1189,6 @@ bool rpc_command_executor::stop_daemon()
   tools::success_msg_writer() << "Stop signal sent";
 
   return true;
-}
-
-bool rpc_command_executor::print_status()
-{
-  if (!m_rpc_client)
-  {
-    tools::fail_msg_writer() << "print_status makes no sense in interactive mode";
-    return false;
-  }
-
-  // Make a request to get_height because it is public and relatively simple
-  GET_HEIGHT::response res;
-  if (invoke<GET_HEIGHT>({}, res, "oxend is NOT running")) {
-    tools::success_msg_writer() << "oxend is running (height: " << res.height << ")";
-    return true;
-  }
-  return false;
 }
 
 bool rpc_command_executor::get_limit(bool up, bool down)
@@ -1315,11 +1366,15 @@ bool rpc_command_executor::print_coinbase_tx_sum(uint64_t height, uint64_t count
 
 bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, uint64_t last_blocks)
 {
-  GET_INFO::response ires{};
+  auto height = try_running([this] {
+    return invoke<GET_INFO>(std::nullopt).at("height").get<uint64_t>();
+  }, "Failed to retrieve node info");
+  if (!height)
+    return false;
+
   GET_ALTERNATE_CHAINS::response res{};
 
-  if (!invoke<GET_INFO>({}, ires, "Failed to retrieve node info") ||
-      !invoke<GET_ALTERNATE_CHAINS>({}, res, "Failed to retrieve alt chain data"))
+  if (!invoke<GET_ALTERNATE_CHAINS>({}, res, "Failed to retrieve alt chain data"))
     return false;
 
   if (tip.empty())
@@ -1333,7 +1388,7 @@ bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, 
       if (chain.length <= above)
         continue;
       const uint64_t start_height = (chain.height - chain.length + 1);
-      if (last_blocks > 0 && ires.height - 1 - start_height >= last_blocks)
+      if (last_blocks > 0 && *height - 1 - start_height >= last_blocks)
         continue;
       display.push_back(i);
     }
@@ -1342,7 +1397,7 @@ bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, 
     {
       const auto &chain = chains[idx];
       const uint64_t start_height = (chain.height - chain.length + 1);
-      tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (ires.height - start_height - 1)
+      tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (*height - start_height - 1)
           << " deep), diff " << chain.difficulty << ": " << chain.block_hash;
     }
   }
@@ -1355,7 +1410,7 @@ bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, 
       const auto &chain = *i;
       tools::success_msg_writer() << "Found alternate chain with tip " << tip;
       uint64_t start_height = (chain.height - chain.length + 1);
-      tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (ires.height - start_height - 1)
+      tools::msg_writer() << chain.length << " blocks long, from height " << start_height << " (" << (*height - start_height - 1)
           << " deep), diff " << chain.difficulty << ":";
       for (const std::string &block_id: chain.block_hashes)
         tools::msg_writer() << "  " << block_id;
@@ -1400,29 +1455,33 @@ bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, 
 
 bool rpc_command_executor::print_blockchain_dynamic_stats(uint64_t nblocks)
 {
-  GET_INFO::response ires{};
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  if (!maybe_info)
+    return false;
+  auto& info = *maybe_info;
+
   GET_BASE_FEE_ESTIMATE::response feres{};
   HARD_FORK_INFO::response hfres{};
 
-  if (!invoke<GET_INFO>({}, ires, "Failed to retrieve node info") ||
-      !invoke<GET_BASE_FEE_ESTIMATE>({}, feres, "Failed to retrieve current fee info") ||
+  if (!invoke<GET_BASE_FEE_ESTIMATE>({}, feres, "Failed to retrieve current fee info") ||
       !invoke<HARD_FORK_INFO>({HF_VERSION_PER_BYTE_FEE}, hfres, "Failed to retrieve hard fork info"))
     return false;
 
-  tools::msg_writer() << "Height: " << ires.height << ", diff " << ires.difficulty << ", cum. diff " << ires.cumulative_difficulty
-      << ", target " << ires.target << " sec" << ", dyn fee " << cryptonote::print_money(feres.fee_per_byte) << "/" << (hfres.enabled ? "byte" : "kB")
+  auto height = info["height"].get<uint64_t>();
+  tools::msg_writer() << "Height: " << height << ", diff " << info["difficulty"].get<uint64_t>() << ", cum. diff " << info["cumulative_difficulty"].get<uint64_t>()
+      << ", target " << info["target"].get<int>() << " sec" << ", dyn fee " << cryptonote::print_money(feres.fee_per_byte) << "/" << (hfres.enabled ? "byte" : "kB")
       << " + " << cryptonote::print_money(feres.fee_per_output) << "/out";
 
   if (nblocks > 0)
   {
-    if (nblocks > ires.height)
-      nblocks = ires.height;
+    if (nblocks > height)
+      nblocks = height;
 
     GET_BLOCK_HEADERS_RANGE::request bhreq{};
     GET_BLOCK_HEADERS_RANGE::response bhres{};
 
-    bhreq.start_height = ires.height - nblocks;
-    bhreq.end_height = ires.height - 1;
+    bhreq.start_height = height - nblocks;
+    bhreq.end_height = height - 1;
     bhreq.fill_pow_hash = false;
     if (!invoke<GET_BLOCK_HEADERS_RANGE>(std::move(bhreq), bhres, "Failed to retrieve block headers"))
       return false;
@@ -1779,18 +1838,20 @@ bool rpc_command_executor::print_sn(const std::vector<std::string> &args)
         req.service_node_pubkeys.push_back(arg);
     }
 
-    GET_INFO::response get_info_res{};
+    auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+    if (!maybe_info)
+      return false;
+    auto& info = *maybe_info;
 
-    if (!invoke<GET_INFO>({}, get_info_res, "Failed to retrieve node info") ||
-        !invoke<GET_SERVICE_NODES>(std::move(req), res, "Failed to retrieve service node data"))
+    if (!invoke<GET_SERVICE_NODES>(std::move(req), res, "Failed to retrieve service node data"))
       return false;
 
     cryptonote::network_type nettype =
-      get_info_res.mainnet  ? cryptonote::MAINNET :
-      get_info_res.devnet ? cryptonote::DEVNET :
-      get_info_res.testnet  ? cryptonote::TESTNET :
+      info.value("mainnet", false) ? cryptonote::MAINNET :
+      info.value("devnet", false) ? cryptonote::DEVNET :
+      info.value("testnet", false) ? cryptonote::TESTNET :
       cryptonote::UNDEFINED;
-    uint64_t curr_height = get_info_res.height;
+    uint64_t curr_height = info["height"].get<uint64_t>();
 
     std::vector<const GET_SERVICE_NODES::response::entry*> unregistered;
     std::vector<const GET_SERVICE_NODES::response::entry*> registered;
@@ -1966,44 +2027,46 @@ bool rpc_command_executor::prepare_registration(bool force_registration)
   auto scoped_log_cats = std::unique_ptr<clear_log_categories>(new clear_log_categories());
 
   // Check if the daemon was started in Service Node or not
-  GET_INFO::response res{};
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  if (!maybe_info)
+    return false;
+  auto& info = *maybe_info;
   GET_SERVICE_KEYS::response kres{};
   HARD_FORK_INFO::response hf_res{};
-  if (!invoke<GET_INFO>({}, res, "Failed to get node info") ||
-      !invoke<HARD_FORK_INFO>({}, hf_res, "Failed to retrieve hard fork info") ||
+  if (!invoke<HARD_FORK_INFO>({}, hf_res, "Failed to retrieve hard fork info") ||
       !invoke<GET_SERVICE_KEYS>({}, kres, "Failed to retrieve service node keys"))
     return false;
 
-  if (!res.service_node)
+  if (!info.value("service_node", false))
   {
     tools::fail_msg_writer() << "Unable to prepare registration: this daemon is not running in --service-node mode";
     return false;
   }
-  else if (auto last_lokinet_ping = static_cast<std::time_t>(res.last_lokinet_ping.value_or(0));
+  else if (auto last_lokinet_ping = info.value<std::time_t>("last_lokinet_ping", 0);
       last_lokinet_ping < (time(nullptr) - 60) && !force_registration)
   {
     tools::fail_msg_writer() << "Unable to prepare registration: this daemon has not received a ping from lokinet "
-                             << (res.last_lokinet_ping == 0 ? "yet" : "since " + get_human_time_ago(last_lokinet_ping, std::time(nullptr)));
+                             << (last_lokinet_ping == 0 ? "yet" : "since " + get_human_time_ago(last_lokinet_ping, std::time(nullptr)));
     return false;
   }
-  else if (auto last_storage_server_ping = static_cast<std::time_t>(res.last_storage_server_ping.value_or(0));
+  else if (auto last_storage_server_ping = info.value<std::time_t>("last_storage_server_ping", 0);
       last_storage_server_ping < (time(nullptr) - 60) && !force_registration)
   {
     tools::fail_msg_writer() << "Unable to prepare registration: this daemon has not received a ping from the storage server "
-                             << (res.last_storage_server_ping == 0 ? "yet" : "since " + get_human_time_ago(last_storage_server_ping, std::time(nullptr)));
+                             << (last_storage_server_ping == 0 ? "yet" : "since " + get_human_time_ago(last_storage_server_ping, std::time(nullptr)));
     return false;
   }
 
-  uint64_t block_height = std::max(res.height, res.target_height);
+  uint64_t block_height = std::max(info["height"].get<uint64_t>(), info["target_height"].get<uint64_t>());
   uint8_t hf_version = hf_res.version;
 #if defined(OXEN_ENABLE_INTEGRATION_TEST_HOOKS)
   cryptonote::network_type const nettype = cryptonote::FAKECHAIN;
 #else
-  cryptonote::network_type const nettype =
-    res.mainnet  ? cryptonote::MAINNET :
-    res.devnet ? cryptonote::DEVNET :
-    res.testnet  ? cryptonote::TESTNET :
-    res.nettype == "fakechain" ? cryptonote::FAKECHAIN :
+  cryptonote::network_type nettype =
+    info.value("mainnet", false) ? cryptonote::MAINNET :
+    info.value("devnet", false) ? cryptonote::DEVNET :
+    info.value("testnet", false) ? cryptonote::TESTNET :
+    info["nettype"].get<std::string_view>() == "fakechain" ? cryptonote::FAKECHAIN :
     cryptonote::UNDEFINED;
 #endif
 
@@ -2543,11 +2606,13 @@ bool rpc_command_executor::set_bootstrap_daemon(
 
 bool rpc_command_executor::version()
 {
-    GET_INFO::response response{};
-    if (!invoke<GET_INFO>(GET_INFO::request{}, response, "Failed to query daemon info"))
-        return false;
-    tools::success_msg_writer() << response.version;
-    return true;
+  auto version = try_running([this] {
+    return invoke<GET_INFO>(std::nullopt).at("version").get<std::string>();
+  }, "Failed to retrieve node info");
+  if (!version)
+    return false;
+  tools::success_msg_writer() << *version;
+  return true;
 }
 
 bool rpc_command_executor::test_trigger_uptime_proof()

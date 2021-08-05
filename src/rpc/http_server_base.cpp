@@ -8,6 +8,8 @@
 #include "epee/net/jsonrpc_structs.h"
 #include "epee/storages/portable_storage_template_helper.h"
 
+#include <nlohmann/json.hpp>
+
 namespace cryptonote::rpc {
 
   /// Checks an Authorization header for Basic login credentials.
@@ -74,23 +76,20 @@ namespace cryptonote::rpc {
   }
 
   // Similar to the above, but for JSON errors (which are 200 OK + error embedded in JSON)
-  void http_server_base::jsonrpc_error_response(HttpResponse& res, int code, std::string message, std::optional<epee::serialization::storage_entry> id) const
+  void http_server_base::jsonrpc_error_response(HttpResponse& res, int code, std::string message, nlohmann::json id) const
   {
-    epee::json_rpc::error_response rsp;
-    rsp.jsonrpc = "2.0";
-    if (id)
-      rsp.id = *id;
-    rsp.error.code = code;
-    rsp.error.message = std::move(message);
-    std::string body;
-    epee::serialization::store_t_to_json(rsp, body);
-    if (body.capacity() > body.size())
-      body += '\n';
     res.writeStatus("200 OK"sv);
     res.writeHeader("Server", m_server_header);
     res.writeHeader("Content-Type", "application/json");
     if (m_closing) res.writeHeader("Connection", "close");
-    res.end(body);
+    res.end(nlohmann::json{
+        {"jsonrpc", "2.0"},
+        {"id", std::move(id)},
+        {"error", nlohmann::json{
+          {"code", code},
+          {"message", std::move(message)}
+        }}
+      }.dump());
     if (m_closing) res.close();
   }
 

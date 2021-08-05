@@ -44,18 +44,6 @@
 
 namespace daemonize {
 
-command_server::command_server(std::string daemon_url, const std::optional<tools::login>& login)
-  : m_parser{std::move(daemon_url), login}
-{
-  init_commands();
-}
-
-command_server::command_server(cryptonote::rpc::core_rpc_server& rpc)
-  : m_is_rpc{false}, m_parser{rpc}
-{
-  init_commands(&rpc);
-}
-
 void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
 {
   m_command_lookup.set_handler(
@@ -226,11 +214,6 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
       "exit"
     , [this](const auto &x) { return m_parser.stop_daemon(x); }
     , "Stop the daemon."
-    );
-  m_command_lookup.set_handler(
-      "print_status"
-    , [this](const auto &x) { return m_parser.print_status(x); }
-    , "Print the current daemon status."
     );
   m_command_lookup.set_handler(
       "limit"
@@ -451,8 +434,6 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
 
 bool command_server::start_handling(std::function<void(void)> exit_handler)
 {
-  if (m_is_rpc) return false;
-
 #if defined(OXEN_ENABLE_INTEGRATION_TEST_HOOKS)
   auto handle_pipe = [&]()
   {
@@ -490,8 +471,6 @@ bool command_server::start_handling(std::function<void(void)> exit_handler)
 
 void command_server::stop_handling()
 {
-  if (m_is_rpc) return;
-
   m_command_lookup.stop_handling();
 }
 

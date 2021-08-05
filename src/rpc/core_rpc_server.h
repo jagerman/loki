@@ -57,6 +57,14 @@ class variables_map;
 
 namespace cryptonote::rpc {
 
+    // FIXME: temporary shim for converting RPC methods
+    template <typename T, typename = void>
+    struct FIXME_has_nested_response : std::false_type {};
+    template <typename RPC>
+    struct FIXME_has_nested_response<RPC, std::void_t<typename RPC::response>> : std::true_type {};
+    template <typename T> constexpr bool FIXME_has_nested_response_v = FIXME_has_nested_response<T>::value;
+
+
   /// Exception when trying to invoke an RPC command that indicate a parameter parse failure (will
   /// give an invalid params error for JSON-RPC, for example).
   struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
@@ -87,6 +95,7 @@ namespace cryptonote::rpc {
   };
 
   /// Junk that epee makes us deal with to pass in a generically parsed json value
+  /// FIXME: kill this.
   using jsonrpc_params = std::pair<epee::serialization::portable_storage, epee::serialization::storage_entry>;
 
   enum struct rpc_source : uint8_t { internal, http, omq };
@@ -101,7 +110,7 @@ namespace cryptonote::rpc {
     // first place if attempted by a public requestor).
     bool admin = false;
 
-    // The RPC engine source of the request, i.e. internal, HTTP, LMQ
+    // The RPC engine source of the request, i.e. internal, HTTP, OMQ
     rpc_source source = rpc_source::internal;
 
     // A free-form identifier (meant for humans) identifiying the remote address of the request;
@@ -110,20 +119,20 @@ namespace cryptonote::rpc {
   };
 
   struct rpc_request {
-    // The request body; for a non-HTTP-JSON-RPC request the string or string_view will be populated
-    // with the unparsed request body (though may be empty, e.g. for GET requests).  For HTTP
-    // JSON-RPC request, if the request has a "params" value then the epee storage pair will be set
-    // to the portable_storage entry and the storage entry containing "params".  If "params" is
-    // omitted entirely (or, for LMQ, there is no data part) then the string will be set in the
-    // variant (and empty).
+    // The request body:
+    // - for an HTTP, non-JSONRPC POST request the string or string_view will be populated with the
+    // unparsed request body.
+    // - for an HTTP JSONRPC request with a "params" value the nlohmann::json will be set to the
+    // parsed "params" value of the request.
+    // - for OMQ requests with a data part the string or string_view will be set to the provided value
+    // - for all other requests (i.e. JSONRPC with no params; HTTP GET requests; no-data OMQ
+    // requests) the variant will contain a std::monostate.
     //
-    // The returned value in either case is the serialized value to return.
-    //
-    // If sometimes goes wrong, throw.
-    std::variant<std::string_view, std::string, jsonrpc_params> body;
+    // If something goes wrong, throw.
+    std::variant<std::monostate, std::string_view, std::string, nlohmann::json> body;
 
     // Returns a string_view of the body, if the body is a string or string_view.  Returns
-    // std::nullopt if the body is a jsonrpc_params.
+    // std::nullopt if the body is empty (std::monostate) or parsed jsonrpc params.
     std::optional<std::string_view> body_view() const;
 
     // Values to pass through to the invoke() call
@@ -190,21 +199,30 @@ namespace cryptonote::rpc {
 
     network_type nettype() const { return m_core.get_nettype(); }
 
-    GET_HEIGHT::response                                invoke(GET_HEIGHT::request&& req, rpc_context context);
-    GET_BLOCKS_FAST::response                           invoke(GET_BLOCKS_FAST::request&& req, rpc_context context);
-    GET_ALT_BLOCKS_HASHES::response                     invoke(GET_ALT_BLOCKS_HASHES::request&& req, rpc_context context);
-    GET_BLOCKS_BY_HEIGHT::response                      invoke(GET_BLOCKS_BY_HEIGHT::request&& req, rpc_context context);
-    GET_HASHES_FAST::response                           invoke(GET_HASHES_FAST::request&& req, rpc_context context);
+    // JSON & bt-encoded RPC endpoints
+    void invoke(ONS_RESOLVE& resolve, rpc_context context);
+    void invoke(GET_HEIGHT& req, rpc_context context);
+    void invoke(GET_INFO& info, rpc_context context);
+
+    // Deprecated Monero NIH binary endpoints:
+    GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
+    GET_BLOCKS_BIN::response                    invoke(GET_BLOCKS_BIN::request&& req, rpc_context context);
+    GET_BLOCKS_BY_HEIGHT_BIN::response          invoke(GET_BLOCKS_BY_HEIGHT_BIN::request&& req, rpc_context context);
+    GET_HASHES_BIN::response                    invoke(GET_HASHES_BIN::request&& req, rpc_context context);
+    GET_OUTPUT_BLACKLIST_BIN::response          invoke(GET_OUTPUT_BLACKLIST_BIN::request&& req, rpc_context context);
+    GET_OUTPUT_DISTRIBUTION_BIN::response       invoke(GET_OUTPUT_DISTRIBUTION_BIN::request&& req, rpc_context context);
+    GET_OUTPUTS_BIN::response                   invoke(GET_OUTPUTS_BIN::request&& req, rpc_context context);
+    GET_TRANSACTION_POOL_HASHES_BIN::response   invoke(GET_TRANSACTION_POOL_HASHES_BIN::request&& req, rpc_context context);
+    GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request&& req, rpc_context context);
+
+    // FIXME: unconverted JSON RPC endpoints:
     GET_TRANSACTIONS::response                          invoke(GET_TRANSACTIONS::request&& req, rpc_context context);
     IS_KEY_IMAGE_SPENT::response                        invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context);
-    GET_TX_GLOBAL_OUTPUTS_INDEXES::response             invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES::request&& req, rpc_context context);
     SEND_RAW_TX::response                               invoke(SEND_RAW_TX::request&& req, rpc_context context);
     START_MINING::response                              invoke(START_MINING::request&& req, rpc_context context);
     STOP_MINING::response                               invoke(STOP_MINING::request&& req, rpc_context context);
     MINING_STATUS::response                             invoke(MINING_STATUS::request&& req, rpc_context context);
-    GET_OUTPUTS_BIN::response                           invoke(GET_OUTPUTS_BIN::request&& req, rpc_context context);
     GET_OUTPUTS::response                               invoke(GET_OUTPUTS::request&& req, rpc_context context);
-    GET_INFO::response                                  invoke(GET_INFO::request&& req, rpc_context context);
     GET_NET_STATS::response                             invoke(GET_NET_STATS::request&& req, rpc_context context);
     SAVE_BC::response                                   invoke(SAVE_BC::request&& req, rpc_context context);
     GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);
@@ -213,7 +231,6 @@ namespace cryptonote::rpc {
     SET_LOG_LEVEL::response                             invoke(SET_LOG_LEVEL::request&& req, rpc_context context);
     SET_LOG_CATEGORIES::response                        invoke(SET_LOG_CATEGORIES::request&& req, rpc_context context);
     GET_TRANSACTION_POOL::response                      invoke(GET_TRANSACTION_POOL::request&& req, rpc_context context);
-    GET_TRANSACTION_POOL_HASHES_BIN::response           invoke(GET_TRANSACTION_POOL_HASHES_BIN::request&& req, rpc_context context);
     GET_TRANSACTION_POOL_HASHES::response               invoke(GET_TRANSACTION_POOL_HASHES::request&& req, rpc_context context);
     GET_TRANSACTION_POOL_STATS::response                invoke(GET_TRANSACTION_POOL_STATS::request&& req, rpc_context context);
     SET_BOOTSTRAP_DAEMON::response                      invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context);
@@ -223,7 +240,6 @@ namespace cryptonote::rpc {
     OUT_PEERS::response                                 invoke(OUT_PEERS::request&& req, rpc_context context);
     IN_PEERS::response                                  invoke(IN_PEERS::request&& req, rpc_context context);
     GET_OUTPUT_DISTRIBUTION::response                   invoke(GET_OUTPUT_DISTRIBUTION::request&& req, rpc_context context, bool binary = false);
-    GET_OUTPUT_DISTRIBUTION_BIN::response               invoke(GET_OUTPUT_DISTRIBUTION_BIN::request&& req, rpc_context context);
     POP_BLOCKS::response                                invoke(POP_BLOCKS::request&& req, rpc_context context);
     GETBLOCKCOUNT::response                             invoke(GETBLOCKCOUNT::request&& req, rpc_context context);
     GETBLOCKHASH::response                              invoke(GETBLOCKHASH::request&& req, rpc_context context);
@@ -250,7 +266,6 @@ namespace cryptonote::rpc {
     SYNC_INFO::response                                 invoke(SYNC_INFO::request&& req, rpc_context context);
     GET_TRANSACTION_POOL_BACKLOG::response              invoke(GET_TRANSACTION_POOL_BACKLOG::request&& req, rpc_context context);
     PRUNE_BLOCKCHAIN::response                          invoke(PRUNE_BLOCKCHAIN::request&& req, rpc_context context);
-    GET_OUTPUT_BLACKLIST::response                      invoke(GET_OUTPUT_BLACKLIST::request&& req, rpc_context context);
     GET_QUORUM_STATE::response                          invoke(GET_QUORUM_STATE::request&& req, rpc_context context);
     GET_SERVICE_NODE_REGISTRATION_CMD_RAW::response     invoke(GET_SERVICE_NODE_REGISTRATION_CMD_RAW::request&& req, rpc_context context);
     GET_SERVICE_NODE_REGISTRATION_CMD::response         invoke(GET_SERVICE_NODE_REGISTRATION_CMD::request&& req, rpc_context context);
@@ -269,7 +284,6 @@ namespace cryptonote::rpc {
     TEST_TRIGGER_UPTIME_PROOF::response                 invoke(TEST_TRIGGER_UPTIME_PROOF::request&& req, rpc_context context);
     ONS_NAMES_TO_OWNERS::response                       invoke(ONS_NAMES_TO_OWNERS::request&& req, rpc_context context);
     ONS_OWNERS_TO_NAMES::response                       invoke(ONS_OWNERS_TO_NAMES::request&& req, rpc_context context);
-    ONS_RESOLVE::response                               invoke(ONS_RESOLVE::request&& req, rpc_context context);
     FLUSH_CACHE::response                               invoke(FLUSH_CACHE::request&& req, rpc_context);
 
 #if defined(OXEN_ENABLE_INTEGRATION_TEST_HOOKS)

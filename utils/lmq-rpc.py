@@ -72,7 +72,11 @@ if socket.poll(timeout=5000):
             print("(empty reply data)", file=sys.stderr)
         else:
             for x in m[3:]:
-                print(x.decode(), end="\n\n")
+                if x.startswith(b'd'):
+                    print(x, end="\n\n")
+                else:
+                    print(x.decode(), end="\n\n")
+
 else:
     print("Request timed out", file=sys.stderr)
     socket.close(linger=0)
