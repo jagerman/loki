@@ -92,6 +92,15 @@ bool parse_int(const std::string_view str, T& value, int base = 10) {
   return true;
 }
 
+/// Converts an integer value into a string via std::to_chars (i.e. without locale).
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+std::string int_to_string(const T& value, int base = 10) {
+    char buf[8*sizeof(T) + std::is_signed_v<T>]; // maximum possible size with smallest possible base (2)
+    auto [p, ec] = std::to_chars(std::begin(buf), std::end(buf), value, base);
+    assert(ec == std::errc{}); // Our buffer should be big enough for anything
+    return {buf, p};
+}
+
 /// Returns a string_view that views the data of the given object; this is not something you want to
 /// do unless the struct is specifically design to be used this way.  The value must be a standard
 /// layout type; it should really require is_trivial, too, but we have classes (like crypto keys)
