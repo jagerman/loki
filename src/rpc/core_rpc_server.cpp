@@ -324,8 +324,8 @@ namespace cryptonote { namespace rpc {
     if (use_bootstrap_daemon_if_necessary<GET_HEIGHT>(req, res))
       return res;
 
-    crypto::hash hash;
-    m_core.get_blockchain_top(res.height, hash);
+    auto [height, hash] = m_core.get_blockchain_top();
+    res.height = height;
     ++res.height; // block height to chain height
     res.hash = tools::type_to_hex(hash);
     res.status = STATUS_OK;
@@ -364,8 +364,8 @@ namespace cryptonote { namespace rpc {
       return res;
     }
 
-    crypto::hash top_hash;
-    m_core.get_blockchain_top(res.height, top_hash);
+    auto [top_height, top_hash] = m_core.get_blockchain_top();
+    res.height = top_height;
     auto prev_ts = m_core.get_blockchain_storage().get_db().get_block_timestamp(res.height);
     ++res.height; // turn top block height into blockchain height
     res.top_block_hash = tools::type_to_hex(top_hash);
@@ -1933,9 +1933,7 @@ namespace cryptonote { namespace rpc {
       return res;
 
     CHECK_CORE_READY();
-    uint64_t last_block_height;
-    crypto::hash last_block_hash;
-    m_core.get_blockchain_top(last_block_height, last_block_hash);
+    auto [last_block_height, last_block_hash] = m_core.get_blockchain_top();
     block last_block;
     bool have_last_block = m_core.get_block_by_height(last_block_height, last_block);
     if (!have_last_block)

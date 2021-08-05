@@ -528,7 +528,7 @@ namespace cryptonote
   template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::get_payload_sync_data(CORE_SYNC_DATA& hshd)
   {
-    m_core.get_blockchain_top(hshd.current_height, hshd.top_id);
+    std::tie(hshd.current_height, hshd.top_id) = m_core.get_blockchain_top();
     hshd.top_version = get_network_version(m_core.get_nettype(), hshd.current_height);
     hshd.cumulative_difficulty = m_core.get_block_cumulative_difficulty(hshd.current_height);
     hshd.current_height +=1;
