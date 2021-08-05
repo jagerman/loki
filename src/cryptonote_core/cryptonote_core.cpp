@@ -1694,9 +1694,7 @@ namespace cryptonote
               m_sn_times.add(entry);
 
               // Counts the number of times we have been out of sync
-              uint8_t num_sn_out_of_sync = std::count_if(m_sn_times.begin(), m_sn_times.end(),
-                [](const service_nodes::timesync_entry entry) { return !entry.in_sync; });
-              if (num_sn_out_of_sync > (m_sn_times.array.size() * service_nodes::MAXIMUM_EXTERNAL_OUT_OF_SYNC/100)) {
+              if (m_sn_times.failures() > (m_sn_times.size() * service_nodes::MAXIMUM_EXTERNAL_OUT_OF_SYNC/100)) {
                 MWARNING("service node time might be out of sync");
                 // If we are out of sync record the other service node as in sync
                 m_service_node_list.record_timesync_status(pubkey, true);

@@ -85,10 +85,10 @@ namespace service_nodes
     uint64_t timestamp = 0;
     decltype(std::declval<proof_info>().public_ips) ips{};
 
-    service_nodes::participation_history<service_nodes::participation_entry> checkpoint_participation{};
-    service_nodes::participation_history<service_nodes::participation_entry> pulse_participation{};
-    service_nodes::participation_history<service_nodes::timestamp_participation_entry> timestamp_participation{};
-    service_nodes::participation_history<service_nodes::timesync_entry> timesync_status{};
+    participation_history<service_nodes::checkpoint_participation_entry> checkpoint_participation{};
+    participation_history<service_nodes::pulse_participation_entry> pulse_participation{};
+    participation_history<service_nodes::timestamp_participation_entry> timestamp_participation{};
+    participation_history<service_nodes::timesync_entry> timesync_status{};
 
     constexpr std::array<uint16_t, 3> MIN_TIMESTAMP_VERSION{9,1,0};
 
@@ -101,7 +101,6 @@ namespace service_nodes
       ips                      = proof.public_ips;
       checkpoint_participation = proof.checkpoint_participation;
       pulse_participation      = proof.pulse_participation;
-
       timestamp_participation  = proof.timestamp_participation;
       timesync_status          = proof.timesync_status;
 
@@ -154,24 +153,24 @@ namespace service_nodes
 
     if (!info.is_decommissioned())
     {
-      if (check_checkpoint_obligation && !checkpoint_participation.check_participation(CHECKPOINT_MAX_MISSABLE_VOTES) )
+      if (check_checkpoint_obligation && checkpoint_participation.failures() > CHECKPOINT_MAX_MISSABLE_VOTES)
       {
         LOG_PRINT_L1("Service Node: " << pubkey << ", failed checkpoint obligation check");
         result.checkpoint_participation = false;
       }
 
-      if (!pulse_participation.check_participation(PULSE_MAX_MISSABLE_VOTES) )
+      if (pulse_participation.failures() > PULSE_MAX_MISSABLE_VOTES)
       {
         LOG_PRINT_L1("Service Node: " << pubkey << ", failed pulse obligation check");
         result.pulse_participation = false;
       }
 
-      if (!timestamp_participation.check_participation(TIMESTAMP_MAX_MISSABLE_VOTES) )
+      if (timestamp_participation.failures() > TIMESTAMP_MAX_MISSABLE_VOTES)
       {
         LOG_PRINT_L1("Service Node: " << pubkey << ", failed timestamp obligation check");
         result.timestamp_participation = false;
       }
-      if (!timesync_status.check_participation(TIMESYNC_MAX_UNSYNCED_VOTES) )
+      if (timesync_status.failures() > TIMESYNC_MAX_UNSYNCED_VOTES)
       {
         LOG_PRINT_L1("Service Node: " << pubkey << ", failed timesync obligation check");
         result.timesync_status = false;
