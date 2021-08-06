@@ -1052,36 +1052,12 @@ namespace cryptonote
     cn_fast_hash(blob.data(), blob.size(), res);
   }
   //---------------------------------------------------------------
-  std::string get_unit(unsigned int decimal_point)
+  std::string print_money(uint64_t amount)
   {
-    if (decimal_point == (unsigned int)-1)
-      decimal_point = CRYPTONOTE_DISPLAY_DECIMAL_POINT;
-    switch (decimal_point)
-    {
-      case 9:
-        return "oxen";
-      case 6:
-        return "megarok";
-      case 3:
-        return "kilorok";
-      case 0:
-        return "rok";
-      default:
-        ASSERT_MES_AND_THROW("Invalid decimal point specification: " << decimal_point);
-    }
-  }
-  //---------------------------------------------------------------
-  std::string print_money(uint64_t amount, unsigned int decimal_point)
-  {
-    if (decimal_point == (unsigned int)-1)
-      decimal_point = CRYPTONOTE_DISPLAY_DECIMAL_POINT;
-    std::string s = std::to_string(amount);
-    if(s.size() < decimal_point+1)
-    {
-      s.insert(0, decimal_point+1 - s.size(), '0');
-    }
-    if (decimal_point > 0)
-      s.insert(s.size() - decimal_point, ".");
+    std::string s = tools::int_to_string(amount);
+    if (s.size() <= CRYPTONOTE_DISPLAY_DECIMAL_POINT)
+      s.insert(0, CRYPTONOTE_DISPLAY_DECIMAL_POINT - s.size() + 1, '0');
+    s.insert(s.size() - CRYPTONOTE_DISPLAY_DECIMAL_POINT, ".");
     return s;
   }
   //---------------------------------------------------------------
