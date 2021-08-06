@@ -685,73 +685,71 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \arg \c status General RPC status string. `"OK"` means everything looks good.
-  /// \arg \c height Current length of longest chain known to daemon.
-  /// \arg \c target_height The height of the next block in the chain.
-  /// \arg \c immutable_height The latest height in the blockchain that can not be reorganized (i.e.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p height Current length of longest chain known to daemon.
+  /// - \p target_height The height of the next block in the chain.
+  /// - \p immutable_height The latest height in the blockchain that can not be reorganized (i.e.
   ///   is backed by at least 2 Service Node, or 1 hardcoded checkpoint, 0 if N/A).  Omitted if it
   ///   cannot be determined (typically because the node is still syncing).
-  /// \arg \c pulse will be true if the next expected block is a pulse block, false otherwise.
-  /// \arg \c pulse_ideal_timestamp For pulse blocks this is the ideal timestamp of the next block,
+  /// - \p pulse will be true if the next expected block is a pulse block, false otherwise.
+  /// - \p pulse_ideal_timestamp For pulse blocks this is the ideal timestamp of the next block,
   ///   that is, the timestamp if the network was operating with perfect 2-minute blocks since the
   ///   pulse hard fork.
-  /// \arg \c pulse_target_timestamp For pulse blocks this is the target timestamp of the next
-  ///   block, which targets 2 minutes after the previous block but will be slightly faster/slower
-  ///   if the previous block is behind/ahead of the ideal timestamp.
-  /// \arg \c difficulty Network mining difficulty; omitted when the network is expecting a pulse
+  /// - \p pulse_target_timestamp For pulse blocks this is the target timestamp of the next block,
+  ///   which targets 2 minutes after the previous block but will be slightly faster/slower if the
+  ///   previous block is behind/ahead of the ideal timestamp.
+  /// - \p difficulty Network mining difficulty; omitted when the network is expecting a pulse
   ///   block.
-  /// \arg \c target Current target for next proof of work.
-  /// \arg \c tx_count Total number of non-coinbase transaction in the chain.
-  /// \arg \c tx_pool_size Number of transactions that have been broadcast but not included in a
-  ///   block.
-  /// \arg \c mainnet Indicates whether the node is on the main network (`true`) or not (`false`).
-  /// \arg \c testnet Indicates that the node is on the test network (`true`). Will be omitted for
-  /// non-testnet.
-  /// \arg \c devnet Indicates that the node is on the dev network (`true`). Will be omitted for
-  /// non-devnet.
-  /// \arg \c fakechain States that the node is running in "fakechain" mode (`true`).  Omitted
-  /// otherwise.
-  /// \arg \c nettype String value of the network type (mainnet, testnet, devnet, or fakechain).
-  /// \arg \c top_block_hash Hash of the highest block in the chain.  Will be hex for JSON requests,
-  /// 32-byte binary value for bt requests.
-  /// \arg \c immutable_block_hash Hash of the highest block in the chain that can not be
-  ///   reorganized.  Hex string for json, bytes for bt.
-  /// \arg \c cumulative_difficulty Cumulative difficulty of all blocks in the blockchain.
-  /// \arg \c block_size_limit Maximum allowed block size.
-  /// \arg \c block_size_median Median block size of latest 100 blocks.
-  /// \arg \c ons_counts ONS registration counts, as a three-element list: [session, wallet, lokinet]
-  /// \arg \c offline Indicates that the node is offline, if true.  Omitted for online nodes.
-  /// \arg \c untrusted Indicates that the result was obtained using a bootstrap mode, and is therefore
+  /// - \p target Current target for next proof of work.
+  /// - \p tx_count Total number of non-coinbase transaction in the chain.
+  /// - \p tx_pool_size Number of transactions that have been broadcast but not included in a block.
+  /// - \p mainnet Indicates whether the node is on the main network (`true`) or not (`false`).
+  /// - \p testnet Indicates that the node is on the test network (`true`). Will be omitted for
+  ///   non-testnet.
+  /// - \p devnet Indicates that the node is on the dev network (`true`). Will be omitted for
+  ///   non-devnet.
+  /// - \p fakechain States that the node is running in "fakechain" mode (`true`).  Omitted
+  ///   otherwise.
+  /// - \p nettype String value of the network type (mainnet, testnet, devnet, or fakechain).
+  /// - \p top_block_hash Hash of the highest block in the chain.  Will be hex for JSON requests,
+  ///   32-byte binary value for bt requests.
+  /// - \p immutable_block_hash Hash of the highest block in the chain that can not be reorganized.
+  ///   Hex string for json, bytes for bt.
+  /// - \p cumulative_difficulty Cumulative difficulty of all blocks in the blockchain.
+  /// - \p block_size_limit Maximum allowed block size.
+  /// - \p block_size_median Median block size of latest 100 blocks.
+  /// - \p ons_counts ONS registration counts, as a three-element list: [session, wallet, lokinet]
+  /// - \p offline Indicates that the node is offline, if true.  Omitted for online nodes.
+  /// - \p untrusted Indicates that the result was obtained using a bootstrap mode, and is therefore
   ///   not trusted (`true`).  Omitted for non-bootstrap responses.
-  /// \arg \c database_size Current size of Blockchain data.  Over public RPC this is rounded up to
-  ///   the next-largest GB value.
-  /// \arg \c version Current version of this daemon, as a string.  For a public node this will just
-  ///   be the major and minor version (e.g. "9"); for an admin rpc endpoint this will return the
-  ///   full version (e.g. "9.2.1").
-  /// \arg \c status_line A short one-line summary string of the node (requires an
-  ///   admin/unrestricted connection for most details)
+  /// - \p database_size Current size of Blockchain data.  Over public RPC this is rounded up to the
+  ///   next-largest GB value.
+  /// - \p version Current version of this daemon, as a string.  For a public node this will just be
+  ///   the major and minor version (e.g. "9"); for an admin rpc endpoint this will return the full
+  ///   version (e.g. "9.2.1").
+  /// - \p status_line A short one-line summary string of the node (requires an admin/unrestricted
+  ///   connection for most details)
   ///
   /// If the endpoint is a restricted (i.e. admin) endpoint then the following fields are also
   /// included:
   ///
-  /// \arg \c alt_blocks_count Number of alternative blocks to main chain.
-  /// \arg \c outgoing_connections_count Number of peers that you are connected to and getting
+  /// - \p alt_blocks_count Number of alternative blocks to main chain.
+  /// - \p outgoing_connections_count Number of peers that you are connected to and getting
   ///   information from.
-  /// \arg \c incoming_connections_count Number of peers connected to and pulling from your node.
-  /// \arg \c white_peerlist_size White Peerlist Size
-  /// \arg \c grey_peerlist_size Grey Peerlist Size
-  /// \arg \c service_node Will be true if the node is running in --service-node mode.
-  /// \arg \c start_time Start time of the daemon, as UNIX time.
-  /// \arg \c last_storage_server_ping Last ping time of the storage server (0 if never or not
-  ///   running as a service node)
-  /// \arg \c last_lokinet_ping Last ping time of lokinet (0 if never or not running as a service
-  ///   node)
-  /// \arg \c free_space Available disk space on the node.
-  /// \arg \c bootstrap_daemon_address Bootstrap node to give immediate usability to wallets while
+  /// - \p incoming_connections_count Number of peers connected to and pulling from your node.
+  /// - \p white_peerlist_size White Peerlist Size
+  /// - \p grey_peerlist_size Grey Peerlist Size
+  /// - \p service_node Will be true if the node is running in --service-node mode.
+  /// - \p start_time Start time of the daemon, as UNIX time.
+  /// - \p last_storage_server_ping Last ping time of the storage server (0 if never or not running
+  ///   as a service node)
+  /// - \p last_lokinet_ping Last ping time of lokinet (0 if never or not running as a service node)
+  /// - \p free_space Available disk space on the node.
+  /// - \p bootstrap_daemon_address Bootstrap node to give immediate usability to wallets while
   ///   syncing by proxying RPC to it. (Note: the replies may be untrustworthy).
-  /// \arg \c height_without_bootstrap Current length of the local chain of the daemon.  Only
-  ///   included if a bootstrap daemon is configured.
-  /// \arg \c was_bootstrap_ever_used States if the bootstrap node has ever been used since the daemon
+  /// - \p height_without_bootstrap Current length of the local chain of the daemon.  Only included
+  ///   if a bootstrap daemon is configured.
+  /// - \p was_bootstrap_ever_used States if the bootstrap node has ever been used since the daemon
   ///   started.  Omitted if no bootstrap node is configured.
   struct GET_INFO : PUBLIC, LEGACY, NO_ARGS
   {
@@ -2671,10 +2669,10 @@ namespace cryptonote::rpc {
   ///
   /// Returned values:
   ///
-  /// \arg \c encrypted_value The encrypted ONS value, in hex.  Will be omitted from the response if
+  /// - \p encrypted_value The encrypted ONS value, in hex.  Will be omitted from the response if
   ///   the given name_hash is not registered.
-  /// \arg \c nonce The nonce value used for encryption, in hex.  Will be omitted if the given name
-  ///   is not registered.
+  /// - \p nonce The nonce value used for encryption, in hex.  Will be omitted if the given name is
+  ///   not registered.
   ///
   /// Technical details: the returned value is encrypted using the name itself so that neither this
   /// oxend responding to the RPC request nor any other blockchain observers can (easily) obtain the
