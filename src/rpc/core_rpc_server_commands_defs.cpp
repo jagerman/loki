@@ -4,15 +4,6 @@
 
 namespace cryptonote::rpc {
 
-nlohmann::json& json_binary_proxy::operator=(std::string_view binary_data) {
-  switch (format) {
-    case fmt::bt: return e = binary_data;
-    case fmt::hex: return e = oxenmq::to_hex(binary_data);
-    case fmt::base64: return e = oxenmq::to_base64(binary_data);
-  }
-  throw std::runtime_error{"Internal error: invalid binary encoding"};
-}
-
 void RPC_COMMAND::set_bt() {
   bt = true;
   response_b64.format = json_binary_proxy::fmt::bt;

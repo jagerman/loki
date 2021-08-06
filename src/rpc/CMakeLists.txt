@@ -30,6 +30,7 @@
 add_library(rpc_commands
   core_rpc_server_commands_defs.cpp
   core_rpc_server_command_parser.cpp
+  rpc_binary.cpp
   )
 
 add_library(rpc_server_base

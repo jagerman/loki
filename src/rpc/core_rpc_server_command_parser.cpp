@@ -7,59 +7,6 @@
 
 namespace cryptonote::rpc {
 
-  // Binary types that we support as input parameters.  For json, these must be specified as hex or
-  // base64; for bt-encoded requests these can be accepted as binary, hex, or base64.
-  template <typename T>
-  inline constexpr bool is_binary_parameter = false;
-  template <>
-  inline constexpr bool is_binary_parameter<crypto::hash> = true;
-
-  // Loads a binary value from a string_view which may contain hex, base64, and (optionally) raw
-  // bytes.
-  template <typename T, typename = std::enable_if_t<is_binary_parameter<T>>>
-  void load_binary_parameter(std::string_view bytes, bool allow_raw, T& val) {
-    constexpr size_t raw_size = sizeof(T);
-    constexpr size_t hex_size = raw_size * 2;
-    constexpr size_t b64_padded = (raw_size + 2) / 3 * 4;
-    constexpr size_t b64_padding = raw_size % 3 == 1 ? 2 : raw_size % 3 == 2 ? 1 : 0;
-    constexpr size_t b64_unpadded = b64_padded - b64_padding;
-    constexpr std::string_view b64_padding_string = b64_padding == 2 ? "=="sv : b64_padding == 1 ? "="sv : ""sv;
-    if (allow_raw && bytes.size() == raw_size) {
-      std::memcpy(&val, bytes.data(), bytes.size());
-      return;
-    } else if (bytes.size() == hex_size) {
-      if (oxenmq::is_hex(bytes))
-        return oxenmq::from_hex(bytes.begin(), bytes.end(), reinterpret_cast<uint8_t*>(&val));
-    } else if (bytes.size() == b64_unpadded ||
-        (b64_padding > 0 && bytes.size() == b64_padded && bytes.substr(b64_unpadded) == b64_padding_string)) {
-      if (oxenmq::is_base64(bytes))
-        return oxenmq::from_base64(bytes.begin(), bytes.end(), reinterpret_cast<uint8_t*>(&val));
-    }
-
-    throw std::runtime_error{"Invalid binary value: unexpected size and/or encoding"};
-  }
-
-}
-
-// Specializations of binary types for deserialization; when receiving these from json we expect
-// them encoded in hex or base64.  These may *not* be used for serialization, and will throw if so
-// invoked; for serialization you need to use RPC_COMMAND::response_binary instead.
-namespace nlohmann {
-  template <typename T>
-  struct adl_serializer<T, std::enable_if_t<cryptonote::rpc::is_binary_parameter<T>>> {
-    static_assert(std::is_trivially_copyable_v<T> && std::has_unique_object_representations_v<T>);
-
-    static void to_json(json& j, const T&) {
-      throw std::logic_error{"Internal error: binary types are not directly serialization"};
-    }
-    static void from_json(const json& j, T& val) {
-      load_binary_parameter(j.get<std::string_view>(), false /*no raw*/, val);
-    }
-  };
-}
-
-
-namespace cryptonote::rpc {
   using nlohmann::json;
 
   namespace {
@@ -118,8 +65,20 @@ namespace cryptonote::rpc {
         val = d.consume_string_view();
       else if constexpr (is_binary_parameter<T>)
         load_binary_parameter(d.consume_string_view(), true /*allow raw*/, val);
+      else if constexpr (is_binary_vector<T>) {
+        val.clear();
+        auto lc = d.consume_list_consumer();
+        while (!lc.is_finished())
+          load_binary_parameter(lc.consume_string_view(), true /*allow raw*/, val.emplace_back());
+      }
       else if constexpr (std::is_same_v<T, std::chrono::system_clock::time_point>)
         val = std::chrono::system_clock::time_point{std::chrono::seconds{d.consume_integer<int64_t>()}};
+      else if constexpr (std::is_same_v<T, std::vector<std::string>> || std::is_same_v<T, std::vector<std::string_view>>) {
+        val.clear();
+        auto lc = d.consume_list_consumer();
+        while (!lc.is_finished())
+          val.emplace_back(lc.consume_string_view());
+      }
       else
         static_assert(std::is_same_v<T, void>, "Unsupported load_value type");
     }
@@ -163,8 +122,9 @@ namespace cryptonote::rpc {
         val = i;
       } else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>) {
         val = e.get<std::string_view>();
-      } else if constexpr (is_binary_parameter<T>) {
-        load_binary_parameter(e.get<std::string_view>(), false /*no raw bytes*/, val);
+      } else if constexpr (is_binary_parameter<T> || is_binary_vector<T> ||
+          std::is_same_v<T, std::vector<std::string>> || std::is_same_v<T, std::vector<std::string_view>>) {
+        val = e.get<T>();
       } else if constexpr (std::is_same_v<T, std::chrono::system_clock::time_point>) {
         val = std::chrono::system_clock::time_point{std::chrono::seconds{e.get<int64_t>()}};
       } else {

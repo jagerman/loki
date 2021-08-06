@@ -51,6 +51,8 @@
 #include "cryptonote_core/service_node_list.h"
 #include "common/oxen.h"
 
+#include "rpc_binary.h"
+
 #include <nlohmann/json.hpp>
 #include <oxenmq/bt_serialize.h>
 #include <type_traits>
@@ -102,48 +104,6 @@ namespace rpc {
     }
   }
 
-  // Wrapper around a nlohmann::json 
-  class json_binary_proxy {
-    nlohmann::json& e;
-    enum class fmt { bt, hex, base64 } format;
-    friend struct RPC_COMMAND;
-    explicit json_binary_proxy(nlohmann::json& elem, fmt format)
-      : e{elem}, format{format} {}
-    json_binary_proxy() = delete;
-
-    public:
-    json_binary_proxy(const json_binary_proxy&) = default;
-    json_binary_proxy(json_binary_proxy&&) = default;
-
-    /// Dereferencing a proxy element accesses the underlying nlohmann::json
-    nlohmann::json& operator*() { return e; }
-    nlohmann::json* operator->() { return &e; }
-
-    /// Descends into the json object, returning a new binary value proxy around the child element.
-    template <typename T>
-    json_binary_proxy operator[](T&& key) {
-      return json_binary_proxy{e[std::forward<T>(key)], format};
-    }
-
-    /// Assigns binary data from a string_view/string/etc.
-    nlohmann::json& operator=(std::string_view binary_data);
-
-    /// Assigns binary data from a string_view over a 1-byte, non-char type (e.g. unsigned char or
-    /// uint8_t).
-    template <typename Char, std::enable_if_t<sizeof(Char) == 1 && !std::is_same_v<Char, char>, int> = 0>
-    nlohmann::json& operator=(std::basic_string_view<Char> binary_data) {
-      return *this = std::string_view{reinterpret_cast<const char*>(binary_data.data()), binary_data.size()};
-    }
-
-    /// Takes a trivial, no-padding data structure (e.g. a crypto::hash) as the value and dumps its
-    /// contents as the binary value.
-    template <typename T, std::enable_if_t<
-          std::is_standard_layout_v<T> && !std::is_scalar_v<T> && std::is_trivial_v<T> && std::has_unique_object_representations_v<T>, int> = 0>
-    nlohmann::json& operator=(const T& val) {
-      return *this = std::string_view{reinterpret_cast<const char*>(&val), sizeof(val)};
-    }
-  };
-
   /// Base class that all RPC commands must inherit from (either directly or via one or more of the
   /// below tags).  Inheriting from this (and no others) gives you a private, json, non-legacy RPC
   /// command.  For LMQ RPC the command will be available at `admin.whatever`; for HTTP RPC it'll be
@@ -173,10 +133,9 @@ namespace rpc {
       ///     std::string binary = some_binary_data();
       ///     cmd.response["binary_value"] = is_bt ? binary : oxenmq::to_hex(binary);
       ///
-      /// or, more conveniently, using one of the shortcut methods:
+      /// or, more conveniently, using the shortcut interface:
       ///
-      ///     cmd.response_binary(cmd.response["binary_value"], some_binary_data());
-      ///     cmd.response_binary("binary_value", some_binary_data());
+      ///     cmd.response_hex["binary_value"] = some_binary_data();
       ///
       nlohmann::json response;
 
