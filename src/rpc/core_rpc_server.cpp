@@ -2330,43 +2330,37 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_SERVICE_NODE_STATUS::response core_rpc_server::invoke(GET_SERVICE_NODE_STATUS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_SERVICE_NODE_STATUS& sns, rpc_context context)
   {
-    GET_SERVICE_NODE_STATUS::response res{};
-
-    PERF_TIMER(on_get_service_node_status);
-    auto get_service_node_key_res = invoke(GET_SERVICE_KEYS::request{}, context);
-
-    GET_SERVICE_NODES::request get_service_nodes_req{};
-    get_service_nodes_req.include_json = req.include_json;
-    get_service_nodes_req.service_node_pubkeys.push_back(std::move(get_service_node_key_res.service_node_pubkey));
-
-    auto get_service_nodes_res = invoke(std::move(get_service_nodes_req), context);
-    res.status = get_service_nodes_res.status;
-
-    if (get_service_nodes_res.service_node_states.empty()) // Started in service node but not staked, no information on the blockchain yet
-    {
-      res.service_node_state.service_node_pubkey  = std::move(get_service_node_key_res.service_node_pubkey);
-      res.service_node_state.public_ip            = epee::string_tools::get_ip_string_from_int32(m_core.sn_public_ip());
-      res.service_node_state.storage_port         = m_core.storage_https_port();
-      res.service_node_state.storage_lmq_port     = m_core.storage_omq_port();
-      res.service_node_state.quorumnet_port       = m_core.quorumnet_port();
-      res.service_node_state.pubkey_ed25519       = std::move(get_service_node_key_res.service_node_ed25519_pubkey);
-      res.service_node_state.pubkey_x25519        = std::move(get_service_node_key_res.service_node_x25519_pubkey);
-      res.service_node_state.service_node_version = OXEN_VERSION;
+    auto [top_height, top_hash] = m_core.get_blockchain_top();
+    sns.response["height"] = top_height;
+    sns.response_hex["block_hash"] = top_hash;
+    const auto& keys = m_core.get_service_keys();
+    if (!keys.pub) {
+      sns.response["status"] = "Not a service node";
+      return;
     }
-    else
-    {
-      res.service_node_state = std::move(get_service_nodes_res.service_node_states[0]);
+    sns.response["status"] = STATUS_OK;
+
+    auto sn_infos = m_core.get_service_node_list_state({{keys.pub}});
+    if (!sn_infos.empty())
+      fill_sn_response_entry(sns.response["service_node_state"] = json::object(), sns.is_bt(), {} /*all fields*/, sn_infos.front(), top_height);
+    else {
+      sns.response["service_node_state"] = json{
+          {"public_ip", epee::string_tools::get_ip_string_from_int32(m_core.sn_public_ip())},
+          {"storage_port", m_core.storage_https_port()},
+          {"storage_lmq_port", m_core.storage_omq_port()},
+          {"quorumnet_port", m_core.quorumnet_port()},
+          {"service_node_version", OXEN_VERSION}
+      };
+      auto rhex = sns.response_hex["service_node_state"];
+      rhex["service_node_pubkey"] = keys.pub;
+      rhex["pubkey_ed25519"] = keys.pub_ed25519;
+      rhex["pubkey_x25519"] = keys.pub_x25519;
     }
-
-    res.height = get_service_nodes_res.height;
-    res.block_hash = get_service_nodes_res.block_hash;
-    res.status = get_service_nodes_res.status;
-    res.as_json = get_service_nodes_res.as_json;
-
-    return res;
   }
+
+
   //------------------------------------------------------------------------------------------------------------------------------
   GET_COINBASE_TX_SUM::response core_rpc_server::invoke(GET_COINBASE_TX_SUM::request&& req, rpc_context context)
   {
@@ -3059,138 +3053,200 @@ namespace cryptonote::rpc {
                 system_now + (t - steady_now)));
   }
 
-  //------------------------------------------------------------------------------------------------------------------------------
-  void core_rpc_server::fill_sn_response_entry(GET_SERVICE_NODES::response::entry& entry, const service_nodes::service_node_pubkey_info &sn_info, uint64_t current_height) {
-
-    const auto &info = *sn_info.info;
-    entry.service_node_pubkey           = tools::type_to_hex(sn_info.pubkey);
-    entry.registration_height           = info.registration_height;
-    entry.requested_unlock_height       = info.requested_unlock_height;
-    entry.last_reward_block_height      = info.last_reward_block_height;
-    entry.last_reward_transaction_index = info.last_reward_transaction_index;
-    entry.active                        = info.is_active();
-    entry.funded                        = info.is_fully_funded();
-    entry.state_height                  = info.is_fully_funded()
-        ? (info.is_decommissioned() ? info.last_decommission_height : info.active_since_height) : info.last_reward_block_height;
-    entry.earned_downtime_blocks        = service_nodes::quorum_cop::calculate_decommission_credit(info, current_height);
-    entry.decommission_count            = info.decommission_count;
-    entry.last_decommission_reason_consensus_all      = info.last_decommission_reason_consensus_all;
-    entry.last_decommission_reason_consensus_any      = info.last_decommission_reason_consensus_any;
-
-    auto& netconf = m_core.get_net_config();
-    m_core.get_service_node_list().access_proof(sn_info.pubkey, [&entry, &netconf](const auto &proof) {
-        entry.service_node_version     = proof.proof->version;
-        entry.lokinet_version          = proof.proof->lokinet_version;
-        entry.storage_server_version   = proof.proof->storage_server_version;
-        entry.public_ip                = epee::string_tools::get_ip_string_from_int32(proof.proof->public_ip);
-        entry.storage_port             = proof.proof->storage_https_port;
-        entry.storage_lmq_port         = proof.proof->storage_omq_port;
-        entry.pubkey_ed25519           = proof.proof->pubkey_ed25519 ? tools::type_to_hex(proof.proof->pubkey_ed25519) : "";
-        entry.pubkey_x25519            = proof.pubkey_x25519 ? tools::type_to_hex(proof.pubkey_x25519) : "";
-        entry.quorumnet_port           = proof.proof->qnet_port;
-
-        // NOTE: Service Node Testing
-        entry.last_uptime_proof                  = proof.timestamp;
-        auto system_now = std::chrono::system_clock::now();
-        auto steady_now = std::chrono::steady_clock::now();
-        entry.storage_server_reachable = !proof.ss_reachable.unreachable_for(netconf.UPTIME_PROOF_VALIDITY - netconf.UPTIME_PROOF_FREQUENCY, steady_now);
-        entry.storage_server_first_unreachable = reachable_to_time_t(proof.ss_reachable.first_unreachable, system_now, steady_now);
-        entry.storage_server_last_unreachable = reachable_to_time_t(proof.ss_reachable.last_unreachable, system_now, steady_now);
-        entry.storage_server_last_reachable = reachable_to_time_t(proof.ss_reachable.last_reachable, system_now, steady_now);
-        entry.lokinet_reachable = !proof.lokinet_reachable.unreachable_for(netconf.UPTIME_PROOF_VALIDITY - netconf.UPTIME_PROOF_FREQUENCY, steady_now);
-        entry.lokinet_first_unreachable = reachable_to_time_t(proof.lokinet_reachable.first_unreachable, system_now, steady_now);
-        entry.lokinet_last_unreachable = reachable_to_time_t(proof.lokinet_reachable.last_unreachable, system_now, steady_now);
-        entry.lokinet_last_reachable = reachable_to_time_t(proof.lokinet_reachable.last_reachable, system_now, steady_now);
-
-        service_nodes::participation_history<service_nodes::participation_entry> const &checkpoint_participation = proof.checkpoint_participation;
-        service_nodes::participation_history<service_nodes::participation_entry> const &pulse_participation      = proof.pulse_participation;
-        service_nodes::participation_history<service_nodes::timestamp_participation_entry> const &timestamp_participation      = proof.timestamp_participation;
-        service_nodes::participation_history<service_nodes::timesync_entry> const &timesync_status      = proof.timesync_status;
-        entry.checkpoint_participation = std::vector<service_nodes::participation_entry>(checkpoint_participation.begin(), checkpoint_participation.end());
-        entry.pulse_participation      = std::vector<service_nodes::participation_entry>(pulse_participation.begin(),      pulse_participation.end());
-        entry.timestamp_participation  = std::vector<service_nodes::timestamp_participation_entry>(timestamp_participation.begin(),      timestamp_participation.end());
-        entry.timesync_status          = std::vector<service_nodes::timesync_entry>(timesync_status.begin(),      timesync_status.end());
-    });
-
-    entry.contributors.reserve(info.contributors.size());
-
-    using namespace service_nodes;
-    for (service_node_info::contributor_t const &contributor : info.contributors)
-    {
-      entry.contributors.push_back({});
-      auto &new_contributor = entry.contributors.back();
-      new_contributor.amount   = contributor.amount;
-      new_contributor.reserved = contributor.reserved;
-      new_contributor.address  = cryptonote::get_account_address_as_str(m_core.get_nettype(), false/*is_subaddress*/, contributor.address);
-
-      new_contributor.locked_contributions.reserve(contributor.locked_contributions.size());
-      for (service_node_info::contribution_t const &src : contributor.locked_contributions)
-      {
-        new_contributor.locked_contributions.push_back({});
-        auto &dest = new_contributor.locked_contributions.back();
-        dest.amount                                                = src.amount;
-        dest.key_image                                             = tools::type_to_hex(src.key_image);
-        dest.key_image_pub_key                                     = tools::type_to_hex(src.key_image_pub_key);
-      }
-    }
-
-    entry.total_contributed             = info.total_contributed;
-    entry.total_reserved                = info.total_reserved;
-    entry.staking_requirement           = info.staking_requirement;
-    entry.portions_for_operator         = info.portions_for_operator;
-    entry.operator_address              = cryptonote::get_account_address_as_str(m_core.get_nettype(), false/*is_subaddress*/, info.operator_address);
-    entry.swarm_id                      = info.swarm_id;
-    entry.registration_hf_version       = info.registration_hf_version;
-
+  static bool requested(const std::unordered_set<std::string>& requested, const std::string& key) {
+    return requested.empty() ||
+      (requested.count("all")
+       ? !requested.count("-" + key)
+       : requested.count(key));
   }
 
-  static constexpr GET_SERVICE_NODES::requested_fields_t all_fields{true};
+  template <typename Dict, typename T, typename... More>
+  static void set_if_requested(const std::unordered_set<std::string>& reqed, Dict& dict,
+      const std::string& key, T&& value, More&&... more) {
+    if (requested(reqed, key))
+      dict[key] = std::forward<T>(value);
+    if constexpr (sizeof...(More) > 0)
+      set_if_requested(reqed, dict, std::forward<More>(more)...);
+  }
+
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_SERVICE_NODES::response core_rpc_server::invoke(GET_SERVICE_NODES::request&& req, rpc_context context)
-  {
-    GET_SERVICE_NODES::response res{};
+  void core_rpc_server::fill_sn_response_entry(
+      json& entry,
+      bool is_bt,
+      const std::unordered_set<std::string>& reqed,
+      const service_nodes::service_node_pubkey_info& sn_info,
+      uint64_t top_height) {
 
-    res.status = STATUS_OK;
-    res.height = m_core.get_current_blockchain_height() - 1;
-    res.target_height = m_core.get_target_blockchain_height();
-    res.block_hash = tools::type_to_hex(m_core.get_block_id_by_height(res.height));
-    auto [hf, snode_rev] = get_network_version_revision(nettype(), res.height);
-    res.hardfork = hf;
-    res.snode_revision = snode_rev;
+    auto binary_format = is_bt ? json_binary_proxy::fmt::bt : json_binary_proxy::fmt::hex;
+    json_binary_proxy binary{entry, binary_format};
 
-    if (!req.poll_block_hash.empty()) {
-      res.polling_mode = true;
-      if (req.poll_block_hash == res.block_hash) {
-        res.unchanged = true;
-        res.fields = req.fields.value_or(all_fields);
-        return res;
+    const auto &info = *sn_info.info;
+    set_if_requested(reqed, binary, "service_node_pubkey", sn_info.pubkey);
+    set_if_requested(reqed, entry,
+        "registration_height", info.registration_height,
+        "requested_unlock_height", info.requested_unlock_height,
+        "last_reward_block_height", info.last_reward_block_height,
+        "last_reward_transaction_index", info.last_reward_transaction_index,
+        "active", info.is_active(),
+        "funded", info.is_fully_funded(),
+        "state_height", info.is_fully_funded()
+            ? (info.is_decommissioned() ? info.last_decommission_height : info.active_since_height)
+            : info.last_reward_block_height,
+        "earned_downtime_blocks", service_nodes::quorum_cop::calculate_decommission_credit(info, top_height),
+        "decommission_count", info.decommission_count,
+        "total_contributed", info.total_contributed,
+        "staking_requirement", info.staking_requirement,
+        "portions_for_operator", info.portions_for_operator,
+        "operator_fee", lround((double) info.portions_for_operator / (double) STAKING_PORTIONS * 100000.0),
+        "operator_address", cryptonote::get_account_address_as_str(m_core.get_nettype(), false/*subaddress*/, info.operator_address),
+        "swarm_id", info.swarm_id,
+        "swarm", tools::int_to_string(info.swarm_id, 16),
+        "registration_hf_version", info.registration_hf_version
+      );
+
+    if (requested(reqed, "total_reserved") && info.total_reserved != info.total_contributed)
+      entry["total_reserved"] = info.total_reserved;
+
+    if (info.last_decommission_reason_consensus_any) {
+      set_if_requested(reqed, entry,
+          "last_decommission_reason_consensus_all", info.last_decommission_reason_consensus_all,
+          "last_decommission_reason_consensus_any", info.last_decommission_reason_consensus_any);
+
+      if (requested(reqed, "last_decomm_reasons")) {
+        auto& reasons = (entry["last_decomm_reasons"] = json{
+              {"all", cryptonote::coded_reasons(info.last_decommission_reason_consensus_all)}});
+        if (auto some = cryptonote::coded_reasons(info.last_decommission_reason_consensus_any & ~info.last_decommission_reason_consensus_all);
+            !some.empty())
+          reasons["some"] = std::move(some);
       }
     }
 
-    std::vector<crypto::public_key> pubkeys(req.service_node_pubkeys.size());
-    for (size_t i = 0; i < req.service_node_pubkeys.size(); i++)
-    {
-      if (!tools::hex_to_type(req.service_node_pubkeys[i], pubkeys[i]))
-        throw rpc_error{ERROR_WRONG_PARAM,
-          "Could not convert to a public key, arg: " + std::to_string(i)
-            + " which is pubkey: " + req.service_node_pubkeys[i]};
+    auto& netconf = m_core.get_net_config();
+    // FIXME: accessing proofs one-by-one like this is kind of gross.
+    m_core.get_service_node_list().access_proof(sn_info.pubkey, [&](const auto& proof) {
+      if (proof.proof->public_ip != 0)
+        set_if_requested(reqed, entry,
+            "service_node_version", proof.proof->version,
+            "lokinet_version", proof.proof->lokinet_version,
+            "storage_server_version", proof.proof->storage_server_version,
+            "public_ip", epee::string_tools::get_ip_string_from_int32(proof.proof->public_ip),
+            "storage_port", proof.proof->storage_https_port,
+            "storage_lmq_port", proof.proof->storage_omq_port,
+            "quorumnet_port", proof.proof->qnet_port);
+      if (proof.proof->pubkey_ed25519)
+        set_if_requested(reqed, binary,
+            "pubkey_ed25519", proof.proof->pubkey_ed25519,
+            "pubkey_x25519", proof.pubkey_x25519);
+
+      auto system_now = std::chrono::system_clock::now();
+      auto steady_now = std::chrono::steady_clock::now();
+      set_if_requested(reqed, entry, "last_uptime_proof", proof.timestamp);
+      if (m_core.service_node()) {
+        set_if_requested(reqed, entry,
+            "storage_server_reachable", !proof.ss_reachable.unreachable_for(netconf.UPTIME_PROOF_VALIDITY - netconf.UPTIME_PROOF_FREQUENCY, steady_now),
+            "lokinet_reachable", !proof.lokinet_reachable.unreachable_for(netconf.UPTIME_PROOF_VALIDITY - netconf.UPTIME_PROOF_FREQUENCY, steady_now));
+        if (proof.ss_reachable.first_unreachable != service_nodes::NEVER && requested(reqed, "storage_server_first_unreachable"))
+          entry["storage_server_first_unreachable"] = reachable_to_time_t(proof.ss_reachable.first_unreachable, system_now, steady_now);
+        if (proof.ss_reachable.last_unreachable != service_nodes::NEVER && requested(reqed, "storage_server_last_unreachable"))
+          entry["storage_server_last_unreachable"] = reachable_to_time_t(proof.ss_reachable.last_unreachable, system_now, steady_now);
+        if (proof.ss_reachable.last_reachable != service_nodes::NEVER && requested(reqed, "storage_server_last_reachable"))
+          entry["storage_server_last_reachable"] = reachable_to_time_t(proof.ss_reachable.last_reachable, system_now, steady_now);
+        if (proof.lokinet_reachable.first_unreachable != service_nodes::NEVER && requested(reqed, "lokinet_first_unreachable"))
+          entry["lokinet_first_unreachable"] = reachable_to_time_t(proof.lokinet_reachable.first_unreachable, system_now, steady_now);
+        if (proof.lokinet_reachable.last_unreachable != service_nodes::NEVER && requested(reqed, "lokinet_last_unreachable"))
+          entry["lokinet_last_unreachable"] = reachable_to_time_t(proof.lokinet_reachable.last_unreachable, system_now, steady_now);
+        if (proof.lokinet_reachable.last_reachable != service_nodes::NEVER && requested(reqed, "lokinet_last_reachable"))
+          entry["lokinet_last_reachable"] = reachable_to_time_t(proof.lokinet_reachable.last_reachable, system_now, steady_now);
+      }
+
+      if (requested(reqed, "checkpoint_votes") && !proof.checkpoint_participation.empty()) {
+        std::vector<uint64_t> voted, missed;
+        for (auto& cpp : proof.checkpoint_participation)
+          (cpp.pass() ? voted : missed).push_back(cpp.height);
+        std::sort(voted.begin(), voted.end());
+        std::sort(missed.begin(), missed.end());
+        entry["checkpoint_votes"] = json{
+            {"voted", voted},
+            {"missed", missed}};
+      }
+      if (requested(reqed, "pulse_votes") && !proof.pulse_participation.empty()) {
+        std::vector<std::pair<uint64_t, uint8_t>> voted, missed;
+        for (auto& ppp : proof.pulse_participation)
+          (ppp.pass() ? voted : missed).emplace_back(ppp.height, ppp.round);
+        std::sort(voted.begin(), voted.end());
+        std::sort(missed.begin(), missed.end());
+        entry["pulse_votes"]["voted"] = voted;
+        entry["pulse_votes"]["missed"] = missed;
+      }
+      if (requested(reqed, "quorumnet_tests") && !proof.timestamp_participation.empty()) {
+        auto fails = proof.timestamp_participation.failures();
+        entry["quorumnet_tests"] = json::array({proof.timestamp_participation.size() - fails, fails});
+      }
+      if (requested(reqed, "timesync_tests") && !proof.timesync_status.empty()) {
+        auto fails = proof.timesync_status.failures();
+        entry["timesync_tests"] = json::array({proof.timesync_status.size() - fails, fails});
+      }
+    });
+
+    if (requested(reqed, "contributors")) {
+      auto& contributors = (entry["contributors"] = json::array());
+      for (const auto& contributor : info.contributors) {
+        auto& c = contributors.emplace_back(json{
+            {"amount", contributor.amount},
+            {"address", cryptonote::get_account_address_as_str(m_core.get_nettype(), false/*subaddress*/, contributor.address)}});
+        if (contributor.reserved != contributor.amount)
+          c["reserved"] = contributor.reserved;
+        if (requested(reqed, "locked_contributions")) {
+          auto& locked = (c["locked_contributions"] = json::array());
+          for (const auto& src : contributor.locked_contributions) {
+            auto& lc = locked.emplace_back(json{{"amount", src.amount}});
+            json_binary_proxy lc_binary{lc, binary_format};
+            lc_binary["key_image"] = src.key_image;
+            lc_binary["key_image_pub_key"] = src.key_image_pub_key;
+          }
+        }
+      }
+    }
+  }
+
+  //------------------------------------------------------------------------------------------------------------------------------
+  void core_rpc_server::invoke(GET_SERVICE_NODES& sns, rpc_context context)
+  {
+    auto& req = sns.request;
+    sns.response["status"] = STATUS_OK;
+    auto [top_height, top_hash] = m_core.get_blockchain_top();
+    auto [hf, snode_rev] = get_network_version_revision(nettype(), top_height);
+    set_if_requested(req.fields, sns.response,
+        "height", top_height,
+        "target_height", m_core.get_target_blockchain_height(),
+        "hardfork", hf,
+        "snode_revision", snode_rev);
+    set_if_requested(req.fields, sns.response_hex,
+        "block_hash", top_hash);
+
+    if (req.poll_block_hash) {
+      bool unchanged = req.poll_block_hash == top_hash;
+      sns.response["unchanged"] = unchanged;
+      if (unchanged)
+        return;
+      if (!requested(req.fields, "block_hash"))
+        sns.response_hex["block_hash"] = top_hash; // Force it on a poll request even if it wasn't a requested field
     }
 
-    auto sn_infos = m_core.get_service_node_list_state(pubkeys);
+    auto sn_infos = m_core.get_service_node_list_state(req.service_node_pubkeys);
 
-    if (req.active_only) {
-      const auto end =
+    if (req.active_only)
+      sn_infos.erase(
         std::remove_if(sn_infos.begin(), sn_infos.end(), [](const service_nodes::service_node_pubkey_info& snpk_info) {
           return !snpk_info.info->is_active();
-        });
+        }),
+        sn_infos.end());
 
-      sn_infos.erase(end, sn_infos.end());
-    }
-
-    if (req.limit != 0) {
-
-      const auto limit = std::min(sn_infos.size(), static_cast<size_t>(req.limit));
-
+    const int top_sn_index = (int) sn_infos.size() - 1;
+    if (req.limit < 0 || req.limit > top_sn_index) {
+      // We asked for -1 (no limit but shuffle) or a value >= the count, so just shuffle the entire list
+      std::shuffle(sn_infos.begin(), sn_infos.end(), tools::rng);
+    } else if (req.limit > 0) {
       // We need to select N random elements, in random order, from yyyyyyyy.  We could (and used
       // to) just shuffle the entire list and return the first N, but that is quite inefficient when
       // the list is large and N is small.  So instead this algorithm is going to select a random
@@ -3199,34 +3255,20 @@ namespace cryptonote::rpc {
       // the elements beginning at position 1), and swap it into element 1, to get [xx]yyyyyy, then
       // keep repeating until our set of x's is big enough, say [xxx]yyyyy.  At that point we chop
       // of the y's to just be left with [xxx], and only required N swaps in total.
-      for (size_t i = 0; i < limit; i++)
+      for (int i = 0; i < req.limit; i++)
       {
-        size_t j = std::uniform_int_distribution<size_t>{i, sn_infos.size()-1}(tools::rng);
+        int j = std::uniform_int_distribution<int>{i, top_sn_index}(tools::rng);
         using std::swap;
         if (i != j)
           swap(sn_infos[i], sn_infos[j]);
       }
 
-      sn_infos.resize(limit);
+      sn_infos.resize(req.limit);
     }
 
-    res.service_node_states.reserve(sn_infos.size());
-    res.fields = req.fields.value_or(all_fields);
-
-    if (req.include_json)
-    {
-      if (sn_infos.empty())
-        res.as_json = "{}";
-      else
-        res.as_json = cryptonote::obj_to_json_str(sn_infos);
-    }
-
-    for (auto &pubkey_info : sn_infos) {
-      res.service_node_states.emplace_back();
-      fill_sn_response_entry(res.service_node_states.back(), pubkey_info, res.height);
-    }
-
-    return res;
+    auto& sn_states = (sns.response["service_node_states"] = json::array());
+    for (auto &pubkey_info : sn_infos)
+      fill_sn_response_entry(sn_states.emplace_back(json::object()), sns.is_bt(), req.fields, pubkey_info, top_height);
   }
 
   namespace {

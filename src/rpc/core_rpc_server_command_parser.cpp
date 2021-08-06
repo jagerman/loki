@@ -187,4 +187,39 @@ namespace cryptonote::rpc {
         "type", required{ons.request.type});
   }
 
+  void parse_request(GET_SERVICE_NODES& sns, rpc_input in) {
+    // Remember: key access must be in sorted order (even across get_values() calls).
+    get_values(in, "active_only", sns.request.active_only);
+    bool fields_dict = false;
+    if (auto* json_in = std::get_if<json>(&in)) {
+        // Deprecated {"field":true, "field2":true, ...} handling:
+      if (auto fit = json_in->find("fields"); fit != json_in->end() && fit->is_object()) {
+        fields_dict = true;
+        for (auto& [k, v] : fit->items()) {
+          if (v.get<bool>()) {
+            if (k == "all") {
+              sns.request.fields.clear(); // Empty means all
+              break; // The old behaviour just ignored everything else if you specified all
+            }
+            sns.request.fields.insert(k);
+          }
+        }
+      }
+    }
+    if (!fields_dict) {
+      std::vector<std::string_view> fields;
+      get_values(in, "fields", fields);
+      for (const auto& f : fields)
+        sns.request.fields.emplace(f);
+      // If the only thing given is "all" then just clear it (as a small optimization):
+      if (sns.request.fields.size() == 1 && *sns.request.fields.begin() == "all")
+        sns.request.fields.clear();
+    }
+
+    get_values(in,
+        "limit", sns.request.limit,
+        "poll_block_hash", sns.request.poll_block_hash,
+        "service_node_pubkeys", sns.request.service_node_pubkeys);
+  }
+
 }

@@ -31,6 +31,19 @@
 
 #pragma once
 
+// vim help for nicely wrapping/formatting comments in here:
+// Global options for wrapping and indenting lists within comments with gq:
+//
+//     set formatoptions+=n
+//     set formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s\\+\\\\|^\\s*[-+*]\\s\\+
+//
+// cpp-specific options to properly recognize `///` as a comment when wrapping, to go in
+// ~/.vim/after/ftplugin/cpp.vim:
+//
+//     setlocal comments-=://
+//     setlocal comments+=:///
+//     setlocal comments+=://
+
 #include "crypto/crypto.h"
 #include "epee/string_tools.h"
 
@@ -56,13 +69,12 @@
 #include <nlohmann/json.hpp>
 #include <oxenmq/bt_serialize.h>
 #include <type_traits>
-
-namespace cryptonote {
+#include <unordered_set>
 
 /// Namespace for core RPC commands.  Every RPC commands gets defined here (including its name(s),
 /// access, and data type), and added to `core_rpc_types` list at the bottom of the file.
 
-namespace rpc {
+namespace cryptonote::rpc {
 
   using version_t = std::pair<uint16_t, uint16_t>;
 
@@ -72,7 +84,7 @@ namespace rpc {
 // has its own version, and that clients can just test major to see
 // whether they can talk to a given daemon without having to know in
 // advance which version they will stop working with
-  constexpr version_t VERSION = {4, 0};
+  constexpr version_t VERSION = {4, 1};
 
   /// Makes a version array from a packed 32-bit integer version
   constexpr version_t make_version(uint32_t version)
@@ -2066,196 +2078,254 @@ namespace rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  struct service_node_contribution
-  {
-    std::string key_image;         // The contribution's key image that is locked on the network.
-    std::string key_image_pub_key; // The contribution's key image, public key component
-    uint64_t    amount;            // The amount that is locked in this contribution.
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  struct service_node_contributor
-  {
-    uint64_t amount;                                             // The total amount of locked Loki in atomic units for this contributor.
-    uint64_t reserved;                                           // The amount of Loki in atomic units reserved by this contributor for this Service Node.
-    std::string address;                                         // The wallet address for this contributor rewards are sent to and contributions came from.
-    std::vector<service_node_contribution> locked_contributions; // Array of contributions from this contributor.
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get information on some, all, or a random subset of Service Nodes.
+  /// Get information on some, all, or a random subset of Service Nodes.
+  ///
+  /// Output variables available are as follows (you can request which parameters are returned; see
+  /// the request parameters description).  Note that OXEN values are returned in atomic OXEN units,
+  /// which are nano-OXEN (i.e. 1.000000000 OXEN will be returned as 1000000000).
+  ///
+  /// - \p height the height of the current top block.  (Note that this is one less than the
+  ///   "blockchain height" as would be returned by the \c get_info endpoint).
+  /// - \p target_height the target height of the blockchain; will be greater than height+1 if this
+  ///   node is still syncing the chain.
+  /// - \p block_hash the hash of the most recent block
+  /// - \p hardfork the current hardfork version of the daemon
+  /// - \p snode_revision the current snode revision for non-hardfork, but mandatory, service node
+  ///   updates.
+  /// - \p status generic RPC error code; "OK" means the request was successful.
+  /// - \p unchanged when using poll_block_hash, this value is set to true and results are omitted if
+  ///   the current block hash has not changed from the requested polling block hash.  If block hash
+  ///   has changed this is set to false (and results included).  When not polling this value is
+  ///   omitted entirely.
+  /// - \p service_node_states list of information about all known service nodes; each element is a
+  ///   dict containing the following keys (which fields are included/omitted can be controlled via
+  ///   the "fields" input parameter):
+  ///   - \p service_node_pubkey The public key of the Service Node, in hex (json) or binary (bt).
+  ///   - \p registration_height The height at which the registration for the Service Node arrived
+  ///     on the blockchain.
+  ///   - \p registration_hf_version The current hard fork at which the registration for the Service
+  ///     Node arrived on the blockchain.
+  ///   - \p requested_unlock_height If an unlock has been requested for this SN, this field
+  ///     contains the height at which the Service Node registration expires and contributions will
+  ///     be released.
+  ///   - \p last_reward_block_height The height that determines when this service node will next
+  ///     receive a reward.  This field is somewhat misnamed for historic reasons: it is updated
+  ///     when receiving a reward, but is also updated when a SN is activated, recommissioned, or
+  ///     has an IP change position reset, and so does not strictly indicate when a reward was
+  ///     received.
+  ///   - \p last_reward_transaction_index When multiple Service Nodes register (or become
+  ///     active/reactivated) at the same height (i.e. have the same last_reward_block_height), this
+  ///     field contains the activating transaction position in the block which is used to break
+  ///     ties in determining which SN is next in the reward list.
+  ///   - \p active True if fully funded and not currently decommissioned (and so `funded &&
+  ///     !active` implicitly defines decommissioned).
+  ///   - \p funded True if the required stakes have been submitted to activate this Service Node.
+  ///   - \p state_height Indicates the height at which the service node entered its current state:
+  ///     - If \p active: this is the height at which the service node last became active (i.e.
+  ///       became fully staked, or was last recommissioned);
+  ///     - If decommissioned (i.e. \p funded but not \p active): the decommissioning height;
+  ///     - If awaiting contributions (i.e. not \p funded): the height at which the last
+  ///       contribution (or registration) was processed.
+  ///   - \p decommission_count The number of times the Service Node has been decommissioned since
+  ///     registration
+  ///   - \p last_decommission_reason_consensus_all The reason for the last decommission as voted by
+  ///     the testing quorum SNs that decommissioned the node.  This is a numeric bitfield made up
+  ///     of the sum of given reasons (multiple reasons may be given for a decommission).  Values
+  ///     are included here if *all* quorum members agreed on the reasons:
+  ///     - \c 0x01 - Missing uptime proofs
+  ///     - \c 0x02 - Missed too many checkpoint votes
+  ///     - \c 0x04 - Missed too many pulse blocks
+  ///     - \c 0x08 - Storage server unreachable
+  ///     - \c 0x10 - oxend quorumnet unreachable for timesync checks
+  ///     - \c 0x20 - oxend system clock is too far off
+  ///     - \c 0x40 - Lokinet unreachable
+  ///     - other bit values are reserved for future use.
+  ///   - \p last_decommission_reason_consensus_any The reason for the last decommission as voted by
+  ///     *any* SNs.  Reasons are set here if *any* quorum member gave a reason, even if not all
+  ///     quorum members agreed.  Bit values are the same as \p
+  ///     last_decommission_reason_consensus_all.
+  ///   - \p decomm_reasons - a gentler version of the last_decommission_reason_consensus_all/_any
+  ///     values: this is returned as a dict with two keys, \c "all" and \c "some", containing a
+  ///     list of short string identifiers of the reasons.  \c "all" contains reasons that are
+  ///     agreed upon by all voting nodes; \c "some" contains reasons that were provided by some but
+  ///     not all nodes (and is included only if there are at least one such value).  Note that,
+  ///     unlike \p last_decommission_reason_consensus_any, the \c "some" field only includes
+  ///     reasons that are *not* included in \c "all".  Returned values in the lists are:
+  ///     - \p "uptime"
+  ///     - \p "checkpoints"
+  ///     - \p "pulse"
+  ///     - \p "storage"
+  ///     - \p "timecheck"
+  ///     - \p "timesync"
+  ///     - \p "lokinet"
+  ///     - other values are reserved for future use.
+  ///   - \p earned_downtime_blocks The number of blocks earned towards decommissioning (if
+  ///     currently active), or the number of blocks remaining until the service node is eligible
+  ///     for deregistration (if currently decommissioned).
+  ///   - \p service_node_version The three-element numeric version of the Service Node (as received
+  ///     in the last uptime proof).  Omitted if we have never received a proof.
+  ///   - \p lokinet_version The major, minor, patch version of the Service Node's lokinet router
+  ///     (as received in the last uptime proof).  Omitted if we have never received a proof.
+  ///   - \p storage_server_version The major, minor, patch version of the Service Node's storage
+  ///     server (as received in the last uptime proof).  Omitted if we have never received a proof.
+  ///   - \p contributors Array of contributors, contributing to this Service Node.  Each element is
+  ///     a dict containing:
+  ///     - \p amount The total amount of OXEN staked by this contributor into
+  ///       this Service Node.
+  ///     - \p reserved The amount of OXEN reserved by this contributor for this Service Node; this
+  ///       field will be included only if the contributor has unfilled, reserved space in the
+  ///       service node.
+  ///     - \p address The wallet address of this contributor to which rewards are sent and from
+  ///       which contributions were made.
+  ///     - \p locked_contributions Array of contributions from this contributor; this field (unlike
+  ///       the other fields inside \p contributors) is controlled by the "fields" input parameter.
+  ///       Each element contains:
+  ///       - \p key_image The contribution's key image which is locked on the network.
+  ///       - \p key_image_pub_key The contribution's key image, public key component.
+  ///       - \p amount The amount of OXEN that is locked in this contribution.
+  ///
+  ///   - \p total_contributed The total amount of OXEN contributed to this Service Node.
+  ///   - \p total_reserved The total amount of OXEN contributed or reserved for this Service Node.
+  ///     Only included in the response if there are still unfilled reservations (i.e. if it is
+  ///     greater than total_contributed).
+  ///   - \p staking_requirement The total OXEN staking requirement in that is/was required to be
+  ///     contributed for this Service Node.
+  ///   - \p portions_for_operator The operator fee to take from the service node reward, as a
+  ///     fraction of 18446744073709551612 (2^64 - 4) (that is, this number corresponds to 100%).
+  ///     Note that some JSON parsers may silently change this value while parsing as typical values
+  ///     do not fit into a double without loss of precision.
+  ///   - \p operator_fee The operator fee expressed as thousandths of a percent (and rounded to the
+  ///     nearest integer value).  That is, 100000 corresponds to a 100% fee, 5456 corresponds to a
+  ///     5.456% fee.  Note that this number is for human consumption; the actual value that matters
+  ///     for the blockchain is the precise \p portions_for_operator value.
+  ///   - \p swarm_id The numeric identifier of the Service Node's current swarm.  Note that
+  ///     returned values can exceed the precision available in a double value, which can result in
+  ///     (changed) incorrect values by some JSON parsers.  Consider using \p swarm instead if you
+  ///     are not sure your JSON parser supports 64-bit values.
+  ///   - \p swarm The swarm id, expressed in hexadecimal, such as \c "f4ffffffffffffff".
+  ///   - \p operator_address The wallet address of the Service Node operator.
+  ///   - \p public_ip The public ip address of the service node; omitted if we have not yet
+  ///     received a network proof containing this information from the service node.
+  ///   - \p storage_port The port number associated with the storage server; omitted if we have no
+  ///     uptime proof yet.
+  ///   - \p storage_lmq_port The port number associated with the storage server (oxenmq interface);
+  ///     omitted if we have no uptime proof yet.
+  ///   - \p quorumnet_port The port for direct SN-to-SN oxend communication (oxenmq interface).
+  ///     Omitted if we have no uptime proof yet.
+  ///   - \p pubkey_ed25519 The service node's ed25519 public key for auxiliary services. Omitted if
+  ///     we have no uptime proof yet.  Note that for newer registrations this will be the same as
+  ///     the \p service_node_pubkey.
+  ///   - \p pubkey_x25519 The service node's x25519 public key for auxiliary services (mainly used
+  ///     for \p quorumnet_port and the \p storage_lmq_port OxenMQ encrypted connections).
+  ///   - \p last_uptime_proof The last time we received an uptime proof for this service node from
+  ///     the network, in unix epoch time.  0 if we have never received one.
+  ///   - \p storage_server_reachable True if this storage server is currently passing tests for the
+  ///     purposes of SN node testing: true if the last test passed, or if it has been unreachable
+  ///     for less than an hour; false if it has been failing tests for more than an hour (and thus
+  ///     is considered unreachable).  This field is omitted if the queried oxend is not a service
+  ///     node.
+  ///   - \p storage_server_first_unreachable If the last test we received was a failure, this field
+  ///     contains the timestamp when failures started.  Will be 0 if the last result was a success,
+  ///     and will be omitted if the node has not yet been tested since this oxend last restarted.
+  ///   - \p storage_server_last_unreachable The last time this service node's storage server failed
+  ///     a ping test (regardless of whether or not it is currently failing). Will be omitted if it
+  ///     has never failed a test since startup.
+  ///   - \p storage_server_last_reachable The last time we received a successful ping response for
+  ///     this storage server (whether or not it is currently failing). Will be omitted if we have
+  ///     never received a successful ping response since startup.
+  ///   - \p lokinet_reachable Same as \p storage_server_reachable, but for lokinet router testing.
+  ///   - \p lokinet_first_unreachable Same as \p storage_server_first_unreachable, but for lokinet
+  ///     router testing.
+  ///   - \p lokinet_last_unreachable Same as \p storage_server_last_unreachable, but for lokinet
+  ///     router testing.
+  ///   - \p lokinet_last_reachable Same as \p storage_server_last_reachable, but for lokinet router
+  ///     testing.
+  ///   - \p checkpoint_votes dict containing recent received checkpoint voting information for this
+  ///     service node.  Service node tests will fail if too many recent pulse blocks are missed.
+  ///     Contains keys:
+  ///     - \p voted list of blocks heights at which a required vote was received from this
+  ///       service node
+  ///     - \p missed list of block heights at which a vote from this service node was required
+  ///       but not received.
+  ///   - \p pulse_votes dict containing recent pulse blocks in which this service node was supposed
+  ///     to have participated.  Service node testing will fail if too many recent pulse blocks are
+  ///     missed.  Contains keys:
+  ///     - \p voted list of [HEIGHT,ROUND] pairs in which an expected pulse participation was
+  ///       recorded for this node.  ROUND starts at 0 and increments for backup pulse quorums if a
+  ///       previous round does not broadcast a pulse block for the given height in time.
+  ///     - \p missed list of [HEIGHT,ROUND] pairs in which pulse participation by this service node
+  ///       was expected but did not occur.
+  ///   - \p quorumnet_tests array containing the results of recent attempts to connect to the
+  ///     remote node's quorumnet port (while conducting timesync checks).  The array contains two
+  ///     values: [SUCCESSES,FAILURES], where SUCCESSES is the number of recent successful
+  ///     connections and FAILURES is the number of recent connection and/or request timeouts.  If
+  ///     there are two many failures then the service node will fail testing.
+  ///   - \p timesync_tests array containing the results of recent time synchronization checks of
+  ///     this service node.  Contains [SUCCESSES,FAILURES] counts where SUCCESSES is the number of
+  ///     recent checks where the system clock was relatively close and FAILURES is the number of
+  ///     recent checks where we received a significantly out-of-sync timestamp response from the
+  ///     service node.  A service node fails tests if there are too many recent out-of-sync
+  ///     responses.
   struct GET_SERVICE_NODES : PUBLIC
   {
     static constexpr auto names() { return NAMES("get_service_nodes", "get_n_service_nodes", "get_all_service_nodes"); }
 
-    // Boolean values indicate whether corresponding fields should be included in the response
-    struct requested_fields_t {
-      bool all = false; // If set, overrides any individual requested fields.  Defaults to *true* if "fields" is entirely omitted
-      bool service_node_pubkey;
-      bool registration_height;
-      bool registration_hf_version;
-      bool requested_unlock_height;
-      bool last_reward_block_height;
-      bool last_reward_transaction_index;
-      bool active;
-      bool funded;
-      bool state_height;
-      bool decommission_count;
-      bool last_decommission_reason_consensus_all;
-      bool last_decommission_reason_consensus_any;
-      bool earned_downtime_blocks;
+    struct request_parameters {
+      /// Set of fields to return; listed fields apply to both the top level (such as \p "height" or
+      /// \p "block_hash") and to keys inside \p service_node_states.  Fields should be provided as
+      /// a list of field names to include.  For backwards compatibility when making a json request
+      /// field names can also be provided as a dictionary of {"field_name": true} pairs, but this
+      /// usage is deprecated (and not supported for bt-encoded requests).
+      ///
+      /// The special field name "all" can be used to request all available fields; this is the
+      /// default when no fields key are provided at all.  Be careful when requesting all fields:
+      /// the response can be very large.
+      ///
+      /// When providing a list you may prefix a field name with a \c - to remove the field from the
+      /// list; this is mainly useful when following "all" to remove some fields from the returned
+      /// results.  (There is no equivalent mode when using the deprecated dict value).
+      std::unordered_set<std::string> fields;
 
-      bool service_node_version;
-      bool lokinet_version;
-      bool storage_server_version;
-      bool contributors;
-      bool total_contributed;
-      bool total_reserved;
-      bool staking_requirement;
-      bool portions_for_operator;
-      bool swarm_id;
-      bool operator_address;
-      bool public_ip;
-      bool storage_port;
-      bool storage_lmq_port;
-      bool quorumnet_port;
-      bool pubkey_ed25519;
-      bool pubkey_x25519;
+      /// Array of public keys of registered service nodes to request information about.  Omit to
+      /// query all service nodes.  For a JSON request pubkeys must be specified in hex; for a
+      /// bt-encoded request pubkeys can be hex or bytes.
+      std::vector<crypto::public_key> service_node_pubkeys;
 
-      bool last_uptime_proof;
-      bool storage_server_reachable;
-      bool storage_server_last_reachable;
-      bool storage_server_last_unreachable;
-      bool storage_server_first_unreachable;
-      bool lokinet_reachable;
-      bool lokinet_last_reachable;
-      bool lokinet_last_unreachable;
-      bool lokinet_first_unreachable;
-      bool checkpoint_participation;
-      bool pulse_participation;
-      bool timestamp_participation;
-      bool timesync_status;
+      /// If true then only return active service nodes.
+      bool active_only = false;
 
-      bool block_hash;
-      bool height;
-      bool target_height;
-      bool hardfork;
-      bool snode_revision;
-      KV_MAP_SERIALIZABLE
-    };
+      /// If specified and non-zero then only return a random selection of this number of service
+      /// nodes (in random order) from the result.  If negative then no limiting is performed but
+      /// the returned result is still shuffled.
+      int limit = 0;
 
-    struct request
-    {
-      std::vector<std::string> service_node_pubkeys; // Array of public keys of registered Service Nodes to get information about. Omit to query all Service Nodes.
-      bool include_json;                             // When set, the response's as_json member is filled out.
-      uint32_t limit;                                // If non-zero, select a random sample (in random order) of the given number of service nodes to return from the full list.
-      bool active_only;                              // If true, only include results for active (fully staked, not decommissioned) service nodes.
-      std::optional<requested_fields_t> fields;      // If omitted return all fields; otherwise return only the specified fields
-
-      std::string poll_block_hash;                   // If specified this changes the behaviour to only return service node records if the block hash is *not* equal to the given hash; otherwise it omits the records and instead sets `"unchanged": true` in the response. This is primarily used to poll for new results where the requested results only change with new blocks.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-
-      struct entry {
-        std::string                           service_node_pubkey;           // The public key of the Service Node.
-        uint64_t                              registration_height;           // The height at which the registration for the Service Node arrived on the blockchain.
-        uint16_t                              registration_hf_version;       // The hard fork at which the registration for the Service Node arrived on the blockchain.
-        uint64_t                              requested_unlock_height;       // The height at which contributions will be released and the Service Node expires. 0 if not requested yet.
-        uint64_t                              last_reward_block_height;      // The height that determines when this service node will next receive a reward.  This field is updated when receiving a reward, but is also updated when a SN is activated, recommissioned, or has an IP change position reset.
-        uint32_t                              last_reward_transaction_index; // When multiple Service Nodes register (or become active/reactivated) at the same height (i.e. have the same last_reward_block_height), this field contains the activating transaction position in the block which is used to break ties in determining which SN is next in the reward list.
-        bool                                  active;                        // True if fully funded and not currently decommissioned (and so `active && !funded` implicitly defines decommissioned)
-        bool                                  funded;                        // True if the required stakes have been submitted to activate this Service Node
-        uint64_t                              state_height;                  // If active: the state at which the service node became active (i.e. fully staked height, or last recommissioning); if decommissioned: the decommissioning height; if awaiting: the last contribution (or registration) height
-        uint32_t                              decommission_count;            // The number of times the Service Node has been decommissioned since registration
-        uint16_t                              last_decommission_reason_consensus_all;      // The reason for the last decommission as voted by all SNs
-        uint16_t                              last_decommission_reason_consensus_any;      // The reason for the last decommission as voted by any SNs
-        int64_t                               earned_downtime_blocks;        // The number of blocks earned towards decommissioning, or the number of blocks remaining until deregistration if currently decommissioned
-        std::array<uint16_t, 3>               service_node_version;          // The major, minor, patch version of the Service Node respectively.
-        std::array<uint16_t, 3>               lokinet_version;               // The major, minor, patch version of the Service Node's lokinet router.
-        std::array<uint16_t, 3>               storage_server_version;        // The major, minor, patch version of the Service Node's storage server.
-        std::vector<service_node_contributor> contributors;                  // Array of contributors, contributing to this Service Node.
-        uint64_t                              total_contributed;             // The total amount of Loki in atomic units contributed to this Service Node.
-        uint64_t                              total_reserved;                // The total amount of Loki in atomic units reserved in this Service Node.
-        uint64_t                              staking_requirement;           // The staking requirement in atomic units that is required to be contributed to become a Service Node.
-        uint64_t                              portions_for_operator;         // The operator percentage cut to take from each reward expressed in portions, see cryptonote_config.h's STAKING_PORTIONS.
-        uint64_t                              swarm_id;                      // The identifier of the Service Node's current swarm.
-        std::string                           operator_address;              // The wallet address of the operator to which the operator cut of the staking reward is sent to.
-        std::string                           public_ip;                     // The public ip address of the service node
-        uint16_t                              storage_port;                  // The port number associated with the storage server
-        uint16_t                              storage_lmq_port;              // The port number associated with the storage server (oxenmq interface)
-        uint16_t                              quorumnet_port;                // The port for direct SN-to-SN communication
-        std::string                           pubkey_ed25519;                // The service node's ed25519 public key for auxiliary services
-        std::string                           pubkey_x25519;                 // The service node's x25519 public key for auxiliary services
-
-        // Service Node Testing
-        uint64_t                                last_uptime_proof;                   // The last time this Service Node's uptime proof was relayed by at least 1 Service Node other than itself in unix epoch time.
-        bool                                    storage_server_reachable;            // True if this storage server is currently passing tests for the purposes of SN node testing: true if the last test passed, or if it has been unreachable for less than an hour; false if it has been failing tests for more than an hour (and thus is considered unreachable).
-        uint64_t                                storage_server_first_unreachable;    // If the last test we received was a failure, this field contains the timestamp when failures started.  Will be 0 if the last result was a success or the node has not yet been tested.  (To disinguish between these cases check storage_server_last_reachable).
-        uint64_t                                storage_server_last_unreachable;     // The last time this service node's storage server failed a ping test (regardless of whether or not it is currently failing); 0 if it never failed a test since startup.
-        uint64_t                                storage_server_last_reachable;       // The last time we received a successful ping response for this storage server (whether or not it is currently failing); 0 if we have never received a success since startup.
-        bool                                    lokinet_reachable;                   // True if this lokinet is currently passing tests for the purposes of SN node testing: true if the last test passed, or if it has been unreachable for less than an hour; false if it has been failing tests for more than an hour (and thus is considered unreachable).
-        uint64_t                                lokinet_first_unreachable;           // If the last test we received was a failure, this field contains the timestamp when failures started.  Will be 0 if the last result was a success or the node has not yet been tested.  (To disinguish between these cases check lokinet_last_reachable).
-        uint64_t                                lokinet_last_unreachable;            // The last time this service node's lokinet failed a reachable test (regardless of whether or not it is currently failing); 0 if it never failed a test since startup.
-        uint64_t                                lokinet_last_reachable;              // The last time we received a successful test response for this service node's lokinet router (whether or not it is currently failing); 0 if we have never received a success since startup.
-
-        std::vector<service_nodes::participation_entry> checkpoint_participation;    // Of the last N checkpoints the Service Node is in a checkpointing quorum, record whether or not the Service Node voted to checkpoint a block
-        std::vector<service_nodes::participation_entry> pulse_participation;         // Of the last N pulse blocks the Service Node is in a pulse quorum, record whether or not the Service Node voted (participated) in that block
-        std::vector<service_nodes::timestamp_participation_entry> timestamp_participation;         // Of the last N timestamp messages, record whether or not the Service Node was in sync with the network
-        std::vector<service_nodes::timesync_entry> timesync_status;         // Of the last N timestamp messages, record whether or not the Service Node responded
-
-        KV_MAP_SERIALIZABLE
-      };
-
-      requested_fields_t fields; // @NoLokiRPCDocGen Internal use only, not serialized
-      bool polling_mode;         // @NoLokiRPCDocGen Internal use only, not serialized
-
-      std::vector<entry> service_node_states; // Array of service node registration information
-      uint64_t    height;                     // Current block's height.
-      uint64_t    target_height;              // Blockchain's target height.
-      std::string block_hash;                 // Current block's hash.
-      bool        unchanged;                  // Will be true (and `service_node_states` omitted) if you gave the current block hash to poll_block_hash
-      uint8_t     hardfork;                   // Current hardfork version.
-      uint8_t     snode_revision;             // snode revision for non-hardfork but mandatory snode updates
-      std::string status;                     // Generic RPC error code. "OK" is the success value.
-      std::string as_json;                    // If `include_json` is set in the request, this contains the json representation of the `entry` data structure
-
-      KV_MAP_SERIALIZABLE
-
-    };
+      /// If specified then only return results if the current top block hash is different than the
+      /// hash given here.  This is intended to allow quick polling of results without needing to do
+      /// anything if the block (and thus SN registrations) have not changed since the last request.
+      crypto::hash poll_block_hash = crypto::hash::null();
+    } request;
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get information on the queried daemon's Service Node state.
-  struct GET_SERVICE_NODE_STATUS : RPC_COMMAND
+  /// Retrieves information on the current daemon's Service Node state.  The returned information is
+  /// the same as what would be returned by "get_service_nodes" when passed this service node's
+  /// public key.
+  ///
+  /// Inputs: none.
+  ///
+  /// Outputs:
+  /// - \p service_node_state - if this is a registered service node then all available fields for
+  ///   this service node.  \sa GET_SERVICE_NODES for the list of fields.  Note that some fields
+  ///   (such as remote testing results) will not be available (through this call or \p
+  ///   "get_service_nodes") because a service node is incapable of testing itself for remote
+  ///   connectivity.  If this daemon is running in service node mode but not registered then only
+  ///   SN pubkey, ip, and port fields are returned.
+  /// - \p height current top block height at the time of the request (note that this is generally
+  ///   one less than the "blockchain height").
+  /// - \p block_hash current top block hash at the time of the request
+  /// - \p status generic RPC error code; "OK" means the request was successful.
+  struct GET_SERVICE_NODE_STATUS : NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_service_node_status"); }
-
-    struct request
-    {
-      bool include_json;                             // When set, the response's as_json member is filled out.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      GET_SERVICE_NODES::response::entry service_node_state; // Service node registration information
-      uint64_t    height;                     // Current block's height.
-      std::string block_hash;                 // Current block's hash.
-      std::string status;                     // Generic RPC error code. "OK" is the success value.
-      std::string as_json;                    // If `include_json` is set in the request, this contains the json representation of the `entry` data structure
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2664,6 +2734,8 @@ namespace rpc {
     GET_TRANSACTION_POOL_HASHES,
     GET_TRANSACTION_POOL_BACKLOG,
     GET_TRANSACTION_POOL_STATS,
+    GET_SERVICE_NODES,
+    GET_SERVICE_NODE_STATUS,
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN,
@@ -2723,8 +2795,6 @@ namespace rpc {
     GET_SERVICE_NODE_REGISTRATION_CMD,
     GET_SERVICE_KEYS,
     GET_SERVICE_PRIVKEYS,
-    GET_SERVICE_NODES,
-    GET_SERVICE_NODE_STATUS,
     STORAGE_SERVER_PING,
     LOKINET_PING,
     GET_STAKING_REQUIREMENT,
@@ -2739,4 +2809,4 @@ namespace rpc {
     FLUSH_CACHE
   >;
 
-} } // namespace cryptonote::rpc
+} // namespace cryptonote::rpc

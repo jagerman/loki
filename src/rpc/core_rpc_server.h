@@ -215,6 +215,8 @@ namespace cryptonote::rpc {
     void invoke(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_context context);
     void invoke(GET_CONNECTIONS& get_connections, rpc_context context);
+    void invoke(GET_SERVICE_NODE_STATUS& sns, rpc_context context);
+    void invoke(GET_SERVICE_NODES& sns, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -272,8 +274,6 @@ namespace cryptonote::rpc {
     GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::response   invoke(GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::request&& req, rpc_context context);
     GET_SERVICE_KEYS::response                          invoke(GET_SERVICE_KEYS::request&& req, rpc_context context);
     GET_SERVICE_PRIVKEYS::response                      invoke(GET_SERVICE_PRIVKEYS::request&& req, rpc_context context);
-    GET_SERVICE_NODE_STATUS::response                   invoke(GET_SERVICE_NODE_STATUS::request&& req, rpc_context context);
-    GET_SERVICE_NODES::response                         invoke(GET_SERVICE_NODES::request&& req, rpc_context context);
     GET_STAKING_REQUIREMENT::response                   invoke(GET_STAKING_REQUIREMENT::request&& req, rpc_context context);
     STORAGE_SERVER_PING::response                       invoke(STORAGE_SERVER_PING::request&& req, rpc_context context);
     LOKINET_PING::response                              invoke(LOKINET_PING::request&& req, rpc_context context);
@@ -327,7 +327,12 @@ namespace cryptonote::rpc {
 private:
     bool check_core_ready();
 
-    void fill_sn_response_entry(GET_SERVICE_NODES::response::entry& entry, const service_nodes::service_node_pubkey_info &sn_info, uint64_t current_height);
+    void fill_sn_response_entry(
+        nlohmann::json& entry,
+        bool is_bt,
+        const std::unordered_set<std::string>& requested,
+        const service_nodes::service_node_pubkey_info& sn_info,
+        uint64_t top_height);
 
     //utils
     uint64_t get_block_reward(const block& blk);
