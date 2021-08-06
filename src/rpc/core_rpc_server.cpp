@@ -464,23 +464,20 @@ namespace cryptonote::rpc {
     info.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_NET_STATS::response core_rpc_server::invoke(GET_NET_STATS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_NET_STATS& get_net_stats, rpc_context context)
   {
-    GET_NET_STATS::response res{};
-
     PERF_TIMER(on_get_net_stats);
     // No bootstrap daemon check: Only ever get stats about local server
-    res.start_time = (uint64_t)m_core.get_start_time();
+    get_net_stats.response["start_time"] = (uint64_t)m_core.get_start_time();
     {
       std::lock_guard lock{epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_in};
-      epee::net_utils::network_throttle_manager::get_global_throttle_in().get_stats(res.total_packets_in, res.total_bytes_in);
+      epee::net_utils::network_throttle_manager::get_global_throttle_in().get_stats(get_net_stats.response["total_packets_in"], get_net_stats.response["total_bytes_in"]);
     }
     {
       std::lock_guard lock{epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_out};
-      epee::net_utils::network_throttle_manager::get_global_throttle_out().get_stats(res.total_packets_out, res.total_bytes_out);
+      epee::net_utils::network_throttle_manager::get_global_throttle_out().get_stats(get_net_stats.response["total_packets_out"], get_net_stats.response["total_bytes_out"]);
     }
-    res.status = STATUS_OK;
-    return res;
+    get_net_stats.response["status"] = STATUS_OK;
   }
   namespace {
   //------------------------------------------------------------------------------------------------------------------------------

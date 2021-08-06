@@ -783,23 +783,22 @@ namespace rpc {
   };
 
   //-----------------------------------------------
-  OXEN_RPC_DOC_INTROSPECT
-  struct GET_NET_STATS : LEGACY
+  /// Retrieve general information about the state of the network.
+  ///
+  /// Inputs: none.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p start_time something.
+  /// \p total_packets_in something.
+  /// \p total_bytes_in something.
+  /// \p total_packets_out something.
+  /// \p total_bytes_out something.
+  struct GET_NET_STATS : LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_net_stats"); }
 
-    struct request : EMPTY {};
-    struct response
-    {
-      std::string status;
-      uint64_t start_time;
-      uint64_t total_packets_in;
-      uint64_t total_bytes_in;
-      uint64_t total_packets_out;
-      uint64_t total_bytes_out;
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
 
