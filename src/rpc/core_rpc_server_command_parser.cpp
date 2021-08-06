@@ -60,6 +60,7 @@ namespace nlohmann {
 
 
 namespace cryptonote::rpc {
+  using nlohmann::json;
 
   namespace {
 
@@ -91,7 +92,7 @@ namespace cryptonote::rpc {
 
     using oxenmq::bt_dict_consumer;
 
-    using json_range = std::pair<nlohmann::json::const_iterator, nlohmann::json::const_iterator>;
+    using json_range = std::pair<json::const_iterator, json::const_iterator>;
 
     // Advances the dict consumer to the first element >= the given name.  Returns true if found,
     // false if it advanced beyond the requested name.  This is exactly the same as
@@ -197,8 +198,8 @@ namespace cryptonote::rpc {
     template <typename Input, typename T, typename... More>
     void get_values(Input& in, std::string_view name, T&& val, More&&... more) {
       if constexpr (std::is_same_v<rpc_input, Input>) {
-        if (auto* json = std::get_if<nlohmann::json>(&in)) {
-          json_range r{json->cbegin(), json->cend()};
+        if (auto* json_in = std::get_if<json>(&in)) {
+          json_range r{json_in->cbegin(), json_in->cend()};
           get_values(r, name, val, std::forward<More>(more)...);
         } else if (auto* dict = std::get_if<bt_dict_consumer>(&in)) {
           get_values(*dict, name, val, std::forward<More>(more)...);

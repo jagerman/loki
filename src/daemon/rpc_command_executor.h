@@ -120,7 +120,7 @@ public:
   /// @param check_status_ok whether we require the result to have a "status" key set to STATUS_OK
   /// to consider the request successful
   template <typename RPC, std::enable_if_t<std::is_base_of_v<cryptonote::rpc::RPC_COMMAND, RPC> && !cryptonote::rpc::FIXME_has_nested_response_v<RPC>, int> = 0>
-  nlohmann::json invoke(std::optional<nlohmann::json> params, bool check_status_ok = true)
+  nlohmann::json invoke(std::optional<nlohmann::json> params = std::nullopt, bool check_status_ok = true)
   {
     return invoke(RPC::names()[0], std::is_base_of_v<cryptonote::rpc::PUBLIC, RPC>, std::move(params), check_status_ok);
   }

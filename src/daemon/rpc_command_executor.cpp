@@ -59,6 +59,8 @@
 
 using namespace cryptonote::rpc;
 
+using nlohmann::json;
+
 namespace daemonize {
 
 namespace {
@@ -243,13 +245,13 @@ static auto try_running(Callback code, std::string_view error_prefix) -> std::op
   }
 }
 
-nlohmann::json rpc_command_executor::invoke(
+json rpc_command_executor::invoke(
     std::string_view method,
     bool public_method,
-    std::optional<nlohmann::json> params,
+    std::optional<json> params,
     bool check_status_ok) {
 
-  nlohmann::json result;
+  json result;
 
   if (auto* rpc_client = std::get_if<cryptonote::rpc::http_client>(&m_rpc)) {
     result = rpc_client->json_rpc(method, std::move(params));
@@ -257,13 +259,13 @@ nlohmann::json rpc_command_executor::invoke(
     assert(m_omq);
     auto conn = std::get<oxenmq::ConnectionID>(m_rpc);
     auto endpoint = (public_method ? "rpc." : "admin.") + std::string{method};
-    std::promise<nlohmann::json> result_p;
+    std::promise<json> result_p;
     m_omq->request(conn, endpoint, [&result_p](bool success, auto data) {
         try {
           if (!success)
             throw std::runtime_error{"Request timed out"};
           if (data.size() >= 2 && data[0] == "200")
-            result_p.set_value(nlohmann::json::parse(data[1]));
+            result_p.set_value(json::parse(data[1]));
           else
             throw std::runtime_error{"RPC method failed: " + (
                 data.empty() ? "empty response" :
@@ -452,7 +454,7 @@ bool rpc_command_executor::hide_hash_rate() {
 }
 
 bool rpc_command_executor::show_difficulty() {
-  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
   if (!maybe_info)
     return false;
   auto& info = *maybe_info;
@@ -507,7 +509,7 @@ static float get_sync_percentage(uint64_t height, uint64_t target_height)
 }
 
 bool rpc_command_executor::show_status() {
-  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
   if (!maybe_info)
     return false;
   auto& info = *maybe_info;
@@ -786,7 +788,7 @@ bool rpc_command_executor::print_blockchain_info(int64_t start_block_index, uint
   // negative: relative to the end
   if (start_block_index < 0)
   {
-    auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+    auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
     if (!maybe_info)
       return false;
     auto& info = *maybe_info;
@@ -876,7 +878,7 @@ bool rpc_command_executor::set_log_categories(std::string categories) {
 
 bool rpc_command_executor::print_height() {
   if (auto height = try_running([this] {
-    return invoke<GET_HEIGHT>(std::nullopt).at("height").get<int>();
+    return invoke<GET_HEIGHT>().at("height").get<int>();
   }, "Failed to retrieve height")) {
     tools::success_msg_writer() << *height;
     return true;
@@ -1091,7 +1093,7 @@ bool rpc_command_executor::print_transaction_pool_short() {
 bool rpc_command_executor::print_transaction_pool_stats() {
   GET_TRANSACTION_POOL_STATS::response res{};
   auto full_reward_zone = try_running([this] {
-    return invoke<GET_INFO>(std::nullopt).at("block_size_limit").get<uint64_t>() / 2;
+    return invoke<GET_INFO>().at("block_size_limit").get<uint64_t>() / 2;
   }, "Failed to retrieve node info");
   if (!full_reward_zone)
     return false;
@@ -1367,7 +1369,7 @@ bool rpc_command_executor::print_coinbase_tx_sum(uint64_t height, uint64_t count
 bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, uint64_t last_blocks)
 {
   auto height = try_running([this] {
-    return invoke<GET_INFO>(std::nullopt).at("height").get<uint64_t>();
+    return invoke<GET_INFO>().at("height").get<uint64_t>();
   }, "Failed to retrieve node info");
   if (!height)
     return false;
@@ -1455,7 +1457,7 @@ bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, 
 
 bool rpc_command_executor::print_blockchain_dynamic_stats(uint64_t nblocks)
 {
-  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
   if (!maybe_info)
     return false;
   auto& info = *maybe_info;
@@ -2027,7 +2029,7 @@ bool rpc_command_executor::prepare_registration(bool force_registration)
   auto scoped_log_cats = std::unique_ptr<clear_log_categories>(new clear_log_categories());
 
   // Check if the daemon was started in Service Node or not
-  auto maybe_info = try_running([this] { return invoke<GET_INFO>(std::nullopt); }, "Failed to retrieve node info");
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
   if (!maybe_info)
     return false;
   auto& info = *maybe_info;
@@ -2607,7 +2609,7 @@ bool rpc_command_executor::set_bootstrap_daemon(
 bool rpc_command_executor::version()
 {
   auto version = try_running([this] {
-    return invoke<GET_INFO>(std::nullopt).at("version").get<std::string>();
+    return invoke<GET_INFO>().at("version").get<std::string>();
   }, "Failed to retrieve node info");
   if (!version)
     return false;

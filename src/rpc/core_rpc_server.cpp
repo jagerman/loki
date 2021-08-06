@@ -74,9 +74,11 @@
 
 namespace cryptonote::rpc {
 
+  using nlohmann::json;
+
   namespace {
 
-    oxenmq::bt_value json_to_bt(nlohmann::json&& j) {
+    oxenmq::bt_value json_to_bt(json&& j) {
       using namespace oxenmq;
       if (j.is_object()) {
         bt_dict res;
@@ -123,9 +125,9 @@ namespace cryptonote::rpc {
                 parse_request(rpc, oxenmq::bt_dict_consumer{*body});
               }
               else
-                parse_request(rpc, nlohmann::json::parse(*body));
-            } else if (auto* json = std::get_if<nlohmann::json>(&request.body)) {
-              parse_request(rpc, std::move(*json));
+                parse_request(rpc, json::parse(*body));
+            } else if (auto* j = std::get_if<json>(&request.body)) {
+              parse_request(rpc, std::move(*j));
             } else {
               assert(std::holds_alternative<std::monostate>(request.body));
               parse_request(rpc, std::monostate{});
@@ -137,7 +139,7 @@ namespace cryptonote::rpc {
           server.invoke(rpc, std::move(request.context));
 
           if (rpc.response.is_null())
-            rpc.response = nlohmann::json::object();
+            rpc.response = json::object();
 
           if (rpc.is_bt())
             return bt_serialize(json_to_bt(std::move(rpc.response)));
