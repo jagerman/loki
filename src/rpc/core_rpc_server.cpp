@@ -646,34 +646,35 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_OUTPUTS::response core_rpc_server::invoke(GET_OUTPUTS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_OUTPUTS& get_outputs, rpc_context context)
   {
-    GET_OUTPUTS::response res{};
-
     PERF_TIMER(on_get_outs);
-    if (use_bootstrap_daemon_if_necessary<GET_OUTPUTS>(req, res))
-      return res;
+    //TODO this bootstrap daemon call to work for new RPC design
+    //if (use_bootstrap_daemon_if_necessary<GET_OUTPUTS>(req, res))
+      //return;
 
-    if (!context.admin && req.outputs.size() > GET_OUTPUTS::MAX_COUNT) {
-      res.status = "Too many outs requested";
+    if (!context.admin && get_outputs.request["outputs"].size() > GET_OUTPUTS::MAX_COUNT) {
+      get_outputs.response["status"] = "Too many outs requested";
       return res;
     }
 
     GET_OUTPUTS_BIN::request req_bin{};
-    req_bin.outputs = req.outputs;
-    req_bin.get_txid = req.get_txid;
+    req_bin.outputs = get_outputs.request["outputs"];
+    req_bin.get_txid = get_outputs.request["get_txid"];
     GET_OUTPUTS_BIN::response res_bin{};
     if (!m_core.get_outs(req_bin, res_bin))
     {
-      res.status = "Failed";
-      return res;
+      get_outputs.response["status"] = "Failed";
+      return;
     }
+
+    get_output.response["outs"] = std::vector<get_output.outkey>{};
 
     // convert to text
     for (const auto &i: res_bin.outs)
     {
-      res.outs.emplace_back();
-      auto& outkey = res.outs.back();
+      get_output.response["outs"].emplace_back();
+      auto& outkey = get_output.response["outs"].back();
       outkey.key = tools::type_to_hex(i.key);
       outkey.mask = tools::type_to_hex(i.mask);
       outkey.unlocked = i.unlocked;
@@ -681,7 +682,7 @@ namespace cryptonote::rpc {
       outkey.txid = tools::type_to_hex(i.txid);
     }
 
-    res.status = STATUS_OK;
+    get_outputs.response["status"] = STATUS_OK;
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -1226,24 +1227,22 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  START_MINING::response core_rpc_server::invoke(START_MINING::request&& req, rpc_context context)
+  void core_rpc_server::invoke(START_MINING& start_mining, rpc_context context)
   {
-    START_MINING::response res{};
-
     PERF_TIMER(on_start_mining);
     CHECK_CORE_READY();
     cryptonote::address_parse_info info;
-    if(!get_account_address_from_str(info, m_core.get_nettype(), req.miner_address))
+    if(!get_account_address_from_str(info, m_core.get_nettype(), start_mining.request['miner_address']))
     {
-      res.status = "Failed, wrong address";
-      LOG_PRINT_L0(res.status);
-      return res;
+      start_mining.response["status"] = "Failed, wrong address";
+      LOG_PRINT_L0(start_mining.response["status"]);
+      return;
     }
     if (info.is_subaddress)
     {
-      res.status = "Mining to subaddress isn't supported yet";
-      LOG_PRINT_L0(res.status);
-      return res;
+      start_mining.response["status"] = "Mining to subaddress isn't supported yet";
+      LOG_PRINT_L0(start_mining.response["status"]);
+      return;
     }
 
     unsigned int concurrency_count = std::thread::hardware_concurrency() * 4;
@@ -1256,27 +1255,31 @@ namespace cryptonote::rpc {
 
     // if there are more threads requested than the hardware supports
     // then we fail and log that.
-    if(req.threads_count > concurrency_count)
+    if(start_mining.request["threads_count"] > concurrency_count)
     {
-      res.status = "Failed, too many threads relative to CPU cores.";
-      LOG_PRINT_L0(res.status);
-      return res;
+      start_mining.response["status"] = "Failed, too many threads relative to CPU cores.";
+      LOG_PRINT_L0(start_mining.response["status"]);
+      return;
     }
 
     cryptonote::miner &miner= m_core.get_miner();
     if (miner.is_mining())
     {
-      res.status = "Already mining";
-      return res;
+      start_mining.response["status"] = "Already mining";
+      LOG_PRINT_L0(start_mining.response["status"]);
+      return;
     }
-    if(!miner.start(info.address, static_cast<size_t>(req.threads_count), req.num_blocks))
+
+    if(!miner.start(info.address, static_cast<size_t>(start_mining.request["threads_count"]), start_mining.request["num_blocks"]))
     {
-      res.status = "Failed, mining not started";
-      LOG_PRINT_L0(res.status);
-      return res;
+      start_mining.response["status"] = "Failed, mining not started";
+      LOG_PRINT_L0(start_mining.response["status"]);
+      return;
     }
-    res.status = STATUS_OK;
-    return res;
+
+    start_mining.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(start_mining.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   STOP_MINING::response core_rpc_server::invoke(STOP_MINING::request&& req, rpc_context context)

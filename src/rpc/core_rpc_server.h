@@ -204,6 +204,8 @@ namespace cryptonote::rpc {
     void invoke(GET_HEIGHT& req, rpc_context context);
     void invoke(GET_INFO& info, rpc_context context);
     void invoke(GET_NET_STATS& get_net_stats, rpc_context context);
+    void invoke(GET_OUTPUTS& get_outputs, rpc_context context);
+    void invoke(START_MINING& start_mining, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -220,10 +222,8 @@ namespace cryptonote::rpc {
     GET_TRANSACTIONS::response                          invoke(GET_TRANSACTIONS::request&& req, rpc_context context);
     IS_KEY_IMAGE_SPENT::response                        invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context);
     SEND_RAW_TX::response                               invoke(SEND_RAW_TX::request&& req, rpc_context context);
-    START_MINING::response                              invoke(START_MINING::request&& req, rpc_context context);
     STOP_MINING::response                               invoke(STOP_MINING::request&& req, rpc_context context);
     MINING_STATUS::response                             invoke(MINING_STATUS::request&& req, rpc_context context);
-    GET_OUTPUTS::response                               invoke(GET_OUTPUTS::request&& req, rpc_context context);
     SAVE_BC::response                                   invoke(SAVE_BC::request&& req, rpc_context context);
     GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);
     GET_PUBLIC_NODES::response                          invoke(GET_PUBLIC_NODES::request&& req, rpc_context context);

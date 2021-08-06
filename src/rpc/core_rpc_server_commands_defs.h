@@ -584,21 +584,33 @@ namespace rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
+  //-----------------------------------------------
+  /// Retrieve outputs
+  ///
+  /// Inputs:
+  ///
+  /// \p outputs Array of structure `get_outputs_out`.
+  /// \p get_txid Request the TXID/hash of the transaction as well.
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore untrusted ('true'), or when the daemon is fully synced ('false').
+  /// \p outs List of outkey information.
+  ///
+  /// Outkey Information:
+  ///
+  /// \p key The public key of the output.
+  /// \p mask something
+  /// \p unlocked States if output is locked (`false`) or not (`true`).
+  /// \p height Block height of the output.
+  /// \p txid Transaction id.
   struct GET_OUTPUTS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_outs"); }
 
     /// Maximum outputs that may be requested in a single request (unless admin)
     static constexpr size_t MAX_COUNT = 5000;
-
-    struct request
-    {
-      std::vector<get_outputs_out> outputs; // Array of structure `get_outputs_out`.
-      bool get_txid;                        // Request the TXID/hash of the transaction as well.
-
-      KV_MAP_SERIALIZABLE
-    };
 
     struct outkey
     {
@@ -607,15 +619,6 @@ namespace rpc {
       bool unlocked;    // States if output is locked (`false`) or not (`true`).
       uint64_t height;  // Block height of the output.
       std::string txid; // Transaction id.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::vector<outkey> outs; // List of outkey information.
-      std::string status;       // General RPC error code. "OK" means everything looks good.
-      bool untrusted;           // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
 
       KV_MAP_SERIALIZABLE
     };
@@ -651,21 +654,22 @@ namespace rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Start mining on the daemon.
+  //-----------------------------------------------
+  /// Start mining on the daemon
+  ///
+  /// Inputs:
+  ///
+  /// \p miner_address Account address to mine to.
+  /// \p threads_count Number of mining threads to run.
+  /// \p num_blocks Mine until the blockchain has this many new blocks, then stop (no limit if 0, the default).
+  /// \p slow_mining Do slow mining (i.e. don't allocate RandomX cache); primarily inteded for testing.
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
   struct START_MINING : LEGACY
   {
     static constexpr auto names() { return NAMES("start_mining"); }
-
-    struct request
-    {
-      std::string miner_address;        // Account address to mine to.
-      uint64_t    threads_count;        // Number of mining thread to run.
-      uint64_t    num_blocks;           // Mine until the blockchain has this many new blocks, then stop (no limit if 0, the default)
-      bool        slow_mining;          // Do slow mining (i.e. don't allocate RandomX cache); primarily intended for testing
-
-      KV_MAP_SERIALIZABLE
-    };
 
     struct response : STATUS {};
   };
