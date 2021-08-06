@@ -687,27 +687,25 @@ namespace rpc {
     static constexpr auto names() { return NAMES("stop_mining"); }
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get the mining status of the daemon.
+  //-----------------------------------------------
+  /// Get the mining status of the daemon.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p active States if mining is enabled (`true`) or disabled (`false`).
+  /// \p speed Mining power in hashes per seconds.
+  /// \p threads_count Number of running mining threads.
+  /// \p address Account address daemon is mining to. Empty if not mining.
+  /// \p pow_algorithm Current hashing algorithm name
+  /// \p block_target The expected time to solve per block, i.e. TARGET_BLOCK_TIME
+  /// \p block_reward Block reward for the current block being mined.
+  /// \p difficulty The difficulty for the current block being mined.
   struct MINING_STATUS : LEGACY
   {
     static constexpr auto names() { return NAMES("mining_status"); }
-
-    struct request : EMPTY {};
-    struct response
-    {
-      std::string status;                // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
-      bool active;                       // States if mining is enabled (`true`) or disabled (`false`).
-      uint64_t speed;                    // Mining power in hashes per seconds.
-      uint32_t threads_count;            // Number of running mining threads.
-      std::string address;               // Account address daemon is mining to. Empty if not mining.
-      std::string pow_algorithm;         // Current hashing algorithm name
-      uint32_t block_target;             // The expected time to solve per block, i.e. TARGET_BLOCK_TIME
-      uint64_t block_reward;             // Block reward for the current block being mined.
-      uint64_t difficulty;               // The difficulty for the current block being mined.
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   /// Retrieve general information about the state of the node and the network.
@@ -1304,21 +1302,19 @@ namespace rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get hashes from transaction pool.
+  //-----------------------------------------------
+  /// Get hashes from transaction pool.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p tx_hashes List of transaction hashes,
+  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
   struct GET_TRANSACTION_POOL_HASHES : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transaction_pool_hashes"); }
-
-    struct request : EMPTY {};
-    struct response
-    {
-      std::string status;                 // General RPC error code. "OK" means everything looks good.
-      std::vector<std::string> tx_hashes; // List of transaction hashes,
-      bool untrusted;                     // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -1329,22 +1325,19 @@ namespace rpc {
     uint64_t time_in_pool;
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get all transaction pool backlog.
+  //-----------------------------------------------
+  /// Get all transaction pool backlog.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p backlog Array of structures tx_backlog_entry (in binary form):
+  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
   struct GET_TRANSACTION_POOL_BACKLOG : PUBLIC
   {
     static constexpr auto names() { return NAMES("get_txpool_backlog"); }
-
-    struct request : EMPTY {};
-
-    struct response
-    {
-      std::string status;                    // General RPC error code. "OK" means everything looks good.
-      std::vector<tx_backlog_entry> backlog; // Array of structures tx_backlog_entry (in binary form):
-      bool untrusted;                        // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -1378,39 +1371,33 @@ namespace rpc {
     KV_MAP_SERIALIZABLE
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get the transaction pool statistics.
+  //-----------------------------------------------
+  /// Get the transaction pool statistics.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p pool_stats List of pool stats.
+  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
   struct GET_TRANSACTION_POOL_STATS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transaction_pool_stats"); }
-
-    struct request : EMPTY {};
-
-    struct response
-    {
-      std::string status;      // General RPC error code. "OK" means everything looks good.
-      txpool_stats pool_stats; // List of pool stats:
-      bool untrusted;          // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Retrieve information about incoming and outgoing connections to your node.
+  //-----------------------------------------------
+  /// Retrieve information about incoming and outgoing connections to your node.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// \p connections List of all connections and their info:
   struct GET_CONNECTIONS : RPC_COMMAND
   {
     static constexpr auto names() { return NAMES("get_connections"); }
-
-    struct request : EMPTY {};
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good.
-      std::list<connection_info> connections; // List of all connections and their info:
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2714,6 +2701,10 @@ namespace rpc {
     SAVE_BC,
     STOP_DAEMON,
     GETBLOCKCOUNT,
+    MINING_STATUS,
+    GET_TRANSACTION_POOL_HASHES,
+    GET_TRANSACTION_POOL_BACKLOG,
+    GET_TRANSACTION_POOL_STATS,
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN,
@@ -2731,7 +2722,6 @@ namespace rpc {
     GET_TRANSACTIONS,
     IS_KEY_IMAGE_SPENT,
     SEND_RAW_TX,
-    MINING_STATUS,
     GET_NET_STATS,
     GETBLOCKHASH,
     GETBLOCKTEMPLATE,
@@ -2747,9 +2737,6 @@ namespace rpc {
     SET_LOG_LEVEL,
     SET_LOG_CATEGORIES,
     GET_TRANSACTION_POOL,
-    GET_TRANSACTION_POOL_HASHES,
-    GET_TRANSACTION_POOL_BACKLOG,
-    GET_TRANSACTION_POOL_STATS,
     GET_CONNECTIONS,
     GET_BLOCK_HEADERS_RANGE,
     SET_BOOTSTRAP_DAEMON,

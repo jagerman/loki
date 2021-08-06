@@ -1304,33 +1304,32 @@ namespace cryptonote::rpc {
     return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  MINING_STATUS::response core_rpc_server::invoke(MINING_STATUS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(MINING_STATUS& mining_status, rpc_context context)
   {
-    MINING_STATUS::response res{};
-
     PERF_TIMER(on_mining_status);
 
     const miner& lMiner = m_core.get_miner();
-    res.active = lMiner.is_mining();
-    res.block_target = tools::to_seconds(TARGET_BLOCK_TIME);
-    res.difficulty = m_core.get_blockchain_storage().get_difficulty_for_next_block(false /*pulse*/);
+    mining_status.response["active"] = lMiner.is_mining();
+    mining_status.response["block_target"] = tools::to_seconds(TARGET_BLOCK_TIME);
+    mining_status.response["difficulty"] = m_core.get_blockchain_storage().get_difficulty_for_next_block(false /*pulse*/);
     if ( lMiner.is_mining() ) {
-      res.speed = lMiner.get_speed();
-      res.threads_count = lMiner.get_threads_count();
-      res.block_reward = lMiner.get_block_reward();
+      mining_status.response["speed"] = lMiner.get_speed();
+      mining_status.response["threads_count"] = lMiner.get_threads_count();
+      mining_status.response["block_reward"] = lMiner.get_block_reward();
     }
     const account_public_address& lMiningAdr = lMiner.get_mining_address();
     if (lMiner.is_mining())
-      res.address = get_account_address_as_str(nettype(), false, lMiningAdr);
+      mining_status.response["address"] = get_account_address_as_str(nettype(), false, lMiningAdr);
     const uint8_t major_version = m_core.get_blockchain_storage().get_network_version();
 
-    res.pow_algorithm =
+    mining_status.response["pow_algorithm"] =
         major_version >= network_version_12_checkpointing    ? "RandomX (OXEN variant)"               :
         major_version == network_version_11_infinite_staking ? "Cryptonight Turtle Light (Variant 2)" :
                                                                "Cryptonight Heavy (Variant 2)";
 
-    res.status = STATUS_OK;
-    return res;
+    mining_status.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(mining_status.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(SAVE_BC& save_bc, rpc_context context)
@@ -1512,34 +1511,36 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_TRANSACTION_POOL_HASHES::response core_rpc_server::invoke(GET_TRANSACTION_POOL_HASHES::request&& req, rpc_context context)
+  core_rpc_server::invoke(GET_TRANSACTION_POOL_HASHES& get_transaction_pool_hashes, rpc_context context)
   {
-    GET_TRANSACTION_POOL_HASHES::response res{};
-
     PERF_TIMER(on_get_transaction_pool_hashes);
-    if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_HASHES>(req, res))
-      return res;
+    //TODO handle bootstrap daemon with RPC
+    //if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_HASHES>(req, res))
+      //return res;
 
     std::vector<crypto::hash> tx_hashes;
     m_core.get_pool().get_transaction_hashes(tx_hashes, context.admin);
-    res.tx_hashes.reserve(tx_hashes.size());
+    get_transaction_pool_hashes.response["tx_hashes"].reserve(tx_hashes.size());
     for (const crypto::hash &tx_hash: tx_hashes)
-      res.tx_hashes.push_back(tools::type_to_hex(tx_hash));
-    res.status = STATUS_OK;
-    return res;
+      get_transaction_pool_hashes.response["tx_hashes"].push_back(tools::type_to_hex(tx_hash));
+    get_transaction_pool_hashes.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(get_transaction_pool_hashes.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_TRANSACTION_POOL_STATS::response core_rpc_server::invoke(GET_TRANSACTION_POOL_STATS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_context context)
   {
-    GET_TRANSACTION_POOL_STATS::response res{};
-
     PERF_TIMER(on_get_transaction_pool_stats);
-    if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_STATS>(req, res))
-      return res;
+    //TODO handle bootstrap daemon
+    //if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_STATS>(req, res))
+      //return res;
 
-    m_core.get_pool().get_transaction_stats(res.pool_stats, context.admin);
-    res.status = STATUS_OK;
-    return res;
+    rpc::txpool_stats stats;
+    m_core.get_pool().get_transaction_stats(stats, context.admin);
+    get_transaction_pool_stats.response["pool_stats"] = stats
+    get_transaction_pool_stats.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(get_transaction_pool_stats.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   SET_BOOTSTRAP_DAEMON::response core_rpc_server::invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context)
@@ -2089,17 +2090,13 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_CONNECTIONS::response core_rpc_server::invoke(GET_CONNECTIONS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_CONNECTIONS& get_connections, rpc_context context)
   {
-    GET_CONNECTIONS::response res{};
-
     PERF_TIMER(on_get_connections);
-
-    res.connections = m_p2p.get_payload_object().get_connections();
-
-    res.status = STATUS_OK;
-
-    return res;
+    get_connections.response["connections"] = m_p2p.get_payload_object().get_connections();
+    get_connections.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(get_connections.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   HARD_FORK_INFO::response core_rpc_server::invoke(HARD_FORK_INFO::request&& req, rpc_context context)
@@ -2582,17 +2579,19 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_TRANSACTION_POOL_BACKLOG::response core_rpc_server::invoke(GET_TRANSACTION_POOL_BACKLOG::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_context context)
   {
-    GET_TRANSACTION_POOL_BACKLOG::response res{};
-
     PERF_TIMER(on_get_txpool_backlog);
-    if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_BACKLOG>(req, res))
-      return res;
+    //TODO handle bootstrap daemon
+    //if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_BACKLOG>(req, res))
+      //return res;
 
-    m_core.get_pool().get_transaction_backlog(res.backlog);
-    res.status = STATUS_OK;
-    return res;
+    std::vector<rpc::tx_backlog_entry> backlog;
+    m_core.get_pool().get_transaction_backlog(backlog);
+    get_transaction_pool_backlog.response["backlog"] = backlog;
+    get_transaction_backlog.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(get_transaction_backlog.response["status"]);
+    return;
   }
 
   namespace {
