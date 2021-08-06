@@ -6,6 +6,7 @@
 #include <charconv>
 #include <sstream>
 #include <chrono>
+#include <cassert>
 #include "epee/span.h" // epee
 
 namespace tools {
@@ -73,6 +74,23 @@ std::string join(std::string_view delimiter, It begin, It end) {
 /// Wrapper around the above that takes a container and passes c.begin(), c.end() to the above.
 template <typename Container>
 std::string join(std::string_view delimiter, const Container& c) { return join(delimiter, c.begin(), c.end()); }
+
+/// Similar to join(), but first applies a transformation to each element.
+template <typename It, typename UnaryOperation>
+std::string join_transform(std::string_view delimiter, It begin, It end, UnaryOperation transform) {
+  std::ostringstream o;
+  if (begin != end)
+    o << transform(*begin++);
+  while (begin != end)
+    o << delimiter << transform(*begin++);
+  return o.str();
+}
+
+/// Wrapper around the above that takes a container and passes c.begin(), c.end().
+template <typename Container, typename UnaryOperation>
+std::string join_transform(std::string_view delimiter, const Container& c, UnaryOperation&& transform) {
+  return join_transform(delimiter, c.begin(), c.end(), std::forward<UnaryOperation>(transform));
+}
 
 /// Simple version of whitespace trimming: mutates the given string view to remove leading
 /// space, \t, \r, \n.  (More exotic and locale-dependent whitespace is not removed).
