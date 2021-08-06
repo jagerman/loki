@@ -206,6 +206,10 @@ namespace cryptonote::rpc {
     void invoke(GET_NET_STATS& get_net_stats, rpc_context context);
     void invoke(GET_OUTPUTS& get_outputs, rpc_context context);
     void invoke(START_MINING& start_mining, rpc_context context);
+    void invoke(STOP_MINING& stop_mining, rpc_context context);
+    void invoke(SAVE_BC& save_bc, rpc_context context);
+    void invoke(STOP_DAEMON& stop_daemon, rpc_context context);
+    void invoke(GETBLOCKCOUNT& getblockcount, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -222,9 +226,7 @@ namespace cryptonote::rpc {
     GET_TRANSACTIONS::response                          invoke(GET_TRANSACTIONS::request&& req, rpc_context context);
     IS_KEY_IMAGE_SPENT::response                        invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context);
     SEND_RAW_TX::response                               invoke(SEND_RAW_TX::request&& req, rpc_context context);
-    STOP_MINING::response                               invoke(STOP_MINING::request&& req, rpc_context context);
     MINING_STATUS::response                             invoke(MINING_STATUS::request&& req, rpc_context context);
-    SAVE_BC::response                                   invoke(SAVE_BC::request&& req, rpc_context context);
     GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);
     GET_PUBLIC_NODES::response                          invoke(GET_PUBLIC_NODES::request&& req, rpc_context context);
     SET_LOG_HASH_RATE::response                         invoke(SET_LOG_HASH_RATE::request&& req, rpc_context context);
@@ -234,14 +236,12 @@ namespace cryptonote::rpc {
     GET_TRANSACTION_POOL_HASHES::response               invoke(GET_TRANSACTION_POOL_HASHES::request&& req, rpc_context context);
     GET_TRANSACTION_POOL_STATS::response                invoke(GET_TRANSACTION_POOL_STATS::request&& req, rpc_context context);
     SET_BOOTSTRAP_DAEMON::response                      invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context);
-    STOP_DAEMON::response                               invoke(STOP_DAEMON::request&& req, rpc_context context);
     GET_LIMIT::response                                 invoke(GET_LIMIT::request&& req, rpc_context context);
     SET_LIMIT::response                                 invoke(SET_LIMIT::request&& req, rpc_context context);
     OUT_PEERS::response                                 invoke(OUT_PEERS::request&& req, rpc_context context);
     IN_PEERS::response                                  invoke(IN_PEERS::request&& req, rpc_context context);
     GET_OUTPUT_DISTRIBUTION::response                   invoke(GET_OUTPUT_DISTRIBUTION::request&& req, rpc_context context, bool binary = false);
     POP_BLOCKS::response                                invoke(POP_BLOCKS::request&& req, rpc_context context);
-    GETBLOCKCOUNT::response                             invoke(GETBLOCKCOUNT::request&& req, rpc_context context);
     GETBLOCKHASH::response                              invoke(GETBLOCKHASH::request&& req, rpc_context context);
     GETBLOCKTEMPLATE::response                          invoke(GETBLOCKTEMPLATE::request&& req, rpc_context context);
     SUBMITBLOCK::response                               invoke(SUBMITBLOCK::request&& req, rpc_context context);

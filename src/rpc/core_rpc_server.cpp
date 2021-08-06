@@ -1282,26 +1282,26 @@ namespace cryptonote::rpc {
     return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  STOP_MINING::response core_rpc_server::invoke(STOP_MINING::request&& req, rpc_context context)
+  void core_rpc_server::invoke(STOP_MINING& stop_mining, rpc_context context)
   {
-    STOP_MINING::response res{};
-
     PERF_TIMER(on_stop_mining);
     cryptonote::miner &miner= m_core.get_miner();
     if(!miner.is_mining())
     {
-      res.status = "Mining never started";
-      LOG_PRINT_L0(res.status);
-      return res;
+      stop_mining.response["status"] = "Mining never started";
+      LOG_PRINT_L0(stop_mining.response["status"]);
+      return;
     }
     if(!miner.stop())
     {
-      res.status = "Failed, mining not stopped";
-      LOG_PRINT_L0(res.status);
-      return res;
+      stop_mining.response["status"] = "Failed, mining not stopped";
+      LOG_PRINT_L0(stop_mining.response["status"]);
+      return;
     }
-    res.status = STATUS_OK;
-    return res;
+
+    stop_mining.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(stop_mining.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   MINING_STATUS::response core_rpc_server::invoke(MINING_STATUS::request&& req, rpc_context context)
@@ -1333,18 +1333,18 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SAVE_BC::response core_rpc_server::invoke(SAVE_BC::request&& req, rpc_context context)
+  void core_rpc_server::invoke(SAVE_BC& save_bc, rpc_context context)
   {
-    SAVE_BC::response res{};
-
     PERF_TIMER(on_save_bc);
     if( !m_core.get_blockchain_storage().store_blockchain() )
     {
-      res.status = "Error while storing blockchain";
-      return res;
+      save_bc.response["status"] = "Error while storing blockchain";
+      LOG_PRINT_L0(save_bc.response["status"]);
+      return;
     }
-    res.status = STATUS_OK;
-    return res;
+    save_bc.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(save_bc.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_PEER_LIST::response core_rpc_server::invoke(GET_PEER_LIST::request&& req, rpc_context context)
@@ -1554,14 +1554,13 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  STOP_DAEMON::response core_rpc_server::invoke(STOP_DAEMON::request&& req, rpc_context context)
+  void core_rpc_server::invoke(STOP_DAEMON& stop_daemon, rpc_context context)
   {
-    STOP_DAEMON::response res{};
-
     PERF_TIMER(on_stop_daemon);
     m_p2p.send_stop_signal();
-    res.status = STATUS_OK;
-    return res;
+    stop_daemon.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(stop_daemon.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
 
@@ -1591,22 +1590,22 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GETBLOCKCOUNT::response core_rpc_server::invoke(GETBLOCKCOUNT::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GETBLOCKCOUNT& getblockcount, rpc_context context)
   {
-    GETBLOCKCOUNT::response res{};
-
     PERF_TIMER(on_getblockcount);
     {
       std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_should_use_bootstrap_daemon)
       {
-        res.status = "This command is unsupported for bootstrap daemon";
-        return res;
+        getblockcount.response["status"] = "This command is unsupported for bootstrap daemon";
+        LOG_PRINT_L0(getblockcount.response["status"]);
+        return;
       }
     }
-    res.count = m_core.get_current_blockchain_height();
-    res.status = STATUS_OK;
-    return res;
+    getblockcount.response["count"] = m_core.get_current_blockchain_height();
+    getblockcount.response["status"] = STATUS_OK;
+    LOG_PRINT_L0(getblockcount.response["status"]);
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GETBLOCKHASH::response core_rpc_server::invoke(GETBLOCKHASH::request&& req, rpc_context context)
