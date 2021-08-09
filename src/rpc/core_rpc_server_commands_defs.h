@@ -641,8 +641,6 @@ namespace cryptonote::rpc {
   struct START_MINING : LEGACY
   {
     static constexpr auto names() { return NAMES("start_mining"); }
-
-    struct response : STATUS {};
   };
 
   //-----------------------------------------------
@@ -1337,8 +1335,25 @@ namespace cryptonote::rpc {
 
     txpool_stats(): bytes_total(0), bytes_min(0), bytes_max(0), bytes_med(0), fee_total(0), oldest(0), txs_total(0), num_failing(0), num_10m(0), num_not_relayed(0), histo_98pc(0), num_double_spends(0) {}
 
+
     KV_MAP_SERIALIZABLE
   };
+
+  void to_json(nlohmann::json& j, const txpool_stats& txpool) {
+      j = nlohmann::json{{"bytes_total", txpool.bytes_total},
+        {"bytes_min", txpool.bytes_min},
+				{"bytes_max", txpool.bytes_max},
+				{"bytes_med", txpool.bytes_med},
+				{"fee_total", txpool.fee_total},
+				{"oldest", txpool.oldest},
+				{"txs_total", txpool.txs_total},
+				{"num_failing", txpool.num_failing},
+				{"num_10m", txpool.num_10m},
+				{"num_not_relayed", txpool.num_not_relayed},
+				{"histo_98pc", txpool.histo_98pc},
+				{"histo", txpool.histo},
+				{"num_double_spends", txpool.num_double_spends}};
+  }
 
   //-----------------------------------------------
   /// Get the transaction pool statistics.

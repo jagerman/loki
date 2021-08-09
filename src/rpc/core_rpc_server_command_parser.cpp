@@ -221,5 +221,25 @@ namespace cryptonote::rpc {
         "poll_block_hash", sns.request.poll_block_hash,
         "service_node_pubkeys", sns.request.service_node_pubkeys);
   }
+  void parse_request(START_MINING& start_mining, rpc_input in) {
+  }
+  void parse_request(STOP_MINING& stop_mining, rpc_input in) {
+  }
+  void parse_request(MINING_STATUS& mining_status, rpc_input in) {
+  }
+  void parse_request(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_input in) {
+  }
+  void parse_request(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_input in) {
+  }
+  void parse_request(GET_TRANSACTION_POOL_HASHES& get_transaction_pool_hashes, rpc_input in) {
+  }
+  void parse_request(GETBLOCKCOUNT& getblockcount, rpc_input in) {
+  }
+  void parse_request(STOP_DAEMON& stop_daemon, rpc_input in) {
+  }
+  void parse_request(SAVE_BC& save_bc, rpc_input in) {
+  }
+  void parse_request(GET_OUTPUTS& get_outputs, rpc_input in) {
+  }
 
 }

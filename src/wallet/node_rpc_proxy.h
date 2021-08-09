@@ -33,6 +33,7 @@
 #include <type_traits>
 #include "rpc/http_client.h"
 #include "rpc/core_rpc_server_commands_defs.h"
+#include <nlohmann/json.hpp>
 
 namespace tools
 {
@@ -56,14 +57,14 @@ public:
   bool get_fee_quantization_mask(uint64_t &fee_quantization_mask) const;
   std::optional<uint8_t> get_hardfork_version() const;
 
-  std::pair<bool, std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry>>             get_service_nodes(std::vector<std::string> pubkeys) const;
-  std::pair<bool, std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry>>             get_all_service_nodes() const;
-  std::pair<bool, std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry>>             get_contributed_service_nodes(const std::string& contributor) const;
+  std::pair<bool, nlohmann::json> get_service_nodes(std::vector<std::string> pubkeys) const;
+  std::pair<bool, nlohmann::json> get_all_service_nodes() const;
+  std::pair<bool, nlohmann::json> get_contributed_service_nodes(const std::string& contributor) const;
   std::pair<bool, std::vector<cryptonote::rpc::GET_SERVICE_NODE_BLACKLISTED_KEY_IMAGES::entry>> get_service_node_blacklisted_key_images() const;
   std::pair<bool, std::vector<cryptonote::rpc::ONS_OWNERS_TO_NAMES::response_entry>>            ons_owners_to_names(cryptonote::rpc::ONS_OWNERS_TO_NAMES::request const &request) const;
   std::pair<bool, std::vector<cryptonote::rpc::ONS_NAMES_TO_OWNERS::response_entry>>            ons_names_to_owners(cryptonote::rpc::ONS_NAMES_TO_OWNERS::request const &request) const;
-  std::pair<bool, cryptonote::rpc::ONS_RESOLVE::response>
-    ons_resolve(cryptonote::rpc::ONS_RESOLVE::request const &request) const;
+  std::pair<bool, nlohmann::json>
+    ons_resolve(nlohmann::json const &request) const;
 
 private:
   bool get_info() const;
@@ -123,11 +124,11 @@ private:
 
   mutable std::mutex m_sn_cache_mutex;
   mutable uint64_t m_all_service_nodes_cached_height;
-  mutable std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> m_all_service_nodes;
+  mutable nlohmann::json m_all_service_nodes;
 
   mutable uint64_t m_contributed_service_nodes_cached_height;
   mutable std::string m_contributed_service_nodes_cached_address;
-  mutable std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> m_contributed_service_nodes;
+  mutable nlohmann::json m_contributed_service_nodes;
 
   mutable uint64_t m_height;
   mutable uint64_t m_immutable_height;

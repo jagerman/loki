@@ -40,6 +40,7 @@
 #include <boost/serialization/deque.hpp>
 #include <atomic>
 #include <random>
+#include <nlohmann/json.hpp>
 
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/account_boost_serialization.h"
@@ -452,7 +453,8 @@ private:
       crypto::hash hash;
       cryptonote::block block;
       std::vector<cryptonote::transaction> txes;
-      cryptonote::rpc::GET_BLOCKS_FAST::block_output_indices o_indices;
+      //cryptonote::rpc::GET_BLOCKS_FAST::block_output_indices o_indices;
+      nlohmann::json o_indices;
       bool error;
     };
 
@@ -816,10 +818,10 @@ private:
     auto get_all_service_nodes()                                    const { return m_node_rpc_proxy.get_all_service_nodes(); }
     auto get_service_nodes(std::vector<std::string> const &pubkeys) const { return m_node_rpc_proxy.get_service_nodes(pubkeys); }
     auto get_service_node_blacklisted_key_images()                  const { return m_node_rpc_proxy.get_service_node_blacklisted_key_images(); }
-    std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry> list_current_stakes();
+    nlohmann::json list_current_stakes();
     auto ons_owners_to_names(cryptonote::rpc::ONS_OWNERS_TO_NAMES::request const &request) const { return m_node_rpc_proxy.ons_owners_to_names(request); }
-    auto ons_names_to_owners(cryptonote::rpc::ONS_NAMES_TO_OWNERS::request const &request) const { return m_node_rpc_proxy.ons_names_to_owners(request); }
-    auto resolve(cryptonote::rpc::ONS_RESOLVE::request const &request) const { return m_node_rpc_proxy.ons_resolve(request); }
+    auto ons_names_to_owners(nlohmann::json const &request) const { return m_node_rpc_proxy.ons_names_to_owners(request); }
+    auto resolve(nlohmann::json const &request) const { return m_node_rpc_proxy.ons_resolve(request); }
 
     struct ons_detail
     {
