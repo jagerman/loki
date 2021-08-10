@@ -240,6 +240,8 @@ namespace cryptonote::rpc {
   void parse_request(SAVE_BC& save_bc, rpc_input in) {
   }
   void parse_request(GET_OUTPUTS& get_outputs, rpc_input in) {
+      get_values(in, "get_txid", get_outputs.request.get_txid);
+      get_values(in, "outputs", get_outputs.request.outputs)
   }
 
 }

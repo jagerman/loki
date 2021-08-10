@@ -1237,17 +1237,20 @@ namespace cryptonote::rpc {
   void core_rpc_server::invoke(START_MINING& start_mining, rpc_context context)
   {
     PERF_TIMER(on_start_mining);
-    //TODO macro returns a res object
     //CHECK_CORE_READY();
+    if(!check_core_ready()){ 
+      start_mining.response["status"] = STATUS_BUSY;
+      LOG_PRINT_L0(start_mining.response["status"]);
+      return; 
+    }
+
     cryptonote::address_parse_info info;
-    if(!get_account_address_from_str(info, m_core.get_nettype(), start_mining.request['miner_address']))
-    {
+    if(!get_account_address_from_str(info, m_core.get_nettype(), start_mining.request['miner_address'])) {
       start_mining.response["status"] = "Failed, wrong address";
       LOG_PRINT_L0(start_mining.response["status"]);
       return;
     }
-    if (info.is_subaddress)
-    {
+    if (info.is_subaddress) {
       start_mining.response["status"] = "Mining to subaddress isn't supported yet";
       LOG_PRINT_L0(start_mining.response["status"]);
       return;
@@ -1256,15 +1259,13 @@ namespace cryptonote::rpc {
     unsigned int concurrency_count = std::thread::hardware_concurrency() * 4;
 
     // if we couldn't detect threads, set it to a ridiculously high number
-    if(concurrency_count == 0)
-    {
+    if(concurrency_count == 0) {
       concurrency_count = 257;
     }
 
     // if there are more threads requested than the hardware supports
     // then we fail and log that.
-    if(start_mining.request["threads_count"] > concurrency_count)
-    {
+    if(start_mining.request["threads_count"] > concurrency_count) {
       start_mining.response["status"] = "Failed, too many threads relative to CPU cores.";
       LOG_PRINT_L0(start_mining.response["status"]);
       return;

@@ -210,12 +210,12 @@ namespace cryptonote::rpc {
   ///
   /// Outputs:
   ///
-  /// height -- The current blockchain height according to the queried daemon.
-  /// status -- Generic RPC error code. "OK" is the success value.
-  /// untrusted -- If the result is obtained using bootstrap mode then this will be set to true, otherwise will be omitted.
-  /// hash -- Hash of the block at the current height
-  /// immutable_height -- The latest height in the blockchain that cannot be reorganized because of a hardcoded checkpoint or 2 SN checkpoints.  Omitted if not available.
-  /// immutable_hash -- Hash of the highest block in the chain that cannot be reorganized.
+  /// - /p height -- The current blockchain height according to the queried daemon.
+  /// - /p status -- Generic RPC error code. "OK" is the success value.
+  /// - /p untrusted -- If the result is obtained using bootstrap mode then this will be set to true, otherwise will be omitted.
+  /// - /p hash -- Hash of the block at the current height
+  /// - /p immutable_height -- The latest height in the blockchain that cannot be reorganized because of a hardcoded checkpoint or 2 SN checkpoints.  Omitted if not available.
+  /// - /p immutable_hash -- Hash of the highest block in the chain that cannot be reorganized.
   struct GET_HEIGHT : PUBLIC, LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_height", "getheight"); }
@@ -556,26 +556,26 @@ namespace cryptonote::rpc {
   };
 
   //-----------------------------------------------
-  /// Retrieve outputs
+  /// Retrieve transaction outputs
   ///
   /// Inputs:
   ///
-  /// \p outputs Array of structure `get_outputs_out`.
-  /// \p get_txid Request the TXID/hash of the transaction as well.
+  /// - \p outputs Array of structure `get_outputs_out`.
+  /// - \p get_txid Request the TXID/hash of the transaction as well.
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore untrusted ('true'), or when the daemon is fully synced ('false').
-  /// \p outs List of outkey information.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore untrusted ('true'), or when the daemon is fully synced ('false').
+  /// - \p outs List of outkey information.
   ///
   /// Outkey Information:
   ///
-  /// \p key The public key of the output.
-  /// \p mask something
-  /// \p unlocked States if output is locked (`false`) or not (`true`).
-  /// \p height Block height of the output.
-  /// \p txid Transaction id.
+  /// - \p key The public key of the output.
+  /// - \p mask something
+  /// - \p unlocked States if output is locked (`false`) or not (`true`).
+  /// - \p height Block height of the output.
+  /// - \p txid Transaction id.
   struct GET_OUTPUTS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_outs"); }
@@ -593,6 +593,17 @@ namespace cryptonote::rpc {
 
       KV_MAP_SERIALIZABLE
     };
+
+    struct request_parameters
+    {
+      // If true the request will return the TXID/hash of the transaction as well.
+      bool get_txid;
+
+      // Array of (Amount, Index) where amount is the amount of Oxen 
+      // and index is the output index
+      std::vector<std::tuple<uint64_t, uint64_t>> outputs;
+    
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -630,10 +641,10 @@ namespace cryptonote::rpc {
   ///
   /// Inputs:
   ///
-  /// \p miner_address Account address to mine to.
-  /// \p threads_count Number of mining threads to run.
-  /// \p num_blocks Mine until the blockchain has this many new blocks, then stop (no limit if 0, the default).
-  /// \p slow_mining Do slow mining (i.e. don't allocate RandomX cache); primarily inteded for testing.
+  /// - \p miner_address Account address to mine to.
+  /// - \p threads_count Number of mining threads to run.
+  /// - \p num_blocks Mine until the blockchain has this many new blocks, then stop (no limit if 0, the default).
+  /// - \p slow_mining Do slow mining (i.e. don't allocate RandomX cache); primarily inteded for testing.
   ///
   /// Output values available from a restricted/admin RPC endpoint:
   ///
@@ -663,15 +674,15 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a restricted/admin RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p active States if mining is enabled (`true`) or disabled (`false`).
-  /// \p speed Mining power in hashes per seconds.
-  /// \p threads_count Number of running mining threads.
-  /// \p address Account address daemon is mining to. Empty if not mining.
-  /// \p pow_algorithm Current hashing algorithm name
-  /// \p block_target The expected time to solve per block, i.e. TARGET_BLOCK_TIME
-  /// \p block_reward Block reward for the current block being mined.
-  /// \p difficulty The difficulty for the current block being mined.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p active States if mining is enabled (`true`) or disabled (`false`).
+  /// - \p speed Mining power in hashes per seconds.
+  /// - \p threads_count Number of running mining threads.
+  /// - \p address Account address daemon is mining to. Empty if not mining.
+  /// - \p pow_algorithm Current hashing algorithm name
+  /// - \p block_target The expected time to solve per block, i.e. TARGET_BLOCK_TIME
+  /// - \p block_reward Block reward for the current block being mined.
+  /// - \p difficulty The difficulty for the current block being mined.
   struct MINING_STATUS : LEGACY
   {
     static constexpr auto names() { return NAMES("mining_status"); }
@@ -761,12 +772,12 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a restricted/admin RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p start_time something.
-  /// \p total_packets_in something.
-  /// \p total_bytes_in something.
-  /// \p total_packets_out something.
-  /// \p total_bytes_out something.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p start_time something.
+  /// - \p total_packets_in something.
+  /// - \p total_bytes_in something.
+  /// - \p total_packets_out something.
+  /// - \p total_bytes_out something.
   struct GET_NET_STATS : LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_net_stats"); }
@@ -783,7 +794,7 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a restricted/admin RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
   struct SAVE_BC : LEGACY
   {
     static constexpr auto names() { return NAMES("save_bc"); }
@@ -796,8 +807,8 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p count Number of blocks in logest chain seen by the node.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p count Number of blocks in logest chain seen by the node.
   struct GETBLOCKCOUNT : PUBLIC
   {
     static constexpr auto names() { return NAMES("get_block_count", "getblockcount"); }
@@ -1276,9 +1287,9 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p tx_hashes List of transaction hashes,
-  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p tx_hashes List of transaction hashes,
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
   struct GET_TRANSACTION_POOL_HASHES : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transaction_pool_hashes"); }
@@ -1299,9 +1310,9 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p backlog Array of structures tx_backlog_entry (in binary form):
-  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p backlog Array of structures tx_backlog_entry (in binary form):
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
   struct GET_TRANSACTION_POOL_BACKLOG : PUBLIC
   {
     static constexpr auto names() { return NAMES("get_txpool_backlog"); }
@@ -1339,21 +1350,21 @@ namespace cryptonote::rpc {
     KV_MAP_SERIALIZABLE
   };
 
-  void to_json(nlohmann::json& j, const txpool_stats& txpool) {
-      j = nlohmann::json{{"bytes_total", txpool.bytes_total},
-        {"bytes_min", txpool.bytes_min},
-				{"bytes_max", txpool.bytes_max},
-				{"bytes_med", txpool.bytes_med},
-				{"fee_total", txpool.fee_total},
-				{"oldest", txpool.oldest},
-				{"txs_total", txpool.txs_total},
-				{"num_failing", txpool.num_failing},
-				{"num_10m", txpool.num_10m},
-				{"num_not_relayed", txpool.num_not_relayed},
-				{"histo_98pc", txpool.histo_98pc},
-				{"histo", txpool.histo},
-				{"num_double_spends", txpool.num_double_spends}};
-  }
+  //void to_json(nlohmann::json& j, const txpool_stats& txpool) {
+      //j = nlohmann::json{{"bytes_total", txpool.bytes_total},
+        //{"bytes_min", txpool.bytes_min},
+				//{"bytes_max", txpool.bytes_max},
+				//{"bytes_med", txpool.bytes_med},
+				//{"fee_total", txpool.fee_total},
+				//{"oldest", txpool.oldest},
+				//{"txs_total", txpool.txs_total},
+				//{"num_failing", txpool.num_failing},
+				//{"num_10m", txpool.num_10m},
+				//{"num_not_relayed", txpool.num_not_relayed},
+				//{"histo_98pc", txpool.histo_98pc},
+				//{"histo", txpool.histo},
+				//{"num_double_spends", txpool.num_double_spends}};
+  //}
 
   //-----------------------------------------------
   /// Get the transaction pool statistics.
@@ -1362,9 +1373,9 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p pool_stats List of pool stats.
-  /// \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p pool_stats List of pool stats.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
   struct GET_TRANSACTION_POOL_STATS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transaction_pool_stats"); }
@@ -1377,8 +1388,8 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a public RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
-  /// \p connections List of all connections and their info:
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p connections List of all connections and their info:
   struct GET_CONNECTIONS : RPC_COMMAND
   {
     static constexpr auto names() { return NAMES("get_connections"); }
@@ -1437,7 +1448,7 @@ namespace cryptonote::rpc {
   ///
   /// Output values available from a restricted/admin RPC endpoint:
   ///
-  /// \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
   struct STOP_DAEMON : LEGACY
   {
     static constexpr auto names() { return NAMES("stop_daemon"); }
