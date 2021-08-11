@@ -1,9 +1,11 @@
 #include "core_rpc_server_command_parser.h"
+#include "oxenmq/bt_serialize.h"
 
 #include <chrono>
 #include <oxenmq/base64.h>
 #include <oxenmq/hex.h>
 #include <type_traits>
+#include <utility>
 
 namespace cryptonote::rpc {
 
@@ -56,28 +58,46 @@ namespace cryptonote::rpc {
       return it != end && it.key() == name;
     }
 
+    // List types that are expandable; for these we emplace_back for each element of the input
+    template <typename T> constexpr bool is_expandable_list = false;
+    template <typename T> constexpr bool is_expandable_list<std::vector<T>> = true;
+// Don't currently need these, but they will work fine if uncommented:
+//    template <typename T> constexpr bool is_expandable_list<std::list<T>> = true;
+//    template <typename T> constexpr bool is_expandable_list<std::forward_list<T>> = true;
+//    template <typename T> constexpr bool is_expandable_list<std::deque<T>> = true;
+
+    // Fixed size elements: tuples, pairs, and std::array's; we accept list input as long as the
+    // list length matches exactly.
+    template <typename T> constexpr bool is_tuple_like = false;
+    template <typename T, size_t N> constexpr bool is_tuple_like<std::array<T, N>> = true;
+    template <typename S, typename T> constexpr bool is_tuple_like<std::pair<S, T>> = true;
+    template <typename... T> constexpr bool is_tuple_like<std::tuple<T...>> = true;
+
+    template <typename TupleLike, size_t... Is>
+    void load_tuple_values(oxenmq::bt_list_consumer&, TupleLike&, std::index_sequence<Is...>);
+
     // Consumes the next value from the dict consumer into `val`
-    template <typename T>
-    void load_value(oxenmq::bt_dict_consumer& d, T& val) {
+    template <typename BTConsumer, typename T,
+             std::enable_if_t<
+                 std::is_same_v<BTConsumer, oxenmq::bt_dict_consumer>
+                 || std::is_same_v<BTConsumer, oxenmq::bt_list_consumer>,
+                int> = 0>
+    void load_value(BTConsumer& c, T& val) {
       if constexpr (std::is_integral_v<T>)
-        val = d.consume_integer<T>();
+        val = c.template consume_integer<T>();
       else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>)
-        val = d.consume_string_view();
+        val = c.consume_string_view();
       else if constexpr (is_binary_parameter<T>)
-        load_binary_parameter(d.consume_string_view(), true /*allow raw*/, val);
-      else if constexpr (is_binary_vector<T>) {
+        load_binary_parameter(c.consume_string_view(), true /*allow raw*/, val);
+      else if constexpr (is_expandable_list<T>) {
+        auto lc = c.consume_list_consumer();
         val.clear();
-        auto lc = d.consume_list_consumer();
         while (!lc.is_finished())
-          load_binary_parameter(lc.consume_string_view(), true /*allow raw*/, val.emplace_back());
+          load_value(lc, val.emplace_back());
       }
-      else if constexpr (std::is_same_v<T, std::chrono::system_clock::time_point>)
-        val = std::chrono::system_clock::time_point{std::chrono::seconds{d.consume_integer<int64_t>()}};
-      else if constexpr (std::is_same_v<T, std::vector<std::string>> || std::is_same_v<T, std::vector<std::string_view>>) {
-        val.clear();
-        auto lc = d.consume_list_consumer();
-        while (!lc.is_finished())
-          val.emplace_back(lc.consume_string_view());
+      else if constexpr (is_tuple_like<T>) {
+        auto lc = c.consume_list_consumer();
+        load_tuple_values(lc, val, std::make_index_sequence<std::tuple_size_v<T>>{});
       }
       else
         static_assert(std::is_same_v<T, void>, "Unsupported load_value type");
@@ -122,15 +142,18 @@ namespace cryptonote::rpc {
         val = i;
       } else if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>) {
         val = e.get<std::string_view>();
-      } else if constexpr (is_binary_parameter<T> || is_binary_vector<T> ||
-          std::is_same_v<T, std::vector<std::string>> || std::is_same_v<T, std::vector<std::string_view>>) {
-        val = e.get<T>();
-      } else if constexpr (std::is_same_v<T, std::chrono::system_clock::time_point>) {
-        val = std::chrono::system_clock::time_point{std::chrono::seconds{e.get<int64_t>()}};
+      } else if constexpr (is_binary_parameter<T> || is_expandable_list<T> || is_tuple_like<T>) {
+        try { e.get_to(val); }
+        catch (const std::exception& e) { throw std::domain_error{"Invalid values in '" + key + "'"}; }
       } else {
         static_assert(std::is_same_v<T, void>, "Unsupported load type");
       }
       ++r.first;
+    }
+
+    template <typename TupleLike, size_t... Is>
+    void load_tuple_values(oxenmq::bt_list_consumer& c, TupleLike& val, std::index_sequence<Is...>) {
+      (load_value(c, std::get<Is>(val)), ...);
     }
 
     // Gets the next value from a json object iterator or bt_dict_consumer.  Leaves the iterator at
