@@ -186,7 +186,7 @@ namespace cryptonote
     tools::periodic_task m_sync_search_checker{101s};
     std::atomic<unsigned int> m_max_out_peers;
     tools::PerformanceTimer m_sync_timer, m_add_timer;
-    uint64_t m_last_add_end_time;
+    std::optional<std::chrono::steady_clock::time_point> m_last_add_end_time;
     uint64_t m_sync_spans_downloaded, m_sync_old_spans_downloaded, m_sync_bad_spans_downloaded;
     uint64_t m_sync_download_chain_size, m_sync_download_objects_size;
     size_t m_block_download_max_size;

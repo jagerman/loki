@@ -34,7 +34,6 @@
 #include <oxenmq/base64.h>
 #include "epee/misc_language.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
-#include "epee/misc_os_dependent.h"
 #include "common/command_line.h"
 #include "common/util.h"
 #include "common/file.h"

@@ -36,7 +36,6 @@
 #include "levin_base.h"
 #include "buffer.h"
 #include "../misc_language.h"
-#include "../misc_os_dependent.h"
 #include "../int-util.h"
 
 #include <random>
@@ -90,11 +89,11 @@ class async_protocol_handler_config
 public:
   typedef t_connection_context connection_context;
   uint64_t m_max_packet_size; 
-  uint64_t m_invoke_timeout;
+  std::chrono::nanoseconds m_invoke_timeout;
 
   int invoke(int command, const epee::span<const uint8_t> in_buff, std::string& buff_out, boost::uuids::uuid connection_id);
   template<class callback_t>
-  int invoke_async(int command, const epee::span<const uint8_t> in_buff, boost::uuids::uuid connection_id, const callback_t &cb, size_t timeout = LEVIN_DEFAULT_TIMEOUT_PRECONFIGURED);
+  int invoke_async(int command, const epee::span<const uint8_t> in_buff, boost::uuids::uuid connection_id, const callback_t &cb, std::chrono::nanoseconds timeout = 0s);
 
   int notify(int command, const epee::span<const uint8_t> in_buff, boost::uuids::uuid connection_id);
   int send(epee::shared_sv message, const boost::uuids::uuid& connection_id);
@@ -110,7 +109,7 @@ public:
   size_t get_in_connections_count();
   void set_handler(levin_commands_handler<t_connection_context>* handler, void (*destroy)(levin_commands_handler<t_connection_context>*) = NULL);
 
-  async_protocol_handler_config():m_pcommands_handler(NULL), m_pcommands_handler_destroy(NULL), m_max_packet_size(LEVIN_DEFAULT_MAX_PACKET_SIZE), m_invoke_timeout(LEVIN_DEFAULT_TIMEOUT_PRECONFIGURED)
+  async_protocol_handler_config():m_pcommands_handler(NULL), m_pcommands_handler_destroy(NULL), m_max_packet_size(LEVIN_DEFAULT_MAX_PACKET_SIZE), m_invoke_timeout(0ns)
   {}
   ~async_protocol_handler_config() { set_handler(NULL, NULL); }
   void del_out_connections(size_t count);
@@ -189,19 +188,19 @@ public:
   template <class callback_t>
   struct anvoke_handler: invoke_response_handler_base
   {
-    anvoke_handler(const callback_t& cb, uint64_t timeout,  async_protocol_handler& con, int command)
+    anvoke_handler(const callback_t& cb, std::chrono::milliseconds timeout,  async_protocol_handler& con, int command)
       :m_cb(cb), m_timeout(timeout), m_con(con), m_timer(con.m_pservice_endpoint->get_io_service()), m_timer_started(false),
       m_cancel_timer_called(false), m_timer_cancelled(false), m_command(command)
     {
       if(m_con.start_outer_call())
       {
-        MDEBUG(con.get_context_ref() << "anvoke_handler, timeout: " << timeout);
+        MDEBUG(con.get_context_ref() << "anvoke_handler, timeout: " << timeout.count());
         m_timer.expires_from_now(std::chrono::milliseconds(timeout));
         m_timer.async_wait([&con, command, cb, timeout](const boost::system::error_code& ec)
         {
           if(ec == boost::asio::error::operation_aborted)
             return;
-          MINFO(con.get_context_ref() << "Timeout on invoke operation happened, command: " << command << " timeout: " << timeout);
+          MINFO(con.get_context_ref() << "Timeout on invoke operation happened, command: " << command << " timeout: " << timeout.count());
           epee::span<const uint8_t> fake;
           cb(LEVIN_ERROR_CONNECTION_TIMEDOUT, fake, con.get_context_ref());
           con.close();
@@ -218,7 +217,7 @@ public:
     bool m_timer_started;
     bool m_cancel_timer_called;
     bool m_timer_cancelled;
-    uint64_t m_timeout;
+    std::chrono::milliseconds m_timeout;
     int m_command;
     virtual bool handle(int res, const epee::span<const uint8_t> buff, typename async_protocol_handler::connection_context& context)
     {
@@ -257,15 +256,14 @@ public:
       if (!m_cancel_timer_called && m_timer.cancel(ignored_ec) > 0)
       {
         callback_t& cb = m_cb;
-        uint64_t timeout = m_timeout;
         async_protocol_handler& con = m_con;
         int command = m_command;
-        m_timer.expires_from_now(std::chrono::milliseconds(m_timeout));
-        m_timer.async_wait([&con, cb, command, timeout](const boost::system::error_code& ec)
+        m_timer.expires_from_now(m_timeout);
+        m_timer.async_wait([&con, cb, command, timeout=m_timeout](const boost::system::error_code& ec)
         {
           if(ec == boost::asio::error::operation_aborted)
             return;
-          MINFO(con.get_context_ref() << "Timeout on invoke operation happened, command: " << command << " timeout: " << timeout);
+          MINFO(con.get_context_ref() << "Timeout on invoke operation happened, command: " << command << " timeout: " << timeout.count());
           epee::span<const uint8_t> fake;
           cb(LEVIN_ERROR_CONNECTION_TIMEDOUT, fake, con.get_context_ref());
           con.close();
@@ -278,8 +276,9 @@ public:
   std::list<std::shared_ptr<invoke_response_handler_base> > m_invoke_response_handlers;
   
   template<class callback_t>
-  bool add_invoke_response_handler(const callback_t &cb, uint64_t timeout,  async_protocol_handler& con, int command)
+  bool add_invoke_response_handler(const callback_t &cb, std::chrono::nanoseconds timeout_ns,  async_protocol_handler& con, int command)
   {
+    auto timeout = std::chrono::duration_cast<std::chrono::milliseconds>(timeout_ns);
     std::lock_guard lock{m_invoke_response_handlers_lock};
     if (m_protocol_released)
     {
@@ -615,12 +614,12 @@ public:
   }
 
   template<class callback_t>
-  bool async_invoke(int command, const epee::span<const uint8_t> in_buff, const callback_t &cb, size_t timeout = LEVIN_DEFAULT_TIMEOUT_PRECONFIGURED)
+  bool async_invoke(int command, const epee::span<const uint8_t> in_buff, const callback_t &cb, std::chrono::nanoseconds timeout = 0ns)
   {
     misc_utils::auto_scope_leave_caller scope_exit_handler = misc_utils::create_scope_leave_handler(
       [this] { return finish_outer_call(); });
 
-    if(timeout == LEVIN_DEFAULT_TIMEOUT_PRECONFIGURED)
+    if(timeout == 0ns)
       timeout = m_config.m_invoke_timeout;
 
     int err_code = LEVIN_OK;
@@ -691,7 +690,7 @@ public:
       return LEVIN_ERROR_CONNECTION;
     }
 
-    uint64_t ticks_start = misc_utils::get_tick_count();
+    auto start = std::chrono::steady_clock::now();
     size_t prev_size = 0;
 
     while(!m_invoke_buf_ready && !m_deletion_initiated && !m_protocol_released)
@@ -699,11 +698,11 @@ public:
       if(m_cache_in_buffer.size() - prev_size >= MIN_BYTES_WANTED)
       {
         prev_size = m_cache_in_buffer.size();
-        ticks_start = misc_utils::get_tick_count();
+        start = std::chrono::steady_clock::now();
       }
-      if(misc_utils::get_tick_count() - ticks_start > m_config.m_invoke_timeout)
+      if (std::chrono::steady_clock::now() > start + m_config.m_invoke_timeout)
       {
-        MWARNING(m_connection_context << "invoke timeout (" << m_config.m_invoke_timeout << "), closing connection ");
+        MWARNING(m_connection_context << "invoke timeout (" << m_config.m_invoke_timeout.count() << "), closing connection ");
         close();
         return LEVIN_ERROR_CONNECTION_TIMEDOUT;
       }
@@ -866,7 +865,7 @@ int async_protocol_handler_config<t_connection_context>::invoke(int command, con
 }
 //------------------------------------------------------------------------------------------
 template<class t_connection_context> template<class callback_t>
-int async_protocol_handler_config<t_connection_context>::invoke_async(int command, const epee::span<const uint8_t> in_buff, boost::uuids::uuid connection_id, const callback_t &cb, size_t timeout)
+int async_protocol_handler_config<t_connection_context>::invoke_async(int command, const epee::span<const uint8_t> in_buff, boost::uuids::uuid connection_id, const callback_t &cb, std::chrono::nanoseconds timeout)
 {
   async_protocol_handler<t_connection_context>* aph;
   int r = find_and_lock_connection(connection_id, aph);

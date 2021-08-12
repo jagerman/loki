@@ -42,12 +42,12 @@
 #include <ctime>
 #include <chrono>
 
+#include "common/string_util.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/hardfork.h"
 #include "cryptonote_basic/verification_context.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "cryptonote_core/tx_pool.h"
-#include "epee/profile_tools.h"
 #include "epee/net/network_throttle-detail.hpp"
 #include "common/pruning.h"
 #include "common/random.h"
@@ -106,7 +106,7 @@ namespace cryptonote
     m_sync_timer.reset();
     m_add_timer.pause();
     m_add_timer.reset();
-    m_last_add_end_time = 0;
+    m_last_add_end_time = std::nullopt;
     m_sync_spans_downloaded = 0;
     m_sync_old_spans_downloaded = 0;
     m_sync_bad_spans_downloaded = 0;
@@ -486,7 +486,7 @@ namespace cryptonote
         m_sync_timer.reset();
         m_add_timer.pause();
         m_add_timer.reset();
-        m_last_add_end_time = 0;
+        m_last_add_end_time = std::nullopt;
         m_sync_spans_downloaded = 0;
         m_sync_old_spans_downloaded = 0;
         m_sync_bad_spans_downloaded = 0;
@@ -1398,7 +1398,7 @@ namespace cryptonote
         {
           m_add_timer.pause();
           m_core.resume_mine();
-          if (!starting) m_last_add_end_time = epee::misc_utils::get_ns_count();
+          if (!starting) m_last_add_end_time = std::chrono::steady_clock::now();
         };
 
         while (1)
@@ -1496,8 +1496,8 @@ namespace cryptonote
             starting = false;
             if (m_last_add_end_time)
             {
-              const uint64_t ns = epee::misc_utils::get_ns_count() - m_last_add_end_time;
-              MINFO("Restarting adding block after idle for " << ns/1e9 << " seconds");
+              auto elapsed = std::chrono::steady_clock::now() - *m_last_add_end_time;
+              MINFO("Restarting adding block after idle for " << tools::friendly_duration(elapsed));
             }
           }
 
@@ -1526,7 +1526,8 @@ namespace cryptonote
               return 1;
             }
 
-            uint64_t block_process_time_full = 0, transactions_process_time_full = 0;
+            auto block_process_time_full = 0ns;
+            auto transactions_process_time_full = 0ns;
             size_t num_txs = 0, blockidx = 0;
             for(const block_complete_entry& block_entry: blocks)
             {
@@ -1534,7 +1535,7 @@ namespace cryptonote
                 return 1;
 
               // process transactions
-              TIME_MEASURE_START(transactions_process_time);
+              auto transactions_process_start = std::chrono::steady_clock::now();
               num_txs += block_entry.txs.size();
               auto parsed_txs = m_core.handle_incoming_txs(block_entry.txs, tx_pool_options::from_block());
 
@@ -1556,8 +1557,7 @@ namespace cryptonote
                   return 1;
                 }
               }
-              TIME_MEASURE_FINISH(transactions_process_time);
-              transactions_process_time_full += transactions_process_time;
+              transactions_process_time_full += std::chrono::steady_clock::now() - transactions_process_start;
 
               //
               // NOTE: Checkpoint parsing
@@ -1581,7 +1581,7 @@ namespace cryptonote
 
               // process block
 
-              TIME_MEASURE_START(block_process_time);
+              auto block_process_start = std::chrono::steady_clock::now();
               block_verification_context bvc{};
 
               m_core.handle_incoming_block(block_entry.block, pblocks.empty() ? NULL : &pblocks[blockidx], bvc, checkpoint, false); // <--- process block
@@ -1604,14 +1604,16 @@ namespace cryptonote
                 return 1;
               }
 
-              TIME_MEASURE_FINISH(block_process_time);
-              block_process_time_full += block_process_time;
+              block_process_time_full += std::chrono::steady_clock::now() - block_process_start;
               ++blockidx;
 
             } // each download block
 
             remove_spans = true;
-            MDEBUG(context << "Block process time (" << blocks.size() << " blocks, " << num_txs << " txs): " << block_process_time_full + transactions_process_time_full << " (" << transactions_process_time_full << "/" << block_process_time_full << ") ms");
+            MDEBUG(context << "Block process time (" << blocks.size() << " blocks, " << num_txs << " txs): " <<
+                    tools::friendly_duration(block_process_time_full + transactions_process_time_full) << " (" <<
+                    tools::friendly_duration(transactions_process_time_full) << "+" <<
+                    tools::friendly_duration(block_process_time_full) << ")");
           }
 
           const uint64_t current_blockchain_height = m_core.get_current_blockchain_height();
@@ -2099,7 +2101,7 @@ skip:
             // if this has gone on for too long, drop incoming connection to guard against some wedge state
             if (!context.m_is_income)
             {
-              std::chrono::nanoseconds ns{epee::misc_utils::get_ns_count() - m_last_add_end_time};
+              auto ns = std::chrono::steady_clock::now() - m_last_add_end_time.value_or(std::chrono::steady_clock::time_point::min());
               if (ns >= DROP_ON_SYNC_WEDGE_THRESHOLD)
               {
                 MDEBUG(context << "Block addition seems to have wedged, dropping connection");
@@ -2367,12 +2369,12 @@ skip:
       m_sync_timer.pause();
       if (ELPP->vRegistry()->allowed(el::Level::Info, "sync-info"))
       {
-        const uint64_t sync_time = m_sync_timer.value();
-        const uint64_t add_time = m_add_timer.value();
-        if (sync_time && add_time)
+        const auto sync_time = m_sync_timer.value();
+        const auto add_time = m_add_timer.value();
+        if (sync_time > 0ns && add_time > 0ns)
         {
-          MCLOG_YELLOW(el::Level::Info, "sync-info", "Sync time: " << sync_time/1e9/60 << " min, idle time " <<
-              (100.f * (1.0f - add_time / (float)sync_time)) << "%" << ", " <<
+          MCLOG_YELLOW(el::Level::Info, "sync-info", "Sync time: " << tools::friendly_duration(sync_time) << " min, idle time " <<
+              (100.f * (1.0f - add_time / sync_time)) << "%" << ", " <<
               (10 * m_sync_download_objects_size / 1024 / 1024) / 10.f << " + " <<
               (10 * m_sync_download_chain_size / 1024 / 1024) / 10.f << " MB downloaded, " <<
               100.0f * m_sync_old_spans_downloaded / m_sync_spans_downloaded << "% old spans, " <<
