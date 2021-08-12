@@ -85,8 +85,9 @@ add_subdirectory(easylogging++ easyloggingpp)
 add_subdirectory(randomx EXCLUDE_FROM_ALL)
 add_subdirectory(date EXCLUDE_FROM_ALL)
 
+set(JSON_BuildTests OFF CACHE INTERNAL "")
 set(JSON_MultipleHeaders ON CACHE BOOL "") # Allows multi-header nlohmann use
-add_subdirectory(nlohmann-json)
+add_subdirectory(nlohmann-json EXCLUDE_FROM_ALL)
 
 # uSockets doesn't really have a proper build system (just a very simple Makefile) so build it
 # ourselves.
