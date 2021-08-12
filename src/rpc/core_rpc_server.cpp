@@ -1449,23 +1449,6 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SET_LOG_HASH_RATE::response core_rpc_server::invoke(SET_LOG_HASH_RATE::request&& req, rpc_context context)
-  {
-    SET_LOG_HASH_RATE::response res{};
-
-    PERF_TIMER(on_set_log_hash_rate);
-    if(m_core.get_miner().is_mining())
-    {
-      m_core.get_miner().do_print_hashrate(req.visible);
-      res.status = STATUS_OK;
-    }
-    else
-    {
-      res.status = STATUS_NOT_MINING;
-    }
-    return res;
-  }
-  //------------------------------------------------------------------------------------------------------------------------------
   SET_LOG_LEVEL::response core_rpc_server::invoke(SET_LOG_LEVEL::request&& req, rpc_context context)
   {
     SET_LOG_LEVEL::response res{};

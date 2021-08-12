@@ -1115,22 +1115,6 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Set the log hash rate display mode.
-  struct SET_LOG_HASH_RATE : LEGACY
-  {
-    static constexpr auto names() { return NAMES("set_log_hash_rate"); }
-
-    struct request
-    {
-      bool visible; // States if hash rate logs should be visible (true) or hidden (false)
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response : STATUS {};
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
   // Set the daemon log level. By default, log level is set to `0`.  For more fine-tuned logging
   // control set the set_log_categories command instead.
   struct SET_LOG_LEVEL : LEGACY
@@ -2776,7 +2760,6 @@ namespace cryptonote::rpc {
     GET_BLOCK,
     GET_PEER_LIST,
     GET_PUBLIC_NODES,
-    SET_LOG_HASH_RATE,
     SET_LOG_LEVEL,
     SET_LOG_CATEGORIES,
     GET_TRANSACTION_POOL,

@@ -235,7 +235,6 @@ namespace cryptonote::rpc {
     SEND_RAW_TX::response                               invoke(SEND_RAW_TX::request&& req, rpc_context context);
     GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);
     GET_PUBLIC_NODES::response                          invoke(GET_PUBLIC_NODES::request&& req, rpc_context context);
-    SET_LOG_HASH_RATE::response                         invoke(SET_LOG_HASH_RATE::request&& req, rpc_context context);
     SET_LOG_LEVEL::response                             invoke(SET_LOG_LEVEL::request&& req, rpc_context context);
     SET_LOG_CATEGORIES::response                        invoke(SET_LOG_CATEGORIES::request&& req, rpc_context context);
     GET_TRANSACTION_POOL::response                      invoke(GET_TRANSACTION_POOL::request&& req, rpc_context context);
