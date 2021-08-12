@@ -87,7 +87,7 @@ target_link_libraries(blockchain_depth PRIVATE blockchain_tools_common_libs)
 oxen_add_executable(blockchain_stats "oxen-blockchain-stats"
   blockchain_stats.cpp
   )
-target_link_libraries(blockchain_stats PRIVATE blockchain_tools_common_libs)
+target_link_libraries(blockchain_stats PRIVATE blockchain_tools_common_libs date::date)
 
 # TODO(oxen): Blockchain pruning not supported in Oxen yet
 # oxen_add_executable(blockchain_prune_known_spent_data "oxen-blockchain-prune-known-spent-data"

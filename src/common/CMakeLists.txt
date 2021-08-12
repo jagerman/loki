@@ -66,6 +66,7 @@ target_link_libraries(common
     cncrypto
     oxenmq::oxenmq
     filesystem
+    date::date
   PRIVATE
     libunbound
     OpenSSL::SSL

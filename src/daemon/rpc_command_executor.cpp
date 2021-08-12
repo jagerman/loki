@@ -196,17 +196,6 @@ namespace {
     return get_human_time_ago(std::chrono::seconds{now - t}, abbreviate);
   }
 
-  char const *get_date_time(time_t t)
-  {
-    static char buf[128];
-    buf[0] = 0;
-
-    struct tm tm;
-    epee::misc_utils::get_gmt_time(t, tm);
-    strftime(buf, sizeof(buf), "%Y-%m-%d %I:%M:%S %p UTC", &tm);
-    return buf;
-  }
-
   std::string get_time_hms(time_t t)
   {
     unsigned int hours, minutes, seconds;
@@ -1652,9 +1641,12 @@ static void append_printable_service_node_list_entry(cryptonote::network_type ne
     else
     {
       uint64_t delta_height = (blockchain_height >= expiry_height) ? 0 : expiry_height - blockchain_height;
-      uint64_t expiry_epoch_time = now + (delta_height * tools::to_seconds(TARGET_BLOCK_TIME));
+      auto expiry_epoch_time = now + (delta_height * tools::to_seconds(TARGET_BLOCK_TIME));
       stream << expiry_height << " (in " << delta_height << ") blocks\n";
-      stream << indent2 << "Expiry Date (estimated): " << get_date_time(expiry_epoch_time) << " (" << get_human_time_ago(expiry_epoch_time, now) << ")\n";
+
+      stream << indent2 << "Expiry Date (estimated): " <<
+          date::format("%Y-%m-%d %I:%M:%S %p UTC", std::chrono::system_clock::from_time_t(expiry_epoch_time)) <<
+          " (" << get_human_time_ago(expiry_epoch_time, now) << ")\n";
     }
   }
 

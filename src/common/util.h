@@ -65,7 +65,7 @@ namespace tools
   std::string input_line_win();
 #endif
 
-  std::string get_human_readable_timestamp(uint64_t ts);
+  std::string get_human_readable_timestamp(std::time_t ts);
   std::string get_human_readable_timespan(std::chrono::seconds seconds);
   std::string get_human_readable_bytes(uint64_t bytes);
 

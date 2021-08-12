@@ -27,6 +27,7 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <boost/algorithm/string.hpp>
+#include <chrono>
 #include "common/command_line.h"
 #include "common/varint.h"
 #include "common/signal_handler.h"
@@ -35,8 +36,8 @@
 #include "blockchain_objects.h"
 #include "blockchain_db/blockchain_db.h"
 #include "version.h"
-#include "epee/misc_os_dependent.h"
 #include "cryptonote_core/uptime_proof.h"
+#include <date/date.h>
 
 #undef OXEN_DEFAULT_LOG_CATEGORY
 #define OXEN_DEFAULT_LOG_CATEGORY "bcutil"
@@ -193,7 +194,7 @@ plot 'stats.csv' index "DATA" using (timecolumn(1,"%Y-%m-%d")):4 with lines, '' 
   }
   std::cout << "\n";
 
-  struct tm prevtm = {0}, currtm;
+  std::optional<std::chrono::system_clock::time_point> prev_ts;
   uint64_t prevsz = 0, currsz = 0;
   uint64_t prevtxs = 0, currtxs = 0;
   uint64_t currblks = 0;
@@ -214,20 +215,20 @@ plot 'stats.csv' index "DATA" using (timecolumn(1,"%Y-%m-%d")):4 with lines, '' 
       LOG_PRINT_L0("Bad block from db");
       return 1;
     }
-    time_t tt = blk.timestamp;
-    char timebuf[64];
-    epee::misc_utils::get_gmt_time(tt, currtm);
-    if (!prevtm.tm_year)
-      prevtm = currtm;
+    auto ts = std::chrono::system_clock::from_time_t(blk.timestamp);
+    using namespace date;
+    year_month_day curr_date{floor<days>(ts)};
+    if (!prev_ts)
+      prev_ts = ts;
+    year_month_day prev_date{floor<days>(*prev_ts)};
     // catch change of day
-    if (currtm.tm_mday > prevtm.tm_mday || (currtm.tm_mday == 1 && prevtm.tm_mday > 27))
+    if (curr_date.day() > prev_date.day() || (curr_date.day() == day{1} && prev_date.day() > day{27}))
     {
       // check for timestamp fudging around month ends
-      if (prevtm.tm_mday == 1 && currtm.tm_mday > 27)
+      if (curr_date.day() == day{1} && prev_date.day() > day{27})
         goto skip;
-      strftime(timebuf, sizeof(timebuf), "%Y-%m-%d", &prevtm);
-      prevtm = currtm;
-      std::cout << timebuf << "\t" << currblks << "\t" << h << "\t" << currtxs << "\t" << prevtxs + currtxs << "\t" << currsz << "\t" << prevsz + currsz;
+      prev_ts = ts;
+      std::cout << format("%Y-%m-%d", prev_date) << "\t" << currblks << "\t" << h << "\t" << currtxs << "\t" << prevtxs + currtxs << "\t" << currsz << "\t" << prevsz + currsz;
       prevsz += currsz;
       currsz = 0;
       currblks = 0;
@@ -277,7 +278,7 @@ skip:
       currsz += bd.size();
       currtxs++;
       if (do_hours)
-        txhr[currtm.tm_hour]++;
+        txhr[hh_mm_ss{ts - floor<days>(ts)}.hours().count()]++;
       if (do_inputs) {
         io = tx.vin.size();
         if (io < minins)
