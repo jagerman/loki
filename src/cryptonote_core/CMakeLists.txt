@@ -53,6 +53,7 @@ target_link_libraries(cryptonote_core
     device
     checkpoints
     sqlite3
+    nlohmann_json::nlohmann_json
   PRIVATE
     Boost::program_options
     systemd
