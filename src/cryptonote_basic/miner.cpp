@@ -199,8 +199,8 @@ namespace cryptonote
     request_block_template();//lets update block template
 
     m_stop = false;
-    m_stop_height = stop_after ? m_height + stop_after : std::numeric_limits<uint64_t>::max();
-    if (stop_after)
+    m_stop_height = stop_after > 0 ? m_height + stop_after : std::numeric_limits<uint64_t>::max();
+    if (stop_after > 0)
       MGINFO("Mining until height " << m_stop_height);
     
     for (int i = 0; i < m_threads_total; i++)

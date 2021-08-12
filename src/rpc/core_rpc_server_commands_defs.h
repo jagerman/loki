@@ -45,6 +45,7 @@
 //     setlocal comments+=://
 
 #include "crypto/crypto.h"
+#include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "epee/string_tools.h"
 
 #include "cryptonote_protocol/cryptonote_protocol_defs.h"
@@ -630,9 +631,9 @@ namespace cryptonote::rpc {
   /// Inputs:
   ///
   /// - \p miner_address Account address to mine to.
-  /// - \p threads_count Number of mining threads to run.
+  /// - \p threads_count Number of mining threads to run.  Defaults to 1 thread if omitted or 0.
   /// - \p num_blocks Mine until the blockchain has this many new blocks, then stop (no limit if 0, the default).
-  /// - \p slow_mining Do slow mining (i.e. don't allocate RandomX cache); primarily inteded for testing.
+  /// - \p slow_mining Do slow mining (i.e. don't allocate RandomX cache); primarily intended for testing.
   ///
   /// Output values available from a restricted/admin RPC endpoint:
   ///
@@ -640,6 +641,13 @@ namespace cryptonote::rpc {
   struct START_MINING : LEGACY
   {
     static constexpr auto names() { return NAMES("start_mining"); }
+
+    struct request_parameters {
+      std::string miner_address;
+      int threads_count = 1;
+      int num_blocks = 0;
+      bool slow_mining = false;
+    } request;
   };
 
   //-----------------------------------------------

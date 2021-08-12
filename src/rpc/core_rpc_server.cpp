@@ -1263,8 +1263,8 @@ namespace cryptonote::rpc {
     }
 
     cryptonote::address_parse_info info;
-    if(!get_account_address_from_str(info, m_core.get_nettype(), start_mining.request['miner_address'])) {
-      start_mining.response["status"] = "Failed, wrong address";
+    if(!get_account_address_from_str(info, m_core.get_nettype(), start_mining.request.miner_address)) {
+      start_mining.response["status"] = "Failed, invalid address";
       LOG_PRINT_L0(start_mining.response["status"]);
       return;
     }
@@ -1274,22 +1274,21 @@ namespace cryptonote::rpc {
       return;
     }
 
-    unsigned int concurrency_count = std::thread::hardware_concurrency() * 4;
+    int max_concurrency_count = std::thread::hardware_concurrency() * 4;
 
     // if we couldn't detect threads, set it to a ridiculously high number
-    if(concurrency_count == 0) {
-      concurrency_count = 257;
-    }
+    if (max_concurrency_count == 0)
+      max_concurrency_count = 257;
 
     // if there are more threads requested than the hardware supports
     // then we fail and log that.
-    if(start_mining.request["threads_count"] > concurrency_count) {
+    if (start_mining.request.threads_count > max_concurrency_count) {
       start_mining.response["status"] = "Failed, too many threads relative to CPU cores.";
       LOG_PRINT_L0(start_mining.response["status"]);
       return;
     }
 
-    cryptonote::miner &miner= m_core.get_miner();
+    auto& miner = m_core.get_miner();
     if (miner.is_mining())
     {
       start_mining.response["status"] = "Already mining";
@@ -1297,7 +1296,7 @@ namespace cryptonote::rpc {
       return;
     }
 
-    if(!miner.start(info.address, static_cast<size_t>(start_mining.request["threads_count"]), start_mining.request["num_blocks"]))
+    if(!miner.start(info.address, start_mining.request.threads_count, start_mining.request.num_blocks, start_mining.request.slow_mining))
     {
       start_mining.response["status"] = "Failed, mining not started";
       LOG_PRINT_L0(start_mining.response["status"]);
