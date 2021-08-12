@@ -1,6 +1,7 @@
 #pragma once
 
-#include <crypto/crypto.h>
+#include "ringct/rctTypes.h"
+#include "crypto/crypto.h"
 #include <string_view>
 #include <nlohmann/json.hpp>
 
@@ -17,6 +18,7 @@ namespace cryptonote::rpc {
   template <> inline constexpr bool is_binary_parameter<crypto::ed25519_public_key> = true;
   template <> inline constexpr bool is_binary_parameter<crypto::x25519_public_key> = true;
   template <> inline constexpr bool is_binary_parameter<crypto::key_image> = true;
+  template <> inline constexpr bool is_binary_parameter<rct::key> = true;
 
   template <typename T>
   inline constexpr bool is_binary_vector = false;

@@ -263,8 +263,28 @@ namespace cryptonote::rpc {
   void parse_request(SAVE_BC& save_bc, rpc_input in) {
   }
   void parse_request(GET_OUTPUTS& get_outputs, rpc_input in) {
-      get_values(in, "get_txid", get_outputs.request.get_txid);
-      get_values(in, "outputs", get_outputs.request.outputs)
+    get_values(in,
+        "as_tuple", get_outputs.request.as_tuple,
+        "get_txid", get_outputs.request.get_txid);
+
+    // "outputs" is trickier: for backwards compatibility we need to accept json of:
+    //    [{"amount":0,"index":i1}, ...]
+    // but that is incredibly wasteful and so we also want the more efficient (and we only accept
+    // this for bt, since we don't have backwards compat to worry about):
+    //    [i1, i2, ...]
+    bool legacy_outputs = false;
+    if (auto* json_in = std::get_if<json>(&in)) {
+      if (auto outputs = json_in->find("outputs");
+          outputs != json_in->end() && !outputs->empty() && outputs->is_array() && outputs->front().is_object()) {
+        legacy_outputs = true;
+        auto& reqoi = get_outputs.request.output_indices;
+        reqoi.reserve(outputs->size());
+        for (auto& o : *outputs)
+          reqoi.push_back(o["index"].get<uint64_t>());
+      }
+    }
+    if (!legacy_outputs)
+      get_values(in, "outputs", get_outputs.request.output_indices);
   }
 
 }

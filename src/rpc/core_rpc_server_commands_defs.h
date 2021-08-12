@@ -560,22 +560,25 @@ namespace cryptonote::rpc {
   ///
   /// Inputs:
   ///
-  /// - \p outputs Array of structure `get_outputs_out`.
-  /// - \p get_txid Request the TXID/hash of the transaction as well.
+  /// - \p outputs Array of output indices.  For backwards compatibility these may also be passed as
+  ///   an array of {"amount":0,"index":n} dicts.
+  /// - \p get_txid Request the TXID (i.e. hash) of the transaction as well.
+  /// - \p as_tuple Requests the returned outs variable as a tuple of values rather than a dict.
   ///
   /// Output values available from a public RPC endpoint:
   ///
   /// - \p status General RPC status string. `"OK"` means everything looks good.
-  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore untrusted ('true'), or when the daemon is fully synced ('false').
-  /// - \p outs List of outkey information.
-  ///
-  /// Outkey Information:
-  ///
-  /// - \p key The public key of the output.
-  /// - \p mask something
-  /// - \p unlocked States if output is locked (`false`) or not (`true`).
-  /// - \p height Block height of the output.
-  /// - \p txid Transaction id.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore
+  ///   untrusted ('true'), or when the daemon is fully synced ('false').
+  /// - \p outs List of outkey information; if `as_tuple` is not set then these are dicts containing
+  ///   keys:
+  ///   - \p key The public key of the output.
+  ///   - \p mask
+  ///   - \p unlocked States if output is locked (`false`) or not (`true`).
+  ///   - \p height Block height of the output.
+  ///   - \p txid Transaction id; only present if requested via the `get_txid` parameter.
+  ///   Otherwise, when `as_tuple` is set, these are 4- or 5-element arrays (depending on whether
+  ///   `get_txid` is desired) containing the values in the order listed above.
   struct GET_OUTPUTS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_outs"); }
@@ -583,26 +586,11 @@ namespace cryptonote::rpc {
     /// Maximum outputs that may be requested in a single request (unless admin)
     static constexpr size_t MAX_COUNT = 5000;
 
-    struct outkey
-    {
-      std::string key;  // The public key of the output.
-      std::string mask;
-      bool unlocked;    // States if output is locked (`false`) or not (`true`).
-      uint64_t height;  // Block height of the output.
-      std::string txid; // Transaction id.
-
-      KV_MAP_SERIALIZABLE
-    };
-
     struct request_parameters
     {
-      // If true the request will return the TXID/hash of the transaction as well.
       bool get_txid;
-
-      // Array of (Amount, Index) where amount is the amount of Oxen 
-      // and index is the output index
-      std::vector<std::tuple<uint64_t, uint64_t>> outputs;
-    
+      bool as_tuple;
+      std::vector<uint64_t> output_indices;
     } request;
   };
 

@@ -661,14 +661,21 @@ namespace cryptonote::rpc {
     //if (use_bootstrap_daemon_if_necessary<GET_OUTPUTS>(req, res))
       //return;
 
-    if (!context.admin && get_outputs.request["outputs"].size() > GET_OUTPUTS::MAX_COUNT) {
+    if (!context.admin && get_outputs.request.output_indices.size() > GET_OUTPUTS::MAX_COUNT) {
       get_outputs.response["status"] = "Too many outs requested";
       return;
     }
 
+    // This is nasty.  WTF are core methods taking *local rpc* types?
+    // FIXME: make core methods take something sensible, like a std::vector<uint64_t>.  (We really
+    // don't need the pair since amount is also 0 for Oxen since the beginning of the chain; only in
+    // ancient Monero blocks was it non-zero).
     GET_OUTPUTS_BIN::request req_bin{};
-    req_bin.outputs = get_outputs.request["outputs"];
-    req_bin.get_txid = get_outputs.request["get_txid"];
+    req_bin.get_txid = get_outputs.request.get_txid;
+    req_bin.outputs.reserve(get_outputs.request.output_indices.size());
+    for (auto oi : get_outputs.request.output_indices)
+      req_bin.outputs.push_back({0, oi});
+
     GET_OUTPUTS_BIN::response res_bin{};
     if (!m_core.get_outs(req_bin, res_bin))
     {
@@ -676,17 +683,28 @@ namespace cryptonote::rpc {
       return;
     }
 
-    get_outputs.response["outs"] = std::vector<get_outputs.outkey>{};
-
-    // convert to text
-    for (const auto &i: res_bin.outs)
-    {
-      auto& outkey = get_outputs.response["outs"].emplace_back();
-      outkey.key = tools::type_to_hex(i.key);
-      outkey.mask = tools::type_to_hex(i.mask);
-      outkey.unlocked = i.unlocked;
-      outkey.height = i.height;
-      outkey.txid = tools::type_to_hex(i.txid);
+    auto& outs = (get_outputs.response["outs"] = json::array());
+    if (!get_outputs.request.as_tuple) {
+      for (auto& outkey : res_bin.outs) {
+        outs.push_back(json{
+          {"key", std::move(outkey.key)},
+          {"mask", std::move(outkey.mask)},
+          {"unlocked", outkey.unlocked},
+          {"height", outkey.height}
+        });
+        if (get_outputs.request.get_txid)
+          outs.back()["txid"] = std::move(outkey.txid);
+      }
+    } else {
+      for (auto& outkey : res_bin.outs) {
+        outs.push_back(json::array({
+            std::move(outkey.key),
+            std::move(outkey.mask),
+            outkey.unlocked,
+            outkey.height}));
+        if (get_outputs.request.get_txid)
+          outs.back().push_back(std::move(outkey.txid));
+      }
     }
 
     get_outputs.response["status"] = STATUS_OK;
