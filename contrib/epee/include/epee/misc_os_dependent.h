@@ -55,6 +55,7 @@ namespace epee
 namespace misc_utils
 {
 
+        [[deprecated("Use std::chrono::steady_clock")]]
         inline uint64_t get_ns_count()
         {
 #if defined(_MSC_VER)
@@ -85,21 +86,14 @@ namespace misc_utils
 #endif
         }
 
+        [[deprecated("Use std::chrono::steady_clock")]]
         inline uint64_t get_tick_count()
         {
                 return get_ns_count() / 1000000;
         }
 
 
-	inline std::string get_thread_string_id()
-	{
-#if defined(_WIN32)
-		return boost::lexical_cast<std::string>(GetCurrentThreadId());
-#elif defined(__GNUC__)  
-		return boost::lexical_cast<std::string>(pthread_self());
-#endif
-	}
-
+    [[deprecated("Use std::chrono types")]]
 	inline bool get_gmt_time(time_t t, struct tm &tm)
 	{
 #ifdef _WIN32
