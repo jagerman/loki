@@ -403,32 +403,6 @@ bool rpc_command_executor::save_blockchain() {
   return true;
 }
 
-bool rpc_command_executor::show_hash_rate() {
-  SET_LOG_HASH_RATE::request req{};
-  SET_LOG_HASH_RATE::response res{};
-  req.visible = true;
-
-  if (!invoke<SET_LOG_HASH_RATE>(std::move(req), res, "Couldn't enable hash rate logging"))
-    return false;
-
-  tools::success_msg_writer() << "Hash rate logging is on";
-
-  return true;
-}
-
-bool rpc_command_executor::hide_hash_rate() {
-  SET_LOG_HASH_RATE::request req{};
-  SET_LOG_HASH_RATE::response res{};
-  req.visible = false;
-
-  if (!invoke<SET_LOG_HASH_RATE>(std::move(req), res, "Couldn't disable hash rate logging"))
-    return false;
-
-  tools::success_msg_writer() << "Hash rate logging is off";
-
-  return true;
-}
-
 bool rpc_command_executor::show_difficulty() {
   auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
   if (!maybe_info)

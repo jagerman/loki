@@ -174,20 +174,6 @@ bool command_parser_executor::save_blockchain(const std::vector<std::string>& ar
   return m_executor.save_blockchain();
 }
 
-bool command_parser_executor::show_hash_rate(const std::vector<std::string>& args)
-{
-  if (!args.empty()) return false;
-
-  return m_executor.show_hash_rate();
-}
-
-bool command_parser_executor::hide_hash_rate(const std::vector<std::string>& args)
-{
-  if (!args.empty()) return false;
-
-  return m_executor.hide_hash_rate();
-}
-
 bool command_parser_executor::show_difficulty(const std::vector<std::string>& args)
 {
   if (!args.empty()) return false;

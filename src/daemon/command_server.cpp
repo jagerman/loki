@@ -175,16 +175,6 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
     , "Print the transaction pool's statistics."
     );
   m_command_lookup.set_handler(
-      "show_hr"
-    , [this](const auto &x) { return m_parser.show_hash_rate(x); }
-    , "Start showing the current hash rate."
-    );
-  m_command_lookup.set_handler(
-      "hide_hr"
-    , [this](const auto &x) { return m_parser.hide_hash_rate(x); }
-    , "Stop showing the hash rate."
-    );
-  m_command_lookup.set_handler(
       "save"
     , [this](const auto &x) { return m_parser.save_blockchain(x); }
     , "Save the blockchain."
