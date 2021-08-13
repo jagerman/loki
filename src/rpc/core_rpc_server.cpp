@@ -707,7 +707,6 @@ namespace cryptonote::rpc {
     }
 
     get_outputs.response["status"] = STATUS_OK;
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response core_rpc_server::invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request&& req, rpc_context context)
@@ -1257,7 +1256,6 @@ namespace cryptonote::rpc {
     //CHECK_CORE_READY();
     if(!check_core_ready()){ 
       start_mining.response["status"] = STATUS_BUSY;
-      LOG_PRINT_L0(start_mining.response["status"]);
       return; 
     }
 
@@ -1291,7 +1289,6 @@ namespace cryptonote::rpc {
     if (miner.is_mining())
     {
       start_mining.response["status"] = "Already mining";
-      LOG_PRINT_L0(start_mining.response["status"]);
       return;
     }
 
@@ -1303,8 +1300,6 @@ namespace cryptonote::rpc {
     }
 
     start_mining.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(start_mining.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(STOP_MINING& stop_mining, rpc_context context)
@@ -1325,8 +1320,6 @@ namespace cryptonote::rpc {
     }
 
     stop_mining.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(stop_mining.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(MINING_STATUS& mining_status, rpc_context context)
@@ -1353,8 +1346,6 @@ namespace cryptonote::rpc {
                                                                "Cryptonight Heavy (Variant 2)";
 
     mining_status.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(mining_status.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(SAVE_BC& save_bc, rpc_context context)
@@ -1367,8 +1358,6 @@ namespace cryptonote::rpc {
       return;
     }
     save_bc.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(save_bc.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_PEER_LIST::response core_rpc_server::invoke(GET_PEER_LIST::request&& req, rpc_context context)
@@ -1530,7 +1519,6 @@ namespace cryptonote::rpc {
     m_core.get_pool().get_transaction_hashes(tx_hashes, context.admin);
     get_transaction_pool_hashes.response_hex["tx_hashes"] = tx_hashes;
     get_transaction_pool_hashes.response["status"] = STATUS_OK;
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(GET_TRANSACTION_POOL_STATS& stats, rpc_context context)
@@ -1576,8 +1564,6 @@ namespace cryptonote::rpc {
     PERF_TIMER(on_stop_daemon);
     m_p2p.send_stop_signal();
     stop_daemon.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(stop_daemon.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
 
@@ -1615,14 +1601,11 @@ namespace cryptonote::rpc {
       if (m_should_use_bootstrap_daemon)
       {
         getblockcount.response["status"] = "This command is unsupported for bootstrap daemon";
-        LOG_PRINT_L0(getblockcount.response["status"]);
         return;
       }
     }
     getblockcount.response["count"] = m_core.get_current_blockchain_height();
     getblockcount.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(getblockcount.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GETBLOCKHASH::response core_rpc_server::invoke(GETBLOCKHASH::request&& req, rpc_context context)
@@ -2629,8 +2612,6 @@ namespace cryptonote::rpc {
     m_core.get_pool().get_transaction_backlog(backlog);
     get_transaction_pool_backlog.response["backlog"] = json::parse(backlog.begin(), backlog.end());
     get_transaction_pool_backlog.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(get_transaction_pool_backlog.response["status"]);
-    return;
   }
 
   namespace {
