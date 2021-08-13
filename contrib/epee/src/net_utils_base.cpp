@@ -5,8 +5,9 @@
 
 #include "epee/string_tools.h"
 #include "epee/net/local_ip.h"
+#include "epee/net/enums.h"
 
-namespace epee { namespace net_utils
+namespace epee::net_utils
 {
 	bool ipv4_network_address::equal(const ipv4_network_address& other) const noexcept
 	{ return is_same_host(other) && port() == other.port(); }
@@ -104,5 +105,13 @@ namespace epee { namespace net_utils
     ss << ctx.m_remote_address.str() << (ctx.m_is_income ? " INC":" OUT");
     return ss.str();
   }
-}}
 
+  std::ostream& operator<<(std::ostream& o, address_type a)
+  {
+    return o << to_string(a);
+  }
+  std::ostream& operator<<(std::ostream& o, zone z)
+  {
+    return o << to_string(z);
+  }
+} // namespace epee::net_utils

@@ -481,7 +481,7 @@ namespace nodetool
       network_zone& zone = add_zone(proxy.zone);
       if (zone.m_connect != nullptr)
       {
-        MERROR("Listed --" << arg_tx_proxy.name << " twice with " << epee::net_utils::zone_to_string(proxy.zone));
+        MERROR("Listed --" << arg_tx_proxy.name << " twice with " << proxy.zone);
         return false;
       }
       zone.m_connect = &socks_connect;
@@ -509,7 +509,7 @@ namespace nodetool
     {
       if (zone.second.m_connect == nullptr)
       {
-        MERROR("Set outgoing peer for " << epee::net_utils::zone_to_string(zone.first) << " but did not set --" << arg_tx_proxy.name);
+        MERROR("Set outgoing peer for " << zone.first << " but did not set --" << arg_tx_proxy.name);
         return false;
       }
     }
@@ -525,7 +525,7 @@ namespace nodetool
 
       if (!zone.m_bind_ip.empty())
       {
-        MERROR("Listed --" << arg_anonymous_inbound.name << " twice with " << epee::net_utils::zone_to_string(inbound.our_address.get_zone()) << " network");
+        MERROR("Listed --" << arg_anonymous_inbound.name << " twice with " << inbound.our_address.get_zone() << " network");
         return false;
       }
 
@@ -1927,7 +1927,7 @@ namespace nodetool
       {
         if (zone == m_network_zones.end())
         {
-           MWARNING("Unable to relay all messages, " << epee::net_utils::zone_to_string(c_id.first) << " not available");
+           MWARNING("Unable to relay all messages, " << c_id.first << " not available");
            return false;
         }
         if (c_id.first <= zone->first)

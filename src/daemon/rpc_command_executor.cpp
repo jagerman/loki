@@ -116,19 +116,6 @@ namespace {
     return input_line_result::yes;
   }
 
-  const char *get_address_type_name(epee::net_utils::address_type address_type)
-  {
-    switch (address_type)
-    {
-      default:
-      case epee::net_utils::address_type::invalid: return "invalid";
-      case epee::net_utils::address_type::ipv4: return "IPv4";
-      case epee::net_utils::address_type::ipv6: return "IPv6";
-      case epee::net_utils::address_type::i2p: return "I2P";
-      case epee::net_utils::address_type::tor: return "Tor";
-    }
-  }
-
   void print_peer(std::string const & prefix, GET_PEER_LIST::peer const & peer, bool pruned_only, bool publicrpc_only)
   {
     if (pruned_only && peer.pruning_seed == 0)
@@ -714,7 +701,7 @@ bool rpc_command_executor::print_connections() {
     tools::msg_writer()
      //<< std::setw(30) << std::left << in_out
      << std::setw(30) << std::left << address
-     << std::setw(8) << (get_address_type_name((epee::net_utils::address_type)info.address_type))
+     << std::setw(8) << (epee::net_utils::address_type)info.address_type
      << std::setw(20) << info.peer_id
      << std::setw(20) << info.support_flags
      << std::setw(30) << std::to_string(info.recv_count) + "("  + std::to_string(tools::to_seconds(info.recv_idle_time)) + ")/" + std::to_string(info.send_count) + "(" + std::to_string(tools::to_seconds(info.send_idle_time)) + ")"

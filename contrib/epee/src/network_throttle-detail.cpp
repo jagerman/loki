@@ -343,9 +343,8 @@ double network_throttle::get_current_speed() const {
 	return bytes_transferred / ((m_history.size() - 1) * m_slot_size);
 }
 
-void network_throttle::get_stats(uint64_t &total_packets, uint64_t &total_bytes) const {
-	total_packets = m_total_packets;
-	total_bytes = m_total_bytes;
+std::pair<uint64_t, uint64_t> network_throttle::get_stats() const {
+    return {m_total_packets, m_total_bytes};
 }
 
 

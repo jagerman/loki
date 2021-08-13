@@ -45,6 +45,7 @@
 #include "cryptonote_basic/tx_extra.h"
 #include "cryptonote_core/oxen_name_system.h"
 #include "cryptonote_core/pulse.h"
+#include "epee/net/network_throttle.hpp"
 #include "oxen_economy.h"
 #include "epee/string_tools.h"
 #include "core_rpc_server.h"
@@ -473,17 +474,15 @@ namespace cryptonote::rpc {
     get_net_stats.response["start_time"] = m_core.get_start_time();
     {
       std::lock_guard lock{epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_in};
-      uint64_t total_packets_in, total_bytes_in;
-      epee::net_utils::network_throttle_manager::get_global_throttle_in().get_stats(total_packets_in, total_bytes_in);
-      get_net_stats.response["total_packets_in"] = total_packets_in;
-      get_net_stats.response["total_bytes_in"] = total_bytes_in;
+      auto [packets, bytes] = epee::net_utils::network_throttle_manager::get_global_throttle_in().get_stats();
+      get_net_stats.response["total_packets_in"] = packets;
+      get_net_stats.response["total_bytes_in"] = bytes;
     }
     {
       std::lock_guard lock{epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_out};
-      uint64_t total_packets_in, total_bytes_in;
-      epee::net_utils::network_throttle_manager::get_global_throttle_out().get_stats(total_packets_in, total_bytes_in);
-      get_net_stats.response["total_packets_in"] = total_packets_in;
-      get_net_stats.response["total_bytes_in"] = total_bytes_in;
+      auto [packets, bytes] = epee::net_utils::network_throttle_manager::get_global_throttle_out().get_stats();
+      get_net_stats.response["total_packets_in"] = packets;
+      get_net_stats.response["total_bytes_in"] = bytes;
     }
     get_net_stats.response["status"] = STATUS_OK;
   }
