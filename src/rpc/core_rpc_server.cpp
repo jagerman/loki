@@ -1338,7 +1338,7 @@ namespace cryptonote::rpc {
     mining_status.response["block_target"] = tools::to_seconds(TARGET_BLOCK_TIME);
     mining_status.response["difficulty"] = m_core.get_blockchain_storage().get_difficulty_for_next_block(false /*pulse*/);
     if ( lMiner.is_mining() ) {
-      mining_status.response["speed"] = lMiner.get_speed();
+      mining_status.response["speed"] = std::lround(lMiner.get_speed());
       mining_status.response["threads_count"] = lMiner.get_threads_count();
       mining_status.response["block_reward"] = lMiner.get_block_reward();
     }

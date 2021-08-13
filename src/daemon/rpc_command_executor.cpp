@@ -461,8 +461,8 @@ bool rpc_command_executor::show_status() {
 
   HARD_FORK_INFO::request hfreq{};
   HARD_FORK_INFO::response hfres{};
-  MINING_STATUS::response mres{};
-  bool has_mining_info = false;
+  bool has_mining_info = false, mining_active = false;
+  long mining_hashrate = 0;
 
   hfreq.version = 0;
   bool mining_busy = false;
@@ -472,14 +472,21 @@ bool rpc_command_executor::show_status() {
   if (auto it = info.find("start_time"); it != info.end() && it->get<uint64_t>() > 0) // This will only be non-null if we were recognized as admin (which we need for mining info)
   {
     restricted_response = true;
-    has_mining_info = invoke<MINING_STATUS>({}, mres, "Failed to retrieve mining info", false);
-    if (has_mining_info) {
-      if (mres.status == STATUS_BUSY)
+    if (auto maybe_mining_info = try_running([this] { return invoke<MINING_STATUS>(false); }, "Failed to retrieve mining info")) {
+      has_mining_info = true;
+      auto& mres = *maybe_mining_info;
+      if (mres["status"] == STATUS_BUSY)
         mining_busy = true;
-      else if (mres.status != STATUS_OK) {
+      else if (mres["status"] != STATUS_OK) {
         tools::fail_msg_writer() << "Failed to retrieve mining info";
         return false;
+      } else {
+        mining_active = mres["active"].get<bool>();
+        if (mining_active)
+          mining_hashrate = mres["speed"].get<long>();
       }
+    } else {
+      return false;
     }
   }
 
@@ -540,8 +547,8 @@ bool rpc_command_executor::show_status() {
 
   if (hfres.version < HF_VERSION_PULSE && !has_mining_info)
     str << ", mining info unavailable";
-  if (has_mining_info && !mining_busy && mres.active)
-    str << ", mining at " << get_mining_speed(mres.speed);
+  if (has_mining_info && !mining_busy && mining_active)
+    str << ", mining at " << get_mining_speed(mining_hashrate);
 
   if (hfres.version < HF_VERSION_PULSE)
     str << ", net hash " << get_mining_speed(info["difficulty"].get<uint64_t>() / info["target"].get<uint64_t>());
@@ -603,42 +610,27 @@ bool rpc_command_executor::show_status() {
 }
 
 bool rpc_command_executor::mining_status() {
-  MINING_STATUS::response mres{};
-
-  if (!invoke<MINING_STATUS>({}, mres, "Failed to retrieve mining info", false))
+  auto maybe_mining_info = try_running([this] { return invoke<MINING_STATUS>(false); }, "Failed to retrieve mining info");
+  if (!maybe_mining_info)
     return false;
 
   bool mining_busy = false;
-  if (mres.status == STATUS_BUSY)
-  {
+  auto& mres = *maybe_mining_info;
+  if (mres["status"] == STATUS_BUSY)
     mining_busy = true;
-  }
-  else if (mres.status != STATUS_OK)
-  {
+  else if (mres["status"] != STATUS_OK) {
     tools::fail_msg_writer() << "Failed to retrieve mining info";
     return false;
   }
-
-  if (mining_busy || !mres.active)
-  {
+  bool active = mres["active"].get<bool>();
+  long speed = mres["speed"].get<long>();
+  if (mining_busy || !active)
     tools::msg_writer() << "Not currently mining";
+  else {
+    tools::msg_writer() << "Mining at " << get_mining_speed(speed) << " with " << mres["threads_count"].get<int>() << " threads";
+    tools::msg_writer() << "Mining address: " << mres["address"].get<std::string_view>();
   }
-  else
-  {
-    tools::msg_writer() << "Mining at " << get_mining_speed(mres.speed) << " with " << mres.threads_count << " threads";
-  }
-
-  tools::msg_writer() << "PoW algorithm: " << mres.pow_algorithm;
-  if (mres.active)
-  {
-    tools::msg_writer() << "Mining address: " << mres.address;
-  }
-
-  if (!mining_busy && mres.active && mres.speed > 0 && mres.block_target > 0 && mres.difficulty > 0)
-  {
-    uint64_t daily = 86400 / (double)mres.difficulty * mres.speed * mres.block_reward;
-    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " OXEN daily, " << cryptonote::print_money(7*daily) << " weekly";
-  }
+  tools::msg_writer() << "PoW algorithm: " << mres["pow_algorithm"].get<std::string_view>();
 
   return true;
 }
