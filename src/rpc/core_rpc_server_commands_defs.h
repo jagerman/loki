@@ -1298,54 +1298,6 @@ namespace cryptonote::rpc {
     static constexpr auto names() { return NAMES("get_txpool_backlog"); }
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  struct txpool_histo
-  {
-    uint32_t txs;   // Number of transactions.
-    uint64_t bytes; // Size in bytes.
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  struct txpool_stats
-  {
-    uint64_t bytes_total;            // Total size of all transactions in pool.
-    uint32_t bytes_min;              // Min transaction size in pool.
-    uint32_t bytes_max;              // Max transaction size in pool.
-    uint32_t bytes_med;              // Median transaction size in pool.
-    uint64_t fee_total;              // Total fee's in pool in atomic units.
-    uint64_t oldest;                 // Unix time of the oldest transaction in the pool.
-    uint32_t txs_total;              // Total number of transactions.
-    uint32_t num_failing;            // Bumber of failing transactions.
-    uint32_t num_10m;                // Number of transactions in pool for more than 10 minutes.
-    uint32_t num_not_relayed;        // Number of non-relayed transactions.
-    uint64_t histo_98pc;             // the time 98% of txes are "younger" than.
-    std::vector<txpool_histo> histo; // List of txpool histo.
-    uint32_t num_double_spends;      // Number of double spend transactions.
-
-    txpool_stats(): bytes_total(0), bytes_min(0), bytes_max(0), bytes_med(0), fee_total(0), oldest(0), txs_total(0), num_failing(0), num_10m(0), num_not_relayed(0), histo_98pc(0), num_double_spends(0) {}
-
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  //void to_json(nlohmann::json& j, const txpool_stats& txpool) {
-      //j = nlohmann::json{{"bytes_total", txpool.bytes_total},
-        //{"bytes_min", txpool.bytes_min},
-				//{"bytes_max", txpool.bytes_max},
-				//{"bytes_med", txpool.bytes_med},
-				//{"fee_total", txpool.fee_total},
-				//{"oldest", txpool.oldest},
-				//{"txs_total", txpool.txs_total},
-				//{"num_failing", txpool.num_failing},
-				//{"num_10m", txpool.num_10m},
-				//{"num_not_relayed", txpool.num_not_relayed},
-				//{"histo_98pc", txpool.histo_98pc},
-				//{"histo", txpool.histo},
-				//{"num_double_spends", txpool.num_double_spends}};
-  //}
-
   //-----------------------------------------------
   /// Get the transaction pool statistics.
   ///

@@ -419,14 +419,34 @@ namespace cryptonote
      */
     void get_transaction_backlog(std::vector<rpc::tx_backlog_entry>& backlog, bool include_unrelayed_txes = true) const;
 
+    /// Return type of get_transaction_stats()
+    struct tx_stats
+    {
+      uint64_t bytes_total;     ///< Total size of all transactions in pool.
+      uint32_t bytes_min;       ///< Min transaction size in pool.
+      uint32_t bytes_max;       ///< Max transaction size in pool.
+      uint32_t bytes_med;       ///< Median transaction size in pool.
+      uint64_t fee_total;       ///< Total fee's in pool in atomic units.
+      uint64_t oldest;          ///< Unix time of the oldest transaction in the pool.
+      uint32_t txs_total;       ///< Total number of transactions.
+      uint32_t num_failing;     ///< Bumber of failing transactions.
+      uint32_t num_10m;         ///< Number of transactions in pool for more than 10 minutes.
+      uint32_t num_not_relayed; ///< Number of non-relayed transactions.
+      uint64_t histo_98pc;      ///< the time 98% of txes are "younger" than.
+      std::vector<std::pair<uint32_t, uint64_t>> histo; ///< List of txpool histo [number of txes, size in bytes] pairs.
+      uint32_t num_double_spends; ///< Number of double spend transactions.
+
+      tx_stats(): bytes_total(0), bytes_min(0), bytes_max(0), bytes_med(0), fee_total(0), oldest(0), txs_total(0), num_failing(0), num_10m(0), num_not_relayed(0), histo_98pc(0), num_double_spends(0) {}
+    };
+
     /**
      * @brief get a summary statistics of all transaction hashes in the pool
      *
-     * @param stats return-by-reference the pool statistics
      * @param include_unrelayed_txes include unrelayed txes in the result
      *
+     * @return txpool_stats struct of pool statistics
      */
-    void get_transaction_stats(struct rpc::txpool_stats& stats, bool include_unrelayed_txes = true) const;
+    tx_stats get_transaction_stats(bool include_unrelayed_txes = true) const;
 
     /**
      * @brief get information about all transactions and key images in the pool

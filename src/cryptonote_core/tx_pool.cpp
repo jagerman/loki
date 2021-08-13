@@ -1166,12 +1166,13 @@ namespace cryptonote
     }, false, include_unrelayed_txes);
   }
   //------------------------------------------------------------------
-  void tx_memory_pool::get_transaction_stats(struct rpc::txpool_stats& stats, bool include_unrelayed_txes) const
+  tx_memory_pool::tx_stats tx_memory_pool::get_transaction_stats(bool include_unrelayed_txes) const
   {
     auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);
 
+    tx_stats stats;
     const uint64_t now = time(NULL);
-    std::map<uint64_t, rpc::txpool_histo> agebytes;
+    std::map<uint64_t, std::pair<uint32_t, uint64_t>> agebytes;
     stats.txs_total = m_blockchain.get_txpool_tx_count(include_unrelayed_txes);
     std::vector<uint32_t> weights;
     weights.reserve(stats.txs_total);
@@ -1192,8 +1193,8 @@ namespace cryptonote
       if (meta.last_failed_height)
         stats.num_failing++;
       uint64_t age = now - meta.receive_time + (now == meta.receive_time);
-      agebytes[age].txs++;
-      agebytes[age].bytes += meta.weight;
+      agebytes[age].first++;
+      agebytes[age].second += meta.weight;
       if (meta.double_spend_seen)
         ++stats.num_double_spends;
       return true;
@@ -1204,7 +1205,7 @@ namespace cryptonote
       /* looking for 98th percentile */
       size_t end = stats.txs_total * 0.02;
       uint64_t delta, factor;
-      std::map<uint64_t, rpc::txpool_histo>::iterator it, i2;
+      decltype(agebytes.begin()) it;
       if (end)
       {
         /* If enough txs, spread the first 98% of results across
@@ -1217,7 +1218,7 @@ namespace cryptonote
          */
         do {
           --it;
-          cumulative_num += it->second.txs;
+          cumulative_num += it->second.first;
         } while (it != agebytes.begin() && cumulative_num < end);
         stats.histo_98pc = it->first;
         factor = 9;
@@ -1236,18 +1237,22 @@ namespace cryptonote
       }
       if (!delta)
         delta = 1;
-      for (i2 = agebytes.begin(); i2 != it; i2++)
+      auto i2 = agebytes.begin();
+      for (; i2 != it; i2++)
       {
         size_t i = (i2->first * factor - 1) / delta;
-        stats.histo[i].txs += i2->second.txs;
-        stats.histo[i].bytes += i2->second.bytes;
+        stats.histo[i].first += i2->second.first;
+        stats.histo[i].second += i2->second.second;
       }
       for (; i2 != agebytes.end(); i2++)
       {
-        stats.histo[factor].txs += i2->second.txs;
-        stats.histo[factor].bytes += i2->second.bytes;
+        auto& h = stats.histo[factor];
+        h.first += i2->second.first;
+        h.second += i2->second.second;
       }
     }
+
+    return stats;
   }
   //------------------------------------------------------------------
   //TODO: investigate whether boolean return is appropriate

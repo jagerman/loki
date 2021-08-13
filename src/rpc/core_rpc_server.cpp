@@ -1536,19 +1536,30 @@ namespace cryptonote::rpc {
     return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  void core_rpc_server::invoke(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_context context)
+  void core_rpc_server::invoke(GET_TRANSACTION_POOL_STATS& stats, rpc_context context)
   {
     PERF_TIMER(on_get_transaction_pool_stats);
     //TODO handle bootstrap daemon
     //if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_STATS>(req, res))
       //return res;
 
-    rpc::txpool_stats stats;
-    m_core.get_pool().get_transaction_stats(stats, context.admin);
-    get_transaction_pool_stats.response["pool_stats"] = stats
-    get_transaction_pool_stats.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(get_transaction_pool_stats.response["status"]);
-    return;
+    auto txpool = m_core.get_pool().get_transaction_stats(context.admin);
+    stats.response["pool_stats"] = json{
+        {"bytes_total", txpool.bytes_total},
+        {"bytes_min", txpool.bytes_min},
+        {"bytes_max", txpool.bytes_max},
+        {"bytes_med", txpool.bytes_med},
+        {"fee_total", txpool.fee_total},
+        {"oldest", txpool.oldest},
+        {"txs_total", txpool.txs_total},
+        {"num_failing", txpool.num_failing},
+        {"num_10m", txpool.num_10m},
+        {"num_not_relayed", txpool.num_not_relayed},
+        {"histo_98pc", txpool.histo_98pc},
+        {"histo", txpool.histo},
+        {"num_double_spends", txpool.num_double_spends}};
+
+    stats.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   SET_BOOTSTRAP_DAEMON::response core_rpc_server::invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context)
