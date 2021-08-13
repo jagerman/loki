@@ -1313,16 +1313,41 @@ namespace cryptonote::rpc {
     static constexpr auto names() { return NAMES("get_transaction_pool_stats"); }
   };
 
-  //-----------------------------------------------
-  /// Retrieve information about incoming and outgoing connections to your node.
+  /// Retrieve information about incoming and outgoing P2P connections to your node.
   ///
   /// Inputs: none
   ///
   /// Output values available from a public RPC endpoint:
   ///
   /// - \p status General RPC status string. `"OK"` means everything looks good.
-  /// - \p connections List of all connections and their info:
-  struct GET_CONNECTIONS : RPC_COMMAND
+  /// - \p connections List of all connections and their info; each element is a dict containing:
+  ///   - \p incoming bool of whether this connection was established by the remote to us (true) or
+  ///     by us to the remove (false).
+  ///   - \p ip address of the remote peer
+  ///   - \p port the remote port of the peer connection
+  ///   - \p address_type - 1/2/3/4 for ipv4/ipv6/i2p/tor, respectively.
+  ///   - \p peer_id a string that uniquely identifies a peer node
+  ///   - \p recv_count number of bytes of data received from this peer
+  ///   - \p recv_idle_ms number of milliseconds since we last received data from this peer
+  ///   - \p send_count number of bytes of data send to this peer
+  ///   - \p send_idle_ms number of milliseconds since we last sent data to this peer
+  ///   - \p state returns the current state of the connection with this peer as a string, one of:
+  ///     - \c before_handshake - the connection is still being established/negotiated
+  ///     - \c synchronizing - we are synchronizing the blockchain with this peer
+  ///     - \c standby - the peer is available for synchronizing but we are not currently using it
+  ///     - \c normal - this is a regular, synchronized peer
+  ///   - \p live_ms - number of milliseconds since this connection was initiated
+  ///   - \p avg_download - the average download speed from this peer in bytes per second
+  ///   - \p current_download - the current (i.e. average over a very recent period) download speed from this peer in bytes per second.
+  ///   - \p avg_upload - the average upload speed to this peer in bytes per second
+  ///   - \p current_upload - the current upload speed to this peer in bytes per second
+  ///   - \p connection_id - a unique random string identifying this connection
+  ///   - \p height - the height of the peer
+  ///   - \p host - the hostname for this peer; only included if != \p ip
+  ///   - \p localhost - set to true if the peer is a localhost connection; omitted otherwise.
+  ///   - \p local_ip - set to true if the peer is a non-public, local network connection; omitted
+  ///     otherwise.
+  struct GET_CONNECTIONS : NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_connections"); }
   };
@@ -2677,6 +2702,7 @@ namespace cryptonote::rpc {
   /// <TYPE>::response.  The <TYPE>::request has to be unique (for overload resolution);
   /// <TYPE>::response does not.
   using core_rpc_types = tools::type_list<
+    GET_CONNECTIONS,
     GET_HEIGHT,
     GET_INFO,
     ONS_RESOLVE,
@@ -2723,7 +2749,6 @@ namespace cryptonote::rpc {
     SET_LOG_LEVEL,
     SET_LOG_CATEGORIES,
     GET_TRANSACTION_POOL,
-    GET_CONNECTIONS,
     GET_BLOCK_HEADERS_RANGE,
     SET_BOOTSTRAP_DAEMON,
     GET_LIMIT,

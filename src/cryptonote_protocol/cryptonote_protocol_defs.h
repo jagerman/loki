@@ -50,7 +50,7 @@ namespace cryptonote
 #define BC_COMMANDS_POOL_BASE 2000
 
   /************************************************************************/
-  /* P2P connection info, serializable to json                            */
+  /* P2P connection info                                                  */
   /************************************************************************/
   struct connection_info
   {
@@ -92,8 +92,6 @@ namespace cryptonote
     uint32_t pruning_seed;
 
     uint8_t address_type;
-
-    KV_MAP_SERIALIZABLE
   };
 
   /************************************************************************/

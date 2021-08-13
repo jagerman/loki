@@ -2112,10 +2112,37 @@ namespace cryptonote::rpc {
   {
     PERF_TIMER(on_get_connections);
     auto connections = m_p2p.get_payload_object().get_connections();
-    get_connections.response["connections"] = connections;
+    auto& c = get_connections.response["connections"];
+    c = json::array();
+    for (auto& ci : connections) {
+      json info{
+        {"incoming", ci.incoming},
+        {"ip", ci.ip},
+        {"address_type", ci.address_type},
+        {"peer_id", ci.peer_id},
+        {"recv_count", ci.recv_count},
+        {"recv_idle_ms", ci.recv_idle_time.count()},
+        {"send_count", ci.send_count},
+        {"send_idle_ms", ci.send_idle_time.count()},
+        {"state", ci.state},
+        {"live_ms", ci.live_time.count()},
+        {"avg_download", ci.avg_download},
+        {"current_download", ci.current_download},
+        {"avg_upload", ci.avg_upload},
+        {"current_upload", ci.current_upload},
+        {"support_flags", ci.support_flags},
+        {"connection_id", ci.connection_id},
+        {"height", ci.height},
+      };
+      if (ci.ip != ci.host) info["host"] = ci.host;
+      if (ci.localhost) info["localhost"] = true;
+      if (ci.local_ip) info["local_ip"] = true;
+      if (uint16_t port; tools::parse_int(ci.port, port) && port > 0) info["port"] = port;
+      if (ci.rpc_port > 0) info["rpc_port"] = ci.rpc_port;
+      if (ci.pruning_seed) info["pruning_seed"] = ci.pruning_seed;
+      c.push_back(std::move(info));
+    }
     get_connections.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(get_connections.response["status"]);
-    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   HARD_FORK_INFO::response core_rpc_server::invoke(HARD_FORK_INFO::request&& req, rpc_context context)

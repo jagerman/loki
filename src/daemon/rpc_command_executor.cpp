@@ -649,12 +649,13 @@ bool rpc_command_executor::mining_status() {
 }
 
 bool rpc_command_executor::print_connections() {
-  GET_CONNECTIONS::response res{};
-
-  if (!invoke<GET_CONNECTIONS>({}, res, "Failed to retrieve connection info"))
+  auto maybe_conns = try_running([this] { return invoke<GET_CONNECTIONS>(); }, "Failed to retrieve connection info");
+  if (!maybe_conns)
     return false;
+  auto& conns = *maybe_conns;
 
-  tools::msg_writer() << std::setw(30) << std::left << "Remote Host"
+  tools::msg_writer()
+      << std::setw(30) << std::left << "Remote Host"
       << std::setw(8) << "Type"
       << std::setw(20) << "Peer id"
       << std::setw(20) << "Support Flags"
@@ -667,29 +668,31 @@ bool rpc_command_executor::print_connections() {
       << std::setw(13) << "Up(now)"
       << std::endl;
 
-  for (auto & info : res.connections)
+  for (auto& info : conns)
   {
-    std::string address = info.incoming ? "INC " : "OUT ";
-    address += info.ip + ":" + info.port;
-    //std::string in_out = info.incoming ? "INC " : "OUT ";
+    std::string address = info["incoming"].get<bool>() ? "INC " : "OUT ";
+    address += info["ip"].get<std::string_view>();
+    address += ':';
+    address += tools::int_to_string(info["port"].get<uint16_t>());
     tools::msg_writer()
-     //<< std::setw(30) << std::left << in_out
      << std::setw(30) << std::left << address
-     << std::setw(8) << (epee::net_utils::address_type)info.address_type
-     << std::setw(20) << info.peer_id
-     << std::setw(20) << info.support_flags
-     << std::setw(30) << std::to_string(info.recv_count) + "("  + std::to_string(tools::to_seconds(info.recv_idle_time)) + ")/" + std::to_string(info.send_count) + "(" + std::to_string(tools::to_seconds(info.send_idle_time)) + ")"
-     << std::setw(25) << info.state
-     << std::setw(20) << std::to_string(tools::to_seconds(info.live_time))
-     << std::setw(12) << info.avg_download
-     << std::setw(14) << info.current_download
-     << std::setw(10) << info.avg_upload
-     << std::setw(13) << info.current_upload
+     << std::setw(8) << info["address_type"].get<epee::net_utils::address_type>()
+     << std::setw(20) << info["peer_id"].get<std::string_view>()
+     << std::setw(20) << info["support_flags"].get<uint32_t>()
+     << std::setw(30) << tools::concat(
+         info["recv_count"].get<uint64_t>(),
+         "(", tools::friendly_duration(1ms * info["recv_idle_ms"].get<int64_t>()), ")/",
+         info["send_count"].get<uint64_t>(),
+         "(", tools::friendly_duration(1ms * info["send_idle_ms"].get<int64_t>()), ")")
+     << std::setw(25) << info["state"].get<std::string_view>()
+     << std::setw(20) << tools::friendly_duration(1ms * info["live_ms"].get<int64_t>())
+     << std::setw(12) << info["avg_download"].get<uint64_t>()
+     << std::setw(14) << info["current_download"].get<uint64_t>()
+     << std::setw(10) << info["avg_upload"].get<uint64_t>()
+     << std::setw(13) << info["current_upload"].get<uint64_t>()
 
-     << std::left << (info.localhost ? "[LOCALHOST]" : "")
-     << std::left << (info.local_ip ? "[LAN]" : "");
-    //tools::msg_writer() << boost::format("%-25s peer_id: %-25s %s") % address % info.peer_id % in_out;
-
+     << std::left << (info.value("localhost", false) ? "[LOCALHOST]" : "")
+     << std::left << (info.value("local_ip", false) ? "[LAN]" : "");
   }
 
   return true;

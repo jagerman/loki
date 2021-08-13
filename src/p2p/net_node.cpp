@@ -72,7 +72,7 @@ namespace
         if (!address)
         {
             MERROR(
-                "Failed to parse " << epee::net_utils::zone_to_string(T::get_zone()) << " address \"" << value << "\": " << address.error().message()
+                "Failed to parse " << T::get_zone() << " address \"" << value << "\": " << address.error().message()
             );
             return {};
         }

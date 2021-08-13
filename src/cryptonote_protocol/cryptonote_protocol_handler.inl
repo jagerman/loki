@@ -313,12 +313,12 @@ namespace cryptonote
 
       else
       {
-        cnx.avg_download = cntxt.m_recv_cnt / connection_time.count() / 1024;
-        cnx.avg_upload = cntxt.m_send_cnt / connection_time.count() / 1024;
+        cnx.avg_download = cntxt.m_recv_cnt / connection_time.count();
+        cnx.avg_upload = cntxt.m_send_cnt / connection_time.count();
       }
 
-      cnx.current_download = cntxt.m_current_speed_down / 1024;
-      cnx.current_upload = cntxt.m_current_speed_up / 1024;
+      cnx.current_download = cntxt.m_current_speed_down;
+      cnx.current_upload = cntxt.m_current_speed_up;
 
       cnx.connection_id = tools::type_to_hex(cntxt.m_connection_id);
 

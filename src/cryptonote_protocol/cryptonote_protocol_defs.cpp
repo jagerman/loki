@@ -2,44 +2,6 @@
 
 namespace cryptonote {
 
-KV_SERIALIZE_MAP_CODE_BEGIN(connection_info)
-  KV_SERIALIZE(incoming)
-  KV_SERIALIZE(localhost)
-  KV_SERIALIZE(local_ip)
-  KV_SERIALIZE(address)
-  KV_SERIALIZE(host)
-  KV_SERIALIZE(ip)
-  KV_SERIALIZE(port)
-  KV_SERIALIZE(rpc_port)
-  KV_SERIALIZE(peer_id)
-  KV_SERIALIZE(recv_count)
-  uint64_t recv_idle_time, send_idle_time, live_time;
-  if (is_store) {
-    recv_idle_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.recv_idle_time).count();
-    send_idle_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.send_idle_time).count();
-    live_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.live_time).count();
-  }
-  KV_SERIALIZE_VALUE(recv_idle_time)
-  KV_SERIALIZE(send_count)
-  KV_SERIALIZE_VALUE(send_idle_time)
-  KV_SERIALIZE(state)
-  KV_SERIALIZE_VALUE(live_time)
-  if constexpr (!is_store) {
-    this_ref.recv_idle_time = std::chrono::seconds{recv_idle_time};
-    this_ref.send_idle_time = std::chrono::seconds{send_idle_time};
-    this_ref.live_time = std::chrono::seconds{live_time};
-  }
-  KV_SERIALIZE(avg_download)
-  KV_SERIALIZE(current_download)
-  KV_SERIALIZE(avg_upload)
-  KV_SERIALIZE(current_upload)
-  KV_SERIALIZE(support_flags)
-  KV_SERIALIZE(connection_id)
-  KV_SERIALIZE(height)
-  KV_SERIALIZE(pruning_seed)
-  KV_SERIALIZE(address_type)
-KV_SERIALIZE_MAP_CODE_END()
-
 KV_SERIALIZE_MAP_CODE_BEGIN(serializable_blink_metadata)
   KV_SERIALIZE_VAL_POD_AS_BLOB_N(tx_hash, "#")
   KV_SERIALIZE_N(height, "h")
