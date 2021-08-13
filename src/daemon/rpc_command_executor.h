@@ -125,6 +125,19 @@ public:
     return invoke(RPC::names()[0], std::is_base_of_v<cryptonote::rpc::PUBLIC, RPC>, std::move(params), check_status_ok);
   }
 
+  // Invokes a simple RPC method that doesn't take any arguments and for which we don't care about
+  // the return value beyond the "status": "OK" field.  Returns true (and prints a success message)
+  // on success, false (with a failure message printed) on failure.
+  template <typename RPC, std::enable_if_t<std::is_base_of_v<cryptonote::rpc::RPC_COMMAND, RPC> && !cryptonote::rpc::FIXME_has_nested_response_v<RPC>, int> = 0>
+  bool invoke_simple(std::string_view error_prefix, std::string_view success_msg) {
+    if (!try_running([this] { return invoke<RPC>(); }, error_prefix))
+      return false;
+
+    tools::success_msg_writer() << success_msg;
+    return true;
+  }
+
+
   bool print_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json);
 
   bool print_sn_state_changes(uint64_t start_height, uint64_t end_height);

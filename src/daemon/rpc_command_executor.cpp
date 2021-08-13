@@ -44,6 +44,7 @@
 #include <boost/format.hpp>
 #include <exception>
 #include <oxenmq/base32z.h>
+#include <date/date.h>
 
 #include "common/oxen_integration_test_hooks.h"
 
@@ -53,6 +54,7 @@
 #include <string>
 #include <numeric>
 #include <stack>
+#include <type_traits>
 
 #undef OXEN_DEFAULT_LOG_CATEGORY
 #define OXEN_DEFAULT_LOG_CATEGORY "daemon"
@@ -393,14 +395,7 @@ bool rpc_command_executor::print_peer_list_stats() {
 }
 
 bool rpc_command_executor::save_blockchain() {
-  SAVE_BC::response res{};
-
-  if (!invoke<SAVE_BC>({}, res, "Couldn't save blockchain"))
-    return false;
-
-  tools::success_msg_writer() << "Blockchain saved";
-
-  return true;
+  return invoke_simple<SAVE_BC>("Couldn't save blockchain", "Blockchain saved");
 }
 
 bool rpc_command_executor::show_difficulty() {
@@ -1124,25 +1119,12 @@ bool rpc_command_executor::start_mining(const cryptonote::account_public_address
 }
 
 bool rpc_command_executor::stop_mining() {
-  STOP_MINING::response res{};
-
-  if (!invoke<STOP_MINING>({}, res, "Unable to stop mining"))
-    return false;
-
-  tools::success_msg_writer() << "Mining stopped";
-  return true;
+  return invoke_simple<STOP_MINING>("Couldn't stop mining", "Mining stopped");
 }
 
 bool rpc_command_executor::stop_daemon()
 {
-  STOP_DAEMON::response res{};
-
-  if (!invoke<STOP_DAEMON>({}, res, "Failed to stop daemon"))
-    return false;
-
-  tools::success_msg_writer() << "Stop signal sent";
-
-  return true;
+  return invoke_simple<STOP_DAEMON>("Couldn't stop daemon", "Stop signal sent");
 }
 
 bool rpc_command_executor::get_limit(bool up, bool down)
