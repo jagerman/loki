@@ -277,6 +277,7 @@ namespace nodetool
   /************************************************************************/
   /*                                                                      */
   /************************************************************************/
+  // TODO: remove after HF19
   struct COMMAND_REQUEST_SUPPORT_FLAGS
   {
     const static int ID = P2P_COMMANDS_POOL_BASE + 7;

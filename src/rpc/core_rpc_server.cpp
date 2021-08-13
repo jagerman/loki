@@ -2130,7 +2130,6 @@ namespace cryptonote::rpc {
         {"current_download", ci.current_download},
         {"avg_upload", ci.avg_upload},
         {"current_upload", ci.current_upload},
-        {"support_flags", ci.support_flags},
         {"connection_id", ci.connection_id},
         {"height", ci.height},
       };
@@ -2138,6 +2137,8 @@ namespace cryptonote::rpc {
       if (ci.localhost) info["localhost"] = true;
       if (ci.local_ip) info["local_ip"] = true;
       if (uint16_t port; tools::parse_int(ci.port, port) && port > 0) info["port"] = port;
+      // Included for completeness, but undocumented as neither of these are currently actually used
+      // or support on Oxen:
       if (ci.rpc_port > 0) info["rpc_port"] = ci.rpc_port;
       if (ci.pruning_seed) info["pruning_seed"] = ci.pruning_seed;
       c.push_back(std::move(info));

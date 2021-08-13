@@ -151,12 +151,6 @@ constexpr auto P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT   = 5s;
 #define P2P_IP_FAILS_BEFORE_BLOCK                       10
 #define P2P_IDLE_CONNECTION_KILL_INTERVAL               (5*60) //5 minutes
 
-// TODO(doyle): Deprecate after checkpointing hardfork, remove notion of being
-// able to sync non-fluffy blocks, keep here so we can still accept blocks
-// pre-hardfork
-#define P2P_SUPPORT_FLAG_FLUFFY_BLOCKS                  0x01
-#define P2P_SUPPORT_FLAGS                               P2P_SUPPORT_FLAG_FLUFFY_BLOCKS
-
 #define CRYPTONOTE_NAME                         "oxen"
 #define CRYPTONOTE_POOLDATA_FILENAME            "poolstate.bin"
 #define CRYPTONOTE_BLOCKCHAINDATA_FILENAME      "data.mdb"
