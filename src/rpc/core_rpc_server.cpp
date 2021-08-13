@@ -117,7 +117,7 @@ namespace cryptonote::rpc {
       cmd->is_legacy = std::is_base_of_v<LEGACY, RPC>;
       if constexpr (!std::is_base_of_v<BINARY, RPC>) {
         static_assert(!FIXME_has_nested_response_v<RPC>);
-        cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> std::string {
+        cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> rpc_command::result_type {
           RPC rpc;
           try {
             if (auto body = request.body_view()) {
@@ -143,14 +143,14 @@ namespace cryptonote::rpc {
             rpc.response = json::object();
 
           if (rpc.is_bt())
-            return bt_serialize(json_to_bt(std::move(rpc.response)));
+            return json_to_bt(std::move(rpc.response));
           else
-            return rpc.response.dump();
+            return std::move(rpc.response);
         };
       } else {
         // Legacy binary request; these still use epee serialization, and should be considered
         // deprecated (tentatively to be removed in Oxen 11).
-        cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> std::string {
+        cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> rpc_command::result_type {
           typename RPC::request req{};
           std::string_view data;
           if (auto body = request.body_view())

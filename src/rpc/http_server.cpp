@@ -247,9 +247,8 @@ namespace cryptonote::rpc {
     }
   };
 
-  // Queues a response for the HTTP thread to handle; the response can be in multiple string pieces
-  // to be concatenated together.
-  void queue_response(std::shared_ptr<call_data> data, std::vector<std::string> body)
+  // Queues a response for the HTTP thread to handle
+  void queue_response(std::shared_ptr<call_data> data, std::string body)
   {
     auto& http = data->http;
     data->replied = true;
@@ -263,22 +262,10 @@ namespace cryptonote::rpc {
         if (data->http.closing()) res.writeHeader("Connection", "close");
         for (const auto& [name, value] : data->extra_headers)
           res.writeHeader(name, value);
-
-        for (const auto& piece : body)
-          res.write(piece);
-
-        res.end();
+        res.end(body);
         if (data->http.closing()) res.close();
       });
     });
-  }
-
-  // Wrapper around the above that takes a single string
-  void queue_response(std::shared_ptr<call_data> data, std::string body)
-  {
-    std::vector<std::string> b;
-    b.push_back(std::move(body));
-    queue_response(std::move(data), std::move(b));
   }
 
   void invoke_txpool_hashes_bin(std::shared_ptr<call_data> data);
@@ -299,21 +286,20 @@ namespace cryptonote::rpc {
     if (time_logging)
       start = std::chrono::steady_clock::now();
 
-    std::vector<std::string> result;
-    result.reserve(data.jsonrpc ? 3 : 1);
-    if (data.jsonrpc)
-    {
-      result.emplace_back(R"({"jsonrpc":"2.0","id":)");
-      result.back() += data.jsonrpc_id;
-      result.back() += R"(,"result":)";
-    }
-
     int json_error = -32603;
     std::string json_message = "Internal error";
     std::string http_message;
 
+    std::string result;
     try {
-      result.push_back(data.call->invoke(std::move(data.request), data.core_rpc));
+      auto r = data.call->invoke(std::move(data.request), data.core_rpc);
+      if (data.jsonrpc)
+        result = nlohmann::json{{"jsonrpc", "2.0"}, {"id", data.jsonrpc_id}, {"result", var::get<nlohmann::json>(std::move(r))}}.dump();
+      else if (auto* json = std::get_if<nlohmann::json>(&r))
+        result = json->dump();
+      else
+        result = var::get<std::string>(std::move(r));
+      // And throw if we get back a bt_value because we don't accept that at all
       json_error = 0;
     } catch (const parse_error& e) {
       // This isn't really WARNable as it's the client fault; log at info level instead.
@@ -342,17 +328,11 @@ namespace cryptonote::rpc {
       return;
     }
 
-    if (data.jsonrpc)
-      result.emplace_back("}\n");
-
     std::string call_duration;
     if (time_logging)
       call_duration = " in " + tools::friendly_duration(std::chrono::steady_clock::now() - start);
-    if (LOG_ENABLED(Info)) {
-      size_t bytes = 0;
-      for (const auto& r : result) bytes += r.size();
-      MINFO("HTTP RPC " << data.uri << " [" << data.request.context.remote << "] OK (" << bytes << " bytes)" << call_duration);
-    }
+    if (LOG_ENABLED(Info))
+      MINFO("HTTP RPC " << data.uri << " [" << data.request.context.remote << "] OK (" << result.size() << " bytes)" << call_duration);
 
     queue_response(std::move(dataptr), std::move(result));
   }

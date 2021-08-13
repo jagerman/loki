@@ -203,7 +203,18 @@ omq_rpc::omq_rpc(cryptonote::core& core, core_rpc_server& rpc, const boost::prog
         request.body = m.data[0];
 
       try {
-        m.send_reply(LMQ_OK, call.invoke(std::move(request), rpc_));
+        auto result = std::visit([](auto&& v) -> std::string {
+          using T = decltype(v);
+          if constexpr (std::is_same_v<oxenmq::bt_value&&, T>)
+            return bt_serialize(std::move(v));
+          else if constexpr (std::is_same_v<nlohmann::json&&, T>)
+            return v.dump();
+          else {
+            static_assert(std::is_same_v<std::string&&, T>);
+            return std::move(v);
+          }
+        }, call.invoke(std::move(request), rpc_));
+        m.send_reply(LMQ_OK, std::move(result));
         return;
       } catch (const parse_error& e) {
         // This isn't really WARNable as it's the client fault; log at info level instead.
