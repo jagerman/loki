@@ -1770,46 +1770,36 @@ namespace cryptonote::rpc {
     struct response : STATUS {};
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get synchronisation information.
-  struct SYNC_INFO : RPC_COMMAND
+  /// Get node synchronisation information.  This returns information on the node's syncing "spans"
+  /// which are block segments being downloaded from peers while syncing; spans are generally
+  /// downloaded out of order from multiple peers, and so these spans reflect in-progress downloaded
+  /// blocks that have not yet been added to the block chain: typically because the spans is not yet
+  /// complete, or because the span is for future blocks that are dependent on intermediate blocks
+  /// (likely in another span) being added to the chain first.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values available from an admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p height Current block height
+  /// - \p target_height If the node is currently syncing then this is the target height the node
+  ///   wants to reach.  If fully synced then this field is omitted.
+  /// - \p peers dict of connection information about peers.  The key is the peer connection_id; the
+  ///   value is identical to the values of the \p connections field of GET_CONNECTIONS.  \sa
+  ///   GET_CONNECTIONS.
+  /// - \p span array of span information of current in progress synchronization.  Element element
+  ///   contains:
+  ///   - \p start_block_height Block height of the first block in the span
+  ///   - \p nblocks the number of blocks in the span
+  ///   - \p connection_id the connection_id of the connection from which we are downloading the span
+  ///   - \p rate the most recent connection speed measurement
+  ///   - \p speed the average connection speed over recent downloaded blocks
+  ///   - \p size total number of block and transaction data stored in the span
+  /// - \p overview a string containing a one-line ascii-art depiction of the current sync status
+  struct SYNC_INFO : NO_ARGS
   {
     static constexpr auto names() { return NAMES("sync_info"); }
-
-    struct request : EMPTY {};
-
-    struct peer
-    {
-      connection_info info; // Structure of connection info, as defined in get_connections.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct span
-    {
-      uint64_t start_block_height; // Block height of the first block in that span.
-      uint64_t nblocks;            // Number of blocks in that span.
-      std::string connection_id;   // Id of connection.
-      uint32_t rate;               // Connection rate.
-      uint32_t speed;              // Connection speed.
-      uint64_t size;               // Total number of bytes in that span's blocks (including txes).
-      std::string remote_address;  // Peer address the node is downloading (or has downloaded) than span from.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status;                // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
-      uint64_t height;                   // Block height.
-      uint64_t target_height;            // Target height the node is syncing from (optional, absent if node is fully synced).
-      uint32_t next_needed_pruning_seed;
-      std::list<peer> peers;             // Array of Peer structure
-      std::list<span> spans;             // Array of Span Structure.
-      std::string overview;
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   struct output_distribution_data
@@ -2711,6 +2701,7 @@ namespace cryptonote::rpc {
     STOP_MINING,
     SAVE_BC,
     STOP_DAEMON,
+    SYNC_INFO,
     GETBLOCKCOUNT,
     MINING_STATUS,
     GET_TRANSACTION_POOL_HASHES,
@@ -2766,7 +2757,6 @@ namespace cryptonote::rpc {
     GET_BASE_FEE_ESTIMATE,
     GET_ALTERNATE_CHAINS,
     RELAY_TX,
-    SYNC_INFO,
     GET_OUTPUT_DISTRIBUTION,
     POP_BLOCKS,
     PRUNE_BLOCKCHAIN,

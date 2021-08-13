@@ -2088,15 +2088,9 @@ namespace cryptonote::rpc {
     res.status = STATUS_OK;
     return res;
   }
-  //------------------------------------------------------------------------------------------------------------------------------
-  void core_rpc_server::invoke(GET_CONNECTIONS& get_connections, rpc_context context)
-  {
-    PERF_TIMER(on_get_connections);
-    auto connections = m_p2p.get_payload_object().get_connections();
-    auto& c = get_connections.response["connections"];
-    c = json::array();
-    for (auto& ci : connections) {
-      json info{
+
+  static json json_connection_info(const connection_info& ci) {
+    json info{
         {"incoming", ci.incoming},
         {"ip", ci.ip},
         {"address_type", ci.address_type},
@@ -2113,17 +2107,26 @@ namespace cryptonote::rpc {
         {"current_upload", ci.current_upload},
         {"connection_id", ci.connection_id},
         {"height", ci.height},
-      };
-      if (ci.ip != ci.host) info["host"] = ci.host;
-      if (ci.localhost) info["localhost"] = true;
-      if (ci.local_ip) info["local_ip"] = true;
-      if (uint16_t port; tools::parse_int(ci.port, port) && port > 0) info["port"] = port;
-      // Included for completeness, but undocumented as neither of these are currently actually used
-      // or support on Oxen:
-      if (ci.rpc_port > 0) info["rpc_port"] = ci.rpc_port;
-      if (ci.pruning_seed) info["pruning_seed"] = ci.pruning_seed;
-      c.push_back(std::move(info));
-    }
+    };
+    if (ci.ip != ci.host) info["host"] = ci.host;
+    if (ci.localhost) info["localhost"] = true;
+    if (ci.local_ip) info["local_ip"] = true;
+    if (uint16_t port; tools::parse_int(ci.port, port) && port > 0) info["port"] = port;
+    // Included for completeness, but undocumented as neither of these are currently actually used
+    // or support on Oxen:
+    if (ci.rpc_port > 0) info["rpc_port"] = ci.rpc_port;
+    if (ci.pruning_seed) info["pruning_seed"] = ci.pruning_seed;
+    return info;
+  }
+
+  //------------------------------------------------------------------------------------------------------------------------------
+  void core_rpc_server::invoke(GET_CONNECTIONS& get_connections, rpc_context context)
+  {
+    PERF_TIMER(on_get_connections);
+    auto& c = get_connections.response["connections"];
+    c = json::array();
+    for (auto& ci : m_p2p.get_payload_object().get_connections())
+      c.push_back(json_connection_info(ci));
     get_connections.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -2571,34 +2574,38 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SYNC_INFO::response core_rpc_server::invoke(SYNC_INFO::request&& req, rpc_context context)
+  void core_rpc_server::invoke(SYNC_INFO& sync, rpc_context context)
   {
-    SYNC_INFO::response res{};
-
     PERF_TIMER(on_sync_info);
 
     auto [top_height, top_hash] = m_core.get_blockchain_top();
-    res.height = top_height + 1; // turn top block height into blockchain height
-    res.target_height = m_core.get_target_blockchain_height();
-    res.next_needed_pruning_seed = m_p2p.get_payload_object().get_next_needed_pruning_stripe().second;
+    sync.response["height"] = top_height + 1; // turn top block height into blockchain height
+    if (auto target_height = m_core.get_target_blockchain_height(); target_height > top_height + 1)
+      sync.response["target_height"] = target_height;
+    // Don't put this into the response until it actually does something on Oxen:
+    if (false)
+      sync.response["next_needed_pruning_seed"] = m_p2p.get_payload_object().get_next_needed_pruning_stripe().second;
 
-    for (const auto &c: m_p2p.get_payload_object().get_connections())
-      res.peers.push_back({c});
-    const cryptonote::block_queue &block_queue = m_p2p.get_payload_object().get_block_queue();
-    block_queue.foreach([&](const cryptonote::block_queue::span &span) {
-      const std::string span_connection_id = tools::type_to_hex(span.connection_id);
-      uint32_t speed = (uint32_t)(100.0f * block_queue.get_speed(span.connection_id) + 0.5f);
-      std::string address = "";
-      for (const auto &c: m_p2p.get_payload_object().get_connections())
-        if (c.connection_id == span_connection_id)
-          address = c.address;
-      res.spans.push_back({span.start_block_height, span.nblocks, span_connection_id, (uint32_t)(span.rate + 0.5f), speed, span.size, address});
-      return true;
+    auto& peers = sync.response["peers"];
+    peers = json{};
+    for (auto& ci : m_p2p.get_payload_object().get_connections())
+      peers[ci.connection_id] = json_connection_info(ci);
+    const auto& block_queue = m_p2p.get_payload_object().get_block_queue();
+    auto spans = json::array();
+    block_queue.foreach([&spans, &block_queue](const auto& span) {
+        uint32_t speed = (uint32_t)(100.0f * block_queue.get_speed(span.connection_id) + 0.5f);
+        spans.push_back(json{
+          {"start_block_height", span.start_block_height},
+          {"nblocks", span.nblocks},
+          {"connection_id", tools::type_to_hex(span.connection_id)},
+          {"rate", std::lround(span.rate)},
+          {"speed", speed},
+          {"size", span.size}});
+        return true;
     });
-    res.overview = block_queue.get_overview(res.height);
+    sync.response["overview"] = block_queue.get_overview(top_height + 1);
 
-    res.status = STATUS_OK;
-    return res;
+    sync.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_context context)

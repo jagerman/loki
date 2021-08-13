@@ -1464,54 +1464,70 @@ bool rpc_command_executor::relay_tx(const std::string &txid)
 
 bool rpc_command_executor::sync_info()
 {
-    SYNC_INFO::response res{};
+  auto maybe_sync = try_running([this] { return invoke<SYNC_INFO>(); }, "Failed to retrieve sync info");
+  if (!maybe_sync)
+    return false;
+  auto& sync = *maybe_sync;
 
-    if (!invoke<SYNC_INFO>({}, res, "Failed to retrieve synchronization info"))
-      return false;
+  uint64_t height = sync["height"].get<uint64_t>();
+  uint64_t target = std::max(sync.value("target_height", height), height);
+  tools::success_msg_writer() << "Height: " << height << ", target: " << target << " (" << (100.0 * height / target) << "%)";
+  auto& spans = sync["spans"];
+  auto& peers = sync["peers"];
+  uint64_t current_download = 0;
+  for (const auto& p: peers)
+    current_download += p["current_download"].get<uint64_t>();
+  tools::success_msg_writer() << "Downloading at " << current_download/1000.0 << " kB/s";
+  if (auto nnps = sync.value("next_needed_pruning_seed", 0))
+    tools::success_msg_writer() << "Next needed pruning seed: " << nnps;
 
-    uint64_t target = res.target_height < res.height ? res.height : res.target_height;
-    tools::success_msg_writer() << "Height: " << res.height << ", target: " << target << " (" << (100.0 * res.height / target) << "%)";
-    uint64_t current_download = 0;
-    for (const auto &p: res.peers)
-      current_download += p.info.current_download;
-    tools::success_msg_writer() << "Downloading at " << current_download << " kB/s";
-    if (res.next_needed_pruning_seed)
-      tools::success_msg_writer() << "Next needed pruning seed: " << res.next_needed_pruning_seed;
-
-    tools::success_msg_writer() << std::to_string(res.peers.size()) << " peers";
-    for (const auto &p: res.peers)
-    {
-      std::string address = epee::string_tools::pad_string(p.info.address, 24);
-      uint64_t nblocks = 0, size = 0;
-      for (const auto &s: res.spans)
-        if (s.connection_id == p.info.connection_id)
-          nblocks += s.nblocks, size += s.size;
-      tools::success_msg_writer() << address << "  " << p.info.peer_id << "  " <<
-          epee::string_tools::pad_string(p.info.state, 16) << "  " <<
-          epee::string_tools::pad_string(epee::string_tools::to_string_hex(p.info.pruning_seed), 8) << "  " << p.info.height << "  "  <<
-          p.info.current_download << " kB/s, " << nblocks << " blocks / " << size/1e6 << " MB queued";
-    }
-
-    uint64_t total_size = 0;
-    for (const auto &s: res.spans)
-      total_size += s.size;
-    tools::success_msg_writer() << std::to_string(res.spans.size()) << " spans, " << total_size/1e6 << " MB";
-    tools::success_msg_writer() << res.overview;
-    for (const auto &s: res.spans)
-    {
-      std::string address = epee::string_tools::pad_string(s.remote_address, 24);
-      std::string pruning_seed = epee::string_tools::to_string_hex(tools::get_pruning_seed(s.start_block_height, std::numeric_limits<uint64_t>::max(), CRYPTONOTE_PRUNING_LOG_STRIPES));
-      if (s.size == 0)
-      {
-        tools::success_msg_writer() << address << "  " << s.nblocks << "/" << pruning_seed << " (" << s.start_block_height << " - " << (s.start_block_height + s.nblocks - 1) << ")  -";
+  tools::success_msg_writer() << std::to_string(peers.size()) << " peers";
+  for (const auto& [cid, p]: peers.items())
+  {
+    std::string address = epee::string_tools::pad_string(p["ip"].get<std::string>() + ":" + std::to_string(p["port"].get<uint16_t>()), 24);
+    uint64_t nblocks = 0, size = 0;
+    for (const auto& s: spans) {
+      if (s["connection_id"] == cid) {
+        nblocks += s["nblocks"].get<uint64_t>();
+        size += s["size"].get<uint64_t>();
       }
+    }
+    tools::success_msg_writer() << address << "  " << p["peer_id"].get<std::string_view>() << "  " <<
+      epee::string_tools::pad_string(p["state"].get<std::string>(), 16) << "  " <<
+      //epee::string_tools::pad_string(epee::string_tools::to_string_hex(p.info.pruning_seed), 8) << "  " <<
+      p["height"].get<uint64_t>() << "  "  <<
+      p["current_download"].get<uint64_t>() / 1000. << " kB/s, " <<
+      nblocks << " blocks / " << size/1'000'000. << " MB queued";
+  }
+
+  uint64_t total_size = 0;
+  for (const auto& s: spans)
+    total_size += s["size"].get<uint64_t>();
+  tools::success_msg_writer() << std::to_string(spans.size()) << " spans, " << total_size/1e6 << " MB";
+  if (auto overview = sync["overview"].get<std::string_view>(); overview != "[]"sv)
+    tools::success_msg_writer() << overview;
+  for (const auto& s: spans)
+  {
+    auto& c = peers[s["connection_id"].get_ref<const std::string&>()];
+    std::string address = "(unknown)";
+    if (c.is_object())
+      address = c["ip"].get<std::string>() + ":" + std::to_string(c["port"].get<uint16_t>());
+    address = epee::string_tools::pad_string(std::move(address), 24);
+    //std::string pruning_seed = epee::string_tools::to_string_hex(tools::get_pruning_seed(s.start_block_height, std::numeric_limits<uint64_t>::max(), CRYPTONOTE_PRUNING_LOG_STRIPES));
+    auto size = s["size"].get<uint64_t>();
+    auto start = s["start_block_height"].get<uint64_t>();
+    auto nblocks = s["nblocks"].get<uint64_t>();
+    {
+      auto writer = tools::success_msg_writer();
+      writer << address << "  " << nblocks << /*"/" << pruning_seed <<*/ " (" << start << " - " << (start + nblocks - 1);
+      if (size == 0)
+        writer << ")  -";
       else
-      {
-        tools::success_msg_writer() << address << "  " << s.nblocks << "/" << pruning_seed << " (" << s.start_block_height << " - " << (s.start_block_height + s.nblocks - 1) << ", " << (uint64_t)(s.size/1e3) << " kB)  " << (unsigned)(s.rate/1e3) << " kB/s (" << s.speed/100.0f << ")";
-      }
+        writer << ", " << size/1000. << " kB)  " << s["rate"].get<uint64_t>() / 1000. << " kB/s (" << s["speed"].get<uint64_t>() / 100. << ")";
     }
+  }
 
-    return true;
+  return true;
 }
 
 static std::string to_string_rounded(double d, int precision) {
