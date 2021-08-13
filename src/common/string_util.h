@@ -92,6 +92,24 @@ std::string join_transform(std::string_view delimiter, const Container& c, Unary
   return join_transform(delimiter, c.begin(), c.end(), std::forward<UnaryOperation>(transform));
 }
 
+/// Concatenates a bunch of random values together with delim as a separator via << operator.
+/// Returns the result as a string.
+template <typename T, typename... Ts>
+std::string join_stuff(std::string_view delim, T&& first, Ts&&... stuff) {
+    std::ostringstream o;
+    o << std::forward<T>(first);
+    ((o << delim << std::forward<Ts>(stuff)), ...);
+    return o.str();
+}
+
+/// Concatenates arguments via << operator, returns as a string.
+template <typename... T>
+std::string concat(T&&... stuff) {
+    std::ostringstream o;
+    (o << ... << std::forward<T>(stuff));
+    return o.str();
+}
+
 /// Simple version of whitespace trimming: mutates the given string view to remove leading
 /// space, \t, \r, \n.  (More exotic and locale-dependent whitespace is not removed).
 void trim(std::string_view& s);
