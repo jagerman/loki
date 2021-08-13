@@ -528,7 +528,7 @@ eof:
       catch (const std::exception &e)
       {
         rdln::suspend_readline pause_readline;
-        std::cout << "Command errored: " << cmd.front() << ", " << e.what();
+        std::cout << "Command errored: " << cmd.front() << ", " << e.what() << "\n";
       }
 
       return false;
