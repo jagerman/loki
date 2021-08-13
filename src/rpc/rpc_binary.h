@@ -74,6 +74,16 @@ namespace cryptonote::rpc {
     nlohmann::json& operator=(const T& val) {
       return *this = std::string_view{reinterpret_cast<const char*>(&val), sizeof(val)};
     }
+
+    /// Takes a vector of some json_binary_proxy-assignable type and builds an array by assigning
+    /// each one into a new array of binary values.
+    template <typename T>
+    nlohmann::json& operator=(const std::vector<T>& vals) {
+      auto a = nlohmann::json::array();
+      for (auto& val : vals)
+        json_binary_proxy{a.emplace_back(), format} = val;
+      return e = std::move(a);
+    }
   };
 
 }

@@ -1528,10 +1528,8 @@ namespace cryptonote::rpc {
 
     std::vector<crypto::hash> tx_hashes;
     m_core.get_pool().get_transaction_hashes(tx_hashes, context.admin);
-    auto tx_hashes_as_hex = std::transform(tx_hashes.begin(), tx_hashes.end, [](auto tx_hash& const) -> return tools::type_to_hex(tx_hash));
-    get_transaction_pool_hashes.response["tx_hashes"] = tx_hashes_as_hex;
+    get_transaction_pool_hashes.response_hex["tx_hashes"] = tx_hashes;
     get_transaction_pool_hashes.response["status"] = STATUS_OK;
-    LOG_PRINT_L0(get_transaction_pool_hashes.response["status"].get<std::string>());
     return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
