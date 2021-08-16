@@ -67,6 +67,7 @@ target_link_libraries(common
     oxenmq::oxenmq
     filesystem
     date::date
+    fmt::fmt
   PRIVATE
     libunbound
     OpenSSL::SSL

@@ -41,10 +41,10 @@
 #include "cryptonote_core/service_node_rules.h"
 #include "cryptonote_basic/hardfork.h"
 #include "checkpoints/checkpoints.h"
-#include <boost/format.hpp>
 #include <exception>
 #include <oxenmq/base32z.h>
 #include <date/date.h>
+#include <fmt/core.h>
 
 #include "common/oxen_integration_test_hooks.h"
 
@@ -133,7 +133,7 @@ namespace {
     std::string addr_str = peer.host + ":" + std::to_string(peer.port);
     std::string rpc_port = peer.rpc_port ? std::to_string(peer.rpc_port) : "-";
     std::string pruning_seed = epee::string_tools::to_string_hex(peer.pruning_seed);
-    tools::msg_writer() << boost::format("%-10s %-25s %-25s %-5s %-4s %s") % prefix % id_str % addr_str % rpc_port % pruning_seed % elapsed;
+    tools::msg_writer() << fmt::format("{:<10} {:<25} {:<25} {:<5} %{:-4} {}", prefix, id_str, addr_str, rpc_port, pruning_seed, elapsed);
   }
 
   void print_block_header(block_header_response const & header)
@@ -168,11 +168,11 @@ namespace {
     if (dt < 90s)
       s = std::to_string(dt.count()) + (abbreviate ? "sec" : dt == 1s ? " second" : " seconds");
     else if (dt < 90min)
-      s = (boost::format(abbreviate ? "%.1fmin" : "%.1f minutes") % ((float)dt.count()/60)).str();
+      s = fmt::format("{:.1f}{:s}", ((float)dt.count()/60), abbreviate ? "min" : " minutes");
     else if (dt < 36h)
-      s = (boost::format(abbreviate ? "%.1fhr" : "%.1f hours") % ((float)dt.count()/3600)).str();
+      s = fmt::format("{:.1f}{:s}", ((float)dt.count()/3600), abbreviate ? "hr" : " hours");
     else
-      s = (boost::format("%.1f days") % ((float)dt.count()/(86400))).str();
+      s = fmt::format("{:.1f} days", ((float)dt.count()/86400));
     if (abbreviate) {
         if (ago < 0s)
             return s + " (in fut.)";
@@ -419,15 +419,15 @@ bool rpc_command_executor::show_difficulty() {
 
 static std::string get_mining_speed(uint64_t hr)
 {
-  if (hr>1e9) return (boost::format("%.2f GH/s") % (hr/1e9)).str();
-  if (hr>1e6) return (boost::format("%.2f MH/s") % (hr/1e6)).str();
-  if (hr>1e3) return (boost::format("%.2f kH/s") % (hr/1e3)).str();
-  return (boost::format("%.0f H/s") % hr).str();
+  if (hr >= 1e9) return fmt::format("{:.2f} GH/s", hr*1e-9);
+  if (hr >= 1e6) return fmt::format("{:.2f} MH/s", hr*1e-6);
+  if (hr >= 1e3) return fmt::format("{:.2f} kH/s", hr*1e-3);
+  return fmt::format("{:d} H/s", hr);
 }
 
-static std::ostream& print_fork_extra_info(std::ostream& o, uint64_t t, uint64_t now, uint64_t block_time)
+static std::ostream& print_fork_extra_info(std::ostream& o, uint64_t t, uint64_t now, std::chrono::seconds block_time)
 {
-  uint64_t blocks_per_day = 86400 / block_time;
+  double blocks_per_day = 24h / block_time;
 
   if (t == now)
     return o << " (forking now)";
@@ -440,8 +440,8 @@ static std::ostream& print_fork_extra_info(std::ostream& o, uint64_t t, uint64_t
   if (dblocks <= 30)
     return o << dblocks << " blocks)";
   if (dblocks <= blocks_per_day / 2)
-    return o << boost::format("%.1f hours)") % (dblocks / (float)blocks_per_day * 24);
-  return o << boost::format("%.1f days)") % (dblocks / (float)blocks_per_day);
+    return o << fmt::format("{:.1f} hours)", dblocks / blocks_per_day * 24);
+  return o << fmt::format("{:.1f} days)", dblocks / blocks_per_day);
 }
 
 static float get_sync_percentage(uint64_t height, uint64_t target_height)
@@ -525,7 +525,7 @@ bool rpc_command_executor::show_status() {
   std::ostringstream str;
   str << "Height: " << height;
   if (height != net_height)
-      str << "/" << net_height << " (" << boost::format("%.1f") % get_sync_percentage(height, net_height) << "%)";
+    str << fmt::format("/{} ({:.1f}%)", net_height, get_sync_percentage(height, net_height));
 
   auto net = info["nettype"].get<std::string_view>();
   if (net == "testnet")     str << " ON TESTNET";
@@ -539,7 +539,7 @@ bool rpc_command_executor::show_status() {
     str << ", bootstrap " << info["bootstrap_daemon_address"].get<std::string_view>();
     if (info.value("untrusted", false)) {
       auto hwb = info["height_without_bootstrap"].get<uint64_t>();
-      str << boost::format(", local height: %llu (%.1f%%)") % hwb % get_sync_percentage(hwb, net_height);
+      str << fmt::format(", local height: {} ({:.1f}%)", hwb, get_sync_percentage(hwb, net_height));
     }
     else
       str << " was used";
@@ -556,7 +556,7 @@ bool rpc_command_executor::show_status() {
   str << ", v" << info["version"].get<std::string_view>();
   str << "(net v" << +hfres.version << ')';
   if (hfres.earliest_height)
-    print_fork_extra_info(str, *hfres.earliest_height, net_height, info["target"].get<uint64_t>());
+    print_fork_extra_info(str, *hfres.earliest_height, net_height, 1s * info["target"].get<uint64_t>());
 
   std::time_t now = std::time(nullptr);
 
@@ -641,19 +641,11 @@ bool rpc_command_executor::print_connections() {
     return false;
   auto& conns = *maybe_conns;
 
-  tools::msg_writer()
-      << std::setw(30) << std::left << "Remote Host"
-      << std::setw(8) << "Type"
-      << std::setw(20) << "Peer id"
-      << std::setw(20) << "Support Flags"
-      << std::setw(30) << "Recv/Sent (inactive,sec)"
-      << std::setw(25) << "State"
-      << std::setw(20) << "Livetime(sec)"
-      << std::setw(12) << "Down (kB/s)"
-      << std::setw(14) << "Down(now)"
-      << std::setw(10) << "Up (kB/s)"
-      << std::setw(13) << "Up(now)"
-      << std::endl;
+  constexpr auto hdr_fmt = "{:<30}{:<8}{:<20}{:<30}{:<25}{:<20}{:<12s}{:<14s}{:<10s}{:<13s}"sv;
+  constexpr auto row_fmt = "{:<30}{:<8}{:<20}{:<30}{:<25}{:<20}{:<12.1f}{:<14.1f}{:<10.1f}{:<13.1f}{}{}"sv;
+  tools::msg_writer() << fmt::format(hdr_fmt,
+      "Remote Host", "Type", "Peer id", "Recv/Sent (inactive,sec)", "State", "Livetime(sec)",
+      "Down (kB/sec)", "Down(now)", "Up (kB/s)", "Up(now)");
 
   for (auto& info : conns)
   {
@@ -661,25 +653,21 @@ bool rpc_command_executor::print_connections() {
     address += info["ip"].get<std::string_view>();
     address += ':';
     address += tools::int_to_string(info["port"].get<uint16_t>());
-    tools::msg_writer()
-     << std::setw(30) << std::left << address
-     << std::setw(8) << info["address_type"].get<epee::net_utils::address_type>()
-     << std::setw(20) << info["peer_id"].get<std::string_view>()
-     << std::setw(20) << info["support_flags"].get<uint32_t>()
-     << std::setw(30) << tools::concat(
-         info["recv_count"].get<uint64_t>(),
-         "(", tools::friendly_duration(1ms * info["recv_idle_ms"].get<int64_t>()), ")/",
-         info["send_count"].get<uint64_t>(),
-         "(", tools::friendly_duration(1ms * info["send_idle_ms"].get<int64_t>()), ")")
-     << std::setw(25) << info["state"].get<std::string_view>()
-     << std::setw(20) << tools::friendly_duration(1ms * info["live_ms"].get<int64_t>())
-     << std::setw(12) << info["avg_download"].get<uint64_t>()
-     << std::setw(14) << info["current_download"].get<uint64_t>()
-     << std::setw(10) << info["avg_upload"].get<uint64_t>()
-     << std::setw(13) << info["current_upload"].get<uint64_t>()
-
-     << std::left << (info.value("localhost", false) ? "[LOCALHOST]" : "")
-     << std::left << (info.value("local_ip", false) ? "[LAN]" : "");
+    tools::msg_writer() << fmt::format(row_fmt,
+        address,
+        info["address_type"].get<epee::net_utils::address_type>(),
+        info["peer_id"].get<std::string_view>(),
+        fmt::format("{}({}/{})", info["recv_count"].get<uint64_t>(),
+          tools::friendly_duration(1ms * info["recv_idle_ms"].get<int64_t>()),
+          tools::friendly_duration(1ms * info["send_idle_ms"].get<int64_t>())),
+        info["state"].get<std::string_view>(),
+        tools::friendly_duration(1ms * info["live_ms"].get<int64_t>()),
+        info["avg_download"].get<uint64_t>() / 1000.,
+        info["current_download"].get<uint64_t>() / 1000.,
+        info["avg_upload"].get<uint64_t>() / 1000.,
+        info["current_upload"].get<uint64_t>() / 1000.,
+        info.value("localhost", false) ? "[LOCALHOST]" : "",
+        info.value("local_ip", false) ? "[LAN]" : "");
   }
 
   return true;
@@ -698,24 +686,24 @@ bool rpc_command_executor::print_net_stats()
   uint64_t average = seconds > 0 ? net_stats_res.total_bytes_in / seconds : 0;
   uint64_t limit = limit_res.limit_down * 1024;   // convert to bytes, as limits are always kB/s
   double percent = (double)average / (double)limit * 100.0;
-  tools::success_msg_writer() << boost::format("Received %u bytes (%s) in %u packets, average %s/s = %.2f%% of the limit of %s/s")
-    % net_stats_res.total_bytes_in
-    % tools::get_human_readable_bytes(net_stats_res.total_bytes_in)
-    % net_stats_res.total_packets_in
-    % tools::get_human_readable_bytes(average)
-    % percent
-    % tools::get_human_readable_bytes(limit);
+  tools::success_msg_writer() << fmt::format("Received {} bytes ({}) in {} packets, average {}/s = {:.2f}% of the limit of {}/s",
+    net_stats_res.total_bytes_in,
+    tools::get_human_readable_bytes(net_stats_res.total_bytes_in),
+    net_stats_res.total_packets_in,
+    tools::get_human_readable_bytes(average),
+    percent,
+    tools::get_human_readable_bytes(limit));
 
   average = seconds > 0 ? net_stats_res.total_bytes_out / seconds : 0;
   limit = limit_res.limit_up * 1024;
   percent = (double)average / (double)limit * 100.0;
-  tools::success_msg_writer() << boost::format("Sent %u bytes (%s) in %u packets, average %s/s = %.2f%% of the limit of %s/s")
-    % net_stats_res.total_bytes_out
-    % tools::get_human_readable_bytes(net_stats_res.total_bytes_out)
-    % net_stats_res.total_packets_out
-    % tools::get_human_readable_bytes(average)
-    % percent
-    % tools::get_human_readable_bytes(limit);
+  tools::success_msg_writer() << fmt::format("Sent {} bytes ({}) in {} packets, average {}/s = {:.2f}% of the limit of {}/s",
+    net_stats_res.total_bytes_out,
+    tools::get_human_readable_bytes(net_stats_res.total_bytes_out),
+    net_stats_res.total_packets_out,
+    tools::get_human_readable_bytes(average),
+    percent,
+    tools::get_human_readable_bytes(limit));
 
   return true;
 }
