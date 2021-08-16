@@ -1528,8 +1528,8 @@ namespace cryptonote::rpc {
     //if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_STATS>(req, res))
       //return res;
 
-    auto txpool = m_core.get_pool().get_transaction_stats(context.admin);
-    stats.response["pool_stats"] = json{
+    auto txpool = m_core.get_pool().get_transaction_stats(stats.request.include_unrelayed);
+    json pool_stats{
         {"bytes_total", txpool.bytes_total},
         {"bytes_min", txpool.bytes_min},
         {"bytes_max", txpool.bytes_max},
@@ -1540,10 +1540,15 @@ namespace cryptonote::rpc {
         {"num_failing", txpool.num_failing},
         {"num_10m", txpool.num_10m},
         {"num_not_relayed", txpool.num_not_relayed},
-        {"histo_98pc", txpool.histo_98pc},
-        {"histo", txpool.histo},
+        {"histo", std::move(txpool.histo)},
         {"num_double_spends", txpool.num_double_spends}};
 
+    if (txpool.histo_98pc)
+      pool_stats["histo_98pc"] = txpool.histo_98pc;
+    else
+      pool_stats["histo_max"] = std::time(nullptr) - txpool.oldest;
+
+    stats.response["pool_stats"] = std::move(pool_stats);
     stats.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------

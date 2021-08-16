@@ -435,8 +435,6 @@ namespace cryptonote
       uint64_t histo_98pc;      ///< the time 98% of txes are "younger" than.
       std::vector<std::pair<uint32_t, uint64_t>> histo; ///< List of txpool histo [number of txes, size in bytes] pairs.
       uint32_t num_double_spends; ///< Number of double spend transactions.
-
-      tx_stats(): bytes_total(0), bytes_min(0), bytes_max(0), bytes_med(0), fee_total(0), oldest(0), txs_total(0), num_failing(0), num_10m(0), num_not_relayed(0), histo_98pc(0), num_double_spends(0) {}
     };
 
     /**

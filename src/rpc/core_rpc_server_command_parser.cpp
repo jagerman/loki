@@ -276,4 +276,8 @@ namespace cryptonote::rpc {
       get_values(in, "outputs", get_outputs.request.output_indices);
   }
 
+  void parse_request(GET_TRANSACTION_POOL_STATS& pstats, rpc_input in) {
+    get_values(in, "include_unrelayed", pstats.request.include_unrelayed);
+  }
+
 }

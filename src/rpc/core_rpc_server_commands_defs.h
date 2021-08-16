@@ -1306,11 +1306,47 @@ namespace cryptonote::rpc {
   /// Output values available from a public RPC endpoint:
   ///
   /// - \p status General RPC status string. `"OK"` means everything looks good.
-  /// - \p pool_stats List of pool stats.
-  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-  struct GET_TRANSACTION_POOL_STATS : PUBLIC, LEGACY, NO_ARGS
+  /// - \p pool_stats Dict of pool statistics:
+  ///   - \p bytes_total the total size (in bytes) of the transactions in the transaction pool.
+  ///   - \p bytes_min the size of the smallest transaction in the tx pool.
+  ///   - \p bytes_max the size of the largest transaction in the pool.
+  ///   - \p bytes_med the median transaction size in the pool.
+  ///   - \p fee_total the total fees of all transactions in the transaction pool.
+  ///   - \p txs_total the total number of transactions in the transaction pool
+  ///   - \p num_failing the number of failing transactions: that is, transactions that are in the
+  ///     mempool but are not currently eligible to be added to the blockchain.
+  ///   - \p num_10m the number of transactions received within the last ten minutes
+  ///   - \p num_not_relayed the number of transactions which are not being relayed to the
+  ///     network.  Only included when the \p include_unrelayed request parameter is set to true.
+  ///   - \p num_double_spends the number of transactions in the mempool that are marked as
+  ///     double-spends of existing blockchain transactions.
+  ///   - \p oldest the unix timestamp of the oldest transaction in the pool.
+  ///   - \p histo pairs of [# txes, size of bytes] that form a histogram of transactions in the
+  ///     mempool, if there are at least two transactions in the mempool (and omitted entirely
+  ///     otherwise).  When present, this field will contain 10 pairs:
+  ///     - When `histo_max` is given then `histo` consists of 10 equally-spaced bins from
+  ///       newest to oldest where the newest bin begins at age 0 and the oldest bin ends at age `\p
+  ///       histo_max`.  For example, bin `[3]` contains statistics for transactions with ages
+  ///       between `3*histo_max/10` and `4*histo_max/10`.
+  ///     - Otherwise `histo_98pc` will be present in which case `histo` contains 9 equally spaced
+  ///       bins from newest to oldest where the newest bin begins at age 0 and the oldest bin ends
+  ///       at age `histo_98pc`, and at least 98% of the mempool transactions will fall in these 9
+  ///       bins.  The 10th bin contains statistics for all transactions with ages greater than
+  ///       `histo_98pc`.
+  ///   - \p histo_98pc See `histo` for details.
+  ///   - \p histo_max See `histo` for details.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not
+  ///   trusted (`true`), or when the daemon is fully synced (`false`).
+  struct GET_TRANSACTION_POOL_STATS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transaction_pool_stats"); }
+
+    struct request_parameters {
+      /// Whether to include transactions marked "do not relay" in the returned statistics.  False
+      /// by default: since they are not relayed, they do not form part of the global network
+      /// transaction pool.
+      bool include_unrelayed = false;
+    } request;
   };
 
   /// Retrieve information about incoming and outgoing P2P connections to your node.

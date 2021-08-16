@@ -184,19 +184,6 @@ namespace {
   std::string get_human_time_ago(std::time_t t, std::time_t now, bool abbreviate = false) {
     return get_human_time_ago(std::chrono::seconds{now - t}, abbreviate);
   }
-
-  std::string get_time_hms(time_t t)
-  {
-    unsigned int hours, minutes, seconds;
-    char buffer[24];
-    hours = t / 3600;
-    t %= 3600;
-    minutes = t / 60;
-    t %= 60;
-    seconds = t;
-    snprintf(buffer, sizeof(buffer), "%02u:%02u:%02u", hours, minutes, seconds);
-    return std::string(buffer);
-  }
 }
 
 rpc_command_executor::rpc_command_executor(
@@ -1018,60 +1005,75 @@ bool rpc_command_executor::print_transaction_pool_short() {
 }
 
 bool rpc_command_executor::print_transaction_pool_stats() {
-  GET_TRANSACTION_POOL_STATS::response res{};
+
   auto full_reward_zone = try_running([this] {
     return invoke<GET_INFO>().at("block_size_limit").get<uint64_t>() / 2;
   }, "Failed to retrieve node info");
   if (!full_reward_zone)
     return false;
 
-  if (!invoke<GET_TRANSACTION_POOL_STATS>({}, res, "Failed to retreive transaction pool statistics"))
+  auto maybe_stats = try_running([this] { return invoke<GET_TRANSACTION_POOL_STATS>(json{{"include_unrelayed", true}}); },
+      "Failed to retrieve transaction pool statistics");
+  if (!maybe_stats)
     return false;
+  auto& pstats = maybe_stats->at("pool_stats");
 
-  size_t n_transactions = res.pool_stats.txs_total;
+  size_t n_transactions = pstats["txs_total"].get<int>();
   const uint64_t now = time(NULL);
-  size_t avg_bytes = n_transactions ? res.pool_stats.bytes_total / n_transactions : 0;
+  auto bytes_total = pstats["bytes_total"].get<uint64_t>();
+  size_t avg_bytes = n_transactions ? bytes_total / n_transactions : 0;
 
-  std::string backlog_message;
-  if (res.pool_stats.bytes_total <= *full_reward_zone)
+  std::string backlog_message = "no backlog";
+  if (bytes_total > *full_reward_zone)
   {
-    backlog_message = "no backlog";
-  }
-  else
-  {
-    uint64_t backlog = (res.pool_stats.bytes_total + *full_reward_zone - 1) / *full_reward_zone;
-    backlog_message = (boost::format("estimated %u block (%u minutes) backlog") % backlog % (backlog * TARGET_BLOCK_TIME / 1min)).str();
+    uint64_t backlog = (bytes_total + *full_reward_zone - 1) / *full_reward_zone;
+    backlog_message = "estimated " + std::to_string(backlog) + " block (" + std::to_string(backlog * TARGET_BLOCK_TIME / 1min) + " minutes)";
   }
 
-  tools::msg_writer() << n_transactions << " tx(es), " << res.pool_stats.bytes_total << " bytes total (min " << res.pool_stats.bytes_min << ", max " << res.pool_stats.bytes_max << ", avg " << avg_bytes << ", median " << res.pool_stats.bytes_med << ")" << std::endl
-      << "fees " << cryptonote::print_money(res.pool_stats.fee_total) << " (avg " << cryptonote::print_money(n_transactions ? res.pool_stats.fee_total / n_transactions : 0) << " per tx" << ", " << cryptonote::print_money(res.pool_stats.bytes_total ? res.pool_stats.fee_total / res.pool_stats.bytes_total : 0) << " per byte)" << std::endl
-      << res.pool_stats.num_double_spends << " double spends, " << res.pool_stats.num_not_relayed << " not relayed, " << res.pool_stats.num_failing << " failing, " << res.pool_stats.num_10m << " older than 10 minutes (oldest " << (res.pool_stats.oldest == 0 ? "-" : get_human_time_ago(res.pool_stats.oldest, now)) << "), " << backlog_message;
+  uint64_t fee_total = pstats["fee_total"].get<uint64_t>();
+  std::time_t oldest = pstats["oldest"].get<std::time_t>();
+  tools::msg_writer() << n_transactions << " tx(es), "
+    << bytes_total << " bytes total (min " << pstats["bytes_min"].get<uint64_t>() << ", max " << pstats["bytes_max"].get<uint64_t>()
+    << ", avg " << avg_bytes << ", median " << pstats["bytes_med"].get<uint64_t>() << ')'
+    << '\n'
+    << "fees " << cryptonote::print_money(fee_total) << " (avg " << cryptonote::print_money(n_transactions ? fee_total / n_transactions : 0) << " per tx, "
+    << cryptonote::print_money(bytes_total ? fee_total / bytes_total : 0) << " per byte)"
+    << '\n'
+    << pstats["num_double_spends"].get<uint64_t>() << " double spends, "
+    << pstats["num_not_relayed"].get<uint64_t>() << " not relayed, "
+    << pstats["num_failing"].get<uint64_t>() << " failing, "
+    << pstats["num_10m"].get<uint64_t>() << " older than 10 minutes (oldest "
+    << (oldest == 0 ? "-" : get_human_time_ago(oldest, now)) << "), "
+    << backlog_message;
 
-  if (n_transactions > 1 && res.pool_stats.histo.size())
+  auto histo = pstats["histo"].get<std::vector<std::pair<uint64_t, uint64_t>>>();
+  if (n_transactions > 1 && !histo.empty())
   {
-    std::vector<uint64_t> times;
-    uint64_t numer;
-    size_t i, n = res.pool_stats.histo.size(), denom;
-    times.resize(n);
-    if (res.pool_stats.histo_98pc)
+    std::array<uint64_t, 11> times;
+    bool last_is_gt = false;
+    if (auto it = pstats.find("histo_98pc"); it != pstats.end())
     {
-      numer = res.pool_stats.histo_98pc;
-      denom = n-1;
-      for (i=0; i<denom; i++)
-        times[i] = i * numer / denom;
-      times[i] = now - res.pool_stats.oldest;
-    } else
-    {
-      numer = now - res.pool_stats.oldest;
-      denom = n;
-      for (i=0; i<denom; i++)
-        times[i] = i * numer / denom;
+      auto histo98 = it->get<uint64_t>();
+      for (size_t i = 0; i < 11; i++)
+        times[i] = i * histo98 / 9;
+      last_is_gt = true;
     }
-    tools::msg_writer() << "   Age      Txes       Bytes";
-    for (i=0; i<n; i++)
+    else
     {
-      tools::msg_writer() << get_time_hms(times[i]) << std::setw(8) << res.pool_stats.histo[i].txs << std::setw(12) << res.pool_stats.histo[i].bytes;
+      auto histo_max = pstats["histo_max"].get<uint64_t>();
+      for (size_t i = 0; i < 11; i++)
+        times[i] = i * histo_max / 10;
     }
+
+    constexpr auto hist_fmt = "{:>10} - {:<14} {:>7} {:>11}"sv;
+    tools::msg_writer() << fmt::format("{:^23}     {:>7} {:>11}", "Age", "Txes", "Bytes");
+    for (size_t i = 0; i < 10; i++)
+      tools::msg_writer()
+        << fmt::format(hist_fmt,
+            get_human_time_ago(times[i] * 1s, true),
+            (last_is_gt && i == 10 ? "" : get_human_time_ago(times[i+1] * 1s, true) + " ago"),
+            histo[i].first,
+            histo[i].second);
   }
   tools::msg_writer();
 
