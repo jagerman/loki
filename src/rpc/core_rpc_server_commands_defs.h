@@ -1530,31 +1530,30 @@ namespace cryptonote::rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Look up information regarding hard fork voting and readiness.
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore
+  ///   untrusted ('true'), or when the daemon is fully synced ('false').
+  /// - \p version The major block version for the fork.
+  /// - \p enabled Indicates whether the hard fork is enforced on the blockchain (that is, whether
+  ///   the blockchain height is at or above the requested hardfork).
+  /// - \p earliest_height Block height at which the hard fork will become enabled.
+  /// - \p last_height The last block height at which this hard fork will be active; will be omitted
+  ///   if this oxend is not aware of any following hard fork.
   struct HARD_FORK_INFO : PUBLIC
   {
     static constexpr auto names() { return NAMES("hard_fork_info"); }
 
-    struct request
-    {
-      uint8_t version; // The major block version for the fork (only one of `version` and `height` may be given).
-      uint64_t height; // Request hard fork info about this height (only one of `version` and `height` may be given).
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      uint8_t version;          // The major block version for the fork.
-      bool enabled;             // Indicates whether hard fork is enforced (that is, at or above the requested hardfork)
-      std::optional<uint64_t> earliest_height; // Block height at which hard fork will be enabled.
-      std::optional<uint64_t> last_height; // The last block height at which this hard fork will be active; will be omitted if this oxend is not aware of any future hard fork.
-      std::string status;       // General RPC error code. "OK" means everything looks good.
-      bool untrusted;           // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
+    struct request_parameters {
+      /// If specified, this is the hard fork (i.e. major block) version for the fork.  Only one of
+      /// `version` and `height` may be given; returns the current hard fork info if neither is
+      /// given.
+      uint8_t version = 0;
+      /// Request hard fork info by querying a particular height.  Only one of `version` and
+      /// `height` may be given.
+      uint64_t height = 0;
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2733,6 +2732,7 @@ namespace cryptonote::rpc {
     GET_INFO,
     ONS_RESOLVE,
     GET_OUTPUTS,
+    HARD_FORK_INFO,
     START_MINING,
     STOP_MINING,
     SAVE_BC,
@@ -2782,7 +2782,6 @@ namespace cryptonote::rpc {
     SET_LIMIT,
     OUT_PEERS,
     IN_PEERS,
-    HARD_FORK_INFO,
     GETBANS,
     SETBANS,
     BANNED,

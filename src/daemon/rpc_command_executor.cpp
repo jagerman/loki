@@ -446,15 +446,15 @@ bool rpc_command_executor::show_status() {
     return false;
   auto& info = *maybe_info;
 
-  HARD_FORK_INFO::request hfreq{};
-  HARD_FORK_INFO::response hfres{};
+  auto maybe_hf = try_running([this] { return invoke<HARD_FORK_INFO>(); },
+      "Failed to retrieve hard fork info");
+  if (!maybe_hf)
+    return false;
+  auto& hfinfo = *maybe_hf;
   bool has_mining_info = false, mining_active = false;
   long mining_hashrate = 0;
 
-  hfreq.version = 0;
   bool mining_busy = false;
-  if (!invoke<HARD_FORK_INFO>(std::move(hfreq), hfres, "Failed to retrieve hard fork info"))
-    return false;
   bool restricted_response = false;
   if (auto it = info.find("start_time"); it != info.end() && it->get<uint64_t>() > 0) // This will only be non-null if we were recognized as admin (which we need for mining info)
   {
@@ -532,18 +532,20 @@ bool rpc_command_executor::show_status() {
       str << " was used";
   }
 
-  if (hfres.version < HF_VERSION_PULSE && !has_mining_info)
+  auto hf_version = hfinfo["version"].get<uint8_t>();
+  if (hf_version < HF_VERSION_PULSE && !has_mining_info)
     str << ", mining info unavailable";
   if (has_mining_info && !mining_busy && mining_active)
     str << ", mining at " << get_mining_speed(mining_hashrate);
 
-  if (hfres.version < HF_VERSION_PULSE)
+  if (hf_version < HF_VERSION_PULSE)
     str << ", net hash " << get_mining_speed(info["difficulty"].get<uint64_t>() / info["target"].get<uint64_t>());
 
   str << ", v" << info["version"].get<std::string_view>();
-  str << "(net v" << +hfres.version << ')';
-  if (hfres.earliest_height)
-    print_fork_extra_info(str, *hfres.earliest_height, net_height, 1s * info["target"].get<uint64_t>());
+  str << "(net v" << +hf_version << ')';
+  auto earliest = hfinfo.value("earliest_height", uint64_t{0});
+  if (earliest)
+    print_fork_extra_info(str, earliest, net_height, 1s * info["target"].get<uint64_t>());
 
   std::time_t now = std::time(nullptr);
 
@@ -1378,16 +1380,19 @@ bool rpc_command_executor::print_blockchain_dynamic_stats(uint64_t nblocks)
     return false;
   auto& info = *maybe_info;
 
-  GET_BASE_FEE_ESTIMATE::response feres{};
-  HARD_FORK_INFO::response hfres{};
+  auto maybe_hf = try_running([this] { return invoke<HARD_FORK_INFO>(); },
+      "Failed to retrieve hard fork info");
+  if (!maybe_hf)
+    return false;
+  auto& hfinfo = *maybe_hf;
 
-  if (!invoke<GET_BASE_FEE_ESTIMATE>({}, feres, "Failed to retrieve current fee info") ||
-      !invoke<HARD_FORK_INFO>({HF_VERSION_PER_BYTE_FEE}, hfres, "Failed to retrieve hard fork info"))
+  GET_BASE_FEE_ESTIMATE::response feres{};
+  if (!invoke<GET_BASE_FEE_ESTIMATE>({}, feres, "Failed to retrieve current fee info"))
     return false;
 
   auto height = info["height"].get<uint64_t>();
   tools::msg_writer() << "Height: " << height << ", diff " << info["difficulty"].get<uint64_t>() << ", cum. diff " << info["cumulative_difficulty"].get<uint64_t>()
-      << ", target " << info["target"].get<int>() << " sec" << ", dyn fee " << cryptonote::print_money(feres.fee_per_byte) << "/" << (hfres.enabled ? "byte" : "kB")
+      << ", target " << info["target"].get<int>() << " sec" << ", dyn fee " << cryptonote::print_money(feres.fee_per_byte) << "/" << (hfinfo["enabled"].get<bool>() ? "byte" : "kB")
       << " + " << cryptonote::print_money(feres.fee_per_output) << "/out";
 
   if (nblocks > 0)
@@ -1973,10 +1978,15 @@ bool rpc_command_executor::prepare_registration(bool force_registration)
   if (!maybe_info)
     return false;
   auto& info = *maybe_info;
+
+  auto maybe_hf = try_running([this] { return invoke<HARD_FORK_INFO>(); },
+      "Failed to retrieve hard fork info");
+  if (!maybe_hf)
+    return false;
+  auto& hfinfo = *maybe_hf;
+
   GET_SERVICE_KEYS::response kres{};
-  HARD_FORK_INFO::response hf_res{};
-  if (!invoke<HARD_FORK_INFO>({}, hf_res, "Failed to retrieve hard fork info") ||
-      !invoke<GET_SERVICE_KEYS>({}, kres, "Failed to retrieve service node keys"))
+  if (!invoke<GET_SERVICE_KEYS>({}, kres, "Failed to retrieve service node keys"))
     return false;
 
   if (!info.value("service_node", false))
@@ -2000,7 +2010,7 @@ bool rpc_command_executor::prepare_registration(bool force_registration)
   }
 
   uint64_t block_height = std::max(info["height"].get<uint64_t>(), info["target_height"].get<uint64_t>());
-  uint8_t hf_version = hf_res.version;
+  uint8_t hf_version = hfinfo["version"].get<uint8_t>();
 #if defined(OXEN_ENABLE_INTEGRATION_TEST_HOOKS)
   cryptonote::network_type const nettype = cryptonote::FAKECHAIN;
 #else

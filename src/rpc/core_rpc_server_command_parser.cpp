@@ -280,4 +280,12 @@ namespace cryptonote::rpc {
     get_values(in, "include_unrelayed", pstats.request.include_unrelayed);
   }
 
+  void parse_request(HARD_FORK_INFO& hfinfo, rpc_input in) {
+    get_values(in,
+        "height", hfinfo.request.height,
+        "version", hfinfo.request.version);
+    if (hfinfo.request.height && hfinfo.request.version)
+      throw std::runtime_error{"Error: at most one of 'height'" + std::to_string(hfinfo.request.height) + "/" + std::to_string(hfinfo.request.version) + " and 'version' may be specified"};
+  }
+
 }

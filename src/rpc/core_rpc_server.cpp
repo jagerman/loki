@@ -2135,26 +2135,27 @@ namespace cryptonote::rpc {
     get_connections.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  HARD_FORK_INFO::response core_rpc_server::invoke(HARD_FORK_INFO::request&& req, rpc_context context)
+  void core_rpc_server::invoke(HARD_FORK_INFO& hfinfo, rpc_context context)
   {
-    HARD_FORK_INFO::response res{};
-
     PERF_TIMER(on_hard_fork_info);
+    /*
     if (use_bootstrap_daemon_if_necessary<HARD_FORK_INFO>(req, res))
       return res;
+      */
 
-    const Blockchain &blockchain = m_core.get_blockchain_storage();
+    const auto& blockchain = m_core.get_blockchain_storage();
     uint8_t version =
-      req.version > 0 ? req.version :
-      req.height > 0 ? blockchain.get_network_version(req.height) :
+      hfinfo.request.version > 0 ? hfinfo.request.version :
+      hfinfo.request.height > 0 ? blockchain.get_network_version(hfinfo.request.height) :
       blockchain.get_network_version();
-    res.version = version;
-    res.enabled = blockchain.get_network_version() >= version;
+    hfinfo.response["version"] = version;
+    hfinfo.response["enabled"] = blockchain.get_network_version() >= version;
     auto heights = get_hard_fork_heights(m_core.get_nettype(), version);
-    res.earliest_height = heights.first;
-    res.last_height = heights.second;
-    res.status = STATUS_OK;
-    return res;
+    if (heights.first)
+      hfinfo.response["earliest_height"] = *heights.first;
+    if (heights.second)
+      hfinfo.response["latest_height"] = *heights.second;
+    hfinfo.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GETBANS::response core_rpc_server::invoke(GETBANS::request&& req, rpc_context context)
