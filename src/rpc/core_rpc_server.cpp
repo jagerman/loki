@@ -3134,7 +3134,7 @@ namespace cryptonote::rpc {
         "total_contributed", info.total_contributed,
         "staking_requirement", info.staking_requirement,
         "portions_for_operator", info.portions_for_operator,
-        "operator_fee", lround((double) info.portions_for_operator / (double) STAKING_PORTIONS * 100000.0),
+        "operator_fee", microportion(info.portions_for_operator),
         "operator_address", cryptonote::get_account_address_as_str(m_core.get_nettype(), false/*subaddress*/, info.operator_address),
         "swarm_id", info.swarm_id,
         "swarm", tools::int_to_string(info.swarm_id, 16),

@@ -2200,10 +2200,10 @@ namespace cryptonote::rpc {
   ///     fraction of 18446744073709551612 (2^64 - 4) (that is, this number corresponds to 100%).
   ///     Note that some JSON parsers may silently change this value while parsing as typical values
   ///     do not fit into a double without loss of precision.
-  ///   - \p operator_fee The operator fee expressed as thousandths of a percent (and rounded to the
-  ///     nearest integer value).  That is, 100000 corresponds to a 100% fee, 5456 corresponds to a
-  ///     5.456% fee.  Note that this number is for human consumption; the actual value that matters
-  ///     for the blockchain is the precise \p portions_for_operator value.
+  ///   - \p operator_fee The operator fee expressed in millionths (and rounded to the nearest
+  ///     integer value).  That is, 1000000 corresponds to a 100% fee, 34567 corresponds to a
+  ///     3.4567% fee.  Note that this number is for human consumption; the actual value that
+  ///     matters for the blockchain is the precise \p portions_for_operator value.
   ///   - \p swarm_id The numeric identifier of the Service Node's current swarm.  Note that
   ///     returned values can exceed the precision available in a double value, which can result in
   ///     (changed) incorrect values by some JSON parsers.  Consider using \p swarm instead if you
