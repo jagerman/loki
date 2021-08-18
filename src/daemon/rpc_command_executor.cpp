@@ -833,66 +833,74 @@ bool rpc_command_executor::print_transaction(const crypto::hash& transaction_has
   bool include_metadata,
   bool include_hex,
   bool include_json) {
-  GET_TRANSACTIONS::request req{};
-  GET_TRANSACTIONS::response res{};
 
-  req.txs_hashes.push_back(tools::type_to_hex(transaction_hash));
-  req.split = true;
-  if (!invoke<GET_TRANSACTIONS>(std::move(req), res, "Transaction retrieval failed"))
+  auto maybe_tx = try_running([this, &transaction_hash] {
+    return invoke<GET_TRANSACTIONS>(json{
+      {"tx_hashes", json::array({tools::type_to_hex(transaction_hash)})},
+      {"split", true}});
+  }, "Transaction retrieval failed");
+  if (!maybe_tx)
     return false;
 
-  if (1 == res.txs.size())
+  auto& txi = *maybe_tx;
+  auto txs = txi["txs"];
+  if (txs.size() != 1) {
+    tools::fail_msg_writer() << "Transaction wasn't found: " << transaction_hash << "\n";
+    return true;
+  }
+
+  auto tx = txs.front();
+  auto prunable_hash = tx.value<std::string_view>("prunable_hash", ""sv);
+  auto prunable_hex = tx.value<std::string_view>("prunable", ""sv);
+  bool pruned = !prunable_hash.empty() && prunable_hex.empty();
+
+  bool in_pool = tx["in_pool"].get<bool>();
+  if (in_pool)
+    tools::success_msg_writer() << "Found in pool";
+  else
+    tools::success_msg_writer() << "Found in blockchain at height " << tx["block_height"].get<uint64_t>() << (pruned ? " (pruned)" : "");
+
+  auto pruned_hex = tx["pruned"].get<std::string_view>(); // Always included with req.split=true
+
+  std::optional<cryptonote::transaction> t;
+  if (include_metadata || include_json)
   {
-    auto& tx = res.txs.front();
-    bool pruned = tx.prunable_hash && !tx.prunable_as_hex;
-
-    if (tx.in_pool)
-      tools::success_msg_writer() << "Found in pool";
-    else
-      tools::success_msg_writer() << "Found in blockchain at height " << tx.block_height << (pruned ? " (pruned)" : "");
-
-    const std::string &pruned_as_hex = *tx.pruned_as_hex; // Always included with req.split=true
-
-    std::optional<cryptonote::transaction> t;
-    if (include_metadata || include_json)
+    if (oxenmq::is_hex(pruned_hex) && oxenmq::is_hex(prunable_hex))
     {
-      if (oxenmq::is_hex(pruned_as_hex) && (!tx.prunable_as_hex || oxenmq::is_hex(*tx.prunable_as_hex)))
-      {
-        std::string blob = oxenmq::from_hex(pruned_as_hex);
-        if (tx.prunable_as_hex)
-          blob += oxenmq::from_hex(*tx.prunable_as_hex);
+      std::string blob = oxenmq::from_hex(pruned_hex);
+      if (!prunable_hex.empty())
+        blob += oxenmq::from_hex(prunable_hex);
 
-        bool parsed = pruned
-          ? cryptonote::parse_and_validate_tx_base_from_blob(blob, t.emplace())
-          : cryptonote::parse_and_validate_tx_from_blob(blob, t.emplace());
-        if (!parsed)
-        {
-          tools::fail_msg_writer() << "Failed to parse transaction data";
-          t.reset();
-        }
+      bool parsed = pruned
+        ? cryptonote::parse_and_validate_tx_base_from_blob(blob, t.emplace())
+        : cryptonote::parse_and_validate_tx_from_blob(blob, t.emplace());
+      if (!parsed)
+      {
+        tools::fail_msg_writer() << "Failed to parse transaction data";
+        t.reset();
       }
     }
-
-    // Print metadata if requested
-    if (include_metadata)
-    {
-      if (!tx.in_pool)
-        tools::msg_writer() << "Block timestamp: " << tx.block_timestamp << " (" << tools::get_human_readable_timestamp(tx.block_timestamp) << ")";
-      tools::msg_writer() << "Size: " << tx.size;
-      if (t)
-        tools::msg_writer() << "Weight: " << cryptonote::get_transaction_weight(*t);
-    }
-
-    // Print raw hex if requested
-    if (include_hex)
-      tools::success_msg_writer() << pruned_as_hex << (tx.prunable_as_hex ? *tx.prunable_as_hex : "") << '\n';
-
-    // Print json if requested
-    if (include_json && t)
-      tools::success_msg_writer() << cryptonote::obj_to_json_str(*t) << '\n';
   }
-  else
-    tools::fail_msg_writer() << "Transaction wasn't found: " << transaction_hash << std::endl;
+
+  // Print metadata if requested
+  if (include_metadata)
+  {
+    if (!in_pool) {
+      auto ts = tx["block_timestamp"].get<std::time_t>();
+      tools::msg_writer() << "Block timestamp: " << ts << " (" << tools::get_human_readable_timestamp(ts) << ")";
+    }
+    tools::msg_writer() << "Size: " << tx["size"].get<int>();
+    if (t)
+      tools::msg_writer() << "Weight: " << cryptonote::get_transaction_weight(*t);
+  }
+
+  // Print raw hex if requested
+  if (include_hex)
+    tools::success_msg_writer() << pruned_hex << prunable_hex << '\n';
+
+  // Print json if requested
+  if (include_json && t)
+      tools::success_msg_writer() << cryptonote::obj_to_json_str(*t) << '\n';
 
   return true;
 }

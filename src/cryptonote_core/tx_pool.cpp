@@ -872,6 +872,15 @@ namespace cryptonote
     ++m_cookie;
     return true;
   }
+  tx_memory_pool::key_images_container tx_memory_pool::get_spent_key_images(bool already_locked) {
+    std::unique_lock tx_lock{*this, std::defer_lock};
+    std::unique_lock bc_lock{m_blockchain, std::defer_lock};
+    if (!already_locked)
+        std::lock(tx_lock, bc_lock);
+
+    return m_spent_key_images;
+  }
+
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::take_tx(const crypto::hash &id, transaction &tx, cryptonote::blobdata &txblob, size_t& tx_weight, uint64_t& fee, bool &relayed, bool &do_not_relay, bool &double_spend_seen)
   {
@@ -1255,88 +1264,6 @@ namespace cryptonote
     }
 
     return stats;
-  }
-  //------------------------------------------------------------------
-  //TODO: investigate whether boolean return is appropriate
-  bool tx_memory_pool::get_transactions_and_spent_keys_info(std::vector<rpc::tx_info>& tx_infos, std::vector<rpc::spent_key_image_info>& key_image_infos, std::function<void(const transaction&, rpc::tx_info&)> post_process, bool include_sensitive_data) const
-  {
-    std::unique_lock tx_lock{m_transactions_lock, std::defer_lock};
-    std::unique_lock bc_lock{m_blockchain, std::defer_lock};
-    auto blink_lock = blink_shared_lock(std::defer_lock);
-    std::lock(tx_lock, bc_lock, blink_lock);
-
-    tx_infos.reserve(m_blockchain.get_txpool_tx_count());
-    key_image_infos.reserve(m_blockchain.get_txpool_tx_count());
-
-    m_blockchain.for_all_txpool_txes([&tx_infos, this, include_sensitive_data, post_process=std::move(post_process)](const crypto::hash &txid, const txpool_tx_meta_t &meta, const cryptonote::blobdata *bd){
-      transaction tx;
-      if (!parse_and_validate_tx_from_blob(*bd, tx))
-      {
-        MERROR("Failed to parse tx from txpool");
-        // continue
-        return true;
-      }
-      tx_infos.emplace_back();
-      auto& txi = tx_infos.back();
-      txi.id_hash = tools::type_to_hex(txid);
-      txi.tx_blob = *bd;
-      tx.set_hash(txid);
-      txi.tx_json = obj_to_json_str(tx);
-      txi.blob_size = bd->size();
-      txi.weight = meta.weight;
-      txi.fee = meta.fee;
-      txi.kept_by_block = meta.kept_by_block;
-      txi.max_used_block_height = meta.max_used_block_height;
-      txi.max_used_block_id_hash = tools::type_to_hex(meta.max_used_block_id);
-      txi.last_failed_height = meta.last_failed_height;
-      txi.last_failed_id_hash = tools::type_to_hex(meta.last_failed_id);
-      // In restricted mode we do not include this data:
-      txi.receive_time = include_sensitive_data ? meta.receive_time : 0;
-      txi.relayed = meta.relayed;
-      // In restricted mode we do not include this data:
-      txi.last_relayed_time = include_sensitive_data ? meta.last_relayed_time : 0;
-      txi.do_not_relay = meta.do_not_relay;
-      txi.double_spend_seen = meta.double_spend_seen;
-      txi.blink = has_blink(txid);
-      if (post_process)
-        post_process(tx, txi);
-      return true;
-    }, true, include_sensitive_data);
-
-    txpool_tx_meta_t meta;
-    for (const key_images_container::value_type& kee : m_spent_key_images) {
-      const crypto::key_image& k_image = kee.first;
-      const std::unordered_set<crypto::hash>& kei_image_set = kee.second;
-      rpc::spent_key_image_info ki{};
-      ki.id_hash = tools::type_to_hex(k_image);
-      for (const crypto::hash& tx_id_hash : kei_image_set)
-      {
-        if (!include_sensitive_data)
-        {
-          try
-          {
-            if (!m_blockchain.get_txpool_tx_meta(tx_id_hash, meta))
-            {
-              MERROR("Failed to get tx meta from txpool");
-              return false;
-            }
-            if (!meta.relayed)
-              // Do not include that transaction if in restricted mode and it's not relayed
-              continue;
-          }
-          catch (const std::exception &e)
-          {
-            MERROR("Failed to get tx meta from txpool: " << e.what());
-            return false;
-          }
-        }
-        ki.txs_hashes.push_back(tools::type_to_hex(tx_id_hash));
-      }
-      // Only return key images for which we have at least one tx that we can show for them
-      if (!ki.txs_hashes.empty())
-        key_image_infos.push_back(ki);
-    }
-    return true;
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::check_for_key_images(const std::vector<crypto::key_image>& key_images, std::vector<bool>& spent) const

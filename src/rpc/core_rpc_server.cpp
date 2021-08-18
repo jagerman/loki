@@ -744,109 +744,135 @@ namespace cryptonote::rpc {
     }
 
     struct extra_extractor {
-      GET_TRANSACTIONS::extra_entry& entry;
+      nlohmann::json& entry;
       const network_type nettype;
+      json_binary_proxy::fmt format;
 
-      void operator()(const tx_extra_pub_key& x) { entry.pubkey = tools::type_to_hex(x.pub_key); }
+      // If we encounter duplicate values then we want to produce an array of values, but with just
+      // a single one we want just the value itself; this does that.  Returns a reference to the
+      // assigned value (whether as a top-level value or array element).
+      template <typename T>
+      json& set(const std::string& key, T&& value, bool binary = is_binary_parameter<T> || is_binary_vector<T>) {
+        auto* x = &entry[key];
+        if (!x->is_null() && !x->is_array())
+          x = &(entry[key] = json::array({std::move(*x)}));
+        if (x->is_array())
+          x = &x->emplace_back();
+        if constexpr (is_binary_parameter<T> || is_binary_vector<T> || std::is_convertible_v<T, std::string_view>) {
+          if (binary)
+            return json_binary_proxy{*x, format} = std::forward<T>(value);
+        }
+        assert(!binary);
+        return *x = std::forward<T>(value);
+      }
+
+      void operator()(const tx_extra_pub_key& x) { set("pubkey", x.pub_key); }
       void operator()(const tx_extra_nonce& x) {
         if ((x.nonce.size() == sizeof(crypto::hash) + 1 && x.nonce[0] == TX_EXTRA_NONCE_PAYMENT_ID)
             || (x.nonce.size() == sizeof(crypto::hash8) + 1 && x.nonce[0] == TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID))
-          entry.payment_id = oxenmq::to_hex(x.nonce.begin() + 1, x.nonce.end());
+          set("payment_id", std::string_view{x.nonce.data() + 1, x.nonce.size() - 1}, true);
         else
-          entry.extra_nonce = oxenmq::to_hex(x.nonce);
+          set("extra_nonce", x.nonce, true);
       }
-      void operator()(const tx_extra_merge_mining_tag& x) { entry.mm_depth = x.depth; entry.mm_root = tools::type_to_hex(x.merkle_root); }
-      void operator()(const tx_extra_additional_pub_keys& x) { entry.additional_pubkeys = hexify(x.data); }
-      void operator()(const tx_extra_burn& x) { entry.burn_amount = x.amount; }
-      void operator()(const tx_extra_service_node_winner& x) { entry.sn_winner = tools::type_to_hex(x.m_service_node_key); }
-      void operator()(const tx_extra_service_node_pubkey& x) { entry.sn_pubkey = tools::type_to_hex(x.m_service_node_key); }
+      void operator()(const tx_extra_merge_mining_tag& x) { set("mm_depth", x.depth); set("mm_root", x.merkle_root); }
+      void operator()(const tx_extra_additional_pub_keys& x) { set("additional_pubkeys", x.data); }
+      void operator()(const tx_extra_burn& x) { set("burn_amount", x.amount); }
+      void operator()(const tx_extra_service_node_winner& x) { set("sn_winner", x.m_service_node_key); }
+      void operator()(const tx_extra_service_node_pubkey& x) { set("sn_pubkey", x.m_service_node_key); }
       void operator()(const tx_extra_service_node_register& x) {
-        auto& reg = entry.sn_registration.emplace();
-        reg.fee = microportion(x.m_portions_for_operator);
-        reg.expiry = x.m_expiration_timestamp;
-        for (size_t i = 0; i < x.m_portions.size(); i++) {
-          auto& [wallet, portion] = reg.contributors.emplace_back();
-          wallet = get_account_address_as_str(nettype, false, {x.m_public_spend_keys[i], x.m_public_view_keys[i]});
-          portion = microportion(x.m_portions[i]);
-        }
+        json reservations{};
+        for (size_t i = 0; i < x.m_portions.size(); i++)
+          reservations[get_account_address_as_str(nettype, false, {x.m_public_spend_keys[i], x.m_public_view_keys[i]})]
+            = microportion(x.m_portions[i]);
+        set("sn_registration", json{
+          {"fee", microportion(x.m_portions_for_operator)},
+          {"expiry", x.m_expiration_timestamp},
+          {"reservations", std::move(reservations)}});
       }
       void operator()(const tx_extra_service_node_contributor& x) {
-        entry.sn_contributor = get_account_address_as_str(nettype, false, {x.m_spend_public_key, x.m_view_public_key});
+        set("sn_contributor", get_account_address_as_str(nettype, false, {x.m_spend_public_key, x.m_view_public_key}));
       }
       template <typename T>
       auto& _state_change(const T& x) {
         // Common loading code for nearly-identical state_change and deregister_old variables:
-        auto& sc = entry.sn_state_change.emplace();
-        sc.height = x.block_height;
-        sc.index = x.service_node_index;
-        sc.voters.reserve(x.votes.size());
+        auto voters = json::array();
         for (auto& v : x.votes)
-          sc.voters.push_back(v.validator_index);
-        return sc;
+          voters.push_back(v.validator_index);
+
+        json sc{
+            {"height", x.block_height},
+            {"index", x.service_node_index},
+            {"voters", std::move(voters)}};
+        return set("sn_state_change", std::move(sc));
       }
       void operator()(const tx_extra_service_node_deregister_old& x) {
         auto& sc = _state_change(x);
-        sc.old_dereg = true;
-        sc.type = "dereg";
+        sc["old_dereg"] = true;
+        sc["type"] = "dereg";
       }
       void operator()(const tx_extra_service_node_state_change& x) {
         auto& sc = _state_change(x);
         if (x.reason_consensus_all)
-          sc.reasons = cryptonote::coded_reasons(x.reason_consensus_all);
+          sc["reasons"] = cryptonote::coded_reasons(x.reason_consensus_all);
         // If `any` has reasons not included in all then list the extra ones separately:
         if (uint16_t reasons_maybe = x.reason_consensus_any & ~x.reason_consensus_all)
-          sc.reasons_maybe = cryptonote::coded_reasons(reasons_maybe);
+          sc["reasons_maybe"] = cryptonote::coded_reasons(reasons_maybe);
         switch (x.state)
         {
-          case service_nodes::new_state::decommission: sc.type = "decom"; break;
-          case service_nodes::new_state::recommission: sc.type = "recom"; break;
-          case service_nodes::new_state::deregister: sc.type = "dereg"; break;
-          case service_nodes::new_state::ip_change_penalty: sc.type = "ip"; break;
+          case service_nodes::new_state::decommission: sc["type"] = "decom"; break;
+          case service_nodes::new_state::recommission: sc["type"] = "recom"; break;
+          case service_nodes::new_state::deregister: sc["type"] = "dereg"; break;
+          case service_nodes::new_state::ip_change_penalty: sc["type"] = "ip"; break;
           case service_nodes::new_state::_count: /*leave blank*/ break;
         }
       }
-      void operator()(const tx_extra_tx_secret_key& x) { entry.tx_secret_key = tools::type_to_hex(x.key); }
+      void operator()(const tx_extra_tx_secret_key& x) { set("tx_secret_key", tools::view_guts(x.key), true); }
       void operator()(const tx_extra_tx_key_image_proofs& x) {
-        entry.locked_key_images.reserve(x.proofs.size());
-        for (auto& proof : x.proofs) entry.locked_key_images.emplace_back(tools::type_to_hex(proof.key_image));
+        std::vector<crypto::key_image> kis;
+        kis.reserve(x.proofs.size());
+        for (auto& proof : x.proofs)
+          kis.push_back(proof.key_image);
+        set("locked_key_images", std::move(kis));
       }
-      void operator()(const tx_extra_tx_key_image_unlock& x) { entry.key_image_unlock = tools::type_to_hex(x.key_image); }
-      void _load_owner(std::optional<std::string>& entry, const ons::generic_owner& owner) {
+      void operator()(const tx_extra_tx_key_image_unlock& x) { set("key_image_unlock", x.key_image); }
+      void _load_owner(json& parent, const std::string& key, const ons::generic_owner& owner) {
         if (!owner)
           return;
         if (owner.type == ons::generic_owner_sig_type::monero)
-          entry = get_account_address_as_str(nettype, owner.wallet.is_subaddress, owner.wallet.address);
+          parent[key] = get_account_address_as_str(nettype, owner.wallet.is_subaddress, owner.wallet.address);
         else if (owner.type == ons::generic_owner_sig_type::ed25519)
-          entry = tools::type_to_hex(owner.ed25519);
+          json_binary_proxy{parent[key], json_binary_proxy::fmt::hex} = owner.ed25519;
       }
       void operator()(const tx_extra_oxen_name_system& x) {
-        auto& ons = entry.ons.emplace();
-        ons.blocks = ons::expiry_blocks(nettype, x.type);
+        json ons{};
+        if (auto maybe_exp = ons::expiry_blocks(nettype, x.type))
+          ons["blocks"] = *maybe_exp;
         switch (x.type)
         {
           case ons::mapping_type::lokinet: [[fallthrough]];
           case ons::mapping_type::lokinet_2years: [[fallthrough]];
           case ons::mapping_type::lokinet_5years: [[fallthrough]];
-          case ons::mapping_type::lokinet_10years: ons.type = "lokinet"; break;
+          case ons::mapping_type::lokinet_10years: ons["type"] = "lokinet"; break;
 
-          case ons::mapping_type::session: ons.type = "session"; break;
-          case ons::mapping_type::wallet:  ons.type = "wallet"; break;
+          case ons::mapping_type::session: ons["type"] = "session"; break;
+          case ons::mapping_type::wallet:  ons["type"] = "wallet"; break;
 
           case ons::mapping_type::update_record_internal: [[fallthrough]];
           case ons::mapping_type::_count:
                                            break;
         }
         if (x.is_buying())
-          ons.buy = true;
+          ons["buy"] = true;
         else if (x.is_updating())
-          ons.update = true;
+          ons["update"] = true;
         else if (x.is_renewing())
-          ons.renew = true;
-        ons.name_hash = tools::type_to_hex(x.name_hash);
+          ons["renew"] = true;
+        auto ons_bin = json_binary_proxy{ons, format};
+        ons_bin["name_hash"] = x.name_hash;
         if (!x.encrypted_value.empty())
-          ons.value = oxenmq::to_hex(x.encrypted_value);
-        _load_owner(ons.owner, x.owner);
-        _load_owner(ons.backup_owner, x.backup_owner);
+          ons_bin["value"] = x.encrypted_value;
+        _load_owner(ons, "owner", x.owner);
+        _load_owner(ons, "backup_owner", x.backup_owner);
       }
 
       // Ignore these fields:
@@ -855,96 +881,153 @@ namespace cryptonote::rpc {
     };
 
 
-    bool load_tx_extra_data(GET_TRANSACTIONS::extra_entry& e, const transaction& tx, network_type nettype)
+    void load_tx_extra_data(nlohmann::json& e, const transaction& tx, network_type nettype, bool is_bt)
     {
+      e = json::object();
       std::vector<tx_extra_field> extras;
       if (!parse_tx_extra(tx.extra, extras))
-        return false;
-      extra_extractor visitor{e, nettype};
+        return;
+      extra_extractor visitor{e, nettype, is_bt ? json_binary_proxy::fmt::bt : json_binary_proxy::fmt::hex};
       for (const auto& extra : extras)
         var::visit(visitor, extra);
-      return true;
     }
   }
-  //------------------------------------------------------------------------------------------------------------------------------
-  GET_TRANSACTIONS::response core_rpc_server::invoke(GET_TRANSACTIONS::request&& req, rpc_context context)
-  {
-    GET_TRANSACTIONS::response res{};
 
+  struct tx_info {
+    crypto::hash id;                    // txid hash
+    txpool_tx_meta_t meta;
+    std::string tx_blob;                // Blob containing the transaction data.
+    bool blink;                         // True if this is a signed blink transaction
+    //std::optional<GET_TRANSACTIONS::extra_entry> extra; // Parsed tx_extra information (only if requested)
+    //std::optional<uint64_t> stake_amount; // Will be set to the staked amount if the transaction is a staking transaction *and* stake amounts were requested.
+  };
+
+  static std::vector<tx_info> get_pool_txs_impl(cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process) {
+    auto& bc = core.get_blockchain_storage();
+    auto& pool = core.get_pool();
+
+    std::vector<tx_info> tx_infos;
+    tx_infos.reserve(bc.get_txpool_tx_count());
+
+    bc.for_all_txpool_txes(
+        [&tx_infos, &pool, post_process=std::move(post_process)]
+        (const crypto::hash& txid, const txpool_tx_meta_t& meta, const cryptonote::blobdata* bd) {
+      transaction tx;
+      if (!parse_and_validate_tx_from_blob(*bd, tx))
+      {
+        MERROR("Failed to parse tx from txpool");
+        // continue
+        return true;
+      }
+      auto& txi = tx_infos.emplace_back();
+      txi.id = txid;
+      txi.meta = meta;
+      txi.tx_blob = *bd;
+      tx.set_hash(txid);
+      //txi.tx_json = obj_to_json_str(tx);
+      txi.blink = pool.has_blink(txid);
+      if (post_process)
+        post_process(tx, txi);
+      return true;
+    }, true);
+
+    return tx_infos;
+  }
+
+  auto pool_locks(cryptonote::core& core) {
+    auto& pool = core.get_pool();
+    std::unique_lock tx_lock{pool, std::defer_lock};
+    std::unique_lock bc_lock{core.get_blockchain_storage(), std::defer_lock};
+    auto blink_lock = pool.blink_shared_lock(std::defer_lock);
+    std::lock(tx_lock, bc_lock, blink_lock);
+    return std::make_tuple(std::move(tx_lock), std::move(bc_lock), std::move(blink_lock));
+  }
+
+  static std::pair<std::vector<tx_info>, tx_memory_pool::key_images_container> get_pool_txs_kis(
+      cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process = {}) {
+    auto locks = pool_locks(core);
+    return {get_pool_txs_impl(core, std::move(post_process)), core.get_pool().get_spent_key_images(true)};
+  }
+
+  static std::vector<tx_info> get_pool_txs(
+      cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process = {}) {
+    auto locks = pool_locks(core);
+    return get_pool_txs_impl(core, std::move(post_process));
+  }
+
+  static tx_memory_pool::key_images_container get_pool_kis(
+      cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process = {}) {
+    auto locks = pool_locks(core);
+    return core.get_pool().get_spent_key_images(true);
+  }
+
+  //------------------------------------------------------------------------------------------------------------------------------
+  void core_rpc_server::invoke(GET_TRANSACTIONS& get, rpc_context context)
+  {
     PERF_TIMER(on_get_transactions);
+    /*
     if (use_bootstrap_daemon_if_necessary<GET_TRANSACTIONS>(req, res))
       return res;
+      */
 
-    std::vector<crypto::hash> vh;
-    for(const auto& tx_hex_str: req.txs_hashes)
-    {
-      if (!tools::hex_to_type(tx_hex_str, vh.emplace_back()))
-      {
-        res.status = "Failed to parse hex representation of transaction hash";
-        return res;
-      }
-    }
     std::vector<crypto::hash> missed_txs;
-    std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>> txs;
-    bool r = m_core.get_split_transactions_blobs(vh, txs, missed_txs);
-    if(!r)
+    using split_tx = std::tuple<crypto::hash, std::string, crypto::hash, std::string>;
+    std::vector<split_tx> txs;
+    if (!m_core.get_split_transactions_blobs(get.request.tx_hashes, txs, missed_txs))
     {
-      res.status = "Failed";
-      return res;
+      get.response["status"] = STATUS_FAILED;
+      return;
     }
-    LOG_PRINT_L2("Found " << txs.size() << "/" << vh.size() << " transactions on the blockchain");
+    LOG_PRINT_L2("Found " << txs.size() << "/" << get.request.tx_hashes.size() << " transactions on the blockchain");
 
     // try the pool for any missing txes
-    auto &pool = m_core.get_pool();
+    auto& pool = m_core.get_pool();
     size_t found_in_pool = 0;
     std::unordered_map<crypto::hash, tx_info> per_tx_pool_tx_info;
     if (!missed_txs.empty())
     {
-      std::vector<tx_info> pool_tx_info;
-      std::vector<spent_key_image_info> pool_key_image_info;
-      bool r = pool.get_transactions_and_spent_keys_info(pool_tx_info, pool_key_image_info, nullptr, context.admin);
-      if(r)
-      {
+      try {
+        auto pool_tx_info = get_pool_txs(m_core);
         // sort to match original request
-        std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>> sorted_txs;
+        std::vector<split_tx> sorted_txs;
         unsigned txs_processed = 0;
-        for (const crypto::hash &h: vh)
+        for (const auto& h: get.request.tx_hashes)
         {
           auto missed_it = std::find(missed_txs.begin(), missed_txs.end(), h);
           if (missed_it == missed_txs.end())
           {
             if (txs.size() == txs_processed)
             {
-              res.status = "Failed: internal error - txs is empty";
-              return res;
+              get.response["status"] = "Failed: internal error - txs is empty";
+              return;
             }
             // core returns the ones it finds in the right order
             if (std::get<0>(txs[txs_processed]) != h)
             {
-              res.status = "Failed: tx hash mismatch";
-              return res;
+              get.response["status"] = "Failed: tx hash mismatch";
+              return;
             }
             sorted_txs.push_back(std::move(txs[txs_processed]));
             ++txs_processed;
             continue;
           }
-          const std::string hash_string = tools::type_to_hex(h);
+
           auto ptx_it = std::find_if(pool_tx_info.begin(), pool_tx_info.end(),
-              [&hash_string](const tx_info &txi) { return hash_string == txi.id_hash; });
+              [&h](const auto& txi) { return h == txi.id; });
           if (ptx_it != pool_tx_info.end())
           {
             cryptonote::transaction tx;
             if (!cryptonote::parse_and_validate_tx_from_blob(ptx_it->tx_blob, tx))
             {
-              res.status = "Failed to parse and validate tx from blob";
-              return res;
+              get.response["status"] = "Failed to parse and validate tx from blob";
+              return;
             }
             serialization::binary_string_archiver ba;
             try {
               tx.serialize_base(ba);
             } catch (const std::exception& e) {
-              res.status = "Failed to serialize transaction base: "s + e.what();
-              return res;
+              get.response["status"] = "Failed to serialize transaction base: "s + e.what();
+              return;
             }
             std::string pruned = ba.str();
             std::string pruned2{ptx_it->tx_blob, pruned.size()};
@@ -954,24 +1037,29 @@ namespace cryptonote::rpc {
             ++found_in_pool;
           }
         }
-        txs = sorted_txs;
+        txs = std::move(sorted_txs);
+      } catch (const std::exception& e) {
+        // Log error but continue
+        MERROR(e.what());
       }
-      LOG_PRINT_L2("Found " << found_in_pool << "/" << vh.size() << " transactions in the pool");
-    }
 
-    res.missed_tx.reserve(missed_txs.size());
-    for(const auto& miss_tx: missed_txs)
-      res.missed_tx.push_back(tools::type_to_hex(miss_tx));
+      get.response_hex["missed_tx"] = missed_txs; // non-plural here intentional to not break existing clients
+      LOG_PRINT_L2("Found " << found_in_pool << "/" << get.request.tx_hashes.size() << " transactions in the pool");
+    }
 
     uint64_t immutable_height = m_core.get_blockchain_storage().get_immutable_height();
     auto blink_lock = pool.blink_shared_lock(std::defer_lock); // Defer until/unless we actually need it
 
+    auto& txs_out = get.response["txs"];
+    txs_out = json::array();
+
     cryptonote::blobdata tx_data;
-    for(const auto& [tx_hash, unprunable_data, prunable_hash, prunable_data]: txs)
+    for (const auto& [tx_hash, unprunable_data, prunable_hash, prunable_data]: txs)
     {
-      auto& e = res.txs.emplace_back();
-      e.tx_hash = tools::type_to_hex(tx_hash);
-      e.size = unprunable_data.size() + prunable_data.size();
+      auto& e = txs_out.emplace_back();
+      auto e_bin = get.response_hex["txs"].back();
+      e_bin["tx_hash"] = tx_hash;
+      e["size"] = unprunable_data.size() + prunable_data.size();
 
       // If the transaction was pruned then the prunable part will be empty but the prunable hash
       // will be non-null.  (Some txes, like coinbase txes, are non-prunable and will have empty
@@ -979,22 +1067,22 @@ namespace cryptonote::rpc {
       bool prunable = prunable_hash != crypto::null_hash;
       bool pruned = prunable && prunable_data.empty();
 
-      if (pruned || (prunable && (req.split || req.prune)))
-        e.prunable_hash = tools::type_to_hex(prunable_hash);
+      if (pruned || (prunable && (get.request.split || get.request.prune)))
+        e_bin["prunable_hash"] = prunable_hash;
 
-      if (req.split || req.prune || pruned)
+      if (get.request.split || get.request.prune || pruned)
       {
-        if (req.decode_as_json)
+        if (get.request.decode_as_json)
         {
           tx_data = unprunable_data;
-          if (!req.prune)
+          if (!get.request.prune)
             tx_data += prunable_data;
         }
         else
         {
-          e.pruned_as_hex = oxenmq::to_hex(unprunable_data);
-          if (!req.prune && prunable && !pruned)
-            e.prunable_as_hex = oxenmq::to_hex(prunable_data);
+          e_bin["pruned"] = unprunable_data;
+          if (!get.request.prune && prunable && !pruned)
+            e_bin["prunable"] = prunable_data;
         }
       }
       else
@@ -1002,87 +1090,89 @@ namespace cryptonote::rpc {
         // use non-splitted form, leaving pruned_as_hex and prunable_as_hex as empty
         tx_data = unprunable_data;
         tx_data += prunable_data;
-        if (!req.decode_as_json)
-          e.as_hex = oxenmq::to_hex(tx_data);
+        if (!get.request.decode_as_json)
+          e_bin["data"] = tx_data;
       }
 
       cryptonote::transaction t;
-      if (req.decode_as_json || req.tx_extra || req.stake_info)
+      if (get.request.decode_as_json || get.request.tx_extra || get.request.stake_info)
       {
-        if (req.prune || pruned)
+        if (get.request.prune || pruned)
         {
           if (!cryptonote::parse_and_validate_tx_base_from_blob(tx_data, t))
           {
-            res.status = "Failed to parse and validate base tx data";
-            return res;
+            get.response["status"] = "Failed to parse and validate base tx data";
+            return;
           }
-          if (req.decode_as_json)
-            e.as_json = obj_to_json_str(pruned_transaction{t});
+          // I hate this because it goes deep into epee:
+          if (get.request.decode_as_json)
+            e["as_json"] = obj_to_json_str(pruned_transaction{t});
         }
         else
         {
           if (!cryptonote::parse_and_validate_tx_from_blob(tx_data, t))
           {
-            res.status = "Failed to parse and validate tx data";
-            return res;
+            get.response["status"] = "Failed to parse and validate tx data";
+            return;
           }
-          if (req.decode_as_json)
-            e.as_json = obj_to_json_str(t);
+          if (get.request.decode_as_json)
+            e["as_json"] = obj_to_json_str(t);
         }
 
-        if (req.tx_extra)
-          load_tx_extra_data(e.extra.emplace(), t, nettype());
+        if (get.request.tx_extra)
+          load_tx_extra_data(e["extra"], t, nettype(), get.is_bt());
       }
       auto ptx_it = per_tx_pool_tx_info.find(tx_hash);
-      e.in_pool = ptx_it != per_tx_pool_tx_info.end();
+      bool in_pool = ptx_it != per_tx_pool_tx_info.end();
+      e["in_pool"] = in_pool;
       bool might_be_blink = true;
-      if (e.in_pool)
+      auto height = std::numeric_limits<uint64_t>::max();
+      if (in_pool)
       {
-        e.block_height = e.block_timestamp = std::numeric_limits<uint64_t>::max();
-        e.double_spend_seen = ptx_it->second.double_spend_seen;
-        e.relayed = ptx_it->second.relayed;
-        e.received_timestamp = ptx_it->second.receive_time;
+        if (ptx_it->second.meta.double_spend_seen)
+          e["double_spend_seen"] = true;
+        e["relayed"] = ptx_it->second.meta.relayed;
+        e["received_timestamp"] = ptx_it->second.meta.receive_time;
       }
       else
       {
-        e.block_height = m_core.get_blockchain_storage().get_db().get_tx_block_height(tx_hash);
-        e.block_timestamp = m_core.get_blockchain_storage().get_db().get_block_timestamp(e.block_height);
-        e.received_timestamp = 0;
-        e.double_spend_seen = false;
-        e.relayed = false;
-        if (e.block_height <= immutable_height)
+        height = m_core.get_blockchain_storage().get_db().get_tx_block_height(tx_hash);
+        e["block_height"] = height;
+        e["block_timestamp"] = m_core.get_blockchain_storage().get_db().get_block_timestamp(height);
+        if (height <= immutable_height)
             might_be_blink = false;
       }
 
-      if (req.stake_info) {
-        auto hf_version = get_network_version(nettype(), e.in_pool ? m_core.get_current_blockchain_height() : e.block_height);
+      if (get.request.stake_info) {
+        auto hf_version = get_network_version(nettype(), in_pool ? m_core.get_current_blockchain_height() : height);
         service_nodes::staking_components sc;
-        if (service_nodes::tx_get_staking_components_and_amounts(nettype(), hf_version, t, e.block_height, &sc)
+        if (service_nodes::tx_get_staking_components_and_amounts(nettype(), hf_version, t, height, &sc)
             && sc.transferred > 0)
-          e.stake_amount = sc.transferred;
+          e["stake_amount"] = sc.transferred;
       }
 
       if (might_be_blink)
       {
         if (!blink_lock) blink_lock.lock();
-        e.blink = pool.has_blink(tx_hash);
+        e["blink"] = pool.has_blink(tx_hash);
       }
 
       // output indices too if not in pool
-      if (!e.in_pool)
+      if (!in_pool)
       {
-        bool r = m_core.get_tx_outputs_gindexs(tx_hash, e.output_indices);
-        if (!r)
+        std::vector<uint64_t> indices;
+        if (m_core.get_tx_outputs_gindexs(tx_hash, indices))
+          e["output_indices"] = std::move(indices);
+        else
         {
-          res.status = "Failed";
-          return res;
+          get.response["status"] = STATUS_FAILED;
+          return;
         }
       }
     }
 
-    LOG_PRINT_L2(res.txs.size() << " transactions found, " << res.missed_tx.size() << " not found");
-    res.status = STATUS_OK;
-    return res;
+    LOG_PRINT_L2(get.response["txs"].size() << " transactions found, " << missed_txs.size() << " not found");
+    get.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   IS_KEY_IMAGE_SPENT::response core_rpc_server::invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context)
@@ -1120,35 +1210,16 @@ namespace cryptonote::rpc {
       res.spent_status.push_back(spent_status[n] ? IS_KEY_IMAGE_SPENT::SPENT_IN_BLOCKCHAIN : IS_KEY_IMAGE_SPENT::UNSPENT);
 
     // check the pool too
-    std::vector<tx_info> txs;
-    std::vector<spent_key_image_info> ki;
-    r = m_core.get_pool().get_transactions_and_spent_keys_info(txs, ki, nullptr, context.admin);
-    if(!r)
-    {
+    try {
+      auto kis = get_pool_kis(m_core);
+
+      for (size_t n = 0; n < res.spent_status.size(); ++n)
+        if (res.spent_status[n] == IS_KEY_IMAGE_SPENT::UNSPENT && kis.count(key_images[n]))
+          res.spent_status[n] = IS_KEY_IMAGE_SPENT::SPENT_IN_POOL;
+    } catch (const std::exception& e) {
+      MERROR("Failed to get pool key images: " << e.what());
       res.status = "Failed";
       return res;
-    }
-    for (std::vector<spent_key_image_info>::const_iterator i = ki.begin(); i != ki.end(); ++i)
-    {
-      crypto::hash hash;
-      crypto::key_image spent_key_image;
-      if (tools::hex_to_type(i->id_hash, hash))
-      {
-        memcpy(&spent_key_image, &hash, sizeof(hash)); // a bit dodgy, should be other parse functions somewhere
-        for (size_t n = 0; n < res.spent_status.size(); ++n)
-        {
-          if (res.spent_status[n] == IS_KEY_IMAGE_SPENT::UNSPENT)
-          {
-            if (key_images[n] == spent_key_image)
-            {
-              res.spent_status[n] = IS_KEY_IMAGE_SPENT::SPENT_IN_POOL;
-              break;
-            }
-          }
-        }
-      }
-      else
-        MERROR("Invalid hash: " << i->id_hash);
     }
 
     res.status = STATUS_OK;

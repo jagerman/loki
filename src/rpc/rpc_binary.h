@@ -25,6 +25,12 @@ namespace cryptonote::rpc {
   template <typename T>
   inline constexpr bool is_binary_vector<std::vector<T>> = is_binary_parameter<T>;
 
+  // De-referencing wrappers around the above:
+  template <typename T> inline constexpr bool is_binary_parameter<const T&> = is_binary_parameter<T>;
+  template <typename T> inline constexpr bool is_binary_parameter<T&&> = is_binary_parameter<T>;
+  template <typename T> inline constexpr bool is_binary_vector<const T&> = is_binary_vector<T>;
+  template <typename T> inline constexpr bool is_binary_vector<T&&> = is_binary_vector<T>;
+
 
   void load_binary_parameter_impl(std::string_view bytes, size_t raw_size, bool allow_raw, uint8_t* val_data);
 
@@ -57,6 +63,10 @@ namespace cryptonote::rpc {
     json_binary_proxy operator[](T&& key) {
       return json_binary_proxy{e[std::forward<T>(key)], format};
     }
+
+    /// Returns a binary value proxy around the first/last element (requires an underlying list)
+    json_binary_proxy front() { return json_binary_proxy{e.front(), format}; }
+    json_binary_proxy back() { return json_binary_proxy{e.back(), format}; }
 
     /// Assigns binary data from a string_view/string/etc.
     nlohmann::json& operator=(std::string_view binary_data);

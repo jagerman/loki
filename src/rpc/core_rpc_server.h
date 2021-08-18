@@ -216,6 +216,7 @@ namespace cryptonote::rpc {
     void invoke(GET_TRANSACTION_POOL_HASHES& get_transaction_pool_hashes, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_context context);
+    void invoke(GET_TRANSACTIONS& req, rpc_context context);
     void invoke(GET_CONNECTIONS& get_connections, rpc_context context);
     void invoke(SYNC_INFO& sync, rpc_context context);
     void invoke(GET_SERVICE_NODE_STATUS& sns, rpc_context context);
@@ -233,7 +234,6 @@ namespace cryptonote::rpc {
     GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request&& req, rpc_context context);
 
     // FIXME: unconverted JSON RPC endpoints:
-    GET_TRANSACTIONS::response                          invoke(GET_TRANSACTIONS::request&& req, rpc_context context);
     IS_KEY_IMAGE_SPENT::response                        invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context);
     SEND_RAW_TX::response                               invoke(SEND_RAW_TX::request&& req, rpc_context context);
     GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);

@@ -337,120 +337,149 @@ namespace cryptonote::rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Look up one or more transactions by hash.
+  /// Look up one or more transactions by hash.
+  ///
+  /// Outputs:
+  ///
+  /// - /p status -- Generic RPC error code. "OK" is the success value.
+  /// - /p untrusted -- If the result is obtained using bootstrap mode then this will be set to
+  ///   true, otherwise will be omitted.
+  /// - \p missed_tx -- list of transaction hashes that were not found.  If all were found then this
+  ///   field is omitted.
+  /// - \p txs -- list of transaction details; each element is a dict containing:
+  ///   - \p tx_hash -- Transaction hash.
+  ///   - \p size -- Size of the transaction, in bytes. Note that if the transaction has been pruned
+  ///     this is the post-pruning size, not the original size.
+  ///   - \p in_pool -- Will be set to true if the transaction is in the transaction pool (`true`)
+  ///     and omitted if mined into a block.
+  ///   - \p blink -- True if this is an approved, blink transaction; this information is generally
+  ///     only available for approved in-pool transactions and txes in very recent blocks.
+  ///   - \p block_height -- Block height including the transaction.  Omitted for tx pool
+  ///     transactions.
+  ///   - \p block_timestamp -- Unix time at which the block has been added to the blockchain.
+  ///     Omitted for tx pool transactions.
+  ///   - \p output_indices -- List of transaction indexes.  Omitted for tx pool transactions.
+  ///   - \p relayed -- For `in_pool` transactions this field will be set to indicate whether the
+  ///     transaction has been relayed to the network.
+  ///   - \p double_spend_seen -- Will be set to true for tx pool transactions that are
+  ///     double-spends (and thus cannot be added to the blockchain).  Omitted for mined
+  ///     transactions.
+  ///   - \p received_timestamp -- Timestamp transaction was received in the pool.  Omitted for
+  ///     mined blocks.
+  ///   - \p data -- Full, unpruned transaction data.  For a json request this is hex-encoded; for a
+  ///     bt-encoded request this is raw bytes.  This field is omitted if any of `decode_as_json`,
+  ///     `split`, or `prune` is requested; or if the transaction has been pruned in the database.
+  ///   - \p pruned -- The non-prunable part of the transaction, encoded as hex (for json requests).
+  ///     Always included if `split` or `prune` are specified; without those options it will be
+  ///     included instead of `data` if the transaction has been pruned.
+  ///   - \p prunable -- The prunable part of the transaction.  Only included when `split` is
+  ///     specified, the transaction is prunable, and the tx has not been pruned from the database.
+  ///   - \p prunable_hash -- The hash of the prunable part of the transaction.  Will be provided if
+  ///     either: the tx has been pruned; or the tx is prunable and either of `prune` or `split` are
+  ///     specified.
+  /// FIXME: drop this crap:
+  ///   - \p as_json -- Transaction information parsed into json. Requires decode_as_json in request.
+  ///   - \p extra -- Parsed "extra" transaction information; omitted unless specifically requested.
+  ///     This is a dict containing one or more of the following keys.
+  ///     - \p pubkey -- The tx extra public key
+  ///     - \p burn_amount -- The amount of OXEN that this transaction burns
+  ///     - \p extra_nonce -- Optional extra nonce value (in hex); will be empty if nonce is
+  ///       recognized as a payment id
+  ///     - \p payment_id -- The payment ID, if present. This is either a 16 hex character (8-byte)
+  ///       encrypted payment id, or a 64 hex character (32-byte) deprecated, unencrypted payment ID
+  ///     - \p mm_depth -- (Merge-mining) the merge-mined depth
+  ///     - \p mm_root -- (Merge-mining) the merge mining merkle root hash
+  ///     - \p additional_pubkeys -- Additional public keys
+  ///     - \p sn_winner -- Service node block reward winner public key
+  ///     - \p sn_pubkey -- Service node public key (e.g. for registrations, stakes, unlocks)
+  ///     - \p sn_contributor -- Service node contributor wallet address (for stakes)
+  ///     - \p tx_secret_key -- The transaction secret key, included in registrations/stakes to
+  ///       decrypt transaction amounts and recipients
+  ///     - \p locked_key_images -- Key image(s) locked by the transaction (for registrations,
+  ///       stakes)
+  ///     - \p key_image_unlock -- A key image being unlocked in a stake unlock request (an unlock
+  ///       will be started for *all* key images locked in the same SN contributions).
+  ///     - \p sn_registration -- Service node registration details; this is a dict containing:
+  ///       - \p fee the operator fee expressed in millionths (i.e. 234567 == 23.4567%)
+  ///       - \p expiry the unix timestamp at which the registration signature expires
+  ///       - \p contributors: dict of (wallet => portion) pairs indicating the staking portions
+  ///         reserved for the operator and any reserved contribution spots in the registration.
+  ///         Portion is expressed in millionths (i.e. 250000 = 25% staking portion).
+  ///     - \p sn_state_change -- Information for a "state change" transaction such as a
+  ///       deregistration, decommission, recommission, or ip change reset transaction.  This is a
+  ///       dict containing:
+  ///       - \p old_dereg will be set to true if this is an "old" deregistration transaction
+  ///         (before the Loki 4 hardfork), omitted for more modern state change txes.
+  ///       - \p type string indicating the state change type: "dereg", "decomm", "recomm", or "ip"
+  ///         for a deregistration, decommission, recommission, or ip change penalty transaction.
+  ///       - \p height the voting block height for the changing service node and voting service
+  ///         nodes that produced this state change transaction.
+  ///       - \p index the position of the affected node in the random list of tested nodes for this
+  ///         `height`.
+  ///       - \p voters the positions of validators in the testing quorum for this `height` who
+  ///         tested and voted for this state change.  This typically contains the first 7 voters
+  ///         who voted for the state change (out of a possible set of 10).
+  ///       - \p reasons list of reported reasons for a decommission or deregistration as reported
+  ///         by the voting quorum.  This contains any reasons that all 7+ voters agreed on, and
+  ///         contains one or more of:
+  ///         - \p "uptime" -- the service node was missing uptime proofs
+  ///         - \p "checkpoints" -- the service node missed too many recent checkpoint votes
+  ///         - \p "pulse" -- the service node missed too many recent pulse votes
+  ///         - \p "storage" -- the service node's storage server was unreachable for too long
+  ///         - \p "lokinet" -- the service node's lokinet router was unreachable for too long
+  ///         - \p "timecheck" -- the service node's oxend was not reachable for too many recent
+  ///           time synchronization checks.  (This generally means oxend's quorumnet port is not
+  ///           reachable).
+  ///         - \p "timesync" -- the service node's clock was too far out of sync
+  ///         The list is omitted entirely if there are no reasons at all or if there are no reasons
+  ///         that were agreed upon by all voting service nodes.
+  ///       - \p reasons_maybe list of reported reasons that some but not all service nodes provided
+  ///         for the deregistration/decommission.  Possible values are identical to the above.
+  ///         This list is omitted entirely if it would be empty (i.e. there are no reasons at all,
+  ///         or all voting service nodes agreed on all given reasons).
+  ///     - \p ons -- ONS registration or update transaction details.  This contains keys:
+  ///       - \p buy -- set to true if this is an ONS buy record; omitted otherwise.
+  ///       - \p update -- set to true if this is an ONS record update; omitted otherwise.
+  ///       - \p renew -- set to true if this is an ONS renewal; omitted otherwise.
+  ///       - \p type -- the ONS request type string.  For registrations: "lokinet", "session",
+  ///         "wallet"; for a record update: "update".
+  ///       - \p blocks -- The registration length in blocks; omitted for registrations (such as
+  ///         Session/Wallets) that do not expire.
+  ///       - \p name_hash -- The hashed name of the record being purchased/updated.  Encoded in hex
+  ///         for json requests.  Note that the actual name is not provided on the blockchain.
+  ///       - \p prev_txid -- For an update this field is set to the txid of the previous ONS update
+  ///         or registration (i.e. the most recent transaction that this record is updating).
+  ///       - \p value -- The encrypted value of the record (in hex for json requests) being
+  ///         set/updated.  \see ONS_RESOLVE for details on encryption/decryption.
+  ///       - \p owner -- the owner of this record being set in a registration or update; this can
+  ///         be a primary wallet address, wallet subaddress, or a plain public key.
+  ///       - \p backup_owner -- an optional backup owner who also has permission to edit the
+  ///         record.
+  ///   - \p stake_amount -- If `stake_info` is explicitly requested then this field will be set to
+  ///     the calculated transaction stake amount (only applicable if the transaction is a service
+  ///     node registration or stake).
   struct GET_TRANSACTIONS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transactions", "gettransactions"); }
 
-    // Information from a transactions tx-extra fields.  Fields within this will only be populated
-    // when actually found in the transaction.  (Requires tx_extra=true in the request).
-    struct extra_entry
+    struct request_parameters
     {
-      struct sn_reg_info
-      {
-        struct contribution
-        {
-          std::string wallet; // Contributor wallet
-          uint32_t portion;   // Reserved portion, as the rounded nearest value out of 1'000'000 (i.e. 234567 == 23.4567%).
-          KV_MAP_SERIALIZABLE
-        };
-
-        std::vector<contribution> contributors; // Operator contribution plus any reserved contributions
-        uint32_t fee;                           // Operator fee, as the rounded nearest value out of 1'000'000
-        uint64_t expiry;                        // unix timestamp at which the registration expires
-        KV_MAP_SERIALIZABLE
-      };
-      struct state_change
-      {
-        std::optional<bool> old_dereg; // Will be present and set to true iff this record is an old (pre-HF12) deregistration field
-        std::string type;              // "dereg", "decom", "recom", or "ip" indicating the state change type
-        uint64_t height;               // The voting block height for the changing service node and validators
-        uint32_t index;                // The index of all tested nodes at the given height for which this state change applies
-        std::vector<uint32_t> voters;  // The position of validators in the testing quorum who validated and voted for this state change. This typically contains just 7 required voter slots (of 10 eligible voters).
-        std::optional<std::vector<std::string>> reasons; // Reasons for the decommissioning/deregistration as reported by the voting quorum.  This contains any reasons that all voters agreed on, one or more of: "uptime" (missing uptime proofs), "checkpoints" (missed checkpoint votes), "pulse" (missing pulse votes), "storage" (storage server pings failed), "lokinet" (lokinet router unreachable), "timecheck" (time sync pings failed), "timesync" (time was out of sync)
-        std::optional<std::vector<std::string>> reasons_maybe; // If present, this contains any decomm/dereg reasons that were given by some but not all quorum voters
-        KV_MAP_SERIALIZABLE
-      };
-      struct ons_details
-      {
-        std::optional<bool> buy;                 // Provided and true iff this is an ONS buy record
-        std::optional<bool> update;              // Provided and true iff this is an ONS record update
-        std::optional<bool> renew;               // Provided and true iff this is an ONS record renewal
-        std::string type;                        // The ONS request type.  For registrations: "lokinet", "session", "wallet"; for a record update: "update"
-        std::optional<uint64_t> blocks;          // The registration length in blocks (only applies to lokinet registrations; session/wallet registrations do not expire)
-        std::string name_hash;                   // The hashed name of the record being purchased/updated, in hex (the actual name is not provided on the blockchain).
-        std::optional<std::string> prev_txid;    // For an update, this points at the txid of the previous ons update transaction.
-        std::optional<std::string> value;        // The encrypted value of the record, in hex.  Note that this is encrypted using the actual name itself (*not* the hashed name).
-        std::optional<std::string> owner;        // The owner of this record; this can be a main wallet, wallet subaddress, or a plain public key.
-        std::optional<std::string> backup_owner; // Backup owner wallet/pubkey of the record, if provided.
-        KV_MAP_SERIALIZABLE
-      };
-
-      std::optional<std::string> pubkey;            // The tx extra public key
-      std::optional<uint64_t> burn_amount;          // The amount of OXEN that this transaction burns
-      std::optional<std::string> extra_nonce;       // Optional extra nonce value (in hex); will be empty if nonce is recognized as a payment id
-      std::optional<std::string> payment_id;        // The payment ID, if present. This is either a 16 hex character (8-byte) encrypted payment id, or a 64 hex character (32-byte) deprecated, unencrypted payment ID
-      std::optional<uint32_t> mm_depth;             // (Merge-mining) the merge-mined depth
-      std::optional<std::string> mm_root;           // (Merge-mining) the merge mining merkle root hash
-      std::vector<std::string> additional_pubkeys;  // Additional public keys
-      std::optional<std::string> sn_winner;         // Service node block reward winner public key
-      std::optional<std::string> sn_pubkey;         // Service node public key (e.g. for registrations, stakes, unlocks)
-      std::optional<sn_reg_info> sn_registration;   // Service node registration details
-      std::optional<std::string> sn_contributor;    // Service node contributor wallet address (for stakes)
-      std::optional<state_change> sn_state_change;  // A state change transaction (deregistration, decommission, recommission, ip change)
-      std::optional<std::string> tx_secret_key;     // The transaction secret key, included in registrations/stakes to decrypt transaction amounts and recipients
-      std::vector<std::string> locked_key_images;   // Key image(s) locked by the transaction (for registrations, stakes)
-      std::optional<std::string> key_image_unlock;  // A key image being unlocked in a stake unlock request (an unlock will be started for *all* key images locked in the same SN contributions).
-      std::optional<ons_details> ons;               // an ONS registration or update
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct entry
-    {
-      std::string tx_hash;                  // Transaction hash.
-      std::optional<std::string> as_hex;    // Full transaction information as a hex string. Always omitted if any of `decode_as_json`, `split`, or `prune` is requested; or if the transaction has been pruned in the database.
-      std::optional<std::string> pruned_as_hex;   // The non-prunable part of the transaction. Always included if `split` or `prune` and specified; without those options it will be included instead of `as_hex` if the transaction has been pruned.
-      std::optional<std::string> prunable_as_hex; // The prunable part of the transaction.  Only included when `split` is specified, the transaction is prunable, and the tx has not been pruned from the database.
-      std::optional<std::string> prunable_hash;   // The hash of the prunable part of the transaction.  Will be provided if either: the tx has been pruned; or the tx is prunable and either of `prune` or `split` are specified.
-      std::optional<std::string> as_json;   // Transaction information parsed into json. Requires decode_as_json in request.
-      uint32_t size;                        // Size of the transaction, in bytes. Note that if the transaction has been pruned this is the post-pruning size, not the original size.
-      bool in_pool;                         // States if the transaction is in pool (`true`) or included in a block (`false`).
-      bool double_spend_seen;               // States if the transaction is a double-spend (`true`) or not (`false`).
-      uint64_t block_height;                // Block height including the transaction.
-      uint64_t block_timestamp;             // Unix time at which the block has been added to the blockchain.
-      std::vector<uint64_t> output_indices; // List of transaction indexes.
-      uint64_t received_timestamp;          // Timestamp transaction was received in the pool.
-      bool relayed;
-      bool blink;                           // True if this is an approved, blink transaction (only available for in_pool transactions or txes in recent blocks)
-      std::optional<extra_entry> extra;     // Parsed tx_extra information (only if requested)
-      std::optional<uint64_t> stake_amount; // Calculated transaction stake amount, if a staking/registration transaction and `stake_info=true` is requested.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct request
-    {
-      std::vector<std::string> txs_hashes; // List of transaction hashes to look up.
-      bool decode_as_json;                 // Optional (`false` by default). If set true, the returned transaction information will be decoded.
-      bool tx_extra;                       // Parse tx-extra information
-      bool split;                          // Always split transactions into non-prunable and prunable parts in the response.  `False` by default.
-      bool prune;                          // Like `split`, but also omits the prunable part (or details, for decode_as_json) of transactions from the response.  `False` by default.
-      bool stake_info;                     // If true, calculate staking amount for staking/registration transactions
-
-      KV_MAP_SERIALIZABLE
-    };
-
-
-    struct response
-    {
-      std::vector<std::string> missed_tx;   // (Optional - returned if not empty) Transaction hashes that could not be found.
-      std::vector<entry> txs;               // Array of tx data
-      std::string status;                   // General RPC error code. "OK" means everything looks good.
-      bool untrusted;                       // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
+      /// List of transaction hashes to look up.  (Will also be accepted as json input key
+      /// "txs_hashes" for backwards compatibility).
+      std::vector<crypto::hash> tx_hashes;
+      /// If set to true, the returned transaction information will be decoded.
+      bool decode_as_json = false;
+      /// If set to true then parse and return tx-extra information
+      bool tx_extra = false;
+      /// If set to true then always split transactions into non-prunable and prunable parts in the
+      /// response.
+      bool split = false;
+      /// Like `split`, but also omits the prunable part (or details, for decode_as_json) of
+      /// transactions from the response.
+      bool prune = false;
+      /// If true then calculate staking amount for staking/registration transactions
+      bool stake_info = false;
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -1174,7 +1203,7 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  struct tx_info
+  struct old_tx_info
   {
     std::string id_hash;                // The transaction ID hash.
     std::string tx_json;                // JSON structure of all information in the transaction
@@ -1193,7 +1222,7 @@ namespace cryptonote::rpc {
     bool double_spend_seen;             // States if this transaction has been seen as double spend.
     std::string tx_blob;                // Hexadecimal blob represnting the transaction.
     bool blink;                         // True if this is a signed blink transaction
-    std::optional<GET_TRANSACTIONS::extra_entry> extra; // Parsed tx_extra information (only if requested)
+    //std::optional<GET_TRANSACTIONS::extra_entry> extra; // Parsed tx_extra information (only if requested)
     std::optional<uint64_t> stake_amount; // Will be set to the staked amount if the transaction is a staking transaction *and* stake amounts were requested.
 
     KV_MAP_SERIALIZABLE
@@ -1226,7 +1255,7 @@ namespace cryptonote::rpc {
     struct response
     {
       std::string status;                                 // General RPC error code. "OK" means everything looks good.
-      std::vector<tx_info> transactions;                  // List of transactions in the mempool are not in a block on the main chain at the moment:
+      std::vector<old_tx_info> transactions;                  // List of transactions in the mempool are not in a block on the main chain at the moment:
       std::vector<spent_key_image_info> spent_key_images; // List of spent output key images:
       bool untrusted;                                     // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
 
@@ -2743,6 +2772,7 @@ namespace cryptonote::rpc {
     GET_TRANSACTION_POOL_HASHES,
     GET_TRANSACTION_POOL_BACKLOG,
     GET_TRANSACTION_POOL_STATS,
+    GET_TRANSACTIONS,
     GET_SERVICE_NODES,
     GET_SERVICE_NODE_STATUS,
 
@@ -2759,7 +2789,6 @@ namespace cryptonote::rpc {
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
-    GET_TRANSACTIONS,
     IS_KEY_IMAGE_SPENT,
     SEND_RAW_TX,
     GET_NET_STATS,
