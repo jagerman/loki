@@ -1078,23 +1078,17 @@ bool rpc_command_executor::print_transaction_pool_stats() {
   return true;
 }
 
-bool rpc_command_executor::start_mining(const cryptonote::account_public_address& address, uint64_t num_threads, uint32_t num_blocks, cryptonote::network_type nettype) {
-  START_MINING::request req{};
-  START_MINING::response res{};
-  req.num_blocks    = num_blocks;
-  req.miner_address = cryptonote::get_account_address_as_str(nettype, false, address);
-  req.threads_count = num_threads;
-
-  if (!invoke<START_MINING>(std::move(req), res, "Unable to start mining"))
+bool rpc_command_executor::start_mining(const cryptonote::account_public_address& address, int num_threads, int num_blocks, cryptonote::network_type nettype) {
+  json args{
+    {"num_blocks", num_blocks},
+    {"threads_count", num_threads},
+    {"miner_address", cryptonote::get_account_address_as_str(nettype, false, address)}};
+  if (!try_running([this, &args] { return invoke<START_MINING>(args); }, "Unable to start mining"))
     return false;
 
-  std::stringstream stream;
-  stream << "Mining started";
-  if (num_threads) stream << " with " << num_threads << " thread(s).";
-  else             stream << ", auto detecting the number of threads to use.";
-
-  if (num_blocks) stream << " Mining for " << num_blocks << " blocks before stopping or until manually stopped.";
-  tools::success_msg_writer() << stream.str();
+  tools::success_msg_writer()
+    << fmt::format("Mining started with {} thread(s).", std::max(num_threads, 1))
+    << (num_blocks ? fmt::format(" Will stop after {} blocks", num_blocks) : "");
   return true;
 }
 

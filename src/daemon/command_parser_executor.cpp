@@ -513,30 +513,15 @@ bool command_parser_executor::start_mining(const std::vector<std::string>& args)
     tools::fail_msg_writer() << "subaddress for mining reward is not yet supported!";
     return true;
   }
-  if(nettype != cryptonote::MAINNET)
-    std::cout << "Mining to a " << (nettype == cryptonote::TESTNET ? "testnet" : "devnet") << " address, make sure this is intentional!";
 
   std::string_view threads_val    = tools::find_prefixed_value(args.begin() + 1, args.end(), "threads="sv);
   std::string_view num_blocks_val = tools::find_prefixed_value(args.begin() + 1, args.end(), "num_blocks="sv);
 
-  int threads_count   = 1;
-  uint32_t num_blocks = 0;
-  if (threads_val.size())
+  unsigned int threads_count = 1, num_blocks = 0;
+  if (threads_val.size() && !tools::parse_int(threads_val, threads_count))
   {
-    if (threads_val == "auto"sv || threads_val == "autodetect"sv)
-    {
-      threads_count = 0;
-    }
-    else
-    {
-      if (!tools::parse_int(threads_val, threads_count))
-      {
-        tools::fail_msg_writer() << "Failed to parse threads value" << threads_val;
-        return false;
-      }
-
-      threads_count = 0 < threads_count ? threads_count : 1;
-    }
+    tools::fail_msg_writer() << "Failed to parse threads value" << threads_val;
+    return false;
   }
 
   if (num_blocks_val.size()) tools::parse_int(num_blocks_val, num_blocks);
