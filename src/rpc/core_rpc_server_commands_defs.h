@@ -344,8 +344,8 @@ namespace cryptonote::rpc {
   /// - /p status -- Generic RPC error code. "OK" is the success value.
   /// - /p untrusted -- If the result is obtained using bootstrap mode then this will be set to
   ///   true, otherwise will be omitted.
-  /// - \p missed_tx -- list of transaction hashes that were not found.  If all were found then this
-  ///   field is omitted.
+  /// - \p missed_tx -- set of transaction hashes that were not found.  If all were found then this
+  ///   field is omitted.  There is no particular ordering of hashes in this list.
   /// - \p txs -- list of transaction details; each element is a dict containing:
   ///   - \p tx_hash -- Transaction hash.
   ///   - \p size -- Size of the transaction, in bytes. Note that if the transaction has been pruned
@@ -354,6 +354,9 @@ namespace cryptonote::rpc {
   ///     and omitted if mined into a block.
   ///   - \p blink -- True if this is an approved, blink transaction; this information is generally
   ///     only available for approved in-pool transactions and txes in very recent blocks.
+  ///   - \p fee -- the transaction fee (in atomic OXEN) incurred in this transaction (not including
+  ///     any burned amount).
+  ///   - \p burned -- the amount of OXEN (in atomic units) burned by this transaction.
   ///   - \p block_height -- Block height including the transaction.  Omitted for tx pool
   ///     transactions.
   ///   - \p block_timestamp -- Unix time at which the block has been added to the blockchain.
@@ -366,6 +369,25 @@ namespace cryptonote::rpc {
   ///     transactions.
   ///   - \p received_timestamp -- Timestamp transaction was received in the pool.  Omitted for
   ///     mined blocks.
+  ///   - \p max_used_block -- the hash of the highest block referenced by this transaction; only
+  ///     for mempool transactions.
+  ///   - \p max_used_height -- the height of the highest block referenced by this transaction; only
+  ///     for mempool transactions.
+  ///   - \p last_failed_block -- the hash of the last block where this transaction was attempted to
+  ///     be mined (but failed).
+  ///   - \p max_used_height -- the height of the last block where this transaction failed to be
+  ///     acceptable for a block.
+  ///   - \p weight -- the transaction "weight" which is the size of the transaction with padding
+  ///     removed.  Only included for mempool transactions (for mined transactions the size and
+  ///     weight at the same and so only `size` is included).
+  ///   - \p kept_by_block will be present and true if this is a mempool transaction that was added
+  ///     to the mempool after being popped off a block (e.g. because of a blockchain
+  ///     reorganization).
+  ///   - \p last_relayed_time indicates the last time this block was relayed to the network; only
+  ///     for mempool transactions.
+  ///   - \p do_not_relay -- set to true for mempool blocks that are marked "do not relay"
+  ///   - \p double_spend_seen -- set to true if one or more outputs in this mempool transaction
+  ///     have already been spent (and thus the tx cannot currently be added to the blockchain).
   ///   - \p data -- Full, unpruned transaction data.  For a json request this is hex-encoded; for a
   ///     bt-encoded request this is raw bytes.  This field is omitted if any of `decode_as_json`,
   ///     `split`, or `prune` is requested; or if the transaction has been pruned in the database.
@@ -377,12 +399,11 @@ namespace cryptonote::rpc {
   ///   - \p prunable_hash -- The hash of the prunable part of the transaction.  Will be provided if
   ///     either: the tx has been pruned; or the tx is prunable and either of `prune` or `split` are
   ///     specified.
-  /// FIXME: drop this crap:
-  ///   - \p as_json -- Transaction information parsed into json. Requires decode_as_json in request.
-  ///   - \p extra -- Parsed "extra" transaction information; omitted unless specifically requested.
-  ///     This is a dict containing one or more of the following keys.
+  ///   - \p extra -- Parsed "extra" transaction information; omitted unless specifically requested
+  ///     (via the `tx_extra` request parameter).  This is a dict containing one or more of the
+  ///     following keys.
   ///     - \p pubkey -- The tx extra public key
-  ///     - \p burn_amount -- The amount of OXEN that this transaction burns
+  ///     - \p burn_amount -- The amount of OXEN that this transaction burns, if any.
   ///     - \p extra_nonce -- Optional extra nonce value (in hex); will be empty if nonce is
   ///       recognized as a payment id
   ///     - \p payment_id -- The payment ID, if present. This is either a 16 hex character (8-byte)
@@ -455,9 +476,12 @@ namespace cryptonote::rpc {
   ///         be a primary wallet address, wallet subaddress, or a plain public key.
   ///       - \p backup_owner -- an optional backup owner who also has permission to edit the
   ///         record.
-  ///   - \p stake_amount -- If `stake_info` is explicitly requested then this field will be set to
-  ///     the calculated transaction stake amount (only applicable if the transaction is a service
-  ///     node registration or stake).
+  ///   - \p stake_amount -- Set to the calculated transaction stake amount (only applicable if the
+  ///     transaction is a service node registration or stake).
+  /// - \p mempool_key_images -- dict of spent key images of mempool transactions.  Only included
+  ///   when `memory_pool` is set to true.  Each key is the key image (in hex, for json requests)
+  ///   and each value is a list of transaction hashes that spend that key image (typically just
+  ///   one, but in the case of conflicting transactions there can be multiple).
   struct GET_TRANSACTIONS : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("get_transactions", "gettransactions"); }
@@ -465,20 +489,22 @@ namespace cryptonote::rpc {
     struct request_parameters
     {
       /// List of transaction hashes to look up.  (Will also be accepted as json input key
-      /// "txs_hashes" for backwards compatibility).
+      /// "txs_hashes" for backwards compatibility).  Exclusive of `memory_pool`.
       std::vector<crypto::hash> tx_hashes;
-      /// If set to true, the returned transaction information will be decoded.
-      bool decode_as_json = false;
+      /// If true then return all transactions and spent key images currently in the memory pool.
+      /// This field is exclusive of `tx_hashes`.
+      bool memory_pool = false;
       /// If set to true then parse and return tx-extra information
       bool tx_extra = false;
+      /// Controls whether the `data` (or `pruned`, if pruned) field containing raw tx data is
+      /// included: if explicitly specified then the raw data will be included if true.  Otherwise
+      /// the raw data is included only when neither of `split` nor `prune` are set to true.
+      bool data = true;
       /// If set to true then always split transactions into non-prunable and prunable parts in the
       /// response.
       bool split = false;
-      /// Like `split`, but also omits the prunable part (or details, for decode_as_json) of
-      /// transactions from the response.
+      /// Like `split`, but also omits the prunable part of transactions from the response details.
       bool prune = false;
-      /// If true then calculate staking amount for staking/registration transactions
-      bool stake_info = false;
     } request;
   };
 
@@ -1203,64 +1229,12 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  struct old_tx_info
-  {
-    std::string id_hash;                // The transaction ID hash.
-    std::string tx_json;                // JSON structure of all information in the transaction
-    uint64_t blob_size;                 // The size of the full transaction blob.
-    uint64_t weight;                    // The weight of the transaction.
-    uint64_t fee;                       // The amount of the mining fee included in the transaction, in atomic units.
-    std::string max_used_block_id_hash; // Tells the hash of the most recent block with an output used in this transaction.
-    uint64_t max_used_block_height;     // Tells the height of the most recent block with an output used in this transaction.
-    bool kept_by_block;                 // States if the tx was included in a block at least once (`true`) or not (`false`).
-    uint64_t last_failed_height;        // If the transaction validation has previously failed, this tells at what height that occured.
-    std::string last_failed_id_hash;    // Like the previous, this tells the previous transaction ID hash.
-    uint64_t receive_time;              // The Unix time that the transaction was first seen on the network by the node.
-    bool relayed;                       // States if this transaction has been relayed
-    uint64_t last_relayed_time;         // Last unix time at which the transaction has been relayed.
-    bool do_not_relay;                  // States if this transaction should not be relayed.
-    bool double_spend_seen;             // States if this transaction has been seen as double spend.
-    std::string tx_blob;                // Hexadecimal blob represnting the transaction.
-    bool blink;                         // True if this is a signed blink transaction
-    //std::optional<GET_TRANSACTIONS::extra_entry> extra; // Parsed tx_extra information (only if requested)
-    std::optional<uint64_t> stake_amount; // Will be set to the staked amount if the transaction is a staking transaction *and* stake amounts were requested.
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
   struct spent_key_image_info
   {
     std::string id_hash;                 // Key image.
     std::vector<std::string> txs_hashes; // List of tx hashes of the txes (usually one) spending that key image.
 
     KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Show information about valid transactions seen by the node but not yet mined into a block,
-  // as well as spent key image information for the txpool in the node's memory.
-  struct GET_TRANSACTION_POOL : PUBLIC, LEGACY
-  {
-    static constexpr auto names() { return NAMES("get_transaction_pool"); }
-
-    struct request
-    {
-      bool tx_extra;                       // Parse tx-extra information and adds it to the `extra` field.
-      bool stake_info;                     // Calculate and include staking contribution amount for registration/staking transactions
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status;                                 // General RPC error code. "OK" means everything looks good.
-      std::vector<old_tx_info> transactions;                  // List of transactions in the mempool are not in a block on the main chain at the moment:
-      std::vector<spent_key_image_info> spent_key_images; // List of spent output key images:
-      bool untrusted;                                     // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2804,7 +2778,6 @@ namespace cryptonote::rpc {
     GET_PUBLIC_NODES,
     SET_LOG_LEVEL,
     SET_LOG_CATEGORIES,
-    GET_TRANSACTION_POOL,
     GET_BLOCK_HEADERS_RANGE,
     SET_BOOTSTRAP_DAEMON,
     GET_LIMIT,

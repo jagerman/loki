@@ -4,6 +4,7 @@
 #include "crypto/crypto.h"
 #include <string_view>
 #include <nlohmann/json.hpp>
+#include <unordered_set>
 
 using namespace std::literals;
 
@@ -21,15 +22,17 @@ namespace cryptonote::rpc {
   template <> inline constexpr bool is_binary_parameter<rct::key> = true;
 
   template <typename T>
-  inline constexpr bool is_binary_vector = false;
+  inline constexpr bool is_binary_container = false;
   template <typename T>
-  inline constexpr bool is_binary_vector<std::vector<T>> = is_binary_parameter<T>;
+  inline constexpr bool is_binary_container<std::vector<T>> = is_binary_parameter<T>;
+  template <typename T>
+  inline constexpr bool is_binary_container<std::unordered_set<T>> = is_binary_parameter<T>;
 
   // De-referencing wrappers around the above:
   template <typename T> inline constexpr bool is_binary_parameter<const T&> = is_binary_parameter<T>;
   template <typename T> inline constexpr bool is_binary_parameter<T&&> = is_binary_parameter<T>;
-  template <typename T> inline constexpr bool is_binary_vector<const T&> = is_binary_vector<T>;
-  template <typename T> inline constexpr bool is_binary_vector<T&&> = is_binary_vector<T>;
+  template <typename T> inline constexpr bool is_binary_container<const T&> = is_binary_container<T>;
+  template <typename T> inline constexpr bool is_binary_container<T&&> = is_binary_container<T>;
 
 
   void load_binary_parameter_impl(std::string_view bytes, size_t raw_size, bool allow_raw, uint8_t* val_data);
@@ -87,8 +90,8 @@ namespace cryptonote::rpc {
 
     /// Takes a vector of some json_binary_proxy-assignable type and builds an array by assigning
     /// each one into a new array of binary values.
-    template <typename T>
-    nlohmann::json& operator=(const std::vector<T>& vals) {
+    template <typename T, std::enable_if_t<is_binary_container<T>, int> = 0>
+    nlohmann::json& operator=(const T& vals) {
       auto a = nlohmann::json::array();
       for (auto& val : vals)
         json_binary_proxy{a.emplace_back(), format} = val;

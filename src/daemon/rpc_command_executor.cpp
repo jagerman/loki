@@ -921,95 +921,83 @@ bool rpc_command_executor::is_key_image_spent(const crypto::key_image &ki) {
   return false;
 }
 
-static void print_pool(const std::vector<cryptonote::rpc::tx_info> &transactions, bool include_json) {
-  if (transactions.empty())
+static void print_pool(const json& txs) {
+  if (txs.empty())
   {
-    tools::msg_writer() << "Pool is empty" << std::endl;
+    tools::msg_writer() << "Pool is empty\n";
     return;
   }
-  const time_t now = time(NULL);
-  tools::msg_writer() << "Transactions:";
-  for (auto &tx_info : transactions)
+  const time_t now = time(nullptr);
+  tools::msg_writer() << txs.size() << " Transactions:\n";
+  std::vector<std::string> lines;
+  for (auto &tx : txs)
   {
-    auto w = tools::msg_writer();
-    w << "id: " << tx_info.id_hash << "\n";
-    if (include_json) w << tx_info.tx_json << "\n";
-    w << "blob_size: " << tx_info.blob_size << "\n"
-      << "weight: " << tx_info.weight << "\n"
-      << "fee: " << cryptonote::print_money(tx_info.fee) << "\n"
-      /// NB(Oxen): in v13 we have min_fee = per_out*outs + per_byte*bytes, only the total fee/byte matters for
-      /// the purpose of building a block template from the pool, so we still print the overall fee / byte here.
-      /// (we can't back out the individual per_out and per_byte that got used anyway).
-      << "fee/byte: " << cryptonote::print_money(tx_info.fee / (double)tx_info.weight) << "\n"
-      << "receive_time: " << tx_info.receive_time << " (" << get_human_time_ago(tx_info.receive_time, now) << ")\n"
-      << "relayed: " << (tx_info.relayed ? std::to_string(tx_info.last_relayed_time) + " (" + get_human_time_ago(tx_info.last_relayed_time, now) + ")" : "no") << "\n"
-      << std::boolalpha
-      << "do_not_relay: " << tx_info.do_not_relay << "\n"
-      << "blink: " << tx_info.blink << "\n"
-      << "kept_by_block: " << tx_info.kept_by_block << "\n"
-      << "double_spend_seen: " << tx_info.double_spend_seen << "\n"
-      << std::noboolalpha
-      << "max_used_block_height: " << tx_info.max_used_block_height << "\n"
-      << "max_used_block_id: " << tx_info.max_used_block_id_hash << "\n"
-      << "last_failed_height: " << tx_info.last_failed_height << "\n"
-      << "last_failed_id: " << tx_info.last_failed_id_hash << "\n";
+    std::vector<std::string_view> status;
+    if (tx.value("blink", false)) status.push_back("blink"sv);
+    status.push_back(tx["relayed"].get<bool>() ? "relayed"sv : "not relayed"sv);
+    if (tx.value("do_not_relay", false)) status.push_back("do not relay"sv);
+    if (tx.value("double_spend_seen", false)) status.push_back("double spend"sv);
+    if (tx.value("kept_by_block", false)) status.push_back("from popped block"sv);
+
+    lines.clear();
+    lines.push_back(tx["tx_hash"].get_ref<const std::string&>() + ":"s);
+    lines.push_back(fmt::format("size/weight: {}/{}", tx["size"].get<int>(), tx["weight"].get<int>()));
+    lines.push_back(fmt::format("fee: {} ({}/byte)",
+          cryptonote::print_money(tx["fee"].get<uint64_t>()), cryptonote::print_money(tx["fee"].get<double>() / tx["weight"].get<double>())));
+    lines.push_back(fmt::format("received: {} ({})", tx["received_timestamp"].get<std::time_t>(), get_human_time_ago(tx["received_timestamp"].get<std::time_t>(), now)));
+    lines.push_back("status: " + tools::join(", ", status));
+    lines.push_back(fmt::format("top required block: {} ({})", tx["max_used_height"].get<uint64_t>(), tx["max_used_block"]));
+    if (tx.count("last_failed_height"))
+      lines.push_back(fmt::format("last failed block: {} ({})", tx["last_failed_height"].get<uint64_t>(), tx["last_failed_block"].get<std::string_view>()));
+    if (auto extra = tx.find("extra"); extra != tx.end()) {
+      lines.push_back("transaction extra: ");
+      for (auto c : extra->dump(2)) {
+        if (c == '\n')
+          lines.back() += "\n    "sv;
+        else
+          lines.back() += c;
+      }
+    }
+    tools::msg_writer() << tools::join("\n    ", lines) << "\n";
   }
 }
 
-bool rpc_command_executor::print_transaction_pool_long() {
-  GET_TRANSACTION_POOL::response res{};
-
-  if (!invoke<GET_TRANSACTION_POOL>({}, res, "Failed to retrieve transaction pool details"))
+bool rpc_command_executor::print_transaction_pool(bool long_format) {
+  json args{{"memory_pool", true}};
+  if (long_format) args["tx_extra"] = true;
+  auto maybe_pool = try_running([this, &args] { return invoke<GET_TRANSACTIONS>(args); },
+      "Failed to retrieve transaction pool details");
+  if (!maybe_pool)
     return false;
+  auto& pool = *maybe_pool;
 
-  print_pool(res.transactions, true);
+  print_pool(pool["txs"]);
 
-  if (res.spent_key_images.empty())
-  {
-    if (! res.transactions.empty())
-      tools::msg_writer() << "WARNING: Inconsistent pool state - no spent key images";
-  }
-  else
-  {
-    tools::msg_writer() << ""; // one newline
-    tools::msg_writer() << "Spent key images: ";
-    for (const auto& kinfo : res.spent_key_images)
+  if (long_format) {
+    // We used to have a warning here when we had transactions but no key_images; but that can
+    // happen on Oxen with 0-output tx state change transactions.
+
+    if (!pool["mempool_key_images"].empty())
     {
-      tools::msg_writer() << "key image: " << kinfo.id_hash;
-      if (kinfo.txs_hashes.size() == 1)
+      tools::msg_writer() << "\nSpent key images: ";
+      for (const auto& [key, tx_hashes] : pool["mempool_key_images"].items())
       {
-        tools::msg_writer() << "  tx: " << kinfo.txs_hashes[0];
-      }
-      else if (kinfo.txs_hashes.size() == 0)
-      {
-        tools::msg_writer() << "  WARNING: spent key image has no txs associated";
-      }
-      else
-      {
-        tools::msg_writer() << "  NOTE: key image for multiple txs: " << kinfo.txs_hashes.size();
-        for (const std::string& tx_id : kinfo.txs_hashes)
+        tools::msg_writer() << "key image: " << key;
+        if (tx_hashes.size() == 1)
+          tools::msg_writer() << "  tx: " << tx_hashes.front().get<std::string_view>();
+        else if (tx_hashes.empty())
+          tools::msg_writer() << "  WARNING: spent key image has no txs associated!";
+        else
         {
-          tools::msg_writer() << "  tx: " << tx_id;
+          tools::msg_writer() << fmt::format("  NOTE: key image for multiple transactions ({}):", tx_hashes.size());
+          for (const auto& txid : tx_hashes)
+            tools::msg_writer() << "  - " << txid.get<std::string_view>();
         }
       }
-    }
-    if (res.transactions.empty())
-    {
-      tools::msg_writer() << "WARNING: Inconsistent pool state - no transactions";
+      if (pool["txs"].empty())
+        tools::msg_writer() << "WARNING: Inconsistent pool state - key images but no no transactions";
     }
   }
-
-  return true;
-}
-
-bool rpc_command_executor::print_transaction_pool_short() {
-  GET_TRANSACTION_POOL::request req{};
-  GET_TRANSACTION_POOL::response res{};
-
-  if (!invoke<GET_TRANSACTION_POOL>({}, res, "Failed to retrieve transaction pool details"))
-    return false;
-
-  print_pool(res.transactions, false);
 
   return true;
 }

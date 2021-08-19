@@ -475,7 +475,7 @@ namespace cryptonote
      *
      * @return number of transactions added to txblobs
      */
-    int find_transactions(const std::vector<crypto::hash> &tx_hashes, std::vector<cryptonote::blobdata> &txblobs) const;
+    int find_transactions(const std::unordered_set<crypto::hash>& tx_hashes, std::vector<cryptonote::blobdata>& txblobs) const;
 
     /**
      * @brief get a list of all relayable transactions and their hashes

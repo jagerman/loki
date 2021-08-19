@@ -37,7 +37,6 @@
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
-#include "bootstrap_daemon.h"
 #include "core_rpc_server_commands_defs.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "p2p/net_node.h"
@@ -51,8 +50,12 @@
 #define OXEN_DEFAULT_LOG_CATEGORY "daemon.rpc"
 
 namespace boost::program_options {
-class options_description;
-class variables_map;
+  class options_description;
+  class variables_map;
+}
+
+namespace cryptonote {
+  class bootstrap_daemon;
 }
 
 namespace cryptonote::rpc {
@@ -240,7 +243,6 @@ namespace cryptonote::rpc {
     GET_PUBLIC_NODES::response                          invoke(GET_PUBLIC_NODES::request&& req, rpc_context context);
     SET_LOG_LEVEL::response                             invoke(SET_LOG_LEVEL::request&& req, rpc_context context);
     SET_LOG_CATEGORIES::response                        invoke(SET_LOG_CATEGORIES::request&& req, rpc_context context);
-    GET_TRANSACTION_POOL::response                      invoke(GET_TRANSACTION_POOL::request&& req, rpc_context context);
     SET_BOOTSTRAP_DAEMON::response                      invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context);
     GET_LIMIT::response                                 invoke(GET_LIMIT::request&& req, rpc_context context);
     SET_LIMIT::response                                 invoke(SET_LIMIT::request&& req, rpc_context context);

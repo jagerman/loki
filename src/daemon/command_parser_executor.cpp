@@ -442,14 +442,14 @@ bool command_parser_executor::print_transaction_pool_long(const std::vector<std:
 {
   if (!args.empty()) return false;
 
-  return m_executor.print_transaction_pool_long();
+  return m_executor.print_transaction_pool(true);
 }
 
 bool command_parser_executor::print_transaction_pool_short(const std::vector<std::string>& args)
 {
   if (!args.empty()) return false;
 
-  return m_executor.print_transaction_pool_short();
+  return m_executor.print_transaction_pool(false);
 }
 
 bool command_parser_executor::print_transaction_pool_stats(const std::vector<std::string>& args)

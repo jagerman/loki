@@ -1280,7 +1280,7 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------------------------
-  int tx_memory_pool::find_transactions(const std::vector<crypto::hash> &tx_hashes, std::vector<cryptonote::blobdata> &txblobs) const
+  int tx_memory_pool::find_transactions(const std::unordered_set<crypto::hash>& tx_hashes, std::vector<cryptonote::blobdata>& txblobs) const
   {
     if (tx_hashes.empty())
       return 0;
@@ -1493,16 +1493,13 @@ namespace cryptonote
         if (m_blockchain.get_blocks_only(immutable + 1, height, blocks))
         {
           std::vector<cryptonote::transaction> txs;
-          std::vector<crypto::hash> missed_txs;
           uint64_t earliest = height;
           for (auto it = blocks.rbegin(); it != blocks.rend(); it++)
           {
             const auto& block = *it;
             auto block_height = cryptonote::get_block_height(block);
             txs.clear();
-            missed_txs.clear();
-
-            if (!m_blockchain.get_transactions(block.tx_hashes, txs, missed_txs))
+            if (!m_blockchain.get_transactions(block.tx_hashes, txs))
             {
               MERROR("Unable to get transactions for block " << block.hash);
               can_fix_with_a_rollback = false;

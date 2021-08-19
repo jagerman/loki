@@ -41,7 +41,9 @@
 #include <list>
 #include <ctime>
 #include <chrono>
+#include <fmt/core.h>
 
+#include "cryptonote_protocol/cryptonote_protocol_handler.h"
 #include "common/string_util.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/hardfork.h"
@@ -729,9 +731,9 @@ namespace cryptonote
         {
           std::vector<crypto::hash> tx_ids;
           std::vector<transaction> txes;
-          std::vector<crypto::hash> missing;
+          std::unordered_set<crypto::hash> missing;
           tx_ids.push_back(tx_hash);
-          if (m_core.get_transactions(tx_ids, txes, missing) && missing.empty())
+          if (m_core.get_transactions(tx_ids, txes, &missing) && missing.empty())
           {
             if (txes.size() == 1)
             {
@@ -1021,8 +1023,8 @@ namespace cryptonote
     }
 
     std::vector<cryptonote::transaction> txs;
-    std::vector<crypto::hash> missed;
-    if (!m_core.get_transactions(txids, txs, missed))
+    std::unordered_set<crypto::hash> missed;
+    if (!m_core.get_transactions(txids, txs, &missed))
     {
       LOG_ERROR_CCONTEXT("Failed to handle request NOTIFY_REQUEST_FLUFFY_MISSING_TX, "
         << "failed to get requested transactions");
@@ -2363,18 +2365,20 @@ skip:
         << "Use the \"help\" command to see the list of available commands.\n"
         << "**********************************************************************");
       m_sync_timer.pause();
-      if (ELPP->vRegistry()->allowed(el::Level::Info, "sync-info"))
+      if (CLOG_ENABLED(Info, "sync-info"))
       {
         const auto sync_time = m_sync_timer.value();
         const auto add_time = m_add_timer.value();
         if (sync_time > 0ns && add_time > 0ns)
         {
-          MCLOG_YELLOW(el::Level::Info, "sync-info", "Sync time: " << tools::friendly_duration(sync_time) << " min, idle time " <<
-              (100.f * (1.0f - add_time / sync_time)) << "%" << ", " <<
-              (10 * m_sync_download_objects_size / 1024 / 1024) / 10.f << " + " <<
-              (10 * m_sync_download_chain_size / 1024 / 1024) / 10.f << " MB downloaded, " <<
-              100.0f * m_sync_old_spans_downloaded / m_sync_spans_downloaded << "% old spans, " <<
-              100.0f * m_sync_bad_spans_downloaded / m_sync_spans_downloaded << "% bad spans");
+          MCLOG_YELLOW(el::Level::Info, "sync-info",
+              fmt::format("Sync time: {}, idle time {:.2f}%, {:.1f} + {:.1f} MB downloaded, {:.2f}% old spans, {:2f}% bad spans",
+                tools::friendly_duration(sync_time),
+                ((sync_time - add_time) / sync_time) * 100.0,
+                m_sync_download_objects_size / 1'000'000.0,
+                m_sync_download_chain_size / 1'000'000.0,
+                100.0 * m_sync_old_spans_downloaded / m_sync_spans_downloaded,
+                100.0 * m_sync_bad_spans_downloaded / m_sync_spans_downloaded));
         }
       }
       m_core.on_synchronized();

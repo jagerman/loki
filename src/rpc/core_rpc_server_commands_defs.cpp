@@ -349,49 +349,6 @@ KV_SERIALIZE_MAP_CODE_BEGIN(SET_LOG_CATEGORIES::response)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-// FIXME: delete
-KV_SERIALIZE_MAP_CODE_BEGIN(old_tx_info)
-  KV_SERIALIZE(id_hash)
-  KV_SERIALIZE(tx_json)
-  KV_SERIALIZE(blob_size)
-  KV_SERIALIZE_OPT(weight, (uint64_t)0)
-  KV_SERIALIZE(fee)
-  KV_SERIALIZE(max_used_block_id_hash)
-  KV_SERIALIZE(max_used_block_height)
-  KV_SERIALIZE(kept_by_block)
-  KV_SERIALIZE(last_failed_height)
-  KV_SERIALIZE(last_failed_id_hash)
-  KV_SERIALIZE(receive_time)
-  KV_SERIALIZE(relayed)
-  KV_SERIALIZE(last_relayed_time)
-  KV_SERIALIZE(do_not_relay)
-  KV_SERIALIZE(double_spend_seen)
-  KV_SERIALIZE(tx_blob)
-//  KV_SERIALIZE(extra)
-  KV_SERIALIZE(stake_amount)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(spent_key_image_info)
-  KV_SERIALIZE(id_hash)
-  KV_SERIALIZE(txs_hashes)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_TRANSACTION_POOL::request)
-  KV_SERIALIZE(tx_extra)
-  KV_SERIALIZE(stake_info)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(GET_TRANSACTION_POOL::response)
-  KV_SERIALIZE(status)
-  KV_SERIALIZE(transactions)
-  KV_SERIALIZE(spent_key_images)
-  KV_SERIALIZE(untrusted)
-KV_SERIALIZE_MAP_CODE_END()
-
-
 KV_SERIALIZE_MAP_CODE_BEGIN(GET_TRANSACTION_POOL_HASHES_BIN::request)
   KV_SERIALIZE_OPT(blinked_txs_only, false)
   KV_SERIALIZE_OPT(long_poll, false)

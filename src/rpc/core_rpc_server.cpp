@@ -50,6 +50,7 @@
 #include "epee/string_tools.h"
 #include "core_rpc_server.h"
 #include "core_rpc_server_command_parser.h"
+#include "bootstrap_daemon.h"
 #include "rpc_args.h"
 #include "core_rpc_server_error_codes.h"
 #include "common/command_line.h"
@@ -605,8 +606,7 @@ namespace cryptonote::rpc {
         return res;
       }
       std::vector<transaction> txs;
-      std::vector<crypto::hash> missed_txs;
-      m_core.get_transactions(blk.tx_hashes, txs, missed_txs);
+      m_core.get_transactions(blk.tx_hashes, txs);
       res.blocks.resize(res.blocks.size() + 1);
       res.blocks.back().block = block_to_blob(blk);
       for (auto& tx : txs)
@@ -752,13 +752,13 @@ namespace cryptonote::rpc {
       // a single one we want just the value itself; this does that.  Returns a reference to the
       // assigned value (whether as a top-level value or array element).
       template <typename T>
-      json& set(const std::string& key, T&& value, bool binary = is_binary_parameter<T> || is_binary_vector<T>) {
+      json& set(const std::string& key, T&& value, bool binary = is_binary_parameter<T> || is_binary_container<T>) {
         auto* x = &entry[key];
         if (!x->is_null() && !x->is_array())
           x = &(entry[key] = json::array({std::move(*x)}));
         if (x->is_array())
           x = &x->emplace_back();
-        if constexpr (is_binary_parameter<T> || is_binary_vector<T> || std::is_convertible_v<T, std::string_view>) {
+        if constexpr (is_binary_parameter<T> || is_binary_container<T> || std::is_convertible_v<T, std::string_view>) {
           if (binary)
             return json_binary_proxy{*x, format} = std::forward<T>(value);
         }
@@ -894,23 +894,20 @@ namespace cryptonote::rpc {
   }
 
   struct tx_info {
-    crypto::hash id;                    // txid hash
     txpool_tx_meta_t meta;
     std::string tx_blob;                // Blob containing the transaction data.
     bool blink;                         // True if this is a signed blink transaction
-    //std::optional<GET_TRANSACTIONS::extra_entry> extra; // Parsed tx_extra information (only if requested)
-    //std::optional<uint64_t> stake_amount; // Will be set to the staked amount if the transaction is a staking transaction *and* stake amounts were requested.
   };
 
-  static std::vector<tx_info> get_pool_txs_impl(cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process) {
+  static std::unordered_map<crypto::hash, tx_info> get_pool_txs_impl(cryptonote::core& core) {
     auto& bc = core.get_blockchain_storage();
     auto& pool = core.get_pool();
 
-    std::vector<tx_info> tx_infos;
+    std::unordered_map<crypto::hash, tx_info> tx_infos;
     tx_infos.reserve(bc.get_txpool_tx_count());
 
     bc.for_all_txpool_txes(
-        [&tx_infos, &pool, post_process=std::move(post_process)]
+        [&tx_infos, &pool]
         (const crypto::hash& txid, const txpool_tx_meta_t& meta, const cryptonote::blobdata* bd) {
       transaction tx;
       if (!parse_and_validate_tx_from_blob(*bd, tx))
@@ -919,22 +916,18 @@ namespace cryptonote::rpc {
         // continue
         return true;
       }
-      auto& txi = tx_infos.emplace_back();
-      txi.id = txid;
+      auto& txi = tx_infos[txid];
       txi.meta = meta;
       txi.tx_blob = *bd;
       tx.set_hash(txid);
-      //txi.tx_json = obj_to_json_str(tx);
       txi.blink = pool.has_blink(txid);
-      if (post_process)
-        post_process(tx, txi);
       return true;
     }, true);
 
     return tx_infos;
   }
 
-  auto pool_locks(cryptonote::core& core) {
+  static auto pool_locks(cryptonote::core& core) {
     auto& pool = core.get_pool();
     std::unique_lock tx_lock{pool, std::defer_lock};
     std::unique_lock bc_lock{core.get_blockchain_storage(), std::defer_lock};
@@ -943,17 +936,18 @@ namespace cryptonote::rpc {
     return std::make_tuple(std::move(tx_lock), std::move(bc_lock), std::move(blink_lock));
   }
 
-  static std::pair<std::vector<tx_info>, tx_memory_pool::key_images_container> get_pool_txs_kis(
-      cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process = {}) {
+  static std::pair<std::unordered_map<crypto::hash, tx_info>, tx_memory_pool::key_images_container> get_pool_txs_kis(cryptonote::core& core) {
     auto locks = pool_locks(core);
-    return {get_pool_txs_impl(core, std::move(post_process)), core.get_pool().get_spent_key_images(true)};
+    return {get_pool_txs_impl(core), core.get_pool().get_spent_key_images(true)};
   }
 
-  static std::vector<tx_info> get_pool_txs(
+  /*
+  static std::unordered_map<crypto::hash, tx_info> get_pool_txs(
       cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process = {}) {
     auto locks = pool_locks(core);
-    return get_pool_txs_impl(core, std::move(post_process));
+    return get_pool_txs_impl(core);
   }
+  */
 
   static tx_memory_pool::key_images_container get_pool_kis(
       cryptonote::core& core, std::function<void(const transaction&, tx_info&)> post_process = {}) {
@@ -970,81 +964,84 @@ namespace cryptonote::rpc {
       return res;
       */
 
-    std::vector<crypto::hash> missed_txs;
+    std::unordered_set<crypto::hash> missed_txs;
     using split_tx = std::tuple<crypto::hash, std::string, crypto::hash, std::string>;
     std::vector<split_tx> txs;
-    if (!m_core.get_split_transactions_blobs(get.request.tx_hashes, txs, missed_txs))
-    {
-      get.response["status"] = STATUS_FAILED;
-      return;
+    if (!get.request.tx_hashes.empty()) {
+      if (!m_core.get_split_transactions_blobs(get.request.tx_hashes, txs, &missed_txs))
+      {
+        get.response["status"] = STATUS_FAILED;
+        return;
+      }
+      LOG_PRINT_L2("Found " << txs.size() << "/" << get.request.tx_hashes.size() << " transactions on the blockchain");
     }
-    LOG_PRINT_L2("Found " << txs.size() << "/" << get.request.tx_hashes.size() << " transactions on the blockchain");
 
     // try the pool for any missing txes
     auto& pool = m_core.get_pool();
-    size_t found_in_pool = 0;
-    std::unordered_map<crypto::hash, tx_info> per_tx_pool_tx_info;
-    if (!missed_txs.empty())
+    std::unordered_map<crypto::hash, tx_info> found_in_pool;
+    if (!missed_txs.empty() || get.request.memory_pool)
     {
       try {
-        auto pool_tx_info = get_pool_txs(m_core);
-        // sort to match original request
-        std::vector<split_tx> sorted_txs;
-        unsigned txs_processed = 0;
-        for (const auto& h: get.request.tx_hashes)
-        {
-          auto missed_it = std::find(missed_txs.begin(), missed_txs.end(), h);
-          if (missed_it == missed_txs.end())
-          {
-            if (txs.size() == txs_processed)
-            {
-              get.response["status"] = "Failed: internal error - txs is empty";
-              return;
-            }
-            // core returns the ones it finds in the right order
-            if (std::get<0>(txs[txs_processed]) != h)
-            {
-              get.response["status"] = "Failed: tx hash mismatch";
-              return;
-            }
-            sorted_txs.push_back(std::move(txs[txs_processed]));
-            ++txs_processed;
-            continue;
-          }
+        auto [pool_txs, pool_kis] = get_pool_txs_kis(m_core);
 
-          auto ptx_it = std::find_if(pool_tx_info.begin(), pool_tx_info.end(),
-              [&h](const auto& txi) { return h == txi.id; });
-          if (ptx_it != pool_tx_info.end())
-          {
-            cryptonote::transaction tx;
-            if (!cryptonote::parse_and_validate_tx_from_blob(ptx_it->tx_blob, tx))
-            {
-              get.response["status"] = "Failed to parse and validate tx from blob";
-              return;
+        auto split_mempool_tx = [](std::pair<const crypto::hash, tx_info>& info) {
+          cryptonote::transaction tx;
+          if (!cryptonote::parse_and_validate_tx_from_blob(info.second.tx_blob, tx))
+            throw std::runtime_error{"Unable to parse and validate tx from blob"};
+          serialization::binary_string_archiver ba;
+          try {
+            tx.serialize_base(ba);
+          } catch (const std::exception& e) {
+            throw std::runtime_error{"Failed to serialize transaction base: "s + e.what()};
+          }
+          std::string pruned = ba.str();
+          std::string pruned2{info.second.tx_blob, pruned.size()};
+          return split_tx{info.first, std::move(pruned), get_transaction_prunable_hash(tx), std::move(pruned2)};
+        };
+
+        if (!get.request.tx_hashes.empty()) {
+          // sort to match original request
+          std::vector<split_tx> sorted_txs;
+          unsigned txs_processed = 0;
+          for (const auto& h: get.request.tx_hashes) {
+            if (auto missed_it = missed_txs.find(h); missed_it == missed_txs.end()) {
+              if (txs.size() == txs_processed) {
+                get.response["status"] = "Failed: internal error - txs is empty";
+                return;
+              }
+              // core returns the ones it finds in the right order
+              if (std::get<0>(txs[txs_processed]) != h) {
+                get.response["status"] = "Failed: internal error - tx hash mismatch";
+                return;
+              }
+              sorted_txs.push_back(std::move(txs[txs_processed]));
+              ++txs_processed;
+            } else if (auto ptx_it = pool_txs.find(h); ptx_it != pool_txs.end()) {
+              sorted_txs.push_back(split_mempool_tx(*ptx_it));
+              missed_txs.erase(missed_it);
+              found_in_pool.emplace(h, std::move(ptx_it->second));
             }
-            serialization::binary_string_archiver ba;
-            try {
-              tx.serialize_base(ba);
-            } catch (const std::exception& e) {
-              get.response["status"] = "Failed to serialize transaction base: "s + e.what();
-              return;
-            }
-            std::string pruned = ba.str();
-            std::string pruned2{ptx_it->tx_blob, pruned.size()};
-            sorted_txs.emplace_back(h, std::move(pruned), get_transaction_prunable_hash(tx), std::move(pruned2));
-            missed_txs.erase(missed_it);
-            per_tx_pool_tx_info.emplace(h, *ptx_it);
-            ++found_in_pool;
+          }
+          txs = std::move(sorted_txs);
+          get.response_hex["missed_tx"] = missed_txs; // non-plural here intentional to not break existing clients
+          LOG_PRINT_L2("Found " << found_in_pool.size() << "/" << get.request.tx_hashes.size() << " transactions in the pool");
+        } else if (get.request.memory_pool) {
+          txs.reserve(pool_txs.size());
+          std::transform(pool_txs.begin(), pool_txs.end(), std::back_inserter(txs), split_mempool_tx);
+          found_in_pool = std::move(pool_txs);
+
+          auto mki = get.response_hex["mempool_key_images"];
+          for (auto& [ki, txids] : pool_kis) {
+            // The *key* is also binary (hex for json):
+            std::string key{get.is_bt() ? tools::view_guts(ki) : tools::type_to_hex(ki)};
+            mki[key] = txids;
           }
         }
-        txs = std::move(sorted_txs);
       } catch (const std::exception& e) {
-        // Log error but continue
         MERROR(e.what());
+        get.response["status"] = "Failed: "s + e.what();
+        return;
       }
-
-      get.response_hex["missed_tx"] = missed_txs; // non-plural here intentional to not break existing clients
-      LOG_PRINT_L2("Found " << found_in_pool << "/" << get.request.tx_hashes.size() << " transactions in the pool");
     }
 
     uint64_t immutable_height = m_core.get_blockchain_storage().get_immutable_height();
@@ -1053,7 +1050,6 @@ namespace cryptonote::rpc {
     auto& txs_out = get.response["txs"];
     txs_out = json::array();
 
-    cryptonote::blobdata tx_data;
     for (const auto& [tx_hash, unprunable_data, prunable_hash, prunable_data]: txs)
     {
       auto& e = txs_out.emplace_back();
@@ -1070,91 +1066,90 @@ namespace cryptonote::rpc {
       if (pruned || (prunable && (get.request.split || get.request.prune)))
         e_bin["prunable_hash"] = prunable_hash;
 
-      if (get.request.split || get.request.prune || pruned)
+      std::string tx_data = unprunable_data;
+      if (!get.request.prune)
+        tx_data += prunable_data;
+
+      if (get.request.split || get.request.prune)
       {
-        if (get.request.decode_as_json)
-        {
-          tx_data = unprunable_data;
-          if (!get.request.prune)
-            tx_data += prunable_data;
+        e_bin["pruned"] = unprunable_data;
+        if (get.request.split)
+          e_bin["prunable"] = prunable_data;
+      }
+
+      if (get.request.data) {
+        if (pruned || get.request.prune) {
+          if (!e.count("pruned"))
+            e_bin["pruned"] = unprunable_data;
+        } else {
+          e_bin["data"] = tx_data;
         }
-        else
+      }
+
+      cryptonote::transaction tx;
+      if (get.request.prune || pruned)
+      {
+        if (!cryptonote::parse_and_validate_tx_base_from_blob(tx_data, tx))
         {
-          e_bin["pruned"] = unprunable_data;
-          if (!get.request.prune && prunable && !pruned)
-            e_bin["prunable"] = prunable_data;
+          get.response["status"] = "Failed to parse and validate base tx data";
+          return;
         }
       }
       else
       {
-        // use non-splitted form, leaving pruned_as_hex and prunable_as_hex as empty
-        tx_data = unprunable_data;
-        tx_data += prunable_data;
-        if (!get.request.decode_as_json)
-          e_bin["data"] = tx_data;
+        if (!cryptonote::parse_and_validate_tx_from_blob(tx_data, tx))
+        {
+          get.response["status"] = "Failed to parse and validate tx data";
+          return;
+        }
       }
 
-      cryptonote::transaction t;
-      if (get.request.decode_as_json || get.request.tx_extra || get.request.stake_info)
-      {
-        if (get.request.prune || pruned)
-        {
-          if (!cryptonote::parse_and_validate_tx_base_from_blob(tx_data, t))
-          {
-            get.response["status"] = "Failed to parse and validate base tx data";
-            return;
-          }
-          // I hate this because it goes deep into epee:
-          if (get.request.decode_as_json)
-            e["as_json"] = obj_to_json_str(pruned_transaction{t});
-        }
-        else
-        {
-          if (!cryptonote::parse_and_validate_tx_from_blob(tx_data, t))
-          {
-            get.response["status"] = "Failed to parse and validate tx data";
-            return;
-          }
-          if (get.request.decode_as_json)
-            e["as_json"] = obj_to_json_str(t);
-        }
+      if (get.request.tx_extra)
+        load_tx_extra_data(e["extra"], tx, nettype(), get.is_bt());
 
-        if (get.request.tx_extra)
-          load_tx_extra_data(e["extra"], t, nettype(), get.is_bt());
-      }
-      auto ptx_it = per_tx_pool_tx_info.find(tx_hash);
-      bool in_pool = ptx_it != per_tx_pool_tx_info.end();
+      auto ptx_it = found_in_pool.find(tx_hash);
+      bool in_pool = ptx_it != found_in_pool.end();
       e["in_pool"] = in_pool;
-      bool might_be_blink = true;
       auto height = std::numeric_limits<uint64_t>::max();
+
+      auto hf_version = get_network_version(nettype(), in_pool ? m_core.get_current_blockchain_height() : height);
+      if (uint64_t fee, burned; get_tx_miner_fee(tx, fee, hf_version >= HF_VERSION_FEE_BURNING, &burned)) {
+        e["fee"] = fee;
+        e["burned"] = burned;
+      }
+
       if (in_pool)
       {
-        if (ptx_it->second.meta.double_spend_seen)
-          e["double_spend_seen"] = true;
-        e["relayed"] = ptx_it->second.meta.relayed;
+        const auto& meta = ptx_it->second.meta;
+        e["weight"] = meta.weight;
+        e["relayed"] = (bool) ptx_it->second.meta.relayed;
         e["received_timestamp"] = ptx_it->second.meta.receive_time;
+        e["blink"] = ptx_it->second.blink;
+        if (meta.double_spend_seen) e["double_spend_seen"] = true;
+        if (meta.do_not_relay) e["do_not_relay"] = true;
+        if (meta.last_relayed_time) e["last_relayed_time"] = meta.last_relayed_time;
+        if (meta.kept_by_block) e["kept_by_block"] = (bool) meta.kept_by_block;
+        if (meta.last_failed_id) e_bin["last_failed_block"] = meta.last_failed_id;
+        if (meta.last_failed_height) e["last_failed_height"] = meta.last_failed_height;
+        if (meta.max_used_block_id) e_bin["max_used_block"] = meta.max_used_block_id;
+        if (meta.max_used_block_height) e["max_used_height"] = meta.max_used_block_height;
       }
       else
       {
         height = m_core.get_blockchain_storage().get_db().get_tx_block_height(tx_hash);
         e["block_height"] = height;
         e["block_timestamp"] = m_core.get_blockchain_storage().get_db().get_block_timestamp(height);
-        if (height <= immutable_height)
-            might_be_blink = false;
+        if (height > immutable_height) {
+          if (!blink_lock) blink_lock.lock();
+          e["blink"] = pool.has_blink(tx_hash);
+        }
       }
 
-      if (get.request.stake_info) {
-        auto hf_version = get_network_version(nettype(), in_pool ? m_core.get_current_blockchain_height() : height);
+      {
         service_nodes::staking_components sc;
-        if (service_nodes::tx_get_staking_components_and_amounts(nettype(), hf_version, t, height, &sc)
+        if (service_nodes::tx_get_staking_components_and_amounts(nettype(), hf_version, tx, height, &sc)
             && sc.transferred > 0)
           e["stake_amount"] = sc.transferred;
-      }
-
-      if (might_be_blink)
-      {
-        if (!blink_lock) blink_lock.lock();
-        e["blink"] = pool.has_blink(tx_hash);
       }
 
       // output indices too if not in pool
@@ -1529,36 +1524,6 @@ namespace cryptonote::rpc {
     PERF_TIMER(on_set_log_categories);
     mlog_set_log(req.categories.c_str());
     res.categories = mlog_get_categories();
-    res.status = STATUS_OK;
-    return res;
-  }
-  //------------------------------------------------------------------------------------------------------------------------------
-  GET_TRANSACTION_POOL::response core_rpc_server::invoke(GET_TRANSACTION_POOL::request&& req, rpc_context context)
-  {
-    GET_TRANSACTION_POOL::response res{};
-
-    PERF_TIMER(on_get_transaction_pool);
-    if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL>(req, res))
-      return res;
-
-    std::function<void(const transaction& tx, tx_info& txi)> load_extra;
-    if (req.tx_extra || req.stake_info)
-        load_extra = [this, &req, net=nettype()](const transaction& tx, tx_info& txi) {
-            if (req.tx_extra)
-                load_tx_extra_data(txi.extra.emplace(), tx, net);
-            if (req.stake_info) {
-                auto height = m_core.get_current_blockchain_height();
-                auto hf_version = get_network_version(net, height);
-                service_nodes::staking_components sc;
-                if (service_nodes::tx_get_staking_components_and_amounts(net, hf_version, tx, height, &sc)
-                        && sc.transferred > 0)
-                    txi.stake_amount = sc.transferred;
-            }
-        };
-
-    m_core.get_pool().get_transactions_and_spent_keys_info(res.transactions, res.spent_key_images, load_extra, context.admin);
-    for (tx_info& txi : res.transactions)
-      txi.tx_blob = oxenmq::to_hex(txi.tx_blob);
     res.status = STATUS_OK;
     return res;
   }
@@ -3535,11 +3500,10 @@ namespace cryptonote::rpc {
     res.end_height = end_height;
 
     std::vector<blob_t> blobs;
-    std::vector<crypto::hash> missed_ids;
     for (const auto& block : blocks)
     {
       blobs.clear();
-      if (!db.get_transactions_blobs(block.second.tx_hashes, blobs, missed_ids))
+      if (!db.get_transactions_blobs(block.second.tx_hashes, blobs))
       {
         MERROR("Could not query block at requested height: " << cryptonote::get_block_height(block.second));
         continue;

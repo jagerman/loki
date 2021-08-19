@@ -716,25 +716,25 @@ namespace cryptonote
      *
      * @param block_ids a vector of block hashes for which to get the corresponding blocks
      * @param blocks return-by-reference a vector to store result blocks in
-     * @param missed_bs return-by-reference a vector to store missed blocks in
+     * @param missed_bs optional pointer to an unordered_set to add missed blocks ids to
      *
      * @return false if an unexpected exception occurs, else true
      */
-    bool get_blocks(const std::vector<crypto::hash>& block_ids, std::vector<std::pair<cryptonote::blobdata,block>>& blocks, std::vector<crypto::hash>& missed_bs) const;
+    bool get_blocks(const std::vector<crypto::hash>& block_ids, std::vector<std::pair<cryptonote::blobdata,block>>& blocks, std::unordered_set<crypto::hash>* missed_bs = nullptr) const;
 
     /**
      * @brief gets transactions based on a list of transaction hashes
      *
      * @param txs_ids a vector of hashes for which to get the corresponding transactions
      * @param txs return-by-reference a vector to store result transactions in
-     * @param missed_txs return-by-reference a vector to store missed transactions in
+     * @param missed_txs optional pointer to an unordered set to add missed transactions ids to
      * @param pruned whether to return full or pruned blobs
      *
      * @return false if an unexpected exception occurs, else true
      */
-    bool get_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<blobdata>& txs, std::vector<crypto::hash>& missed_txs, bool pruned = false) const;
-    bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::vector<crypto::hash>& missed_txs) const;
-    bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<transaction>& txs, std::vector<crypto::hash>& missed_txs) const;
+    bool get_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<blobdata>& txs, std::unordered_set<crypto::hash>* missed_txs = nullptr, bool pruned = false) const;
+    bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::unordered_set<crypto::hash>* missed_txs = nullptr) const;
+    bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<transaction>& txs, std::unordered_set<crypto::hash>* missed_txs = nullptr) const;
 
     /**
      * @brief looks up transactions based on a list of transaction hashes and returns the block

@@ -511,11 +511,7 @@ namespace cryptonote
       *
       * @note see Blockchain::get_blocks(const t_ids_container&, t_blocks_container&, t_missed_container&) const
       */
-     template<class t_ids_container, class t_blocks_container, class t_missed_container>
-     bool get_blocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_missed_container& missed_bs) const
-     {
-       return m_blockchain_storage.get_blocks(block_ids, blocks, missed_bs);
-     }
+     bool get_blocks(const std::vector<crypto::hash>& block_ids, std::vector<std::pair<cryptonote::blobdata, block>> blocks, std::unordered_set<crypto::hash>* missed_bs = nullptr) const;
 
      /**
       * @copydoc Blockchain::get_block_id_by_height
@@ -529,21 +525,21 @@ namespace cryptonote
       *
       * @note see Blockchain::get_transactions
       */
-     bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::blobdata>& txs, std::vector<crypto::hash>& missed_txs) const;
+     bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::blobdata>& txs, std::unordered_set<crypto::hash>* missed_txs = nullptr) const;
 
      /**
       * @copydoc Blockchain::get_transactions
       *
       * @note see Blockchain::get_transactions
       */
-     bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::vector<crypto::hash>& missed_txs) const;
+     bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::unordered_set<crypto::hash>* missed_txs = nullptr) const;
 
      /**
       * @copydoc Blockchain::get_transactions
       *
       * @note see Blockchain::get_transactions
       */
-     bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<transaction>& txs, std::vector<crypto::hash>& missed_txs) const;
+     bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<transaction>& txs, std::unordered_set<crypto::hash>* missed_txs = nullptr) const;
 
      /**
       * @copydoc Blockchain::get_block_by_hash

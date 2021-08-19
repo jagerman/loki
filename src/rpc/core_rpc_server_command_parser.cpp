@@ -39,6 +39,11 @@ namespace cryptonote::rpc {
     template <typename T>
     constexpr bool is_required_wrapper<required<T>> = true;
 
+    template <typename T>
+    constexpr bool is_std_optional = false;
+    template <typename T>
+    constexpr bool is_std_optional<std::optional<T>> = true;
+
     using oxenmq::bt_dict_consumer;
 
     using json_range = std::pair<json::const_iterator, json::const_iterator>;
@@ -167,6 +172,8 @@ namespace cryptonote::rpc {
       else if (skip_until(in, name)) {
         if constexpr (is_required_wrapper<T>)
           return load_value(in, val.value);
+        else if constexpr (is_std_optional<T>)
+          return load_value(in, val.emplace());
         else
           return load_value(in, val);
       }
@@ -294,13 +301,22 @@ namespace cryptonote::rpc {
       if (auto it = json_in->find("txs_hashes"); it != json_in->end())
         (*json_in)["tx_hashes"] = std::move(*it);
 
+    std::optional<bool> data;
     get_values(in,
-      "decode_as_json", get.request.decode_as_json,
+      "data", data,
+      "memory_pool", get.request.memory_pool,
       "prune", get.request.prune,
       "split", get.request.split,
-      "stake_info", get.request.stake_info,
       "tx_extra", get.request.tx_extra,
       "tx_hashes", get.request.tx_hashes);
+
+    if (data)
+        get.request.data = *data;
+    else
+        get.request.data = !(get.request.prune || get.request.split);
+
+    if (get.request.memory_pool && !get.request.tx_hashes.empty())
+      throw std::runtime_error{"Error: 'memory_pool' and 'tx_hashes' are mutually exclusive"};
   }
 
 }

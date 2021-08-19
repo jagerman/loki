@@ -463,17 +463,22 @@ namespace cryptonote
     return m_blockchain_storage.get_blocks_only(start_offset, count, blocks);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::blobdata>& txs, std::vector<crypto::hash>& missed_txs) const
+  bool core::get_blocks(const std::vector<crypto::hash>& block_ids, std::vector<std::pair<cryptonote::blobdata, block>> blocks, std::unordered_set<crypto::hash>* missed_bs) const
+  {
+    return m_blockchain_storage.get_blocks(block_ids, blocks, missed_bs);
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::blobdata>& txs, std::unordered_set<crypto::hash>* missed_txs) const
   {
     return m_blockchain_storage.get_transactions_blobs(txs_ids, txs, missed_txs);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::vector<crypto::hash>& missed_txs) const
+  bool core::get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::unordered_set<crypto::hash>* missed_txs) const
   {
     return m_blockchain_storage.get_split_transactions_blobs(txs_ids, txs, missed_txs);
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<transaction>& txs, std::vector<crypto::hash>& missed_txs) const
+  bool core::get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<transaction>& txs, std::unordered_set<crypto::hash>* missed_txs) const
   {
     return m_blockchain_storage.get_transactions(txs_ids, txs, missed_txs);
   }
@@ -1819,9 +1824,8 @@ namespace cryptonote
       [this, &cache_to, &result, &cache_build_started](uint64_t height, const crypto::hash& hash, const block& b){
       auto& [emission_amount, total_fee_amount, burnt_oxen] = result;
       std::vector<transaction> txs;
-      std::vector<crypto::hash> missed_txs;
       uint64_t coinbase_amount = get_outs_money_amount(b.miner_tx);
-      get_transactions(b.tx_hashes, txs, missed_txs);
+      get_transactions(b.tx_hashes, txs);
       uint64_t tx_fee_amount = 0;
       for(const auto& tx: txs)
       {
@@ -2121,9 +2125,9 @@ namespace cryptonote
     }
     else if(bvc.m_added_to_main_chain)
     {
-      std::vector<crypto::hash> missed_txs;
+      std::unordered_set<crypto::hash> missed_txs;
       std::vector<cryptonote::blobdata> txs;
-      m_blockchain_storage.get_transactions_blobs(b.tx_hashes, txs, missed_txs);
+      m_blockchain_storage.get_transactions_blobs(b.tx_hashes, txs, &missed_txs);
       if(missed_txs.size() &&  m_blockchain_storage.get_block_id_by_height(get_block_height(b)) != get_block_hash(b))
       {
         LOG_PRINT_L1("Block found but, seems that reorganize just happened after that, do not relay this block");
