@@ -217,7 +217,6 @@ namespace cryptonote::rpc {
     void invoke(GETBLOCKCOUNT& getblockcount, rpc_context context);
     void invoke(MINING_STATUS& mining_status, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_HASHES& get_transaction_pool_hashes, rpc_context context);
-    void invoke(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_context context);
     void invoke(GET_TRANSACTIONS& req, rpc_context context);
     void invoke(GET_CONNECTIONS& get_connections, rpc_context context);

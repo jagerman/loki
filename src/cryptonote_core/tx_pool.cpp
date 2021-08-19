@@ -1163,18 +1163,6 @@ namespace cryptonote
     }, false, include_unrelayed_txes);
   }
   //------------------------------------------------------------------
-  void tx_memory_pool::get_transaction_backlog(std::vector<rpc::tx_backlog_entry>& backlog, bool include_unrelayed_txes) const
-  {
-    auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);
-
-    const uint64_t now = time(NULL);
-    backlog.reserve(m_blockchain.get_txpool_tx_count(include_unrelayed_txes));
-    m_blockchain.for_all_txpool_txes([&backlog, now](const crypto::hash &txid, const txpool_tx_meta_t &meta, const cryptonote::blobdata *bd){
-      backlog.push_back({meta.weight, meta.fee, meta.receive_time - now});
-      return true;
-    }, false, include_unrelayed_txes);
-  }
-  //------------------------------------------------------------------
   tx_memory_pool::tx_stats tx_memory_pool::get_transaction_stats(bool include_unrelayed_txes) const
   {
     auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);

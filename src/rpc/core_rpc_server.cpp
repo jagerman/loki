@@ -2641,19 +2641,6 @@ namespace cryptonote::rpc {
 
     sync.response["status"] = STATUS_OK;
   }
-  //------------------------------------------------------------------------------------------------------------------------------
-  void core_rpc_server::invoke(GET_TRANSACTION_POOL_BACKLOG& get_transaction_pool_backlog, rpc_context context)
-  {
-    PERF_TIMER(on_get_txpool_backlog);
-    //TODO handle bootstrap daemon
-    //if (use_bootstrap_daemon_if_necessary<GET_TRANSACTION_POOL_BACKLOG>(req, res))
-      //return res;
-
-    std::vector<rpc::tx_backlog_entry> backlog;
-    m_core.get_pool().get_transaction_backlog(backlog);
-    get_transaction_pool_backlog.response["backlog"] = json::parse(backlog.begin(), backlog.end());
-    get_transaction_pool_backlog.response["status"] = STATUS_OK;
-  }
 
   namespace {
     output_distribution_data process_distribution(
