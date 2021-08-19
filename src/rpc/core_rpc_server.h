@@ -37,8 +37,9 @@
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
-#include "core_rpc_server_commands_defs.h"
 #include "cryptonote_core/cryptonote_core.h"
+#include "core_rpc_server_commands_defs.h"
+#include "core_rpc_server_binary_commands.h"
 #include "p2p/net_node.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler.h"
 

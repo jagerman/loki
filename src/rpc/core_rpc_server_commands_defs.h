@@ -178,11 +178,6 @@ namespace cryptonote::rpc {
   /// PUBLIC commands are available at `rpc.command` (versus non-PUBLIC ones at `admin.command`).
   struct PUBLIC : virtual RPC_COMMAND {};
 
-  /// Specifies that the RPC call is legacy, deprecated Monero custom binary input/ouput.  If not
-  /// given then the command is JSON/bt-encoded values.  For HTTP RPC this also means the command is
-  /// *not* available via the HTTP JSON RPC.
-  struct BINARY : virtual RPC_COMMAND {};
-
   /// Specifies that the RPC call takes no input arguments.  (A dictionary of parameters may still
   /// be passed, but will be ignored).
   struct NO_ARGS : virtual RPC_COMMAND {};
@@ -194,6 +189,7 @@ namespace cryptonote::rpc {
   struct LEGACY : virtual RPC_COMMAND {};
 
   
+  // FIXME: won't need these after conversion
   /// (Not a tag). Generic, serializable, no-argument request type, use as `struct request : EMPTY {};`
   struct EMPTY { KV_MAP_SERIALIZABLE };
 
@@ -220,121 +216,6 @@ namespace cryptonote::rpc {
   struct GET_HEIGHT : PUBLIC, LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_height", "getheight"); }
-  };
-
-  /// Get all blocks info. Deprecated, Monero custom binary request.  See the (FIXME) RPC endpoint
-  /// instead.
-  ///
-  /// Inputs:
-  /// block_ids -- descending list of block IDs used to detect reorganizations and network status:
-  /// the first 10 are the 10 most recent blocks, after which height decreases by a power of 2.
-  struct GET_BLOCKS_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_blocks.bin", "getblocks.bin"); }
-
-    static constexpr size_t MAX_COUNT = 1000;
-
-    struct request {
-      std::list<crypto::hash> block_ids; // Descending list of block IDs used to detect reorganizations and network: the first 10 blocks id are sequential, then height drops by a power of 2 (2, 4, 8, 16, etc.) down to height 1, and then finally the genesis block id.
-      uint64_t    start_height;          // The height of the first block to fetch.
-      bool        prune;                 // Prunes the blockchain, dropping off 7/8ths of the blocks.
-      bool        no_miner_tx;           // If specified and true, don't include miner transactions in transaction results.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct tx_output_indices
-    {
-      std::vector<uint64_t> indices; // Array of unsigned int.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct block_output_indices
-    {
-      std::vector<tx_output_indices> indices; // Array of TX output indices:
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::vector<block_complete_entry> blocks;         // Array of block complete entries
-      uint64_t    start_height;                         // The starting block's height.
-      uint64_t    current_height;                       // The current block height.
-      std::string status;                               // General RPC error code. "OK" means everything looks good.
-      std::vector<block_output_indices> output_indices; // Array of indices.
-      bool untrusted;                                   // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get blocks by height. Binary request.
-  struct GET_BLOCKS_BY_HEIGHT_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_blocks_by_height.bin", "getblocks_by_height.bin"); }
-
-    struct request
-    {
-      std::vector<uint64_t> heights;         // List of block heights
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::vector<block_complete_entry> blocks; // Array of block complete entries
-      std::string status;                       // General RPC error code. "OK" means everything looks good.
-      bool untrusted;                           // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get the known blocks hashes which are not on the main chain.
-  struct GET_ALT_BLOCKS_HASHES_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_alt_blocks_hashes.bin"); }
-
-    struct request : EMPTY {};
-    struct response
-    {
-        std::vector<std::string> blks_hashes; // List of alternative blocks hashes to main chain.
-        std::string status;                   // General RPC error code. "OK" means everything looks good.
-        bool untrusted;                       // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-        KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get hashes. Binary request.
-  struct GET_HASHES_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_hashes.bin", "gethashes.bin"); }
-
-    struct request
-    {
-      std::list<crypto::hash> block_ids; // First 10 blocks id goes sequential, next goes in pow(2,n) offset, like 2, 4, 8, 16, 32, 64 and so on, and the last one is always genesis block */
-      uint64_t    start_height;          // The starting block's height.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::vector<crypto::hash> m_block_ids; // Binary array of hashes, See block_ids above.
-      uint64_t    start_height;              // The starting block's height.
-      uint64_t    current_height;            // The current block height.
-      std::string status;                    // General RPC error code. "OK" means everything looks good.
-      bool untrusted;                        // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   /// Look up one or more transactions by hash.
@@ -539,77 +420,6 @@ namespace cryptonote::rpc {
     };
   };
 
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get global outputs of transactions. Binary request.
-  struct GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_o_indexes.bin"); }
-
-    struct request
-    {
-      crypto::hash txid; // Binary txid.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-
-    struct response
-    {
-      std::vector<uint64_t> o_indexes; // List of output indexes
-      std::string status;              // General RPC error code. "OK" means everything looks good.
-      bool untrusted;                  // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  struct get_outputs_out
-  {
-    uint64_t amount; // Amount of Loki in TXID.
-    uint64_t index;
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get outputs. Binary request.
-  struct GET_OUTPUTS_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_outs.bin"); }
-
-    /// Maximum outputs that may be requested in a single request (unless admin)
-    static constexpr size_t MAX_COUNT = 5000;
-
-    struct request
-    {
-      std::vector<get_outputs_out> outputs; // Array of structure `get_outputs_out`.
-      bool get_txid;                        // TXID
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct outkey
-    {
-      crypto::public_key key; // The public key of the output.
-      rct::key mask;
-      bool unlocked;          // States if output is locked (`false`) or not (`true`).
-      uint64_t height;        // Block height of the output.
-      crypto::hash txid;      // Transaction id.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::vector<outkey> outs; // List of outkey information.
-      std::string status;       // General RPC error code. "OK" means everything looks good.
-      bool untrusted;           // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
 
   //-----------------------------------------------
   /// Retrieve transaction outputs
@@ -1228,41 +1038,6 @@ namespace cryptonote::rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  struct spent_key_image_info
-  {
-    std::string id_hash;                 // Key image.
-    std::vector<std::string> txs_hashes; // List of tx hashes of the txes (usually one) spending that key image.
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Get hashes from transaction pool. Binary request.
-  struct GET_TRANSACTION_POOL_HASHES_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_transaction_pool_hashes.bin"); }
-
-    static constexpr std::chrono::seconds long_poll_timeout{15};
-
-    struct request
-    {
-      bool         blinked_txs_only; // Optional: If true only transactions that were sent via blink and approved are queried.
-      bool         long_poll;        // Optional: If true, this call is blocking until timeout OR tx pool has changed since the last query. TX pool change is detected by comparing the hash of all the hashes in the tx pool.  Ignored when using LMQ RPC.
-      crypto::hash tx_pool_checksum; // Optional: If `long_poll` is true the caller must pass the hashes of all their known tx pool hashes, XOR'ed together.  Ignored when using LMQ RPC.
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status;                  // General RPC error code. "OK" means everything looks good.
-      std::vector<crypto::hash> tx_hashes; // List of transaction hashes,
-      bool untrusted;                      // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
   //-----------------------------------------------
   /// Get hashes from transaction pool.
   ///
@@ -1851,16 +1626,6 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Exactly like GET_OUTPUT_DISTRIBUTION, but does a binary RPC transfer instead of JSON
-  struct GET_OUTPUT_DISTRIBUTION_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_output_distribution.bin"); }
-
-    struct request : GET_OUTPUT_DISTRIBUTION::request {};
-    using response = GET_OUTPUT_DISTRIBUTION::response;
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
   struct POP_BLOCKS : LEGACY
   {
     static constexpr auto names() { return NAMES("pop_blocks"); }
@@ -2383,23 +2148,6 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Get information on output blacklist.
-  struct GET_OUTPUT_BLACKLIST_BIN : PUBLIC, BINARY
-  {
-    static constexpr auto names() { return NAMES("get_output_blacklist.bin"); }
-    struct request : EMPTY {};
-
-    struct response
-    {
-      std::vector<uint64_t> blacklist; // (Developer): Array of indexes from the global output list, corresponding to blacklisted key images.
-      std::string status;              // Generic RPC error code. "OK" is the success value.
-      bool untrusted;                  // If the result is obtained using bootstrap mode, and therefore not trusted `true`, or otherwise `false`.
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
   // Query hardcoded/service node checkpoints stored for the blockchain. Omit all arguments to retrieve the latest "count" checkpoints.
   struct GET_CHECKPOINTS : PUBLIC
   {
@@ -2713,18 +2461,7 @@ namespace cryptonote::rpc {
     GET_TRANSACTION_POOL_STATS,
     GET_TRANSACTIONS,
     GET_SERVICE_NODES,
-    GET_SERVICE_NODE_STATUS,
-
-    // Deprecated Monero NIH binary endpoints:
-    GET_ALT_BLOCKS_HASHES_BIN,
-    GET_BLOCKS_BIN,
-    GET_BLOCKS_BY_HEIGHT_BIN,
-    GET_HASHES_BIN,
-    GET_OUTPUTS_BIN,
-    GET_OUTPUT_BLACKLIST_BIN,
-    GET_OUTPUT_DISTRIBUTION_BIN,
-    GET_TRANSACTION_POOL_HASHES_BIN,
-    GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN
+    GET_SERVICE_NODE_STATUS
   >;
 
   using FIXME_old_rpc_types = tools::type_list<

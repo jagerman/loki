@@ -5,6 +5,7 @@
 
 #include "rpc/http_client.h"
 #include "rpc/core_rpc_server_commands_defs.h"
+#include "rpc/core_rpc_server_binary_commands.h"
 
 namespace cryptonote
 {
@@ -28,12 +29,7 @@ namespace cryptonote
         return false;
 
       try {
-        if constexpr (std::is_base_of_v<rpc::LEGACY, RPC>)
-          // TODO: post-8.x hard fork we can remove this one and let everything go through the
-          // non-binary json_rpc version instead (because all legacy json commands are callable via
-          // json_rpc as of daemon 8.x).
-          res = m_http_client.json<RPC>(RPC::names().front(), req);
-        else if constexpr (std::is_base_of_v<rpc::BINARY, RPC>)
+        if constexpr (std::is_base_of_v<rpc::BINARY, RPC>)
           res = m_http_client.binary<RPC>(RPC::names().front(), req);
         else
           res = m_http_client.json_rpc<RPC>(RPC::names().front(), req);
