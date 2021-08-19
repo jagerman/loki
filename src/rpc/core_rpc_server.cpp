@@ -2500,42 +2500,34 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_LIMIT::response core_rpc_server::invoke(GET_LIMIT::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_LIMIT& limit, rpc_context context)
   {
-    GET_LIMIT::response res{};
-
     PERF_TIMER(on_get_limit);
-    if (use_bootstrap_daemon_if_necessary<GET_LIMIT>(req, res))
-      return res;
 
-    res.limit_down = epee::net_utils::connection_basic::get_rate_down_limit();
-    res.limit_up = epee::net_utils::connection_basic::get_rate_up_limit();
-    res.status = STATUS_OK;
-    return res;
+    limit.response = {
+      {"limit_down", epee::net_utils::connection_basic::get_rate_down_limit()},
+      {"limit_up", epee::net_utils::connection_basic::get_rate_up_limit()},
+      {"status", STATUS_OK}};
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SET_LIMIT::response core_rpc_server::invoke(SET_LIMIT::request&& req, rpc_context context)
+  void core_rpc_server::invoke(SET_LIMIT& limit, rpc_context context)
   {
-    SET_LIMIT::response res{};
-
     PERF_TIMER(on_set_limit);
+
     // -1 = reset to default
     //  0 = do not modify
-
-    if (req.limit_down < -1 || req.limit_up < -1)
-      throw rpc_error{ERROR_WRONG_PARAM, "Invalid limit_down or limit_up value: value must be >= -1"};
-
-    if (req.limit_down != 0)
+    if (limit.request.limit_down != 0)
       epee::net_utils::connection_basic::set_rate_down_limit(
-          req.limit_down == -1 ? nodetool::default_limit_down : req.limit_down);
-    if (req.limit_up != 0)
-      epee::net_utils::connection_basic::set_rate_up_limit(
-          req.limit_up == -1 ? nodetool::default_limit_up : req.limit_up);
+          limit.request.limit_down == -1 ? nodetool::default_limit_down : limit.request.limit_down);
 
-    res.limit_down = epee::net_utils::connection_basic::get_rate_down_limit();
-    res.limit_up = epee::net_utils::connection_basic::get_rate_up_limit();
-    res.status = STATUS_OK;
-    return res;
+    if (limit.request.limit_up != 0)
+      epee::net_utils::connection_basic::set_rate_up_limit(
+          limit.request.limit_up == -1 ? nodetool::default_limit_up : limit.request.limit_up);
+
+    limit.response = {
+      {"limit_down", epee::net_utils::connection_basic::get_rate_down_limit()},
+      {"limit_up", epee::net_utils::connection_basic::get_rate_up_limit()},
+      {"status", STATUS_OK}};
   }
   //------------------------------------------------------------------------------------------------------------------------------
   OUT_PEERS::response core_rpc_server::invoke(OUT_PEERS::request&& req, rpc_context context)

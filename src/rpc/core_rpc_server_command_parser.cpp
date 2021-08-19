@@ -319,4 +319,14 @@ namespace cryptonote::rpc {
       throw std::runtime_error{"Error: 'memory_pool' and 'tx_hashes' are mutually exclusive"};
   }
 
+  void parse_request(SET_LIMIT& limit, rpc_input in) {
+    get_values(in,
+        "limit_down", limit.request.limit_down,
+        "limit_up", limit.request.limit_up);
+    if (limit.request.limit_down < -1)
+      throw std::domain_error{"limit_down must be >= -1"};
+    if (limit.request.limit_down < -1)
+      throw std::domain_error{"limit_up must be >= -1"};
+  }
+
 }

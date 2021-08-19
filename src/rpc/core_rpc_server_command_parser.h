@@ -17,4 +17,5 @@ namespace cryptonote::rpc {
   void parse_request(GET_TRANSACTION_POOL_STATS& pstats, rpc_input in);
   void parse_request(GET_TRANSACTIONS& hfinfo, rpc_input in);
   void parse_request(HARD_FORK_INFO& hfinfo, rpc_input in);
+  void parse_request(SET_LIMIT& limit, rpc_input in);
 }

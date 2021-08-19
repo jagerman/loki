@@ -1450,47 +1450,34 @@ namespace cryptonote::rpc {
     static constexpr auto names() { return NAMES("stop_daemon"); }
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get daemon bandwidth limits.
-  struct GET_LIMIT : LEGACY
+  /// Get daemon p2p bandwidth limits.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p limit_up Upload limit in kiB/s
+  /// - \p limit_down Download limit in kiB/s
+  struct GET_LIMIT : LEGACY, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_limit"); }
-
-    struct request : EMPTY {};
-
-    struct response
-    {
-      std::string status;  // General RPC error code. "OK" means everything looks good.
-      uint64_t limit_up;   // Upload limit in kBytes per second.
-      uint64_t limit_down; // Download limit in kBytes per second.
-      bool untrusted;      // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Set daemon bandwidth limits.
+  /// Set daemon p2p bandwidth limits.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p limit_up The new (or existing, if unchanged) upload limit in kiB/s
+  /// - \p limit_down The new (or existing, if unchanged) download limit in kiB/s
   struct SET_LIMIT : LEGACY
   {
     static constexpr auto names() { return NAMES("set_limit"); }
 
-    struct request
-    {
-      int64_t limit_down;  // Download limit in kBytes per second (-1 reset to default, 0 don't change the current limit)
-      int64_t limit_up;    // Upload limit in kBytes per second (-1 reset to default, 0 don't change the current limit)
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good.
-      int64_t limit_up;   // Upload limit in kBytes per second.
-      int64_t limit_down; // Download limit in kBytes per second.
-
-      KV_MAP_SERIALIZABLE
-    };
+    struct request_parameters {
+      int64_t limit_down = 0; ///< Download limit in kBytes per second.  -1 means reset to default; 0 (or omitted) means don't change the current limit
+      int64_t limit_up = 0;   ///< Upload limit in kBytes per second.  -1 means reset to default; 0 (or omitted) means don't change the current limit
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2735,6 +2722,8 @@ namespace cryptonote::rpc {
     GET_INFO,
     ONS_RESOLVE,
     GET_OUTPUTS,
+    GET_LIMIT,
+    SET_LIMIT,
     HARD_FORK_INFO,
     START_MINING,
     STOP_MINING,
@@ -2780,8 +2769,6 @@ namespace cryptonote::rpc {
     SET_LOG_CATEGORIES,
     GET_BLOCK_HEADERS_RANGE,
     SET_BOOTSTRAP_DAEMON,
-    GET_LIMIT,
-    SET_LIMIT,
     OUT_PEERS,
     IN_PEERS,
     GETBANS,

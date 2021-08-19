@@ -664,35 +664,26 @@ bool rpc_command_executor::print_connections() {
 
 bool rpc_command_executor::print_net_stats()
 {
-  GET_NET_STATS::response net_stats_res{};
-  GET_LIMIT::response limit_res{};
-
-  if (!invoke<GET_NET_STATS>({}, net_stats_res, "Unable to retrieve net statistics") ||
-      !invoke<GET_LIMIT>({}, limit_res, "Unable to retrieve bandwidth limits"))
+  auto maybe_stats = try_running([this] { return invoke<GET_NET_STATS>(); }, "Failed to retrieve net statistics");
+  auto maybe_limit = try_running([this] { return invoke<GET_LIMIT>(); }, "Failed to retrieve bandwidth limits");
+  if (!maybe_stats || !maybe_limit)
     return false;
+  auto& stats = *maybe_stats;
+  auto& limit = *maybe_limit;
+  auto uptime = time(nullptr) - stats["start_time"].get<std::time_t>();
 
-  uint64_t seconds = (uint64_t)time(NULL) - net_stats_res.start_time;
-  uint64_t average = seconds > 0 ? net_stats_res.total_bytes_in / seconds : 0;
-  uint64_t limit = limit_res.limit_down * 1024;   // convert to bytes, as limits are always kB/s
-  double percent = (double)average / (double)limit * 100.0;
-  tools::success_msg_writer() << fmt::format("Received {} bytes ({}) in {} packets, average {}/s = {:.2f}% of the limit of {}/s",
-    net_stats_res.total_bytes_in,
-    tools::get_human_readable_bytes(net_stats_res.total_bytes_in),
-    net_stats_res.total_packets_in,
-    tools::get_human_readable_bytes(average),
-    percent,
-    tools::get_human_readable_bytes(limit));
-
-  average = seconds > 0 ? net_stats_res.total_bytes_out / seconds : 0;
-  limit = limit_res.limit_up * 1024;
-  percent = (double)average / (double)limit * 100.0;
-  tools::success_msg_writer() << fmt::format("Sent {} bytes ({}) in {} packets, average {}/s = {:.2f}% of the limit of {}/s",
-    net_stats_res.total_bytes_out,
-    tools::get_human_readable_bytes(net_stats_res.total_bytes_out),
-    net_stats_res.total_packets_out,
-    tools::get_human_readable_bytes(average),
-    percent,
-    tools::get_human_readable_bytes(limit));
+  for (bool in : {true, false}) {
+    auto bytes = stats[in ? "total_bytes_in" : "total_bytes_out"].get<uint64_t>();
+    double average = uptime > 0 ? bytes / (double) uptime : 0.0;
+    uint64_t lim = limit[in ? "limit_down" : "limit_up"].get<uint64_t>() * 1024; // convert to bytes, as limits are always kB/s
+    tools::success_msg_writer() << fmt::format("{} {} in {} packets, average {}/s = {:.2f}% of the limit of {}/s",
+        in ? "Received" : "Sent",
+        tools::get_human_readable_bytes(bytes),
+        stats[in ? "total_packets_in" : "total_packets_out"].get<uint64_t>(),
+        tools::get_human_readable_bytes(average),
+        average / lim * 100.0,
+        tools::get_human_readable_bytes(lim));
+  }
 
   return true;
 }
@@ -1101,28 +1092,30 @@ bool rpc_command_executor::stop_daemon()
   return invoke_simple<STOP_DAEMON>("Couldn't stop daemon", "Stop signal sent");
 }
 
-bool rpc_command_executor::get_limit(bool up, bool down)
+bool rpc_command_executor::get_limit()
 {
-  GET_LIMIT::response res{};
-
-  if (!invoke<GET_LIMIT>({}, res, "Failed to retrieve current bandwidth limits"))
+  auto maybe_limit = try_running([this] { return invoke<GET_LIMIT>(); }, "Failed to retrieve current traffic limits");
+  if (!maybe_limit)
     return false;
+  auto& limit = *maybe_limit;
 
-  if (down)
-    tools::msg_writer() << "limit-down is " << res.limit_down << " kB/s";
-  if (up)
-    tools::msg_writer() << "limit-up is " << res.limit_up << " kB/s";
+  tools::msg_writer() << fmt::format("Current limits are {} kiB/s down, {} kiB/s up",
+      limit["limit_down"].get<uint64_t>(), limit["limit_up"].get<uint64_t>());
   return true;
 }
 
 bool rpc_command_executor::set_limit(int64_t limit_down, int64_t limit_up)
 {
-  SET_LIMIT::response res{};
-  if (!invoke<SET_LIMIT>({limit_down, limit_up}, res, "Failed to set bandwidth limits"))
+  json args{
+    {"limit_down", limit_down},
+    {"limit_up", limit_up}};
+  auto maybe_limit = try_running([this, &args] { return invoke<SET_LIMIT>(args); }, "Failed to set traffic limits");
+  if (!maybe_limit)
     return false;
+  auto& limit = *maybe_limit;
 
-  tools::msg_writer() << "Set limit-down to " << res.limit_down << " kB/s";
-  tools::msg_writer() << "Set limit-up to " << res.limit_up << " kB/s";
+  tools::success_msg_writer() << fmt::format("New limits are {} kiB/s down, {} kiB/s up",
+    limit["limit_down"].get<uint64_t>(), limit["limit_up"].get<uint64_t>());
   return true;
 }
 

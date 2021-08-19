@@ -208,20 +208,12 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
   m_command_lookup.set_handler(
       "limit"
     , [this](const auto &x) { return m_parser.set_limit(x); }
-    , "limit [<kB/s>]"
-    , "Get or set the download and upload limit."
-    );
-  m_command_lookup.set_handler(
-      "limit_up"
-    , [this](const auto &x) { return m_parser.set_limit_up(x); }
-    , "limit_up [<kB/s>]"
-    , "Get or set the upload limit."
-    );
-  m_command_lookup.set_handler(
-      "limit_down"
-    , [this](const auto &x) { return m_parser.set_limit_down(x); }
-    , "limit_down [<kB/s>]"
-    , "Get or set the download limit."
+    , "limit [<kiB/s> [<kiB/s]]"
+    , R"(Get or set the download and/or upload limit.  If given no arguments then this
+prints the current limits.  If given single value then it is applied to both
+download and upload limits.  If given two values then they are the new download
+and upload limits, respectively.  Limits may be 0 to leave the value unchanged,
+or "default" to return the limit to its default value.)"
     );
     m_command_lookup.set_handler(
       "out_peers"

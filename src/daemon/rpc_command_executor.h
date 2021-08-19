@@ -188,7 +188,7 @@ public:
 
   bool stop_daemon();
 
-  bool get_limit(bool up = true, bool down = true);
+  bool get_limit();
 
   bool set_limit(int64_t limit_down, int64_t limit_up);
 

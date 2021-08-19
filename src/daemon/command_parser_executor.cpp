@@ -32,6 +32,7 @@
 #include "common/dns_utils.h"
 #include "common/command_line.h"
 #include "common/hex.h"
+#include "common/scoped_message_writer.h"
 #include "version.h"
 #include "daemon/command_parser_executor.h"
 #include "rpc/core_rpc_server_commands_defs.h"
@@ -550,56 +551,32 @@ bool command_parser_executor::stop_daemon(const std::vector<std::string>& args)
 
 bool command_parser_executor::set_limit(const std::vector<std::string>& args)
 {
-  if(args.size()>1) return false;
-  if(args.size()==0) {
+  if (args.size() == 0)
     return m_executor.get_limit();
+
+  if (args.size() > 2) {
+    tools::fail_msg_writer() << "Too many arguments: expected 0-2 values";
+    return false;
   }
-  int64_t limit;
-  try {
-      limit = std::stoll(args[0]);
-  }
-  catch(const std::exception& ex) {
-      std::cout << "failed to parse argument" << std::endl;
-      return false;
+  int64_t limit_down;
+  if (args[0] == "default") // Accept "default" as a string because getting -1 through the cli arg parsing is a nuissance
+    limit_down = -1;
+  else if (!tools::parse_int(args[0], limit_down)) {
+    tools::fail_msg_writer() << "Failed to parse '" << args[0] << "' as a limit";
+    return false;
   }
 
-  return m_executor.set_limit(limit, limit);
-}
-
-bool command_parser_executor::set_limit_up(const std::vector<std::string>& args)
-{
-  if(args.size()>1) return false;
-  if(args.size()==0) {
-    return m_executor.get_limit(true, false);
-  }
-  int64_t limit;
-  try {
-      limit = std::stoll(args[0]);
-  }
-  catch(const std::exception& ex) {
-      std::cout << "failed to parse argument" << std::endl;
-      return false;
+  int64_t limit_up;
+  if (args.size() == 1)
+    limit_up = limit_down;
+  else if (args[1] == "default")
+    limit_up = -1;
+  else if (!tools::parse_int(args[1], limit_up)) {
+    tools::fail_msg_writer() << "Failed to parse '" << args[1] << "' as a limit";
+    return false;
   }
 
-  return m_executor.set_limit(0, limit);
-}
-
-bool command_parser_executor::set_limit_down(const std::vector<std::string>& args)
-{
-  if(args.size()>1) return false;
-  if(args.size()==0) {
-    return m_executor.get_limit(false, true);
-  }
-  int64_t limit;
-  try {
-      limit = std::stoll(args[0]);
-  }
-  catch(const std::exception& ex) {
-      std::cout << "failed to parse argument" << std::endl;
-      return false;
-  }
-
-  return m_executor.set_limit(limit, 0);
+  return m_executor.set_limit(limit_down, limit_up);
 }
 
 bool command_parser_executor::out_peers(const std::vector<std::string>& args)
