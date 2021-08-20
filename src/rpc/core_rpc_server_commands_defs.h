@@ -455,8 +455,8 @@ namespace cryptonote::rpc {
 
     struct request_parameters
     {
-      bool get_txid;
-      bool as_tuple;
+      bool get_txid = false;
+      bool as_tuple = false;
       std::vector<uint64_t> output_indices;
     } request;
   };

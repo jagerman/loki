@@ -121,7 +121,7 @@ namespace cryptonote::rpc {
       static_assert(!FIXME_has_nested_response_v<RPC>);
 
       cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> rpc_command::result_type {
-        RPC rpc;
+        RPC rpc{};
         try {
           if (auto body = request.body_view()) {
             if (body->front() == 'd') { // Looks like a bt dict
