@@ -226,6 +226,7 @@ namespace cryptonote::rpc {
     void invoke(GET_SERVICE_NODES& sns, rpc_context context);
     void invoke(GET_LIMIT& limit, rpc_context context);
     void invoke(SET_LIMIT& limit, rpc_context context);
+    void invoke(IS_KEY_IMAGE_SPENT& spent, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -239,7 +240,6 @@ namespace cryptonote::rpc {
     GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request&& req, rpc_context context);
 
     // FIXME: unconverted JSON RPC endpoints:
-    IS_KEY_IMAGE_SPENT::response                        invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context);
     SEND_RAW_TX::response                               invoke(SEND_RAW_TX::request&& req, rpc_context context);
     GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);
     GET_PUBLIC_NODES::response                          invoke(GET_PUBLIC_NODES::request&& req, rpc_context context);

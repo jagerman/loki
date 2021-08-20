@@ -421,20 +421,18 @@ bool command_parser_executor::is_key_image_spent(const std::vector<std::string>&
 {
   if (args.empty())
   {
-    std::cout << "expected: is_key_image_spent <key_image>" << std::endl;
+    tools::fail_msg_writer() << "Invalid arguments.  Expected: is_key_image_spent <key_image> [<key_image> ...]\n";
     return true;
   }
 
-  const std::string& str = args.front();
-  crypto::key_image ki;
-  crypto::hash hash;
-  if (tools::hex_to_type(str, hash))
-  {
-    memcpy(&ki, &hash, sizeof(ki));
-    m_executor.is_key_image_spent(ki);
+  std::vector<crypto::key_image> kis;
+  for (const auto& hex : args) {
+    if (!tools::hex_to_type(hex, kis.emplace_back())) {
+      tools::fail_msg_writer() << "Invalid key image: '" << hex << "'";
+      return true;
+    }
   }
-  else
-    MERROR("invalid key image hash: " << str);
+  m_executor.is_key_image_spent(kis);
 
   return true;
 }

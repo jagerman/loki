@@ -389,35 +389,36 @@ namespace cryptonote::rpc {
     } request;
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Check if outputs have been spent using the key image associated with the output.
+  /// Queries whether outputs have been spent using the key image associated with the output.
+  ///
+  /// Inputs:
+  ///
+  /// - \p key_images list of key images to check.  For json requests these must be hex or
+  ///   base64-encoded; for bt-requests they can be hex/base64 or raw bytes.
+  ///
+  /// Outputs
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore
+  ///   untrusted ('true'), or when the daemon is fully synced ('false').
+  /// - \p spent_status array of status codes returned in the same order as the `key_images` input.
+  ///   Each value is one of:
+  ///   - \p 0 the key image is unspent
+  ///   - \p 1 the key image is spent in a mined block
+  ///   - \p 2 the key image is spent in a transaction currently in the mempool
   struct IS_KEY_IMAGE_SPENT : PUBLIC, LEGACY
   {
     static constexpr auto names() { return NAMES("is_key_image_spent"); }
 
-    enum STATUS
-    {
+    enum class SPENT : uint8_t {
       UNSPENT = 0,
-      SPENT_IN_BLOCKCHAIN = 1,
-      SPENT_IN_POOL = 2,
+      BLOCKCHAIN = 1,
+      POOL = 2,
     };
 
-    struct request
-    {
-      std::vector<std::string> key_images; // List of key image hex strings to check.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-
-    struct response
-    {
-      std::vector<int> spent_status; // List of statuses for each image checked. Statuses are follows: 0 = unspent, 1 = spent in blockchain, 2 = spent in transaction pool
-      std::string status;            // General RPC error code. "OK" means everything looks good.
-      bool untrusted;                // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
+    struct request_parameters {
+      std::vector<crypto::key_image> key_images;
+    } request;
   };
 
 
@@ -2460,12 +2461,12 @@ namespace cryptonote::rpc {
     GET_TRANSACTION_POOL_HASHES,
     GET_TRANSACTION_POOL_STATS,
     GET_TRANSACTIONS,
+    IS_KEY_IMAGE_SPENT,
     GET_SERVICE_NODES,
     GET_SERVICE_NODE_STATUS
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
-    IS_KEY_IMAGE_SPENT,
     SEND_RAW_TX,
     GET_NET_STATS,
     GETBLOCKHASH,

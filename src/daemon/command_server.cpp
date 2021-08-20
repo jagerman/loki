@@ -135,8 +135,8 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
   m_command_lookup.set_handler(
       "is_key_image_spent"
     , [this](const auto &x) { return m_parser.is_key_image_spent(x); }
-    , "is_key_image_spent <key_image>"
-    , "Print whether a given key image is in the spent key images set."
+    , "is_key_image_spent <key_image> [<key_image> ...]"
+    , "Queries whether one or more key images have been spent on the blockchain or in the memory pool."
     );
   m_command_lookup.set_handler(
       "start_mining"

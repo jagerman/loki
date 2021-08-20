@@ -896,20 +896,28 @@ bool rpc_command_executor::print_transaction(const crypto::hash& transaction_has
   return true;
 }
 
-bool rpc_command_executor::is_key_image_spent(const crypto::key_image &ki) {
-  IS_KEY_IMAGE_SPENT::response res{};
-  if (!invoke<IS_KEY_IMAGE_SPENT>({{tools::type_to_hex(ki)}}, res, "Failed to retrieve key image status"))
-    return false;
+bool rpc_command_executor::is_key_image_spent(const std::vector<crypto::key_image>& ki) {
 
-  if (1 == res.spent_status.size())
-  {
-    // first as hex
-    tools::success_msg_writer() << ki << ": " << (res.spent_status.front() ? "spent" : "unspent") << (res.spent_status.front() == IS_KEY_IMAGE_SPENT::SPENT_IN_POOL ? " (in pool)" : "");
-    return true;
+  auto maybe_spent = try_running([this, &ki] {
+      auto kis = json::array();
+      for (auto& k : ki) kis.push_back(tools::type_to_hex(k));
+      return invoke<IS_KEY_IMAGE_SPENT>(json{{"key_images", std::move(kis)}}); },
+    "Failed to retrieve key image status");
+  if (!maybe_spent)
+    return false;
+  auto& spent_status = (*maybe_spent)["spent_status"];
+
+  if (spent_status.size() != ki.size()) {
+    tools::fail_msg_writer() << "key image status could not be determined\n";
+    return false;
   }
 
-  tools::fail_msg_writer() << "key image status could not be determined" << std::endl;
-  return false;
+  for (size_t i = 0; i < ki.size(); i++) {
+    int status = spent_status[i].get<int>();
+    tools::success_msg_writer() << ki[i] << ": "
+      << (status == 0 ? "unspent" : status == 1 ? "spent" : status == 2 ? "spent (in pool)" : "unknown");
+  }
+  return true;
 }
 
 static void print_pool(const json& txs) {

@@ -1184,55 +1184,40 @@ namespace cryptonote::rpc {
     get.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  IS_KEY_IMAGE_SPENT::response core_rpc_server::invoke(IS_KEY_IMAGE_SPENT::request&& req, rpc_context context)
+  void core_rpc_server::invoke(IS_KEY_IMAGE_SPENT& spent, rpc_context context)
   {
-    IS_KEY_IMAGE_SPENT::response res{};
-
     PERF_TIMER(on_is_key_image_spent);
+    /*
     if (use_bootstrap_daemon_if_necessary<IS_KEY_IMAGE_SPENT>(req, res))
       return res;
+      */
 
-    std::vector<crypto::key_image> key_images;
-    for(const auto& ki_hex_str: req.key_images)
-    {
-      blobdata b;
-      if(!epee::string_tools::parse_hexstr_to_binbuff(ki_hex_str, b))
-      {
-        res.status = "Failed to parse hex representation of key image";
-        return res;
+    spent.response["status"] = STATUS_FAILED;
+
+    std::vector<bool> blockchain_spent;
+    if (!m_core.are_key_images_spent(spent.request.key_images, blockchain_spent))
+      return;
+    std::optional<tx_memory_pool::key_images_container> kis;
+    auto spent_status = json::array();
+    for (size_t n = 0; n < spent.request.key_images.size(); n++) {
+      if (blockchain_spent[n])
+        spent_status.push_back(IS_KEY_IMAGE_SPENT::SPENT::BLOCKCHAIN);
+      else {
+        if (!kis) {
+          try {
+            kis = get_pool_kis(m_core);
+          } catch (const std::exception& e) {
+            MERROR("Failed to get pool key images: " << e.what());
+            return;
+          }
+        }
+        spent_status.push_back(kis->count(spent.request.key_images[n])
+            ? IS_KEY_IMAGE_SPENT::SPENT::POOL : IS_KEY_IMAGE_SPENT::SPENT::UNSPENT);
       }
-      if(b.size() != sizeof(crypto::key_image))
-      {
-        res.status = "Failed, size of data mismatch";
-      }
-      key_images.push_back(*reinterpret_cast<const crypto::key_image*>(b.data()));
-    }
-    std::vector<bool> spent_status;
-    bool r = m_core.are_key_images_spent(key_images, spent_status);
-    if(!r)
-    {
-      res.status = "Failed";
-      return res;
-    }
-    res.spent_status.clear();
-    for (size_t n = 0; n < spent_status.size(); ++n)
-      res.spent_status.push_back(spent_status[n] ? IS_KEY_IMAGE_SPENT::SPENT_IN_BLOCKCHAIN : IS_KEY_IMAGE_SPENT::UNSPENT);
-
-    // check the pool too
-    try {
-      auto kis = get_pool_kis(m_core);
-
-      for (size_t n = 0; n < res.spent_status.size(); ++n)
-        if (res.spent_status[n] == IS_KEY_IMAGE_SPENT::UNSPENT && kis.count(key_images[n]))
-          res.spent_status[n] = IS_KEY_IMAGE_SPENT::SPENT_IN_POOL;
-    } catch (const std::exception& e) {
-      MERROR("Failed to get pool key images: " << e.what());
-      res.status = "Failed";
-      return res;
     }
 
-    res.status = STATUS_OK;
-    return res;
+    spent.response["status"] = STATUS_OK;
+    spent.response["spent_status"] = std::move(spent_status);
   }
   //------------------------------------------------------------------------------------------------------------------------------
   SEND_RAW_TX::response core_rpc_server::invoke(SEND_RAW_TX::request&& req, rpc_context context)

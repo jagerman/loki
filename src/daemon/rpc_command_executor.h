@@ -174,7 +174,7 @@ public:
 
   bool print_transaction(const crypto::hash& transaction_hash, bool include_metadata, bool include_hex, bool include_json);
 
-  bool is_key_image_spent(const crypto::key_image &ki);
+  bool is_key_image_spent(const std::vector<crypto::key_image>& ki);
 
   bool print_transaction_pool(bool long_format);
 
