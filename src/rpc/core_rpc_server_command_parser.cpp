@@ -387,4 +387,10 @@ namespace cryptonote::rpc {
     if (!good)
       throw std::domain_error{"Invalid 'tx' value: expected hex, base64, or bytes"};
   }
+
+  void parse_request(GET_BLOCK_HASH& bh, rpc_input in) {
+    get_values(in, "heights", bh.request.heights);
+    if (bh.request.heights.size() > bh.MAX_HEIGHTS)
+      throw std::domain_error{"Error: too many block heights requested at once"};
+  }
 }

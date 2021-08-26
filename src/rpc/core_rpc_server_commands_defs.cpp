@@ -19,16 +19,6 @@ KV_SERIALIZE_MAP_CODE_BEGIN(EMPTY)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-bool GETBLOCKHASH::request::load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
-{
-  return epee::serialization::perform_serialize<false>(height, ps, hparent_section, "height");
-}
-bool GETBLOCKHASH::request::store(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
-{
-  return epee::serialization::perform_serialize<true>(height, ps, hparent_section, "height");
-}
-
-
 KV_SERIALIZE_MAP_CODE_BEGIN(GETBLOCKTEMPLATE::request)
   KV_SERIALIZE(reserve_size)
   KV_SERIALIZE(wallet_address)

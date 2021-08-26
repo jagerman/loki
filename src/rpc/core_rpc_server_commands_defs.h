@@ -709,26 +709,31 @@ namespace cryptonote::rpc {
   ///
   /// - \p status General RPC status string. `"OK"` means everything looks good.
   /// - \p count Number of blocks in logest chain seen by the node.
-  struct GETBLOCKCOUNT : PUBLIC, NO_ARGS
+  struct GET_BLOCK_COUNT : PUBLIC, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_block_count", "getblockcount"); }
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Look up a block's hash by its height.
-  struct GETBLOCKHASH : PUBLIC
+  /// Look up one or more blocks' hashes by their height.
+  ///
+  /// Inputs:
+  /// - heights array of block heights of which to look up the block hashes.  Accepts at most 1000
+  ///   heights per request.
+  ///
+  /// Output values are pairs of heights as keys to block hashes as values:
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p height the current blockchain height of this node
+  /// - \p <height> the block hash of the block with the given height.  Note that each height key is
+  ///   the stringified integer value, e.g. "3456" rather than 3456.
+  struct GET_BLOCK_HASH : PUBLIC
   {
     static constexpr auto names() { return NAMES("get_block_hash", "on_get_block_hash", "on_getblockhash"); }
 
-    struct request {
-      std::vector<uint64_t> height; // Block height (int array of length 1).
+    static constexpr size_t MAX_HEIGHTS = 1000;
 
-      // epee serialization; this is a bit hacky because epee serialization makes things hacky.
-      bool load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section = nullptr);
-      bool store(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section = nullptr);
-    };
-
-    using response = std::string;          // Block hash (string).
+    struct request_parameters {
+      std::vector<uint64_t> heights;
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2494,7 +2499,7 @@ namespace cryptonote::rpc {
     SAVE_BC,
     STOP_DAEMON,
     SYNC_INFO,
-    GETBLOCKCOUNT,
+    GET_BLOCK_COUNT,
     MINING_STATUS,
     GET_TRANSACTION_POOL_HASHES,
     GET_TRANSACTION_POOL_STATS,
@@ -2502,12 +2507,12 @@ namespace cryptonote::rpc {
     IS_KEY_IMAGE_SPENT,
     GET_SERVICE_NODES,
     GET_SERVICE_NODE_STATUS,
-    SUBMIT_TRANSACTION
+    SUBMIT_TRANSACTION,
+    GET_BLOCK_HASH
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
     GET_NET_STATS,
-    GETBLOCKHASH,
     GETBLOCKTEMPLATE,
     SUBMITBLOCK,
     GENERATEBLOCKS,

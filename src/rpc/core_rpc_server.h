@@ -215,7 +215,7 @@ namespace cryptonote::rpc {
     void invoke(STOP_MINING& stop_mining, rpc_context context);
     void invoke(SAVE_BC& save_bc, rpc_context context);
     void invoke(STOP_DAEMON& stop_daemon, rpc_context context);
-    void invoke(GETBLOCKCOUNT& getblockcount, rpc_context context);
+    void invoke(GET_BLOCK_COUNT& getblockcount, rpc_context context);
     void invoke(MINING_STATUS& mining_status, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_HASHES& get_transaction_pool_hashes, rpc_context context);
     void invoke(GET_TRANSACTION_POOL_STATS& get_transaction_pool_stats, rpc_context context);
@@ -228,6 +228,7 @@ namespace cryptonote::rpc {
     void invoke(SET_LIMIT& limit, rpc_context context);
     void invoke(IS_KEY_IMAGE_SPENT& spent, rpc_context context);
     void invoke(SUBMIT_TRANSACTION& tx, rpc_context context);
+    void invoke(GET_BLOCK_HASH& req, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -250,7 +251,6 @@ namespace cryptonote::rpc {
     IN_PEERS::response                                  invoke(IN_PEERS::request&& req, rpc_context context);
     GET_OUTPUT_DISTRIBUTION::response                   invoke(GET_OUTPUT_DISTRIBUTION::request&& req, rpc_context context, bool binary = false);
     POP_BLOCKS::response                                invoke(POP_BLOCKS::request&& req, rpc_context context);
-    GETBLOCKHASH::response                              invoke(GETBLOCKHASH::request&& req, rpc_context context);
     GETBLOCKTEMPLATE::response                          invoke(GETBLOCKTEMPLATE::request&& req, rpc_context context);
     SUBMITBLOCK::response                               invoke(SUBMITBLOCK::request&& req, rpc_context context);
     GENERATEBLOCKS::response                            invoke(GENERATEBLOCKS::request&& req, rpc_context context);

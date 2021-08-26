@@ -1606,44 +1606,42 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  void core_rpc_server::invoke(GETBLOCKCOUNT& getblockcount, rpc_context context)
+  void core_rpc_server::invoke(GET_BLOCK_COUNT& get, rpc_context context)
   {
     PERF_TIMER(on_getblockcount);
     {
       std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_should_use_bootstrap_daemon)
       {
-        getblockcount.response["status"] = "This command is unsupported for bootstrap daemon";
+        get.response["status"] = "This command is unsupported for bootstrap daemon";
         return;
       }
     }
-    getblockcount.response["count"] = m_core.get_current_blockchain_height();
-    getblockcount.response["status"] = STATUS_OK;
+    get.response["count"] = m_core.get_current_blockchain_height();
+    get.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GETBLOCKHASH::response core_rpc_server::invoke(GETBLOCKHASH::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_BLOCK_HASH& get, rpc_context context)
   {
-    GETBLOCKHASH::response res{};
-
     PERF_TIMER(on_getblockhash);
     {
       std::shared_lock lock{m_bootstrap_daemon_mutex};
       if (m_should_use_bootstrap_daemon)
       {
-        res = "This command is unsupported for bootstrap daemon";
-        return res;
+        get.response["status"] = "This command is unsupported for bootstrap daemon";
+        return;
       }
     }
-    if(req.height.size() != 1)
-      throw rpc_error{ERROR_WRONG_PARAM, "Wrong parameters, expected height"};
 
-    uint64_t h = req.height[0];
-    if(m_core.get_current_blockchain_height() <= h)
-      throw rpc_error{ERROR_TOO_BIG_HEIGHT,
-        "Requested block height: " + std::to_string(h) + " greater than current top block height: " +  std::to_string(m_core.get_current_blockchain_height() - 1)};
+    auto curr_height = m_core.get_current_blockchain_height();
+    for (auto h : get.request.heights) {
+      if (h >= curr_height)
+        throw rpc_error{ERROR_TOO_BIG_HEIGHT,
+          "Requested block height: " + tools::int_to_string(h) + " greater than current top block height: " +  tools::int_to_string(curr_height - 1)};
 
-    res = tools::type_to_hex(m_core.get_block_id_by_height(h));
-    return res;
+      get.response_hex[tools::int_to_string(h)] = m_core.get_block_id_by_height(h);
+    }
+    get.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GETBLOCKTEMPLATE::response core_rpc_server::invoke(GETBLOCKTEMPLATE::request&& req, rpc_context context)
