@@ -251,9 +251,6 @@ namespace cryptonote::rpc {
     IN_PEERS::response                                  invoke(IN_PEERS::request&& req, rpc_context context);
     GET_OUTPUT_DISTRIBUTION::response                   invoke(GET_OUTPUT_DISTRIBUTION::request&& req, rpc_context context, bool binary = false);
     POP_BLOCKS::response                                invoke(POP_BLOCKS::request&& req, rpc_context context);
-    GETBLOCKTEMPLATE::response                          invoke(GETBLOCKTEMPLATE::request&& req, rpc_context context);
-    SUBMITBLOCK::response                               invoke(SUBMITBLOCK::request&& req, rpc_context context);
-    GENERATEBLOCKS::response                            invoke(GENERATEBLOCKS::request&& req, rpc_context context);
     GET_LAST_BLOCK_HEADER::response                     invoke(GET_LAST_BLOCK_HEADER::request&& req, rpc_context context);
     GET_BLOCK_HEADER_BY_HASH::response                  invoke(GET_BLOCK_HEADER_BY_HASH::request&& req, rpc_context context);
     GET_BLOCK_HEADER_BY_HEIGHT::response                invoke(GET_BLOCK_HEADER_BY_HEIGHT::request&& req, rpc_context context);

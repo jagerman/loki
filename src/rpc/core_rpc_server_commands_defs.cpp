@@ -19,54 +19,6 @@ KV_SERIALIZE_MAP_CODE_BEGIN(EMPTY)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(GETBLOCKTEMPLATE::request)
-  KV_SERIALIZE(reserve_size)
-  KV_SERIALIZE(wallet_address)
-  KV_SERIALIZE(prev_block)
-  KV_SERIALIZE(extra_nonce)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(GETBLOCKTEMPLATE::response)
-  KV_SERIALIZE(difficulty)
-  KV_SERIALIZE(height)
-  KV_SERIALIZE(reserved_offset)
-  KV_SERIALIZE(expected_reward)
-  KV_SERIALIZE(prev_hash)
-  KV_SERIALIZE(blocktemplate_blob)
-  KV_SERIALIZE(blockhashing_blob)
-  KV_SERIALIZE(status)
-  KV_SERIALIZE(untrusted)
-  KV_SERIALIZE(seed_hash)
-  KV_SERIALIZE(next_seed_hash)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-bool SUBMITBLOCK::request::load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
-{
-  return epee::serialization::perform_serialize<false>(blob, ps, hparent_section, "blob");
-}
-bool SUBMITBLOCK::request::store(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
-{
-  return epee::serialization::perform_serialize<true>(blob, ps, hparent_section, "blob");
-}
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(GENERATEBLOCKS::request)
-  KV_SERIALIZE(amount_of_blocks)
-  KV_SERIALIZE(wallet_address)
-  KV_SERIALIZE(prev_block)
-  KV_SERIALIZE_OPT(starting_nonce, (uint32_t)0)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(GENERATEBLOCKS::response)
-  KV_SERIALIZE(height)
-  KV_SERIALIZE(blocks)
-  KV_SERIALIZE(status)
-KV_SERIALIZE_MAP_CODE_END()
-
-
 KV_SERIALIZE_MAP_CODE_BEGIN(block_header_response)
   KV_SERIALIZE(major_version)
   KV_SERIALIZE(minor_version)

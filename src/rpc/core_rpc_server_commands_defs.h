@@ -737,82 +737,6 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Get a block template on which mining a new block.
-  struct GETBLOCKTEMPLATE : PUBLIC
-  {
-    static constexpr auto names() { return NAMES("get_block_template", "getblocktemplate"); }
-
-    struct request
-    {
-      uint64_t reserve_size;      // Max 255 bytes
-      std::string wallet_address; // Address of wallet to receive coinbase transactions if block is successfully mined.
-      std::string prev_block;
-      std::string extra_nonce;
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      uint64_t difficulty;         // Difficulty of next block.
-      uint64_t height;             // Height on which to mine.
-      uint64_t reserved_offset;    // Reserved offset.
-      uint64_t expected_reward;    // Coinbase reward expected to be received if block is successfully mined.
-      std::string prev_hash;       // Hash of the most recent block on which to mine the next block.
-      std::string seed_hash;       // RandomX current seed hash
-      std::string next_seed_hash;  // RandomX upcoming seed hash
-      blobdata blocktemplate_blob; // Blob on which to try to mine a new block.
-      blobdata blockhashing_blob;  // Blob on which to try to find a valid nonce.
-      std::string status;          // General RPC error code. "OK" means everything looks good.
-      bool untrusted;              // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Submit a mined block to the network.
-  struct SUBMITBLOCK : PUBLIC
-  {
-    static constexpr auto names() { return NAMES("submit_block", "submitblock"); }
-
-    struct request {
-      std::vector<std::string> blob; // Block blob data - array containing exactly one block blob string which has been mined. See get_block_template to get a blob on which to mine.
-
-      // epee serialization; this is a bit hacky because epee serialization makes things hacky.
-      bool load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section = nullptr);
-      bool store(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section = nullptr);
-    };
-    struct response : STATUS {};
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Developer only.
-  struct GENERATEBLOCKS : RPC_COMMAND
-  {
-    static constexpr auto names() { return NAMES("generateblocks"); }
-
-    struct request
-    {
-      uint64_t amount_of_blocks;
-      std::string wallet_address;
-      std::string prev_block;
-      uint32_t starting_nonce;
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      uint64_t height;
-      std::vector<std::string> blocks;
-      std::string status; // General RPC error code. "OK" means everything looks good.
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
   struct block_header_response
   {
       uint8_t major_version;                  // The major version of the oxen protocol at this block height.
@@ -2513,9 +2437,6 @@ namespace cryptonote::rpc {
 
   using FIXME_old_rpc_types = tools::type_list<
     GET_NET_STATS,
-    GETBLOCKTEMPLATE,
-    SUBMITBLOCK,
-    GENERATEBLOCKS,
     GET_LAST_BLOCK_HEADER,
     GET_BLOCK_HEADER_BY_HASH,
     GET_BLOCK_HEADER_BY_HEIGHT,
