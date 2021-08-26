@@ -1076,7 +1076,7 @@ namespace cryptonote
 
     if (tvc.m_verifivation_failed)       os << "Verification failed, connection should be dropped, "; //bad tx, should drop connection
     if (tvc.m_verifivation_impossible)   os << "Verification impossible, related to alt chain, "; //the transaction is related with an alternative blockchain
-    if (tvc.m_should_be_relayed)         os << "TX should be relayed, ";
+    if (!tvc.m_should_be_relayed)        os << "TX should NOT be relayed, ";
     if (tvc.m_added_to_pool)             os << "TX added to pool, ";
     if (tvc.m_low_mixin)                 os << "Insufficient mixin, ";
     if (tvc.m_double_spend)              os << "Double spend TX, ";
@@ -1099,6 +1099,27 @@ namespace cryptonote
       buf.resize(buf.size() - 2);
 
     return buf;
+  }
+  std::unordered_set<std::string> tx_verification_failure_codes(const tx_verification_context& tvc) {
+      std::unordered_set<std::string> reasons;
+
+    if (tvc.m_verifivation_failed) reasons.insert("failed");
+    if (tvc.m_verifivation_impossible) reasons.insert("altchain");
+    if (tvc.m_low_mixin) reasons.insert("mixin");
+    if (tvc.m_double_spend) reasons.insert("double_spend");
+    if (tvc.m_invalid_input) reasons.insert("invalid_input");
+    if (tvc.m_invalid_output) reasons.insert("invalid_output");
+    if (tvc.m_too_few_outputs) reasons.insert("too_few_outputs");
+    if (tvc.m_too_big) reasons.insert("too_big");
+    if (tvc.m_overspend) reasons.insert("overspend");
+    if (tvc.m_fee_too_low) reasons.insert("fee_too_low");
+    if (tvc.m_invalid_version) reasons.insert("invalid_version");
+    if (tvc.m_invalid_type) reasons.insert("invalid_type");
+    if (tvc.m_key_image_locked_by_snode) reasons.insert("snode_locked");
+    if (tvc.m_key_image_blacklisted) reasons.insert("blacklisted");
+    if (!tvc.m_should_be_relayed) reasons.insert("not_relayed");
+
+    return reasons;
   }
   //---------------------------------------------------------------
   std::string print_vote_verification_context(vote_verification_context const &vvc, service_nodes::quorum_vote_t const *vote)

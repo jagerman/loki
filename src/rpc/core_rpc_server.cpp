@@ -338,7 +338,7 @@ namespace cryptonote::rpc {
     */
 
     auto [height, hash] = m_core.get_blockchain_top();
-    
+
     ++height; // block height to chain height
     get_height.response["status"] = STATUS_OK;
     get_height.response["height"] = height;
@@ -1220,108 +1220,81 @@ namespace cryptonote::rpc {
     spent.response["spent_status"] = std::move(spent_status);
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SEND_RAW_TX::response core_rpc_server::invoke(SEND_RAW_TX::request&& req, rpc_context context)
+  void core_rpc_server::invoke(SUBMIT_TRANSACTION& tx, rpc_context context)
   {
-    SEND_RAW_TX::response res{};
-
-
-    PERF_TIMER(on_send_raw_tx);
-    if (use_bootstrap_daemon_if_necessary<SEND_RAW_TX>(req, res))
+    PERF_TIMER(on_submit_transaction);
+    /*
+    if (use_bootstrap_daemon_if_necessary<SUBMIT_TRANSACTION>(req, res))
       return res;
+    */
 
-    CHECK_CORE_READY();
-
-    std::string tx_blob;
-    if(!epee::string_tools::parse_hexstr_to_binbuff(req.tx_as_hex, tx_blob))
-    {
-      LOG_PRINT_L0("[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex);
-      res.status = "Failed";
-      return res;
+    if (!check_core_ready()) {
+      tx.response["status"] = STATUS_BUSY;
+      return;
     }
 
-    if (req.do_sanity_checks && !cryptonote::tx_sanity_check(tx_blob, m_core.get_blockchain_storage().get_num_mature_outputs(0)))
+    if (tx.request.blink)
     {
-      res.status = "Failed";
-      res.reason = "Sanity check failed";
-      res.sanity_check_failed = true;
-      return res;
-    }
-    res.sanity_check_failed = false;
-
-    if (req.blink)
-    {
-      auto future = m_core.handle_blink_tx(tx_blob);
+      auto future = m_core.handle_blink_tx(tx.request.tx);
+      // FIXME: blocking here for 10s is nasty; we need to stash this request and come back to it
+      // when the blink tx result comes back, and wait for longer (maybe 30s).
+      //
+      // FIXME 2: on timeout, we should check the mempool to see if it arrived that way so that we
+      // return success if it got out to the network, even if we didn't get the blink quorum reply
+      // for some reason.
       auto status = future.wait_for(10s);
       if (status != std::future_status::ready) {
-        res.status = "Failed";
-        res.reason = "Blink quorum timeout";
-        res.blink_status = blink_result::timeout;
-        return res;
+        tx.response["status"] = STATUS_FAILED;
+        tx.response["reason"] = "Blink quorum timeout";
+        tx.response["blink_status"] = blink_result::timeout;
+        return;
       }
 
       try {
         auto result = future.get();
-        res.blink_status = result.first;
+        tx.response["blink_status"] = result.first;
         if (result.first == blink_result::accepted) {
-          res.status = STATUS_OK;
+          tx.response["status"] = STATUS_OK;
         } else {
-          res.status = "Failed";
-          res.reason = !result.second.empty() ? result.second : result.first == blink_result::timeout ? "Blink quorum timeout" : "Transaction rejected by blink quorum";
+          tx.response["status"] = STATUS_FAILED;
+          tx.response["reason"] = !result.second.empty() ? result.second : result.first == blink_result::timeout ? "Blink quorum timeout" : "Transaction rejected by blink quorum";
         }
       } catch (const std::exception &e) {
-        res.blink_status = blink_result::rejected;
-        res.status = "Failed";
-        res.reason = std::string{"Transaction failed: "} + e.what();
+        tx.response["blink_status"] = blink_result::rejected;
+        tx.response["status"] = STATUS_FAILED;
+        tx.response["reason"] = "Transaction failed: "s + e.what();
       }
-      return res;
+      return;
     }
 
     tx_verification_context tvc{};
-    if(!m_core.handle_incoming_tx(tx_blob, tvc, tx_pool_options::new_tx(req.do_not_relay)) || tvc.m_verifivation_failed)
+    if (!m_core.handle_incoming_tx(tx.request.tx, tvc, tx_pool_options::new_tx()) || tvc.m_verifivation_failed || !tvc.m_should_be_relayed)
     {
-      const vote_verification_context &vvc = tvc.m_vote_ctx;
-      res.status          = "Failed";
-      std::string reason  = print_tx_verification_context  (tvc);
-      reason             += print_vote_verification_context(vvc);
-      res.tvc             = tvc;
-      const std::string punctuation = res.reason.empty() ? "" : ": ";
-      if (tvc.m_verifivation_failed)
-      {
-        LOG_PRINT_L0("[on_send_raw_tx]: tx verification failed" << punctuation << reason);
-      }
-      else
-      {
-        LOG_PRINT_L0("[on_send_raw_tx]: Failed to process tx" << punctuation << reason);
-      }
-      return res;
+      tx.response["status"] = STATUS_FAILED;
+      auto reason = print_tx_verification_context(tvc);
+      LOG_PRINT_L0("[on_send_raw_tx]: " << (tvc.m_verifivation_failed ? "tx verification failed" : "Failed to process tx") << reason);
+      tx.response["reason"] = std::move(reason);
+      tx.response["reason_codes"] = tx_verification_failure_codes(tvc);
+      return;
     }
 
-    if(!tvc.m_should_be_relayed)
-    {
-      LOG_PRINT_L0("[on_send_raw_tx]: tx accepted, but not relayed");
-      res.reason = "Not relayed";
-      res.not_relayed = true;
-      res.status = STATUS_OK;
-      return res;
-    }
-
+    // Why is is the RPC handler's responsibility to tell the p2p protocol to relay a transaction?!
     NOTIFY_NEW_TRANSACTIONS::request r{};
-    r.txs.push_back(tx_blob);
+    r.txs.push_back(std::move(tx.request.tx));
     cryptonote_connection_context fake_context{};
     m_core.get_protocol()->relay_transactions(r, fake_context);
 
-    //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
-    res.status = STATUS_OK;
-    return res;
+    tx.response["status"] = STATUS_OK;
+    return;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(START_MINING& start_mining, rpc_context context)
   {
     PERF_TIMER(on_start_mining);
     //CHECK_CORE_READY();
-    if(!check_core_ready()){ 
+    if(!check_core_ready()){
       start_mining.response["status"] = STATUS_BUSY;
-      return; 
+      return;
     }
 
     cryptonote::address_parse_info info;

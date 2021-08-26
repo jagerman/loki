@@ -331,6 +331,60 @@ namespace cryptonote::rpc {
 
   void parse_request(IS_KEY_IMAGE_SPENT& spent, rpc_input in) {
     get_values(in, "key_images", spent.request.key_images);
+  }
 
+  void parse_request(SUBMIT_TRANSACTION& tx, rpc_input in) {
+    if (auto* json_in = std::get_if<json>(&in))
+      if (auto it = json_in->find("tx_as_hex"); it != json_in->end())
+        (*json_in)["tx"] = std::move(*it);
+
+    auto& tx_data = tx.request.tx;
+    get_values(in,
+        "blink", tx.request.blink,
+        "tx", required{tx_data});
+
+    if (tx_data.empty()) // required above will make sure it's specified, but doesn't guarantee against an empty value
+      throw std::domain_error{"Invalid 'tx' value: cannot be empty"};
+
+    // tx can be specified as base64, hex, or binary, so try to figure out which one we have by
+    // looking at the beginning.
+    //
+    // An encoded transaction always starts with the version byte, currently 0-4 (though 0 isn't
+    // actually used), with higher future values possible.  That means in hex we get something like:
+    // `04...` and in base64 we get `B` (because the first 6 bits are 000001, and the b64 alphabet
+    // begins at `A` for 0).  Thus the first bytes, for tx versions 0 through 48, are thus:
+    //
+    // binary: (31 binary control characters through 0x1f ... )          (space) ! " # $ % & ' ( ) * + , - . / 0
+    // base64: A A A A B B B B C C C C D D D D E E E E F F F F G G G G H H H H I I I I J J J J K K K K L L L L M
+    // hex:    0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 3
+    //
+    // and so we run into the first ambiguity at version 48.  Since we are currently only at version
+    // 4 (and Oxen started at version 2) this is likely to be sufficient for an extremely long time.
+    //
+    // Thus our heuristic:
+    //     'A'-'L' => base64
+    //     '0'-'2' => hex
+    //     \x00-\x2f => bytes
+    // anything else we reject as garbage.
+    auto tx0 = tx_data.front();
+    bool good = false;
+    if (tx0 <= 0x2f) {
+      good = true;
+    } else if (tx0 >= 'A' && tx0 <= 'L') {
+      if (oxenmq::is_base64(tx_data)) {
+        auto end = oxenmq::from_base64(tx_data.begin(), tx_data.end(), tx_data.begin());
+        tx_data.erase(end, tx_data.end());
+        good = true;
+      }
+    } else if (tx0 >= '0' && tx0 <= '2') {
+      if (oxenmq::is_hex(tx_data)) {
+        auto end = oxenmq::from_hex(tx_data.begin(), tx_data.end(), tx_data.begin());
+        tx_data.erase(end, tx_data.end());
+        good = true;
+      }
+    }
+
+    if (!good)
+      throw std::domain_error{"Invalid 'tx' value: expected hex, base64, or bytes"};
   }
 }

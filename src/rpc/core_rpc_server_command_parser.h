@@ -19,4 +19,5 @@ namespace cryptonote::rpc {
   void parse_request(HARD_FORK_INFO& hfinfo, rpc_input in);
   void parse_request(SET_LIMIT& limit, rpc_input in);
   void parse_request(IS_KEY_IMAGE_SPENT& spent, rpc_input in);
+  void parse_request(SUBMIT_TRANSACTION& tx, rpc_input in);
 }

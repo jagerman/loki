@@ -219,6 +219,28 @@ namespace cryptonote
   std::string print_tx_verification_context  (tx_verification_context const &tvc, transaction const *tx = nullptr);
   std::string print_vote_verification_context(vote_verification_context const &vvc, service_nodes::quorum_vote_t const *vote = nullptr);
 
+  // Returns code strings for various tx verification failures:
+  // - "failed" -- general "bad transaction" code
+  // - "altchain" -- the transaction is spending outputs that exist on an altchain.
+  // - "mixin" -- the transaction has the wrong number of decoys
+  // - "double_spend" -- the transaction is spending outputs that are already spent
+  // - "invalid_input" -- one or more inputs in the transaction are invalid
+  // - "invalid_output" -- out or more outputs in the transaction are invalid
+  // - "too_few_outputs" -- the transaction does not create enough outputs (at least two are
+  //   required, currently).
+  // - "too_big" -- the transaction is too large
+  // - "overspend" -- the transaction spends (via outputs + fees) more than the inputs
+  // - "fee_too_low" -- the transaction fee is insufficient
+  // - "invalid_version" -- the transaction version is invalid (the wallet likely needs an update).
+  // - "invalid_type" -- the transaction type is invalid
+  // - "snode_locked" -- one or more outputs are currently staked to a registred service node and
+  //   thus are not currently spendable on the blockchain.
+  // - "blacklisted" -- the outputs are currently blacklisted (from being in the 30-day penalty
+  //   period following a service node deregistration).
+  // - "not_relayed" -- the transaction cannot be relayed to the network for some reason but may
+  //   still have been accepted by this node.
+  std::unordered_set<std::string> tx_verification_failure_codes(const tx_verification_context& tvc);
+
   bool is_valid_address(const std::string address, cryptonote::network_type nettype, bool allow_subaddress = true, bool allow_integrated = true);
 
   inline std::ostream &operator<<(std::ostream &stream, transaction const &tx)

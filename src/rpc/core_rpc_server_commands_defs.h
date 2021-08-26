@@ -461,34 +461,72 @@ namespace cryptonote::rpc {
     } request;
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Broadcast a raw transaction to the network.
-  struct SEND_RAW_TX : PUBLIC, LEGACY
+  /// Submit a transaction to be broadcast to the network.
+  ///
+  /// Inputs:
+  ///
+  /// - \p tx the full transaction data itself.  Can be hex- or base64-encoded for json requests;
+  ///   can also be those or raw bytes for bt-encoded requests.  For backwards compatibility,
+  ///   hex-encoded data can also be passed in a json request via the parameter \p tx_as_hex but
+  ///   that is deprecated and will eventually be removed.
+  /// - \p blink Should be set to true if this transaction is a blink transaction that should be
+  ///   submitted to a blink quorum rather than distributed through the mempool.
+  ///
+  /// Output values available from a public RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore
+  ///   untrusted ('true'), or when the daemon is fully synced ('false').
+  /// - \p reason String containing additional information on why a transaction failed.
+  /// - \p blink_status Set to the result of submitting this transaction to the Blink quorum.  1
+  ///   means the quorum rejected the transaction; 2 means the quorum accepted it; 3 means there was
+  ///   a timeout connecting to or waiting for a response from the blink quorum.  Note that a
+  ///   timeout response does *not* necessarily mean the transaction has not made it to the network.
+  /// - \p not_relayed will be set to true if some problem with the transactions prevents it from
+  ///   being relayed to the network, omitted otherwise.
+  /// - \p reason_codes If the transaction was rejected this will be set to a set of reason string
+  ///   codes indicating why the transaction failed:
+  ///   - \c "failed" -- general "bad transaction" code
+  ///   - \c "altchain" -- the transaction is spending outputs that exist on an altchain.
+  ///   - \c "mixin" -- the transaction has the wrong number of decoys
+  ///   - \c "double_spend" -- the transaction is spending outputs that are already spent
+  ///   - \c "invalid_input" -- one or more inputs in the transaction are invalid
+  ///   - \c "invalid_output" -- out or more outputs in the transaction are invalid
+  ///   - \c "too_few_outputs" -- the transaction does not create enough outputs (at least two are
+  ///     required, currently).
+  ///   - \c "too_big" -- the transaction is too large
+  ///   - \c "overspend" -- the transaction spends (via outputs + fees) more than the inputs
+  ///   - \c "fee_too_low" -- the transaction fee is insufficient
+  ///   - \c "invalid_version" -- the transaction version is invalid (the wallet likely needs an
+  ///     update).
+  ///   - \c "invalid_type" -- the transaction type is invalid
+  ///   - \c "snode_locked" -- one or more outputs are currently staked to a registred service node
+  ///     and thus are not currently spendable on the blockchain.
+  ///   - \c "blacklisted" -- the outputs are currently blacklisted (from being in the 30-day
+  ///     penalty period following a service node deregistration).
+  ///   - \c "blink" -- the blink transaction failed (see `blink_status`)
+  struct SUBMIT_TRANSACTION : PUBLIC, LEGACY
   {
-    static constexpr auto names() { return NAMES("send_raw_transaction", "sendrawtransaction"); }
+    static constexpr auto names() { return NAMES("submit_transaction", "send_raw_transaction", "sendrawtransaction"); }
 
-    struct request
+    struct request_parameters
     {
-      std::string tx_as_hex; // Full transaction information as hexidecimal string.
-      bool do_not_relay;     // (Optional: Default false) Stop relaying transaction to other nodes.  Ignored if `blink` is true.
-      bool do_sanity_checks; // (Optional: Default true) Verify TX params have sane values.
-      bool blink;            // (Optional: Default false) Submit this as a blink tx rather than into the mempool.
+      std::string tx;
+      bool blink = false;
+    } request;
 
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
-      std::string reason; // Additional information. Currently empty, "Not relayed" if transaction was accepted but not relayed, or some descriptive message of why the tx failed.
-      bool not_relayed;   // Transaction was not relayed (true) or relayed (false).
-      bool untrusted;     // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-      tx_verification_context tvc;
-      bool sanity_check_failed;
-      blink_result blink_status; // 0 for a non-blink tx.  For a blink tx: 1 means rejected, 2 means accepted, 3 means timeout.
-
-      KV_MAP_SERIALIZABLE
-    };
+//    struct response
+//    {
+//      std::string status; // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
+//      std::string reason; // Additional information. Currently empty, "Not relayed" if transaction was accepted but not relayed, or some descriptive message of why the tx failed.
+//      bool not_relayed;   // Transaction was not relayed (true) or relayed (false).
+//      bool untrusted;     // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
+//      tx_verification_context tvc;
+//      bool sanity_check_failed;
+//      blink_result blink_status; // 0 for a non-blink tx.  For a blink tx: 1 means rejected, 2 means accepted, 3 means timeout.
+//
+//      KV_MAP_SERIALIZABLE
+//    };
   };
 
   //-----------------------------------------------
@@ -2463,11 +2501,11 @@ namespace cryptonote::rpc {
     GET_TRANSACTIONS,
     IS_KEY_IMAGE_SPENT,
     GET_SERVICE_NODES,
-    GET_SERVICE_NODE_STATUS
+    GET_SERVICE_NODE_STATUS,
+    SUBMIT_TRANSACTION
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
-    SEND_RAW_TX,
     GET_NET_STATS,
     GETBLOCKHASH,
     GETBLOCKTEMPLATE,

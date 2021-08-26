@@ -19,24 +19,6 @@ KV_SERIALIZE_MAP_CODE_BEGIN(EMPTY)
 KV_SERIALIZE_MAP_CODE_END()
 
 
-KV_SERIALIZE_MAP_CODE_BEGIN(SEND_RAW_TX::request)
-  KV_SERIALIZE(tx_as_hex)
-  KV_SERIALIZE_OPT(do_not_relay, false)
-  KV_SERIALIZE_OPT(do_sanity_checks, true)
-  KV_SERIALIZE_OPT(blink, false)
-KV_SERIALIZE_MAP_CODE_END()
-
-
-KV_SERIALIZE_MAP_CODE_BEGIN(SEND_RAW_TX::response)
-  KV_SERIALIZE(status)
-  KV_SERIALIZE(reason)
-  KV_SERIALIZE(not_relayed)
-  KV_SERIALIZE(sanity_check_failed)
-  KV_SERIALIZE(untrusted)
-  KV_SERIALIZE(tvc)
-  KV_SERIALIZE_ENUM(blink_status)
-KV_SERIALIZE_MAP_CODE_END()
-
 bool GETBLOCKHASH::request::load(epee::serialization::portable_storage& ps, epee::serialization::section* hparent_section)
 {
   return epee::serialization::perform_serialize<false>(height, ps, hparent_section, "height");

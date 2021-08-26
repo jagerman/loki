@@ -9,8 +9,10 @@ namespace cryptonote::rpc {
       std::memcpy(val_data, bytes.data(), bytes.size());
       return;
     } else if (bytes.size() == raw_size * 2) {
-      if (oxenmq::is_hex(bytes))
-        return oxenmq::from_hex(bytes.begin(), bytes.end(), val_data);
+      if (oxenmq::is_hex(bytes)) {
+        oxenmq::from_hex(bytes.begin(), bytes.end(), val_data);
+        return;
+      }
     } else {
       const size_t b64_padded = (raw_size + 2) / 3 * 4;
       const size_t b64_padding = raw_size % 3 == 1 ? 2 : raw_size % 3 == 2 ? 1 : 0;
@@ -18,8 +20,10 @@ namespace cryptonote::rpc {
       const std::string_view b64_padding_string = b64_padding == 2 ? "=="sv : b64_padding == 1 ? "="sv : ""sv;
       if (bytes.size() == b64_unpadded ||
         (b64_padding > 0 && bytes.size() == b64_padded && bytes.substr(b64_unpadded) == b64_padding_string)) {
-        if (oxenmq::is_base64(bytes))
-          return oxenmq::from_base64(bytes.begin(), bytes.end(), val_data);
+        if (oxenmq::is_base64(bytes)) {
+          oxenmq::from_base64(bytes.begin(), bytes.end(), val_data);
+          return;
+        }
       }
     }
 
