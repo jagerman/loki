@@ -33,6 +33,7 @@
 #include "common/command_line.h"
 #include "common/hex.h"
 #include "common/scoped_message_writer.h"
+#include "common/string_util.h"
 #include "version.h"
 #include "daemon/command_parser_executor.h"
 #include "rpc/core_rpc_server_commands_defs.h"
@@ -121,44 +122,29 @@ bool command_parser_executor::print_sn_state_changes(const std::vector<std::stri
 
 bool command_parser_executor::print_peer_list(const std::vector<std::string>& args)
 {
-  if (args.size() > 3)
-  {
-    std::cout << "use: print_pl [white] [gray] [<limit>] [pruned] [publicrpc]" << std::endl;
-    return true;
-  }
-
   bool white = false;
   bool gray = false;
   bool pruned = false;
-  bool publicrpc = false;
   size_t limit = 0;
-  for (size_t i = 0; i < args.size(); ++i)
+  for (const auto& arg : args)
   {
-    if (args[i] == "white")
-    {
+    if (arg == "white")
       white = true;
-    }
-    else if (args[i] == "gray")
-    {
+    else if (arg == "gray")
       gray = true;
-    }
-    else if (args[i] == "pruned")
-    {
+    else if (arg == "pruned")
       pruned = true;
-    }
-    else if (args[i] == "publicrpc")
-    {
-      publicrpc = true;
-    }
-    else if (!epee::string_tools::get_xtype_from_string(limit, args[i]))
-    {
-      std::cout << "unexpected argument: " << args[i] << std::endl;
+    else if (tools::parse_int(arg, limit))
+      /*limit already set*/;
+    else {
+      std::cout << "Unexpected argument: " << arg << "\n";
       return true;
     }
   }
 
-  const bool print_both = !white && !gray;
-  return m_executor.print_peer_list(white | print_both, gray | print_both, limit, pruned, publicrpc);
+  if (!white && !gray)
+    white = gray = true;
+  return m_executor.print_peer_list(white, gray, limit, pruned);
 }
 
 bool command_parser_executor::print_peer_list_stats(const std::vector<std::string>& args)

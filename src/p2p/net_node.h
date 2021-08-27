@@ -124,12 +124,9 @@ namespace nodetool
     struct by_peer_id{};
     struct by_addr{};
 
-    typedef p2p_connection_context_t<typename t_payload_net_handler::connection_context> p2p_connection_context;
+    using p2p_connection_context = p2p_connection_context_t<typename t_payload_net_handler::connection_context>;
 
-    typedef COMMAND_HANDSHAKE_T<typename t_payload_net_handler::payload_type> COMMAND_HANDSHAKE;
-    typedef COMMAND_TIMED_SYNC_T<typename t_payload_net_handler::payload_type> COMMAND_TIMED_SYNC;
-
-    typedef epee::net_utils::boosted_tcp_server<epee::levin::async_protocol_handler<p2p_connection_context>> net_server;
+    using net_server = epee::net_utils::boosted_tcp_server<epee::levin::async_protocol_handler<p2p_connection_context>>;
 
     struct network_zone;
     using connect_func = std::optional<p2p_connection_context>(network_zone&, epee::net_utils::network_address const&);
@@ -221,7 +218,6 @@ namespace nodetool
     node_server(t_payload_net_handler& payload_handler)
       : m_payload_handler(payload_handler),
         m_external_port(0),
-        m_rpc_port(0),
         m_allow_local_ip(false),
         m_hide_my_port(false),
         m_igd(no_igd),
@@ -403,11 +399,6 @@ namespace nodetool
 
   public:
 
-    void set_rpc_port(uint16_t rpc_port)
-    {
-      m_rpc_port = rpc_port;
-    }
-
     void reset_peer_handshake_timer()
     {
       m_peer_handshake_idle_maker_interval.reset();
@@ -421,7 +412,6 @@ namespace nodetool
     uint32_t m_listening_port;
     uint32_t m_listening_port_ipv6;
     uint32_t m_external_port;
-    uint16_t m_rpc_port;
     bool m_allow_local_ip;
     bool m_hide_my_port;
     igd_t m_igd;

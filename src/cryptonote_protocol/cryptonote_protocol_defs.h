@@ -63,7 +63,6 @@ namespace cryptonote
     std::string host;
     std::string ip;
     std::string port;
-    uint16_t rpc_port;
 
     std::string peer_id;
 

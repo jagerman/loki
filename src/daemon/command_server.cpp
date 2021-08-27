@@ -60,7 +60,7 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
   m_command_lookup.set_handler(
       "print_pl"
     , [this](const auto &x) { return m_parser.print_peer_list(x); }
-    , "print_pl [white] [gray] [pruned] [publicrpc] [<limit>]"
+    , "print_pl [white] [gray] [pruned] [<limit>]"
     , "Print the current peer list."
     );
   m_command_lookup.set_handler(
@@ -141,13 +141,8 @@ void command_server::init_commands(cryptonote::rpc::core_rpc_server* rpc_server)
   m_command_lookup.set_handler(
       "start_mining"
     , [this](const auto &x) { return m_parser.start_mining(x); }
-#if defined NDEBUG
-    , "start_mining <addr> [threads=(<threads>|auto)"
-    , "Start mining for specified address. Defaults to 1 thread; use \"auto\" to autodetect optimal number of threads."
-#else
-    , "start_mining <addr> [threads=(<threads>|auto) [num_blocks=<num>]"
-    , "Start mining for specified address. Defaults to 1 thread; use \"auto\" to autodetect optimal number of threads. When num_blocks is set, continue mining until the (current_height + num_blocks) is met, irrespective of if this Daemon found those block(s) or not."
-#endif
+    , "start_mining <addr> [threads=N] [num_blocks=B]"
+    , "Start mining for specified address, primarily for debug and testing purposes as Oxen is proof-of-stake. Defaults to 1 thread. When num_blocks is set, continue mining until the blockchain reaches height (current + B)."
     );
   m_command_lookup.set_handler(
       "stop_mining"
@@ -339,8 +334,7 @@ or "default" to return the limit to its default value.)"
       "set_bootstrap_daemon"
     , [this](const auto &x) { return m_parser.set_bootstrap_daemon(x); }
     , "set_bootstrap_daemon (auto | none | host[:port] [username] [password])"
-    , "URL of a 'bootstrap' remote daemon that the connected wallets can use while this daemon is still not fully synced.\n"
-      "Use 'auto' to enable automatic public nodes discovering and bootstrap daemon switching"
+    , "URL of a 'bootstrap' remote daemon that the connected wallets can use while this daemon is still not fully synced."
     );
     m_command_lookup.set_handler(
       "flush_cache"

@@ -229,7 +229,7 @@ namespace cryptonote
       seconds_f connection_time{now - cntxt.m_started};
       ss << std::setw(30) << std::left << std::string(cntxt.m_is_income ? " [INC]":"[OUT]") +
         cntxt.m_remote_address.str()
-        << std::setw(20) << nodetool::peerid_to_string(peer_id)
+        << std::setw(20) << fmt::format("{:016x}", peer_id)
         << std::setw(30) << std::to_string(cntxt.m_recv_cnt) + "(" + std::to_string(tools::to_seconds(now - cntxt.m_last_recv)) + ")" +
                       "/" + std::to_string(cntxt.m_send_cnt) + "(" + std::to_string(tools::to_seconds(now - cntxt.m_last_send)) + ")"
         << std::setw(25) << get_protocol_state_string(cntxt.m_state)
@@ -286,9 +286,7 @@ namespace cryptonote
         cnx.ip = cnx.host;
         cnx.port = std::to_string(cntxt.m_remote_address.as<epee::net_utils::ipv4_network_address>().port());
       }
-      cnx.rpc_port = cntxt.m_rpc_port;
-
-      cnx.peer_id = nodetool::peerid_to_string(peer_id);
+      cnx.peer_id = fmt::format("{:016x}", peer_id);
       
       cnx.live_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - cntxt.m_started);
       cnx.recv_idle_time = std::chrono::duration_cast<std::chrono::milliseconds>(now - std::max(cntxt.m_started, cntxt.m_last_recv));

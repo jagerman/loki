@@ -293,8 +293,8 @@ namespace nodetool
     {
         switch (command)
         {
-        case nodetool::COMMAND_HANDSHAKE_T<cryptonote::CORE_SYNC_DATA>::ID:
-        case nodetool::COMMAND_TIMED_SYNC_T<cryptonote::CORE_SYNC_DATA>::ID:
+        case nodetool::COMMAND_HANDSHAKE::ID:
+        case nodetool::COMMAND_TIMED_SYNC::ID:
         case cryptonote::NOTIFY_NEW_TRANSACTIONS::ID:
             return false;
         default:
