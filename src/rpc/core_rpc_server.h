@@ -229,6 +229,7 @@ namespace cryptonote::rpc {
     void invoke(IS_KEY_IMAGE_SPENT& spent, rpc_context context);
     void invoke(SUBMIT_TRANSACTION& tx, rpc_context context);
     void invoke(GET_BLOCK_HASH& req, rpc_context context);
+    void invoke(GET_PEER_LIST& pl, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -242,8 +243,6 @@ namespace cryptonote::rpc {
     GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::response invoke(GET_TX_GLOBAL_OUTPUTS_INDEXES_BIN::request&& req, rpc_context context);
 
     // FIXME: unconverted JSON RPC endpoints:
-    GET_PEER_LIST::response                             invoke(GET_PEER_LIST::request&& req, rpc_context context);
-    GET_PUBLIC_NODES::response                          invoke(GET_PUBLIC_NODES::request&& req, rpc_context context);
     SET_LOG_LEVEL::response                             invoke(SET_LOG_LEVEL::request&& req, rpc_context context);
     SET_LOG_CATEGORIES::response                        invoke(SET_LOG_CATEGORIES::request&& req, rpc_context context);
     SET_BOOTSTRAP_DAEMON::response                      invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context);
@@ -335,7 +334,6 @@ private:
 
     //utils
     uint64_t get_block_reward(const block& blk);
-    std::optional<std::string> get_random_public_node();
     bool set_bootstrap_daemon(const std::string &address, std::string_view username_password);
     bool set_bootstrap_daemon(const std::string &address, std::string_view username, std::string_view password);
     void fill_block_header_response(const block& blk, bool orphan_status, uint64_t height, const crypto::hash& hash, block_header_response& response, bool fill_pow_hash, bool get_tx_hashes);

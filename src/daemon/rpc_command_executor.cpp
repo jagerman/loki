@@ -118,24 +118,6 @@ namespace {
     return input_line_result::yes;
   }
 
-  void print_peer(std::string const & prefix, GET_PEER_LIST::peer const & peer, bool pruned_only, bool publicrpc_only)
-  {
-    if (pruned_only && peer.pruning_seed == 0)
-      return;
-    if (publicrpc_only && peer.rpc_port == 0)
-      return;
-
-    time_t now = std::time(nullptr);
-    time_t last_seen = static_cast<time_t>(peer.last_seen);
-
-    std::string elapsed = peer.last_seen == 0 ? "never" : epee::misc_utils::get_time_interval_string(now - last_seen);
-    std::string id_str = epee::string_tools::pad_string(epee::string_tools::to_string_hex(peer.id), 16, '0', true);
-    std::string addr_str = peer.host + ":" + std::to_string(peer.port);
-    std::string rpc_port = peer.rpc_port ? std::to_string(peer.rpc_port) : "-";
-    std::string pruning_seed = epee::string_tools::to_string_hex(peer.pruning_seed);
-    tools::msg_writer() << fmt::format("{:<10} {:<25} {:<25} {:<5} %{:-4} {}", prefix, id_str, addr_str, rpc_port, pruning_seed, elapsed);
-  }
-
   void print_block_header(block_header_response const & header)
   {
     tools::success_msg_writer()
@@ -184,6 +166,36 @@ namespace {
   std::string get_human_time_ago(std::time_t t, std::time_t now, bool abbreviate = false) {
     return get_human_time_ago(std::chrono::seconds{now - t}, abbreviate);
   }
+
+  bool print_peer(std::string_view prefix, const json& peer, bool pruned_only, bool publicrpc_only)
+  {
+    auto pruning_seed = peer.value<uint64_t>("pruning_seed", 0);
+    if (pruned_only && pruning_seed == 0)
+      return false;
+    auto rpc_port = peer.value<uint16_t>("rpc_port", 0);
+    if (publicrpc_only && rpc_port == 0)
+      return false;
+
+    time_t now = std::time(nullptr);
+    time_t last_seen = peer.value<time_t>("last_seen", 0);
+
+    tools::msg_writer() << fmt::format("{:<10} {:016x}    {:<30} {:<5} {:<4x} {}",
+        prefix,
+        peer["id"].get<uint64_t>(),
+        fmt::format("{}:{}", peer["host"].get<std::string_view>(), peer["ip"].get<uint16_t>()),
+        rpc_port == 0 ? "-" : tools::int_to_string(rpc_port),
+        pruning_seed,
+        last_seen == 0 ? "never" : get_human_time_ago(last_seen, now));
+    return true;
+  }
+
+  template <typename... Args>
+  void print_peers(std::string_view prefix, const json& peers, size_t& limit, Args&&... args) {
+    for (auto it = peers.begin(); it != peers.end() && limit > 0; it++)
+      if (print_peer(prefix, *it, std::forward<Args>(args)...))
+        limit--;
+  }
+
 }
 
 rpc_command_executor::rpc_command_executor(
@@ -340,43 +352,35 @@ bool rpc_command_executor::print_sn_state_changes(uint64_t start_height, uint64_
 }
 
 bool rpc_command_executor::print_peer_list(bool white, bool gray, size_t limit, bool pruned_only, bool publicrpc_only) {
-  GET_PEER_LIST::response res{};
-
-  if (!invoke<GET_PEER_LIST>({}, res, "Couldn't retrieve peer list"))
+  auto maybe_pl = try_running([this] { return invoke<GET_PEER_LIST>(); }, "Failed to retrieve peer list");
+  if (!maybe_pl)
     return false;
+  auto& pl = *maybe_pl;
 
   if (white)
-  {
-    auto peer = res.white_list.cbegin();
-    const auto end = limit ? peer + std::min(limit, res.white_list.size()) : res.white_list.cend();
-    for (; peer != end; ++peer)
-    {
-      print_peer("white", *peer, pruned_only, publicrpc_only);
-    }
-  }
-
+    print_peers("white", pl["white_list"], limit, pruned_only, publicrpc_only);
   if (gray)
-  {
-    auto peer = res.gray_list.cbegin();
-    const auto end = limit ? peer + std::min(limit, res.gray_list.size()) : res.gray_list.cend();
-    for (; peer != end; ++peer)
-    {
-      print_peer("gray", *peer, pruned_only, publicrpc_only);
-    }
-  }
+    print_peers("gray", pl["gray_list"], limit, pruned_only, publicrpc_only);
 
   return true;
 }
 
 bool rpc_command_executor::print_peer_list_stats() {
-  GET_PEER_LIST::response res{};
-
-  if (!invoke<GET_PEER_LIST>({}, res, "Couldn't retrieve peer list"))
+  auto maybe_info = try_running([this] { return invoke<GET_INFO>(); }, "Failed to retrieve node info");
+  if (!maybe_info)
     return false;
+  auto& info = *maybe_info;
+
+  auto wls = info.find("white_peerlist_size");
+  auto gls = info.find("grey_peerlist_size");
+  if (wls == info.end() || gls == info.end()) {
+    tools::fail_msg_writer() << "Failed to retrieve whitelist info";
+    return false;
+  }
 
   tools::msg_writer()
-    << "White list size: " << res.white_list.size() << "/" << P2P_LOCAL_WHITE_PEERLIST_LIMIT << " (" << res.white_list.size() *  100.0 / P2P_LOCAL_WHITE_PEERLIST_LIMIT << "%)" << std::endl
-    << "Gray list size: " << res.gray_list.size() << "/" << P2P_LOCAL_GRAY_PEERLIST_LIMIT << " (" << res.gray_list.size() *  100.0 / P2P_LOCAL_GRAY_PEERLIST_LIMIT << "%)";
+    << "White list size: " << wls->get<int>() << "/" << P2P_LOCAL_WHITE_PEERLIST_LIMIT << " (" << wls->get<int>() *  100.0 / P2P_LOCAL_WHITE_PEERLIST_LIMIT << "%)\n"
+    << "Gray list size: " << gls->get<int>() << "/" << P2P_LOCAL_GRAY_PEERLIST_LIMIT << " (" << gls->get<int>() *  100.0 / P2P_LOCAL_GRAY_PEERLIST_LIMIT << "%)";
 
   return true;
 }

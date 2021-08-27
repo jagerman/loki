@@ -871,88 +871,34 @@ namespace cryptonote::rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get the known peers list.
+  /// Get the list of current network peers known to this node.
+  ///
+  /// Inputs: none
+  ///
+  /// Output values (requires a restricted/admin RPC endpoint):
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p white_list list of "whitelist" peers (see below), that is, peers that were recorded
+  ///   reachable the last time this node connected to them.  Peers that are unreachable or not
+  ///   synchronized with the network are moved to the graylist.
+  /// - \p gray_list list of peers (see below) that this node knows of but has not (recently) tried
+  ///   to connect to.
+  ///
+  /// Each peer list is an array of dicts containing the following fields:
+  /// - \p id a unique integer locally identifying the peer
+  /// - \p host the peer's IP address (as a string)
+  /// - \p port the port on which the peer is reachable
+  /// - \p last_seen unix timestamp when this node last connected to the peer.  Will be omitted if
+  ///   never connected (e.g. for a peer we received from another node but haven't yet tried).
   struct GET_PEER_LIST : LEGACY
   {
     static constexpr auto names() { return NAMES("get_peer_list"); }
 
-    struct request
+    struct request_parameters
     {
-      bool public_only;
-      KV_MAP_SERIALIZABLE
-    };
+      bool public_only = false; // Hidden option: can be set to false to also include non-public-zone peers (Tor, I2P), but since Oxen currently only really exists in public zones, we don't put this in the RPC docs.
+    } request;
 
-    struct peer
-    {
-      uint64_t id;           // Peer id.
-      std::string host;      // IP address in string format.
-      uint32_t ip;           // IP address in integer format.
-      uint16_t port;         // TCP port the peer is using to connect to oxen network.
-      uint16_t rpc_port;     // RPC port the peer is using
-      uint64_t last_seen;    // Unix time at which the peer has been seen for the last time
-      uint32_t pruning_seed; //
-
-      peer() = default;
-
-      peer(uint64_t id, const std::string &host, uint64_t last_seen, uint32_t pruning_seed, uint16_t rpc_port)
-        : id(id), host(host), ip(0), port(0), rpc_port(rpc_port), last_seen(last_seen), pruning_seed(pruning_seed)
-      {}
-      peer(uint64_t id, const std::string &host, uint16_t port, uint64_t last_seen, uint32_t pruning_seed, uint16_t rpc_port)
-        : id(id), host(host), ip(0), port(port), rpc_port(rpc_port), last_seen(last_seen), pruning_seed(pruning_seed)
-      {}
-      peer(uint64_t id, uint32_t ip, uint16_t port, uint64_t last_seen, uint32_t pruning_seed, uint16_t rpc_port)
-        : id(id), host(epee::string_tools::get_ip_string_from_int32(ip)), ip(ip), port(port), rpc_port(rpc_port), last_seen(last_seen), pruning_seed(pruning_seed)
-      {}
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status;           // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
-      std::vector<peer> white_list; // Array of online peer structure.
-      std::vector<peer> gray_list;  // Array of offline peer structure.
-
-      KV_MAP_SERIALIZABLE
-    };
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  struct public_node
-  {
-    std::string host;
-    uint64_t last_seen;
-    uint16_t rpc_port;
-
-    public_node() = default;
-    public_node(const GET_PEER_LIST::peer &peer) : host(peer.host), last_seen(peer.last_seen), rpc_port(peer.rpc_port) {}
-
-    KV_MAP_SERIALIZABLE
-  };
-
-  OXEN_RPC_DOC_INTROSPECT
-  // Query the daemon's peerlist and retrieve peers who have set their public rpc port.
-  struct GET_PUBLIC_NODES : PUBLIC
-  {
-    static constexpr auto names() { return NAMES("get_public_nodes"); }
-
-    struct request
-    {
-      bool gray; // Get peers that have recently gone offline.
-      bool white; // Get peers that are online
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
-      std::vector<public_node> gray; // Graylist peers
-      std::vector<public_node> white; // Whitelist peers
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2432,7 +2378,8 @@ namespace cryptonote::rpc {
     GET_SERVICE_NODES,
     GET_SERVICE_NODE_STATUS,
     SUBMIT_TRANSACTION,
-    GET_BLOCK_HASH
+    GET_BLOCK_HASH,
+    GET_PEER_LIST
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
@@ -2441,8 +2388,6 @@ namespace cryptonote::rpc {
     GET_BLOCK_HEADER_BY_HASH,
     GET_BLOCK_HEADER_BY_HEIGHT,
     GET_BLOCK,
-    GET_PEER_LIST,
-    GET_PUBLIC_NODES,
     SET_LOG_LEVEL,
     SET_LOG_CATEGORIES,
     GET_BLOCK_HEADERS_RANGE,

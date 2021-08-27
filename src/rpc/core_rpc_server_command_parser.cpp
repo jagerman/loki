@@ -393,4 +393,8 @@ namespace cryptonote::rpc {
     if (bh.request.heights.size() > bh.MAX_HEIGHTS)
       throw std::domain_error{"Error: too many block heights requested at once"};
   }
+
+  void parse_request(GET_PEER_LIST& pl, rpc_input in) {
+    get_values(in, "public_only", pl.request.public_only);
+  }
 }

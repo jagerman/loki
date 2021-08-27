@@ -225,6 +225,7 @@ namespace net_utils
 
 			virtual std::string str() const = 0;
 			virtual std::string host_str() const = 0;
+			virtual uint16_t port() const = 0;
 			virtual bool is_loopback() const = 0;
 			virtual bool is_local() const = 0;
 			virtual address_type get_type_id() const = 0;
@@ -255,6 +256,7 @@ namespace net_utils
 
 			virtual std::string str() const override { return value.str(); }
 			virtual std::string host_str() const override { return value.host_str(); }
+			virtual uint16_t port() const override { return value.port(); }
 			virtual bool is_loopback() const override { return value.is_loopback(); }
 			virtual bool is_local() const override { return value.is_local(); }
 			virtual address_type get_type_id() const override { return value.get_type_id(); }
@@ -303,6 +305,7 @@ namespace net_utils
 		bool is_same_host(const network_address &other) const;
 		std::string str() const { return self ? self->str() : "<none>"; }
 		std::string host_str() const { return self ? self->host_str() : "<none>"; }
+		uint16_t port() const { return self ? self->port() : 0; }
 		bool is_loopback() const { return self ? self->is_loopback() : false; }
 		bool is_local() const { return self ? self->is_local() : false; }
 		address_type get_type_id() const { return self ? self->get_type_id() : address_type::invalid; }

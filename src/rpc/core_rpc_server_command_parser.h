@@ -21,4 +21,5 @@ namespace cryptonote::rpc {
   void parse_request(IS_KEY_IMAGE_SPENT& spent, rpc_input in);
   void parse_request(SUBMIT_TRANSACTION& tx, rpc_input in);
   void parse_request(GET_BLOCK_HASH& bh, rpc_input in);
+  void parse_request(GET_PEER_LIST& bh, rpc_input in);
 }

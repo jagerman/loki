@@ -260,54 +260,12 @@ namespace cryptonote::rpc {
 
     if (address.empty())
       m_bootstrap_daemon.reset();
-    else if (address == "auto")
-      m_bootstrap_daemon = std::make_unique<bootstrap_daemon>([this]{ return get_random_public_node(); });
     else
       m_bootstrap_daemon = std::make_unique<bootstrap_daemon>(address, credentials);
 
     m_should_use_bootstrap_daemon = (bool) m_bootstrap_daemon;
 
     return true;
-  }
-  //------------------------------------------------------------------------------------------------------------------------------
-  std::optional<std::string> core_rpc_server::get_random_public_node()
-  {
-    GET_PUBLIC_NODES::response response{};
-    try
-    {
-      GET_PUBLIC_NODES::request request{};
-      request.gray  = true;
-      request.white = true;
-
-      rpc_context context = {};
-      context.admin       = true;
-      response            = invoke(std::move(request), context);
-    }
-    catch(const std::exception &e)
-    {
-      return std::nullopt;
-    }
-
-    const auto get_random_node_address = [](const std::vector<public_node>& public_nodes) -> std::string {
-      const auto& random_node = public_nodes[crypto::rand_idx(public_nodes.size())];
-      const auto address = random_node.host + ":" + std::to_string(random_node.rpc_port);
-      return address;
-    };
-
-    if (!response.white.empty())
-    {
-      return get_random_node_address(response.white);
-    }
-
-    MDEBUG("No white public node found, checking gray peers");
-
-    if (!response.gray.empty())
-    {
-      return get_random_node_address(response.gray);
-    }
-
-    MERROR("Failed to find any suitable public node");
-    return std::nullopt;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::init(const boost::program_options::variables_map& vm)
@@ -1397,81 +1355,35 @@ namespace cryptonote::rpc {
     }
     save_bc.response["status"] = STATUS_OK;
   }
-  //------------------------------------------------------------------------------------------------------------------------------
-  GET_PEER_LIST::response core_rpc_server::invoke(GET_PEER_LIST::request&& req, rpc_context context)
-  {
-    GET_PEER_LIST::response res{};
 
-    PERF_TIMER(on_get_peer_list);
-    std::vector<nodetool::peerlist_entry> white_list;
-    std::vector<nodetool::peerlist_entry> gray_list;
-
-    if (req.public_only)
-    {
-      m_p2p.get_public_peerlist(gray_list, white_list);
-    }
-    else
-    {
-      m_p2p.get_peerlist(gray_list, white_list);
-    }
-
-    for (auto & entry : white_list)
-    {
-      if (entry.adr.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
-        res.white_list.emplace_back(entry.id, entry.adr.as<epee::net_utils::ipv4_network_address>().ip(),
-            entry.adr.as<epee::net_utils::ipv4_network_address>().port(), entry.last_seen, entry.pruning_seed, entry.rpc_port);
-      else if (entry.adr.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
-        res.white_list.emplace_back(entry.id, entry.adr.as<epee::net_utils::ipv6_network_address>().host_str(),
-            entry.adr.as<epee::net_utils::ipv6_network_address>().port(), entry.last_seen, entry.pruning_seed, entry.rpc_port);
-      else
-        res.white_list.emplace_back(entry.id, entry.adr.str(), entry.last_seen, entry.pruning_seed, entry.rpc_port);
-    }
-
-    for (auto & entry : gray_list)
-    {
-      if (entry.adr.get_type_id() == epee::net_utils::ipv4_network_address::get_type_id())
-        res.gray_list.emplace_back(entry.id, entry.adr.as<epee::net_utils::ipv4_network_address>().ip(),
-            entry.adr.as<epee::net_utils::ipv4_network_address>().port(), entry.last_seen, entry.pruning_seed, entry.rpc_port);
-      else if (entry.adr.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
-        res.gray_list.emplace_back(entry.id, entry.adr.as<epee::net_utils::ipv6_network_address>().host_str(),
-            entry.adr.as<epee::net_utils::ipv6_network_address>().port(), entry.last_seen, entry.pruning_seed, entry.rpc_port);
-      else
-        res.gray_list.emplace_back(entry.id, entry.adr.str(), entry.last_seen, entry.pruning_seed, entry.rpc_port);
-    }
-
-    res.status = STATUS_OK;
-    return res;
-  }
-  //------------------------------------------------------------------------------------------------------------------------------
-  GET_PUBLIC_NODES::response core_rpc_server::invoke(GET_PUBLIC_NODES::request&& req, rpc_context context)
-  {
-    PERF_TIMER(on_get_public_nodes);
-
-    GET_PEER_LIST::response peer_list_res = invoke(GET_PEER_LIST::request{}, context);
-    GET_PUBLIC_NODES::response res{};
-    res.status = std::move(peer_list_res.status);
-
-    const auto collect = [](const std::vector<GET_PEER_LIST::peer> &peer_list, std::vector<public_node> &public_nodes)
-    {
-      for (const auto &entry : peer_list)
-      {
-        if (entry.rpc_port != 0)
-        {
-          public_nodes.emplace_back(entry);
-        }
-      }
+  static nlohmann::json json_peer_info(const nodetool::peerlist_entry& peer) {
+    auto addr_type = peer.adr.get_type_id();
+    nlohmann::json p{
+      {"id", peer.id},
+      {"host", peer.adr.host_str()},
+      {"port", peer.adr.port()},
+      {"last_seen", peer.last_seen}
     };
+    if (peer.pruning_seed) p["pruning_seed"] = peer.pruning_seed;
+    if (peer.rpc_port) p["rpc_port"] = peer.rpc_port;
+    return p;
+  }
 
-    if (req.white)
-    {
-      collect(peer_list_res.white_list, res.white);
-    }
-    if (req.gray)
-    {
-      collect(peer_list_res.gray_list, res.gray);
-    }
+  //------------------------------------------------------------------------------------------------------------------------------
+  void core_rpc_server::invoke(GET_PEER_LIST& pl, rpc_context context)
+  {
+    PERF_TIMER(on_get_peer_list);
+    std::vector<nodetool::peerlist_entry> white_list, gray_list;
 
-    return res;
+    if (pl.request.public_only)
+      m_p2p.get_public_peerlist(gray_list, white_list);
+    else
+      m_p2p.get_peerlist(gray_list, white_list);
+
+    std::transform(white_list.begin(), white_list.end(), std::back_inserter(pl.response["white_list"]), json_peer_info);
+    std::transform(gray_list.begin(), gray_list.end(), std::back_inserter(pl.response["gray_list"]), json_peer_info);
+
+    pl.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   SET_LOG_LEVEL::response core_rpc_server::invoke(SET_LOG_LEVEL::request&& req, rpc_context context)
