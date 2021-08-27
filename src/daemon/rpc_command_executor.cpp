@@ -179,18 +179,19 @@ namespace {
     time_t now = std::time(nullptr);
     time_t last_seen = peer.value<time_t>("last_seen", 0);
 
-    tools::msg_writer() << fmt::format("{:<10} {:016x}    {:<30} {:<5} {:<4x} {}",
+    tools::msg_writer() << fmt::format("{:<10} {:016x}    {:<30} {}",
         prefix,
         peer["id"].get<uint64_t>(),
-        fmt::format("{}:{}", peer["host"].get<std::string_view>(), peer["ip"].get<uint16_t>()),
-        rpc_port == 0 ? "-" : tools::int_to_string(rpc_port),
-        pruning_seed,
+        fmt::format("{}:{}", peer["host"].get<std::string_view>(), peer["port"].get<uint16_t>()),
         last_seen == 0 ? "never" : get_human_time_ago(last_seen, now));
     return true;
   }
 
   template <typename... Args>
   void print_peers(std::string_view prefix, const json& peers, size_t& limit, Args&&... args) {
+    if (limit > 0)
+      tools::msg_writer() << fmt::format("{:<10} {:<16}    {:<30} {}",
+          "Type", "Peer id", "Remote address", "Last seen");
     for (auto it = peers.begin(); it != peers.end() && limit > 0; it++)
       if (print_peer(prefix, *it, std::forward<Args>(args)...))
         limit--;
@@ -357,10 +358,15 @@ bool rpc_command_executor::print_peer_list(bool white, bool gray, size_t limit, 
     return false;
   auto& pl = *maybe_pl;
 
-  if (white)
+  if (!limit) limit = std::numeric_limits<size_t>::max();
+  if (white) {
+    tools::success_msg_writer() << pl["white_list"].size() << " whitelist peers:";
     print_peers("white", pl["white_list"], limit, pruned_only, publicrpc_only);
-  if (gray)
+  }
+  if (gray) {
+    tools::success_msg_writer() << pl["gray_list"].size() << " graylist peers:";
     print_peers("gray", pl["gray_list"], limit, pruned_only, publicrpc_only);
+  }
 
   return true;
 }
