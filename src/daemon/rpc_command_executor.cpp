@@ -779,10 +779,11 @@ bool rpc_command_executor::set_log_level(int8_t level) {
 }
 
 bool rpc_command_executor::set_log_categories(std::string categories) {
-  auto maybe_categories = try_running([this, &categories] { return invoke<SET_LOG_CATEGORIES>(json{{"categories", std::move(categories)}}); }, "Failed to set log categories");
-  if (!maybe_categories)
-    return false;
-  auto& categories_response = *maybe_categories;
+  //auto maybe_categories = try_running([this, &categories] { return invoke<SET_LOG_CATEGORIES>(json{{"categories", std::move(categories)}}); }, "Failed to set log categories");
+  //if (!maybe_categories)
+    //return false;
+  //auto& categories_response = *maybe_categories;
+  auto categories_response = make_request<SET_LOG_CATEGORIES>(json{{"categories", std::move(categories)}});
 
   tools::success_msg_writer() << "Log categories are now " << categories_response["categories"].get<std::string_view>();
 

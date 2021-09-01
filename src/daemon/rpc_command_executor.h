@@ -137,6 +137,12 @@ public:
     return true;
   }
 
+  //TODO sean
+  template <typename Response>
+  nlohmann::json make_request(nlohmann::json params) {
+    return invoke<Response>(params)["response"];
+  }
+
 
   bool print_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json);
 
