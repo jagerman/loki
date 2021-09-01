@@ -1265,27 +1265,23 @@ namespace cryptonote::rpc {
     struct response : STATUS {};
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Determine whether a given IP address is banned
+  /// Determine whether a given IP address is banned
+  ///
+  /// Inputs:
+  /// - \p address The IP address to check.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p banned True if the given address is banned, false otherwise.
+  /// - \p seconds The number of seconds remaining in the ban.
   struct BANNED : RPC_COMMAND
   {
     static constexpr auto names() { return NAMES("banned"); }
 
-    struct request
-    {
+    struct request_parameters {
       std::string address; // The IP address to check
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good.
-      bool banned;        // True if the given address is banned, false otherwise.
-      uint32_t seconds;   // The number of seconds remaining in the ban.
-
-      KV_MAP_SERIALIZABLE
-    };
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT

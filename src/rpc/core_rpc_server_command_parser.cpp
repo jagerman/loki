@@ -405,4 +405,8 @@ namespace cryptonote::rpc {
   void parse_request(SET_LOG_CATEGORIES& set_log_categories, rpc_input in) {
     get_values(in, "categories", set_log_categories.request.categories);
   }
+
+  void parse_request(BANNED& banned, rpc_input in) {
+    get_values(in, "address", banned.request.address);
+  }
 }

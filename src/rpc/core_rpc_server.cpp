@@ -1923,13 +1923,11 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  BANNED::response core_rpc_server::invoke(BANNED::request&& req, rpc_context context)
+  void core_rpc_server::invoke(BANNED& banned, rpc_context context)
   {
-    BANNED::response res{};
-
     PERF_TIMER(on_banned);
 
-    auto na_parsed = net::get_network_address(req.address, 0);
+    auto na_parsed = net::get_network_address(banned.request.address, 0);
     if (!na_parsed)
       throw rpc_error{ERROR_WRONG_PARAM, "Unsupported host type"};
     epee::net_utils::network_address na = std::move(*na_parsed);
@@ -1937,17 +1935,16 @@ namespace cryptonote::rpc {
     time_t seconds;
     if (m_p2p.is_host_blocked(na, &seconds))
     {
-      res.banned = true;
-      res.seconds = seconds;
+      banned.response["banned"] = true;
+      banned.response["seconds"] = seconds;
     }
     else
     {
-      res.banned = false;
-      res.seconds = 0;
+      banned.response["banned"] = false;
+      banned.response["seconds"] = 0;
     }
 
-    res.status = STATUS_OK;
-    return res;
+    banned.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   SETBANS::response core_rpc_server::invoke(SETBANS::request&& req, rpc_context context)

@@ -1213,16 +1213,13 @@ bool rpc_command_executor::unban(const std::string &address)
 
 bool rpc_command_executor::banned(const std::string &address)
 {
-    BANNED::request req{};
-    BANNED::response res{};
-
-    req.address = address;
-
-    if (!invoke<BANNED>({address}, res, "Failed to retrieve ban information"))
+    auto maybe_banned = try_running([this, &address] { return invoke<BANNED>(json{{"address", std::move(address)}}); }, "Failed to retrieve ban information");
+    if (!maybe_banned)
       return false;
+    auto& banned_response = *maybe_banned;
 
-    if (res.banned)
-      tools::msg_writer() << address << " is banned for " << res.seconds << " seconds";
+    if (banned_response["banned"].get<bool>())
+      tools::msg_writer() << address << " is banned for " << banned_response["seconds"].get<std::string_view>() << " seconds";
     else
       tools::msg_writer() << address << " is not banned";
 
