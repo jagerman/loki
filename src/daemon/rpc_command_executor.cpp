@@ -770,8 +770,7 @@ bool rpc_command_executor::print_quorum_state(uint64_t start_height, uint64_t en
 
 
 bool rpc_command_executor::set_log_level(int8_t level) {
-  SET_LOG_LEVEL::response res{};
-  if (!invoke<SET_LOG_LEVEL>({level}, res, "Failed to set log level"))
+  if (!invoke<SET_LOG_LEVEL>(json{{"level", level}}))
     return false;
 
   tools::success_msg_writer() << "Log level is now " << std::to_string(level);
@@ -780,12 +779,12 @@ bool rpc_command_executor::set_log_level(int8_t level) {
 }
 
 bool rpc_command_executor::set_log_categories(std::string categories) {
-  SET_LOG_CATEGORIES::response res{};
-
-  if (!invoke<SET_LOG_CATEGORIES>({std::move(categories)}, res, "Failed to set log categories"))
+  auto maybe_categories = try_running([this, &categories] { return invoke<SET_LOG_CATEGORIES>(json{{"categories", std::move(categories)}}); }, "Failed to set log categories");
+  if (!maybe_categories)
     return false;
+  auto& categories_response = *maybe_categories;
 
-  tools::success_msg_writer() << "Log categories are now " << res.categories;
+  tools::success_msg_writer() << "Log categories are now " << categories_response["categories"].get<std::string_view>();
 
   return true;
 }

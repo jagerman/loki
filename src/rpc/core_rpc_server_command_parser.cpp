@@ -397,4 +397,12 @@ namespace cryptonote::rpc {
   void parse_request(GET_PEER_LIST& pl, rpc_input in) {
     get_values(in, "public_only", pl.request.public_only);
   }
+
+  void parse_request(SET_LOG_LEVEL& set_log_level, rpc_input in) {
+    get_values(in, "level", set_log_level.request.level);
+  }
+
+  void parse_request(SET_LOG_CATEGORIES& set_log_categories, rpc_input in) {
+    get_values(in, "categories", set_log_categories.request.categories);
+  }
 }

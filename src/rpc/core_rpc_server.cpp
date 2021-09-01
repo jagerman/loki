@@ -1384,30 +1384,24 @@ namespace cryptonote::rpc {
     pl.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SET_LOG_LEVEL::response core_rpc_server::invoke(SET_LOG_LEVEL::request&& req, rpc_context context)
+  void core_rpc_server::invoke(SET_LOG_LEVEL& set_log_level, rpc_context context)
   {
-    SET_LOG_LEVEL::response res{};
-
     PERF_TIMER(on_set_log_level);
-    if (req.level < 0 || req.level > 4)
+    if (set_log_level.request.level < 0 || set_log_level.request.level > 4)
     {
-      res.status = "Error: log level not valid";
-      return res;
+      set_log_level.response["status"] = "Error: log level not valid";
+      return;
     }
-    mlog_set_log_level(req.level);
-    res.status = STATUS_OK;
-    return res;
+    mlog_set_log_level(set_log_level.request.level);
+    set_log_level.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  SET_LOG_CATEGORIES::response core_rpc_server::invoke(SET_LOG_CATEGORIES::request&& req, rpc_context context)
+  void core_rpc_server::invoke(SET_LOG_CATEGORIES& set_log_categories, rpc_context context)
   {
-    SET_LOG_CATEGORIES::response res{};
-
     PERF_TIMER(on_set_log_categories);
-    mlog_set_log(req.categories.c_str());
-    res.categories = mlog_get_categories();
-    res.status = STATUS_OK;
-    return res;
+    mlog_set_log(set_log_categories.request.categories.c_str());
+    set_log_categories.response["categories"] = mlog_get_categories();
+    set_log_categories.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_TRANSACTION_POOL_HASHES_BIN::response core_rpc_server::invoke(GET_TRANSACTION_POOL_HASHES_BIN::request&& req, rpc_context context)

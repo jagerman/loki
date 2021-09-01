@@ -901,55 +901,56 @@ namespace cryptonote::rpc {
 
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Set the daemon log level. By default, log level is set to `0`.  For more fine-tuned logging
-  // control set the set_log_categories command instead.
+  /// Set the daemon log level. By default, log level is set to `0`.  For more fine-tuned logging
+  /// control set the set_log_categories command instead.
+  ///
+  /// Inputs:
+  /// - \p level Daemon log level to set from `0` (less verbose) to `4` (most verbose)
+  ///
+  /// Output values (requires a restricted/admin RPC endpoint):
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
   struct SET_LOG_LEVEL : LEGACY
   {
     static constexpr auto names() { return NAMES("set_log_level"); }
 
-    struct request
+    struct request_parameters
     {
       int8_t level; // Daemon log level to set from `0` (less verbose) to `4` (most verbose)
 
-      KV_MAP_SERIALIZABLE
-    };
+    } request;
 
-    struct response : STATUS {};
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Set the daemon log categories. Categories are represented as a comma separated list of `<Category>:<level>` (similarly to syslog standard `<Facility>:<Severity-level>`), where:
-  // Category is one of the following: * (all facilities), default, net, net.http, net.p2p, logging, net.trottle, blockchain.db, blockchain.db.lmdb, bcutil, checkpoints, net.dns, net.dl,
-  // i18n, perf,stacktrace, updates, account, cn ,difficulty, hardfork, miner, blockchain, txpool, cn.block_queue, net.cn, daemon, debugtools.deserialize, debugtools.objectsizes, device.ledger,
-  // wallet.gen_multisig, multisig, bulletproofs, ringct, daemon.rpc, wallet.simplewallet, WalletAPI, wallet.ringdb, wallet.wallet2, wallet.rpc, tests.core.
-  //
-  // Level is one of the following: FATAL - higher level, ERROR, WARNING, INFO, DEBUG, TRACE.
-  // Lower level A level automatically includes higher level. By default, categories are set to:
-  // `*:WARNING,net:FATAL,net.p2p:FATAL,net.cn:FATAL,global:INFO,verify:FATAL,stacktrace:INFO,logging:INFO,msgwriter:INFO`
-  // Setting the categories to "" prevent any logs to be outputed.
-  //
-  // You can append to the current the log level for updating just one or more categories while
-  // leaving other log levels unchanged by specifying one or more "<category>:<level>" pairs
-  // preceded by a "+", for example "+difficulty:DEBUG,net:WARNING".
+  /// Set the daemon log categories. Categories are represented as a comma separated list of `<Category>:<level>` (similarly to syslog standard `<Facility>:<Severity-level>`), where:
+  /// Category is one of the following: * (all facilities), default, net, net.http, net.p2p, logging, net.trottle, blockchain.db, blockchain.db.lmdb, bcutil, checkpoints, net.dns, net.dl,
+  /// i18n, perf,stacktrace, updates, account, cn ,difficulty, hardfork, miner, blockchain, txpool, cn.block_queue, net.cn, daemon, debugtools.deserialize, debugtools.objectsizes, device.ledger,
+  /// wallet.gen_multisig, multisig, bulletproofs, ringct, daemon.rpc, wallet.simplewallet, WalletAPI, wallet.ringdb, wallet.wallet2, wallet.rpc, tests.core.
+  ///
+  /// Level is one of the following: FATAL - higher level, ERROR, WARNING, INFO, DEBUG, TRACE.
+  /// Lower level A level automatically includes higher level. By default, categories are set to:
+  /// `*:WARNING,net:FATAL,net.p2p:FATAL,net.cn:FATAL,global:INFO,verify:FATAL,stacktrace:INFO,logging:INFO,msgwriter:INFO`
+  /// Setting the categories to "" prevent any logs to be outputed.
+  ///
+  /// You can append to the current the log level for updating just one or more categories while
+  /// leaving other log levels unchanged by specifying one or more "<category>:<level>" pairs
+  /// preceded by a "+", for example "+difficulty:DEBUG,net:WARNING".
+  ///
+  /// Inputs:
+  /// - \p categories Optional, daemon log categores to enable
+  ///
+  /// Output values (requires a restricted/admin RPC endpoint):
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p categories Daemon log enabled categories
   struct SET_LOG_CATEGORIES : LEGACY
   {
     static constexpr auto names() { return NAMES("set_log_categories"); }
 
-    struct request
+    struct request_parameters
     {
       std::string categories; // Optional, daemon log categories to enable
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status;     // General RPC error code. "OK" means everything looks good. Any other value means that something went wrong.
-      std::string categories; // Daemon log enabled categories
-
-      KV_MAP_SERIALIZABLE
-    };
+    } request;
   };
 
   //-----------------------------------------------

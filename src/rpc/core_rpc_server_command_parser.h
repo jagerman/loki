@@ -22,4 +22,6 @@ namespace cryptonote::rpc {
   void parse_request(SUBMIT_TRANSACTION& tx, rpc_input in);
   void parse_request(GET_BLOCK_HASH& bh, rpc_input in);
   void parse_request(GET_PEER_LIST& bh, rpc_input in);
+  void parse_request(SET_LOG_LEVEL& set_log_level, rpc_input in);
+  void parse_request(SET_LOG_CATEGORIES& set_log_categories, rpc_input in);
 }
