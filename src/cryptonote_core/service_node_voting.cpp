@@ -27,6 +27,7 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "service_node_voting.h"
+#include "cryptonote_config.h"
 #include "service_node_list.h"
 #include "cryptonote_basic/tx_extra.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
@@ -132,12 +133,12 @@ namespace service_nodes
                               uint64_t latest_height,
                               cryptonote::tx_verification_context &tvc,
                               const service_nodes::quorum &quorum,
-                              const uint8_t hf_version)
+                              const cryptonote::network_state net)
   {
     auto &vvc = tvc.m_vote_ctx;
-    if (state_change.state != new_state::deregister && hf_version < cryptonote::network_version_12_checkpointing)
+    if (state_change.state != new_state::deregister && !is_network_version_enabled(cryptonote::feature::SN_STATE_CHANGES, net))
     {
-      LOG_PRINT_L1("Non-deregister state changes are invalid before v12");
+      LOG_PRINT_L1("Non-deregister state changes are invalid before v" << cryptonote::feature::SN_STATE_CHANGES);
       return bad_tx(tvc);
     }
 
@@ -196,7 +197,7 @@ namespace service_nodes
     int validator_index_tracker                                            = -1;
     for (const auto &vote : state_change.votes)
     {
-      if (hf_version >= cryptonote::network_version_13_enforce_checkpoints) // NOTE: After HF13, votes must be stored in ascending order
+      if (is_network_version_enabled(cryptonote::feature::ENFORCE_CHECKPOINTS, net)) // NOTE: After HF13, votes must be stored in ascending order
       {
         if (validator_index_tracker >= static_cast<int>(vote.validator_index))
         {
@@ -230,7 +231,7 @@ namespace service_nodes
     return true;
   }
 
-  bool verify_quorum_signatures(service_nodes::quorum const &quorum, service_nodes::quorum_type type, uint8_t hf_version, uint64_t height, crypto::hash const &hash, std::vector<quorum_signature> const &signatures, const cryptonote::block* block)
+  bool verify_quorum_signatures(cryptonote::network_state net, const service_nodes::quorum& quorum, service_nodes::quorum_type type, uint64_t height, const crypto::hash& hash, const std::vector<quorum_signature>& signatures, const cryptonote::block* block)
   {
     bool enforce_vote_ordering                          = true;
     constexpr size_t MAX_QUORUM_SIZE                    = std::max(CHECKPOINT_QUORUM_SIZE, PULSE_QUORUM_NUM_VALIDATORS);
@@ -258,7 +259,7 @@ namespace service_nodes
           return false;
         }
 
-        enforce_vote_ordering = hf_version >= cryptonote::network_version_13_enforce_checkpoints;
+        enforce_vote_ordering = is_network_version_enabled(cryptonote::feature::ENFORCE_CHECKPOINTS, net);
       }
       break;
 
@@ -350,7 +351,7 @@ namespace service_nodes
     return result;
   }
 
-  bool verify_checkpoint(uint8_t hf_version, cryptonote::checkpoint_t const &checkpoint, service_nodes::quorum const &quorum)
+  bool verify_checkpoint(cryptonote::network_state net, const cryptonote::checkpoint_t& checkpoint, const service_nodes::quorum& quorum)
   {
     if (checkpoint.type == cryptonote::checkpoint_type::service_node)
     {
@@ -360,7 +361,7 @@ namespace service_nodes
         return false;
       }
 
-      if (!verify_quorum_signatures(quorum, quorum_type::checkpointing, hf_version, checkpoint.height, checkpoint.block_hash, checkpoint.signatures))
+      if (!verify_quorum_signatures(net, quorum, quorum_type::checkpointing, checkpoint.height, checkpoint.block_hash, checkpoint.signatures))
       {
         LOG_PRINT_L1("Checkpoint failed signature validation at block " << checkpoint.height << " " << checkpoint.block_hash);
         return false;
@@ -392,7 +393,7 @@ namespace service_nodes
     return result;
   }
 
-  quorum_vote_t make_checkpointing_vote(uint8_t hf_version, crypto::hash const &block_hash, uint64_t block_height, uint16_t index_in_quorum, const service_node_keys &keys)
+  quorum_vote_t make_checkpointing_vote(cryptonote::network_state net, const crypto::hash& block_hash, uint64_t block_height, uint16_t index_in_quorum, const service_node_keys& keys)
   {
     quorum_vote_t result         = {};
     result.type                  = quorum_type::checkpointing;
@@ -441,7 +442,7 @@ namespace service_nodes
     return result;
   }
 
-  bool verify_vote_signature(uint8_t hf_version, const quorum_vote_t &vote, cryptonote::vote_verification_context &vvc, const service_nodes::quorum &quorum)
+  bool verify_vote_signature(cryptonote::network_state net, const quorum_vote_t& vote, cryptonote::vote_verification_context& vvc, const service_nodes::quorum& quorum)
   {
     bool result = true;
     if (vote.type > tools::enum_top<quorum_type>)
@@ -586,7 +587,7 @@ namespace service_nodes
           result.push_back(vote_entry.vote);
   }
 
-  std::vector<quorum_vote_t> voting_pool::get_relayable_votes(uint64_t height, uint8_t hf_version, bool quorum_relay) const
+  std::vector<quorum_vote_t> voting_pool::get_relayable_votes(uint64_t height, cryptonote::network_state /*net*/, bool quorumnet_relay) const
   {
     std::unique_lock lock{m_lock};
 
@@ -602,13 +603,9 @@ namespace service_nodes
 
     std::vector<quorum_vote_t> result;
 
-    if (quorum_relay && hf_version < cryptonote::network_version_14_blink)
-      return result; // no quorum relaying before HF14
-
-    if (hf_version < cryptonote::network_version_14_blink || quorum_relay)
+    if (quorumnet_relay)
       append_relayable_votes(result, m_obligations_pool, max_last_sent, min_height);
-
-    if (hf_version < cryptonote::network_version_14_blink || !quorum_relay)
+    else
       append_relayable_votes(result, m_checkpoint_pool,  max_last_sent, min_height);
 
     return result;
@@ -643,7 +640,7 @@ namespace service_nodes
     return *votes;
   }
 
-  void voting_pool::remove_used_votes(std::vector<cryptonote::transaction> const &txs, uint8_t hard_fork_version)
+  void voting_pool::remove_used_votes(std::vector<cryptonote::transaction> const &txs, cryptonote::network_state net)
   {
     // TODO(doyle): Cull checkpoint votes
     std::unique_lock lock{m_lock};
@@ -656,7 +653,7 @@ namespace service_nodes
         continue;
 
       cryptonote::tx_extra_service_node_state_change state_change;
-      if (!get_service_node_state_change_from_tx_extra(tx.extra, state_change, hard_fork_version))
+      if (!get_service_node_state_change_from_tx_extra(tx.extra, state_change, net))
       {
         LOG_ERROR("Could not get state change from tx, possibly corrupt tx");
         continue;

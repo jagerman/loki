@@ -37,14 +37,14 @@ namespace tools {
 extern thread_local std::mt19937_64 rng;
 
 /// Generates a deterministic uint64_t uniformly distributed over [0, n).  This is roughly
-/// equivalent to `std::uniform_int_distribution<uint64_t>{0, n}(rng)`, but that is not guaranteed
+/// equivalent to `std::uniform_int_distribution<uint64_t>{0, n-1}(rng)`, but that is not guaranteed
 /// to be unique across platforms/compilers, while this is.
 uint64_t uniform_distribution_portable(std::mt19937_64& rng, uint64_t n);
 
 /// Uniformly shuffles all the elements in [begin, end) in a deterministic method so that, given the
-/// same seed, this will always produce the same result on any platform/compiler/etc.
-template<typename RandomIt>
-void shuffle_portable(RandomIt begin, RandomIt end, std::mt19937_64 &rng)
+/// same seeded RNG, this will always produce the same result on any platform/compiler/etc.
+template <typename RandomIt, typename RNG>
+void shuffle_portable(RandomIt begin, RandomIt end, RNG& rng)
 {
   if (end <= begin + 1) return;
   const size_t size = std::distance(begin, end);
@@ -56,7 +56,9 @@ void shuffle_portable(RandomIt begin, RandomIt end, std::mt19937_64 &rng)
   }
 }
 
-/// Returns a random element between the elements in [begin, end) will use the random number generator provided as g
+/// Returns a random element between the elements in [begin, end) will use the random number
+/// generator provided as g.  (Note that this is *not* guaranteed to produce the same value on
+/// different systems and so cannot be used for consensus-dependent values).
 template<typename Iter, typename RandomGenerator>
 Iter select_randomly(Iter begin, Iter end, RandomGenerator& g) {
   auto dist = std::distance(begin, end);
@@ -65,7 +67,8 @@ Iter select_randomly(Iter begin, Iter end, RandomGenerator& g) {
   return begin;
 }
 
-/// Returns a random element same as above but defaults to the seeded random number generator defined in this file
+/// Returns a random element same as above but defaults to the seeded random number generator
+/// defined in this file.
 template<typename Iter>
 Iter select_randomly(Iter begin, Iter end) {
   return select_randomly(begin, end, rng);

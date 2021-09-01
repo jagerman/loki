@@ -61,7 +61,6 @@
 #include "cryptonote_basic/verification_context.h"
 #include "crypto/hash.h"
 #include "checkpoints/checkpoints.h"
-#include "cryptonote_basic/hardfork.h"
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_core/oxen_name_system.h"
 #include "pulse.h"
@@ -149,19 +148,7 @@ namespace cryptonote
      *
      * @return true on success, false if any initialization steps fail
      */
-    bool init(BlockchainDB* db, sqlite3 *ons_db, const network_type nettype = MAINNET, bool offline = false, const cryptonote::test_options *test_options = NULL, difficulty_type fixed_difficulty = 0, const GetCheckpointsCallback& get_checkpoints = nullptr);
-
-    /**
-     * @brief Initialize the Blockchain state
-     *
-     * @param db a pointer to the backing store to use for the blockchain
-     * @param hf a structure containing hardfork information
-     * @param nettype network type
-     * @param offline true if running offline, else false
-     *
-     * @return true on success, false if any initialization steps fail
-     */
-    bool init(BlockchainDB* db, HardFork*& hf, sqlite3 *ons_db, const network_type nettype = MAINNET, bool offline = false);
+    bool init(BlockchainDB* db, sqlite3 *ons_db, const network_type nettype = network_type::MAINNET, bool offline = false, const cryptonote::test_options *test_options = NULL, difficulty_type fixed_difficulty = 0, const GetCheckpointsCallback& get_checkpoints = nullptr);
 
     /**
      * @brief Uninitializes the blockchain state
@@ -651,7 +638,7 @@ namespace cryptonote
      *
      * @return pair of {per-size, per-output} fees
      */
-    static byte_and_output_fees get_dynamic_base_fee(uint64_t block_reward, size_t median_block_weight, uint8_t version);
+    static byte_and_output_fees get_dynamic_base_fee(uint64_t block_reward, size_t median_block_weight, network_state net);
 
     /**
      * @brief get dynamic per kB or byte fee estimate for the next few blocks
@@ -822,72 +809,26 @@ namespace cryptonote
     void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
 
     /**
-     * @brief gets the hardfork voting state object
+     * @brief gets the network state (i.e. type and version) of the blockchain at the given height.
+     * If height is omitted, uses the current blockchain height.
      *
-     * @return the HardFork object
-     */
-    HardFork::State get_hard_fork_state() const;
-
-    /**
-     * @brief gets the current hardfork version in use/voted for
+     * Note that the returned version is the "ideal" version, which can be larger than the hard fork
+     * version.  Typically use this value with `is_network_version_enabled` to test for when the
+     * hard for which the returned value is valid has enabled a feature.
      *
      * @return the version
      */
-    uint8_t get_current_hard_fork_version() const { return m_hardfork->get_current_version(); }
+    network_state get_network_state(std::optional<uint64_t> height = std::nullopt) const {
+        if (!height) height = get_current_blockchain_height();
+        return {m_nettype, get_ideal_network_version(m_nettype, *height)};
+    }
 
     /**
-     * @brief returns the newest hardfork version known to the blockchain
-     *
-     * @return the version
+     * @brief returns true if the given feature is active in the current hardfork (i.e. we are in or
+     * beyond the hardfork that enabled it).  `feature` is typically one of the
+     * cryptonote::feature::... constants.
      */
-    uint8_t get_ideal_hard_fork_version() const { return m_hardfork->get_ideal_version(); }
-
-    /**
-     * @brief returns the next hardfork version
-     *
-     * @return the version
-     */
-    uint8_t get_next_hard_fork_version() const { return m_hardfork->get_next_version(); }
-
-    /**
-     * @brief returns the newest hardfork version voted to be enabled
-     * as of a certain height
-     *
-     * @param height the height for which to check version info
-     *
-     * @return the version
-     */
-    uint8_t get_ideal_hard_fork_version(uint64_t height) const { return m_hardfork->get_ideal_version(height); }
-
-    /**
-     * @brief returns the actual hardfork version for a given block height
-     *
-     * @param height the height for which to check version info
-     *
-     * @return the version
-     */
-    uint8_t get_hard_fork_version(uint64_t height) const { return m_hardfork->get(height); }
-
-    /**
-     * @brief returns the earliest block a given version may activate
-     *
-     * @return the height
-     */
-    uint64_t get_earliest_ideal_height_for_version(uint8_t version) const { return m_hardfork->get_earliest_ideal_height_for_version(version); }
-
-    /**
-     * @brief get information about hardfork voting for a version
-     *
-     * @param version the version in question
-     * @param window the size of the voting window
-     * @param votes the number of votes to enable <version>
-     * @param threshold the number of votes required to enable <version>
-     * @param earliest_height the earliest height at which <version> is allowed
-     * @param voting which version this node is voting for/using
-     *
-     * @return whether the version queried is enabled 
-     */
-    bool get_hard_fork_voting_info(uint8_t version, uint32_t &window, uint32_t &votes, uint32_t &threshold, uint64_t &earliest_height, uint8_t &voting) const;
+    bool is_network_feature_active(network_version feature) const { return is_hard_fork_at_least(m_nettype, feature, get_current_blockchain_height()); }
 
     /**
      * @brief remove transactions from the transaction pool (if present)
@@ -1194,13 +1135,15 @@ namespace cryptonote
     std::vector<AltBlockAddedHook*> m_alt_block_added_hooks;
 
     checkpoints m_checkpoints;
-    HardFork *m_hardfork;
 
     network_type m_nettype;
     bool m_offline;
     difficulty_type m_fixed_difficulty;
 
     std::atomic<bool> m_cancel;
+
+
+    std::optional<std::chrono::steady_clock::time_point> m_last_future_warning;
 
     // block template cache
     block m_btc;
@@ -1210,7 +1153,6 @@ namespace cryptonote
     uint64_t m_btc_pool_cookie;
     uint64_t m_btc_expected_reward;
     bool m_btc_valid;
-
 
     bool m_batch_success;
 
@@ -1376,7 +1318,7 @@ namespace cryptonote
      *
      * @return false if anything is found wrong with the miner transaction, otherwise true
      */
-    bool prevalidate_miner_transaction(const block& b, uint64_t height, uint8_t hf_version);
+    bool prevalidate_miner_transaction(const block& b, uint64_t height, network_version hf_version);
 
     /**
      * @brief validates a miner (coinbase) transaction
@@ -1393,7 +1335,7 @@ namespace cryptonote
      *
      * @return false if anything is found wrong with the miner transaction, otherwise true
      */
-    bool validate_miner_transaction(const block& b, size_t cumulative_block_weight, uint64_t fee, uint64_t& base_reward, uint64_t already_generated_coins, uint8_t version);
+    bool validate_miner_transaction(const block& b, size_t cumulative_block_weight, uint64_t fee, uint64_t& base_reward, uint64_t already_generated_coins, network_version version);
 
     /**
      * @brief reverts the blockchain to its previous state following a failed switch

@@ -123,6 +123,11 @@ T make_from_guts(std::string_view s) {
     return x;
 }
 
+template <typename T>
+T make_from_guts(std::basic_string_view<std::byte> s) {
+    return make_from_guts<T>(std::string_view{reinterpret_cast<const char*>(s.data()), s.size()});
+}
+
 std::string lowercase_ascii_string(std::string_view src);
 
 /// Converts a duration into a human friendlier string.

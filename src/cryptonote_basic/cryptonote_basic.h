@@ -30,9 +30,9 @@
 
 #pragma once
 
-#include <vector>
-#include <sstream>
 #include <atomic>
+#include <iosfwd>
+#include <vector>
 #include "serialization/variant.h"
 #include "serialization/vector.h"
 #include "serialization/binary_archive.h"
@@ -176,9 +176,8 @@ namespace cryptonote
     static char const* version_to_string(txversion v);
     static char const* type_to_string(txtype type);
 
-    static constexpr txversion get_min_version_for_hf(uint8_t hf_version);
-    static           txversion get_max_version_for_hf(uint8_t hf_version);
-    static constexpr txtype    get_max_type_for_hf   (uint8_t hf_version);
+    static std::pair<txversion, txversion> get_version_range(network_state net);
+    static txtype get_max_type(network_state net);
 
     // tx information
     txversion version;
@@ -369,7 +368,8 @@ namespace cryptonote
   struct pulse_random_value
   {
     unsigned char data[16];
-    bool operator==(pulse_random_value const &other) const { return std::memcmp(data, other.data, sizeof(data)) == 0; }
+    bool operator==(const pulse_random_value& other) const { return std::memcmp(data, other.data, sizeof(data)) == 0; }
+    bool operator!=(const pulse_random_value& other) const { return !(*this == other); }
 
     static constexpr bool binary_serializable = true;
   };
@@ -392,23 +392,24 @@ namespace cryptonote
 
   struct block_header
   {
-    uint8_t major_version = cryptonote::network_version_7;
-    uint8_t minor_version = cryptonote::network_version_7;  // now used as a voting mechanism, rather than how this particular block is built
+    network_version version;
     uint64_t timestamp;
     crypto::hash  prev_id;
     uint32_t nonce;
     pulse_header pulse = {};
-
-    BEGIN_SERIALIZE()
-      VARINT_FIELD(major_version)
-      VARINT_FIELD(minor_version)
-      VARINT_FIELD(timestamp)
-      FIELD(prev_id)
-      FIELD(nonce)
-      if (major_version >= cryptonote::network_version_16_pulse)
-        FIELD(pulse)
-    END_SERIALIZE()
   };
+
+  template <class Archive>
+  void serialize_value(Archive& ar, block_header& b) {
+    using namespace serialization;
+    field_varint(ar, "major_version", b.version.first);
+    field_varint(ar, "minor_version", b.version.second);
+    field_varint(ar, "timestamp", b.timestamp);
+    field(ar, "prev_id", b.prev_id);
+    field(ar, "nonce", b.nonce);
+    if (b.version >= cryptonote::feature::PULSE)
+      field(ar, "pulse", b.pulse);
+  }
 
   struct block: public block_header
   {
@@ -433,20 +434,24 @@ namespace cryptonote
     // hash cache
     mutable crypto::hash hash;
     std::vector<service_nodes::quorum_signature> signatures;
-
-    BEGIN_SERIALIZE_OBJECT()
-      if (Archive::is_deserializer)
-        set_hash_valid(false);
-
-      FIELDS(static_cast<block_header&>(*this))
-      FIELD(miner_tx)
-      FIELD(tx_hashes)
-      if (tx_hashes.size() > CRYPTONOTE_MAX_TX_PER_BLOCK)
-        throw std::invalid_argument{"too many txs in block"};
-      if (major_version >= cryptonote::network_version_16_pulse)
-        FIELD(signatures)
-    END_SERIALIZE()
   };
+
+  template <typename Archive>
+  void serialize_value(Archive& ar, block& b)
+  {
+    using namespace serialization;
+    auto obj = ar.begin_object();
+    if (Archive::is_deserializer)
+      b.set_hash_valid(false);
+
+    value(ar, static_cast<block_header&>(b));
+    field(ar, "miner_tx", b.miner_tx);
+    field(ar, "tx_hashes", b.tx_hashes);
+    if (b.tx_hashes.size() > CRYPTONOTE_MAX_TX_PER_BLOCK)
+      throw std::invalid_argument{"too many txs in block"};
+    if (b.version >= cryptonote::feature::PULSE)
+      field(ar, "signatures", b.signatures);
+  }
 
 
   /************************************************************************/
@@ -501,73 +506,15 @@ namespace cryptonote
 
   using byte_and_output_fees = std::pair<uint64_t, uint64_t>;
 
-  //---------------------------------------------------------------
-  constexpr txversion transaction_prefix::get_min_version_for_hf(uint8_t hf_version)
-  {
-    if (hf_version >= cryptonote::network_version_7 && hf_version <= cryptonote::network_version_10_bulletproofs)
-      return txversion::v2_ringct;
-    return txversion::v4_tx_types;
-  }
-
-  // Used in the test suite to disable the older max version values below so that some test suite
-  // tests can still use particular hard forks without needing to actually generate pre-v4 txes.
+  // Used in the test suite to disable the older max version values in get_max_version_for_network
+  // so that some test suite tests can still use particular hard forks without needing to actually
+  // generate pre-v4 txes.
   namespace hack { inline bool test_suite_permissive_txes = false; }
 
-  inline txversion transaction_prefix::get_max_version_for_hf(uint8_t hf_version)
-  {
-    if (!hack::test_suite_permissive_txes) {
-      if (hf_version >= cryptonote::network_version_7 && hf_version <= cryptonote::network_version_8)
-        return txversion::v2_ringct;
+  std::ostream& operator<<(std::ostream& o, txtype t);
+  std::ostream& operator<<(std::ostream& o, txversion v);
+  std::ostream& operator<<(std::ostream& o, network_version v);
 
-      if (hf_version >= cryptonote::network_version_9_service_nodes && hf_version <= cryptonote::network_version_10_bulletproofs)
-        return txversion::v3_per_output_unlock_times;
-    }
-
-    return txversion::v4_tx_types;
-  }
-
-  constexpr txtype transaction_prefix::get_max_type_for_hf(uint8_t hf_version)
-  {
-    txtype result = txtype::standard;
-    if      (hf_version >= network_version_15_ons)              result = txtype::oxen_name_system;
-    else if (hf_version >= network_version_14_blink)            result = txtype::stake;
-    else if (hf_version >= network_version_11_infinite_staking) result = txtype::key_image_unlock;
-    else if (hf_version >= network_version_9_service_nodes)     result = txtype::state_change;
-
-    return result;
-  }
-
-  inline const char* transaction_prefix::version_to_string(txversion v)
-  {
-    switch(v)
-    {
-      case txversion::v1:                         return "1";
-      case txversion::v2_ringct:                  return "2_ringct";
-      case txversion::v3_per_output_unlock_times: return "3_per_output_unlock_times";
-      case txversion::v4_tx_types:                return "4_tx_types";
-      default: assert(false);                     return "xx_unhandled_version";
-    }
-  }
-
-  inline const char* transaction_prefix::type_to_string(txtype type)
-  {
-    switch(type)
-    {
-      case txtype::standard:                return "standard";
-      case txtype::state_change:            return "state_change";
-      case txtype::key_image_unlock:        return "key_image_unlock";
-      case txtype::stake:                   return "stake";
-      case txtype::oxen_name_system:        return "oxen_name_system";
-      default: assert(false);               return "xx_unhandled_type";
-    }
-  }
-
-  inline std::ostream &operator<<(std::ostream &os, txtype t) {
-    return os << transaction::type_to_string(t);
-  }
-  inline std::ostream &operator<<(std::ostream &os, txversion v) {
-    return os << transaction::version_to_string(v);
-  }
 }
 
 namespace std {

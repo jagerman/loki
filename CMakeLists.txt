@@ -50,6 +50,36 @@ message(STATUS "CMake version ${CMAKE_VERSION}")
 # Has to be set before `project()`, and ignored on non-macos:
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12 CACHE STRING "macOS deployment target (Apple clang only)")
 
+# Version updating rules:
+# You need to update these things:
+# - For a point release, just the version below
+# - For a new major version:
+#   - the version below
+#   - the codename below
+#   - the minimum lokinet/storage server versions (if required) in service_node_rules.h
+#   - the minimum acceptable uptime proof version in service_node_rules.h
+#
+# Version numbers work like this:
+# - New major versions still in development are numbered x.0.y.  E.g. 10.0.0, 10.0.1, ... are
+# development versions heading towards an eventual v10 stable release.
+# - When ready for a release we bump the version to x.1.0 (e.g. 10.1.0).
+# - Patch version on mainnet gets updated for every new release with fixes/updates along the same
+# branch (e.g. 10.1.1, 10.1.2, etc.)
+#
+# Hardfork versions work differently: generally the major version gets incremented with each major
+# update.  Sometimes (such as oxen 8) a major update might schedule multiple hard fork if the
+# consensus rules need to change at some future point, so it isn't 1:1 with major version numbers.
+# Up until oxen 10, the block *minor* version contains the highest hard fork version that the block
+# creator knows about.  (In the long distance past (on Monero) this was used to activate a hard-fork
+# based on % of upgraded hashrate rather than just block height.)
+#
+# Starting with oxen 10.0.0 we repurpose the minor version to be (gasp!) a minor version, based on
+# the minor & patch versions of oxend itself: 32*minor+patch (so, for example, oxend 10.1.3 will
+# produce blocks with block version set to 19.35), and we strictly enforce that there is exactly 1
+# hard fork per major block version, which must occur at the x.32 version (i.e. something.1.0
+# release).  On *testnet*, however, hardfork versions are determined by the hardfork table in
+# hardforks.cpp (see hardforks.h for more detail).  This allows us to have up to 32 hard forks (M.0
+# through M.31) on testnet before a mainnet release.
 project(oxen
     VERSION 9.1.2
     LANGUAGES CXX C)

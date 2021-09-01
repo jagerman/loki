@@ -207,8 +207,8 @@ namespace boost
   template <class Archive>
   inline void serialize(Archive &a, cryptonote::block &b, const boost::serialization::version_type ver)
   {
-    a & b.major_version;
-    a & b.minor_version;
+    a & b.version.first;
+    a & b.version.second;
     a & b.timestamp;
     a & b.prev_id;
     a & b.nonce;

@@ -53,7 +53,7 @@ namespace hw {
     std::vector<cryptonote::address_parse_info> tx_recipients;  // as entered by user
     std::optional<int> bp_version;  // BP version to use
     std::optional<unsigned> client_version;  // Signing client version to use (testing)
-    std::optional<uint8_t> hard_fork;  // hard fork being used for the transaction
+    std::optional<cryptonote::network_version> network_version;  // hard fork being used for the transaction
   };
 
   class device_cold {

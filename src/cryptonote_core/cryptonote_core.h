@@ -60,7 +60,7 @@ DISABLE_VS_WARNINGS(4355)
 namespace cryptonote
 {
    struct test_options {
-     std::vector<std::pair<uint8_t, uint64_t>> hard_forks;
+     std::vector<hard_fork> hard_forks;
      size_t long_term_block_weight_window;
    };
 
@@ -730,34 +730,6 @@ namespace cryptonote
      uint64_t get_target_blockchain_height() const;
 
      /**
-      * @brief returns the newest hardfork version known to the blockchain
-      *
-      * @return the version
-      */
-     uint8_t get_ideal_hard_fork_version() const;
-
-     /**
-      * @brief return the ideal hard fork version for a given block height
-      *
-      * @return what it says above
-      */
-     uint8_t get_ideal_hard_fork_version(uint64_t height) const;
-
-     /**
-      * @brief return the hard fork version for a given block height
-      *
-      * @return what it says above
-      */
-     uint8_t get_hard_fork_version(uint64_t height) const;
-
-     /**
-      * @brief return the earliest block a given version may activate
-      *
-      * @return what it says above
-      */
-     uint64_t get_earliest_ideal_height_for_version(uint8_t version) const;
-
-     /**
       * @brief gets start_time
       *
       */
@@ -1113,18 +1085,6 @@ namespace cryptonote
      bool check_tx_inputs_keyimages_domain(const transaction& tx) const;
 
      /**
-      * @brief checks HardFork status and prints messages about it
-      *
-      * Checks the status of HardFork and logs/prints if an update to
-      * the daemon is necessary.
-      *
-      * @note see Blockchain::get_hard_fork_state and HardFork::State
-      *
-      * @return true
-      */
-     bool check_fork_time();
-
-     /**
       * @brief checks free disk space
       *
       * @return true on success, false otherwise
@@ -1220,11 +1180,12 @@ namespace cryptonote
      std::mutex m_sn_timestamp_mutex;
      service_nodes::participation_history<service_nodes::timesync_entry, 30> m_sn_times;
 
+     // FIXME: remove this:
      tools::periodic_task m_store_blockchain_interval{12h, false}; //!< interval for manual storing of Blockchain, if enabled
-     tools::periodic_task m_fork_moaner{2h}; //!< interval for checking HardFork status
      tools::periodic_task m_txpool_auto_relayer{2min, false}; //!< interval for checking re-relaying txpool transactions
      tools::periodic_task m_check_disk_space_interval{10min}; //!< interval for checking for disk space
      tools::periodic_task m_check_uptime_proof_interval{30s}; //!< interval for checking our own uptime proof (will be set to get_net_config().UPTIME_PROOF_CHECK_INTERVAL after init)
+     // FIXME: remove this:
      tools::periodic_task m_block_rate_interval{90s, false}; //!< interval for checking block rate
      tools::periodic_task m_blockchain_pruning_interval{5h}; //!< interval for incremental blockchain pruning
      tools::periodic_task m_service_node_vote_relayer{2min, false};

@@ -103,12 +103,20 @@ bool NodeRPCProxy::get_info() const
   if (now >= m_get_info_time + 30s) // re-cache every 30 seconds
   {
     try {
-      auto resp_t = invoke_json_rpc<rpc::GET_INFO>({});
+      auto res = invoke_json_rpc<rpc::GET_INFO>({});
 
-      m_height = resp_t.height;
-      m_target_height = resp_t.target_height;
-      m_block_weight_limit = resp_t.block_weight_limit ? resp_t.block_weight_limit : resp_t.block_size_limit;
-      m_immutable_height = resp_t.immutable_height;
+      using namespace cryptonote;
+
+      m_height = res.height;
+      m_net_state = {
+          res.mainnet ? network_type::MAINNET : res.testnet ? network_type::TESTNET : res.devnet ? network_type::DEVNET : network_type::FAKECHAIN,
+          {res.network_version[0], res.network_version[1]}};
+      if (m_net_state.second == network_version{}) // Pre-10.x oxend's don't return network version, so set it to what a synced up 10.x node would return
+          m_net_state.second = {18,127};
+
+      m_target_height = res.target_height;
+      m_block_weight_limit = res.block_weight_limit ? res.block_weight_limit : res.block_size_limit;
+      m_immutable_height = res.immutable_height;
       m_get_info_time = now;
       m_height_time = now;
     } catch (...) { return false; }
@@ -151,34 +159,11 @@ bool NodeRPCProxy::get_block_weight_limit(uint64_t &block_weight_limit) const
   return true;
 }
 
-bool NodeRPCProxy::get_earliest_height(uint8_t version, uint64_t &earliest_height) const
+std::optional<cryptonote::network_state> NodeRPCProxy::get_network_state() const
 {
-  if (m_offline)
-    return false;
-  if (m_earliest_height[version] == 0)
-  {
-    rpc::HARD_FORK_INFO::request req_t{};
-    req_t.version = version;
-    try {
-      auto resp_t = invoke_json_rpc<rpc::HARD_FORK_INFO>(req_t);
-      m_earliest_height[version] = resp_t.earliest_height;
-    } catch (...) { return false; }
-  }
-
-  earliest_height = m_earliest_height[version];
-  return true;
-}
-
-std::optional<uint8_t> NodeRPCProxy::get_hardfork_version() const
-{
-  if (m_offline)
+  if (!get_info())
     return std::nullopt;
-
-  try {
-    return invoke_json_rpc<rpc::HARD_FORK_INFO>({}).version;
-  } catch (...) {}
-
-  return std::nullopt;
+  return m_net_state;
 }
 
 bool NodeRPCProxy::refresh_dynamic_base_fee_cache(uint64_t grace_blocks) const

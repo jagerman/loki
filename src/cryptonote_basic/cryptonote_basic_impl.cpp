@@ -30,6 +30,7 @@
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 #include "cryptonote_basic_impl.h"
+#include "cryptonote_basic/hardfork.h"
 #include "epee/string_tools.h"
 #include "serialization/binary_utils.h"
 #include "serialization/container.h"
@@ -62,33 +63,19 @@ namespace cryptonote {
   /* Cryptonote helper functions                                          */
   /************************************************************************/
   //-----------------------------------------------------------------------------------------------
-  bool block_header_has_pulse_components(block_header const &blk_header)
+  bool block_header_has_pulse_components(network_type nettype, block_header const &blk_header)
   {
-    constexpr cryptonote::pulse_random_value empty_random_value = {};
-    bool bitset        = blk_header.pulse.validator_bitset > 0;
-    bool random_value  = !(blk_header.pulse.random_value == empty_random_value);
-    uint8_t hf_version = blk_header.major_version;
-    bool result        = hf_version >= cryptonote::network_version_16_pulse && (bitset || random_value);
-    return result;
+    if (!is_network_version_enabled(feature::PULSE, {nettype, blk_header.version}))
+      return false;
+
+    return blk_header.pulse.validator_bitset > 0
+      || blk_header.pulse.random_value != pulse_random_value{};
   }
   //-----------------------------------------------------------------------------------------------
-  bool block_has_pulse_components(block const &blk)
+  bool block_has_pulse_components(network_type nettype, block const &blk)
   {
-    bool signatures    = blk.signatures.size();
-    uint8_t hf_version = blk.major_version;
-    bool result =
-        (hf_version >= cryptonote::network_version_16_pulse && signatures) || block_header_has_pulse_components(blk);
-    return result;
-  }
-  //-----------------------------------------------------------------------------------------------
-  size_t get_min_block_weight(uint8_t version)
-  {
-    return CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5;
-  }
-  //-----------------------------------------------------------------------------------------------
-  size_t get_max_tx_size()
-  {
-    return CRYPTONOTE_MAX_TX_SIZE;
+    return block_header_has_pulse_components(nettype, blk)
+      || (is_network_version_enabled(feature::PULSE, {nettype, blk.version}) && blk.signatures.size());
   }
   //-----------------------------------------------------------------------------------------------
   // TODO(oxen): Move into oxen_economy, this will require access to oxen::exp2
@@ -110,7 +97,7 @@ namespace cryptonote {
     return result;
   }
 
-  bool get_base_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint64_t &reward_unpenalized, uint8_t version, uint64_t height) {
+  bool get_base_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint64_t &reward_unpenalized, network_state net, uint64_t height) {
 
     //premine reward
     if (already_generated_coins == 0)
@@ -122,12 +109,12 @@ namespace cryptonote {
     static_assert((TARGET_BLOCK_TIME % 1min) == 0s, "difficulty targets must be a multiple of a minute");
 
     uint64_t base_reward =
-      version >= network_version_17 ? BLOCK_REWARD_HF17 :
-      version >= network_version_15_ons ? BLOCK_REWARD_HF15 :
-      version >= network_version_8  ? block_reward_unpenalized_formula_v8(height) :
+      is_network_version_enabled({17,0}, net) ? BLOCK_REWARD_HF17 :
+      is_network_version_enabled({15,0}, net) ? BLOCK_REWARD_HF15 :
+      is_network_version_enabled({8,0}, net) ? block_reward_unpenalized_formula_v8(height) :
         block_reward_unpenalized_formula_v7(already_generated_coins, height);
 
-    uint64_t full_reward_zone = get_min_block_weight(version);
+    uint64_t full_reward_zone = get_min_block_weight(net);
 
     //make it soft
     if (median_weight < full_reward_zone) {

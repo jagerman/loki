@@ -732,9 +732,19 @@ private:
     // all locked & unlocked balances of all subaddress accounts
     uint64_t balance_all(bool strict) const;
     uint64_t unlocked_balance_all(bool strict, uint64_t *blocks_to_unlock = NULL, uint64_t *time_to_unlock = NULL) const;
-    void transfer_selected_rct(std::vector<cryptonote::tx_destination_entry> dsts, const std::vector<size_t>& selected_transfers, size_t fake_outputs_count,
-      std::vector<std::vector<tools::wallet2::get_outs_entry>> &outs,
-      uint64_t unlock_time, uint64_t fee, const std::vector<uint8_t>& extra, cryptonote::transaction& tx, pending_tx &ptx, const rct::RCTConfig &rct_config, const cryptonote::oxen_construct_tx_params &oxen_tx_params);
+    void transfer_selected_rct(
+        cryptonote::network_state net,
+        std::vector<cryptonote::tx_destination_entry> dsts,
+        const std::vector<size_t>& selected_transfers,
+        size_t fake_outputs_count,
+        std::vector<std::vector<tools::wallet2::get_outs_entry>>& outs,
+        uint64_t unlock_time,
+        uint64_t fee,
+        const std::vector<uint8_t>& extra,
+        cryptonote::transaction& tx,
+        pending_tx& ptx,
+        const rct::RCTConfig& rct_config,
+        const cryptonote::oxen_construct_tx_params& oxen_tx_params);
 
     void commit_tx(pending_tx& ptx_vector, bool blink = false);
     void commit_tx(std::vector<pending_tx>& ptx_vector, bool blink = false);
@@ -756,7 +766,16 @@ private:
     bool parse_unsigned_tx_from_str(std::string_view unsigned_tx_st, unsigned_tx_set &exported_txs) const;
     bool load_tx(const fs::path& signed_filename, std::vector<pending_tx>& ptx, std::function<bool(const signed_tx_set&)> accept_func = NULL);
     bool parse_tx_from_str(std::string_view signed_tx_st, std::vector<pending_tx> &ptx, std::function<bool(const signed_tx_set &)> accept_func);
-    std::vector<pending_tx> create_transactions_2(std::vector<cryptonote::tx_destination_entry> dsts, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra_base, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices, cryptonote::oxen_construct_tx_params &tx_params);
+    std::vector<pending_tx> create_transactions_2(
+        cryptonote::network_state net,
+        std::vector<cryptonote::tx_destination_entry> dsts,
+        const size_t fake_outs_count,
+        const uint64_t unlock_time,
+        uint32_t priority,
+        const std::vector<uint8_t>& extra_base,
+        uint32_t subaddr_account,
+        std::set<uint32_t> subaddr_indices,
+        cryptonote::oxen_construct_tx_params& tx_params);
 
     std::vector<pending_tx> create_transactions_all(uint64_t below, const cryptonote::account_public_address &address, bool is_subaddress, const size_t outputs, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices, cryptonote::txtype tx_type = cryptonote::txtype::standard);
     std::vector<pending_tx> create_transactions_single(const crypto::key_image &ki, const cryptonote::account_public_address &address, bool is_subaddress, const size_t outputs, const size_t fake_outs_count, const uint64_t unlock_time, uint32_t priority, const std::vector<uint8_t>& extra, cryptonote::txtype tx_type = cryptonote::txtype::standard);
@@ -1067,9 +1086,8 @@ private:
     size_t get_num_transfer_details() const { return m_transfers.size(); }
     const transfer_details &get_transfer_details(size_t idx) const;
 
-    void get_hard_fork_info (uint8_t version, uint64_t &earliest_height) const;
-    std::optional<uint8_t> get_hard_fork_version() const { return m_node_rpc_proxy.get_hardfork_version(); }
-    bool use_fork_rules(uint8_t version, uint64_t early_blocks = 0) const;
+    std::optional<cryptonote::network_state> get_network_state() const { return m_node_rpc_proxy.get_network_state(); }
+    bool use_fork_rules(cryptonote::network_version feature) const;
 
     const fs::path& get_wallet_file() const;
     const fs::path& get_keys_file() const;
@@ -1226,7 +1244,7 @@ private:
 
     // params constructor, accumulates the burn amounts if the priority is
     // a blink and, or a ons tx. If it is a blink TX, ons_burn_type is ignored.
-    static cryptonote::oxen_construct_tx_params construct_params(uint8_t hf_version, cryptonote::txtype tx_type, uint32_t priority, uint64_t extra_burn = 0, ons::mapping_type ons_burn_type = static_cast<ons::mapping_type>(0));
+    static cryptonote::oxen_construct_tx_params construct_params(cryptonote::network_state net, cryptonote::txtype tx_type, uint32_t priority, uint64_t extra_burn = 0, ons::mapping_type ons_burn_type = static_cast<ons::mapping_type>(0));
 
     bool is_unattended() const { return m_unattended; }
 
@@ -1483,7 +1501,7 @@ private:
      */
     bool load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password);
     bool load_keys_buf(const std::string& keys_buf, const epee::wipeable_string& password, std::optional<crypto::chacha_key>& keys_to_encrypt);
-    void process_new_transaction(const crypto::hash &txid, const cryptonote::transaction& tx, const std::vector<uint64_t> &o_indices, uint64_t height, uint8_t block_version, uint64_t ts, bool miner_tx, bool pool, bool blink, bool double_spend_seen, const tx_cache_data &tx_cache_data, std::map<std::pair<uint64_t, uint64_t>, size_t> *output_tracker_cache = NULL);
+    void process_new_transaction(const crypto::hash &txid, const cryptonote::transaction& tx, const std::vector<uint64_t> &o_indices, uint64_t height, cryptonote::network_version block_version, uint64_t ts, bool miner_tx, bool pool, bool blink, bool double_spend_seen, const tx_cache_data &tx_cache_data, std::map<std::pair<uint64_t, uint64_t>, size_t> *output_tracker_cache = NULL);
     bool should_skip_block(const cryptonote::block &b, uint64_t height) const;
     void process_new_blockchain_entry(const cryptonote::block& b, const cryptonote::block_complete_entry& bche, const parsed_block &parsed_block, const crypto::hash& bl_id, uint64_t height, const std::vector<tx_cache_data> &tx_cache_data, size_t tx_cache_data_offset, std::map<std::pair<uint64_t, uint64_t>, size_t> *output_tracker_cache = NULL);
     void detach_blockchain(uint64_t height, std::map<std::pair<uint64_t, uint64_t>, size_t> *output_tracker_cache = NULL);

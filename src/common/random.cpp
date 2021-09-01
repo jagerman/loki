@@ -35,10 +35,30 @@ thread_local std::mt19937_64 rng{std::random_device{}()};
 
 uint64_t uniform_distribution_portable(std::mt19937_64& rng, const uint64_t n)
 {
+  // We can't change anything here that would result in a change of any generated values, so
+  // potential improvements are left as comments in case anyone wants to copy this at some point.
+  //
+  // First, ideally we should be taking `n` as max-wanted instead of one-plus-max-wanted, so that
+  // this *could* be used in a context that needs (at runtime) to be able to select from the full
+  // range of `rng`.  Currently it cannot (since you can't pass 2^64 in order to get [0, 2^64-1]
+  // values).
+  //
+  // Second we should have taken min,max values, to be more directly comparable to
+  // std::uniform_int_distribution (and probably should use the struct-based
+  // std::uniform_int_distribution interface).
+
   assert(n > 0);
+
+  // This is slightly wasteful when rng.max() is one less than an integer multiple of `n`: we reject
+  // the last `n` values unnecessarily.  (E.g. if `max()==255` and we give `n=64` then the below
+  // generates values from [0, 191] and rejects values in [192, 255], even though it doesn't have
+  // to.
   const uint64_t secureMax = rng.max() - rng.max() % n;
   uint64_t x;
   do x = rng(); while (x >= secureMax);
+
+  // This double-integer-division is pointless (and slow) compared to `return x % n`, but we can't
+  // change it because it would result in different (but still uniform) random values.
   return  x / (secureMax / n);
 }
 

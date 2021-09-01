@@ -30,14 +30,14 @@
 
 #pragma once
 
+#include <array>
+#include <chrono>
+#include <iosfwd>
+#include <ratio>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <boost/uuid/uuid.hpp>
-#include <stdexcept>
-#include <chrono>
-#include <array>
-#include <ratio>
 
 using namespace std::literals;
 
@@ -165,22 +165,6 @@ constexpr uint64_t BLOCKS_EXPECTED_IN_YEARS(int years) { return BLOCKS_EXPECTED_
 #define MINER_CONFIG_FILE_NAME                  "miner_conf.json"
 
 #define THREAD_STACK_SIZE                       5 * 1024 * 1024
-
-#define HF_VERSION_PER_BYTE_FEE                 cryptonote::network_version_10_bulletproofs
-#define HF_VERSION_SMALLER_BP                   cryptonote::network_version_11_infinite_staking
-#define HF_VERSION_LONG_TERM_BLOCK_WEIGHT       cryptonote::network_version_11_infinite_staking
-#define HF_VERSION_INCREASE_FEE                 cryptonote::network_version_12_checkpointing
-#define HF_VERSION_PER_OUTPUT_FEE               cryptonote::network_version_13_enforce_checkpoints
-#define HF_VERSION_ED25519_KEY                  cryptonote::network_version_13_enforce_checkpoints
-#define HF_VERSION_FEE_BURNING                  cryptonote::network_version_14_blink
-#define HF_VERSION_BLINK                        cryptonote::network_version_14_blink
-#define HF_VERSION_MIN_2_OUTPUTS                cryptonote::network_version_16_pulse
-#define HF_VERSION_REJECT_SIGS_IN_COINBASE      cryptonote::network_version_16_pulse
-#define HF_VERSION_ENFORCE_MIN_AGE              cryptonote::network_version_16_pulse
-#define HF_VERSION_EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY cryptonote::network_version_16_pulse
-#define HF_VERSION_PULSE cryptonote::network_version_16_pulse
-#define HF_VERSION_CLSAG                        cryptonote::network_version_16_pulse
-#define HF_VERSION_PROOF_BTENC                  cryptonote::network_version_18
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS        8
 
@@ -323,25 +307,110 @@ namespace config
 
 namespace cryptonote
 {
-  enum network_version
-  {
-    network_version_7 = 7,
-    network_version_8,
-    network_version_9_service_nodes, // Proof Of Stake w/ Service Nodes
-    network_version_10_bulletproofs, // Bulletproofs, Service Node Grace Registration Period, Batched Governance
-    network_version_11_infinite_staking, // Infinite Staking, CN-Turtle
-    network_version_12_checkpointing, // Checkpointing, Relaxed Deregistration, RandomXL, Oxen Storage Server
-    network_version_13_enforce_checkpoints,
-    network_version_14_blink,
-    network_version_15_ons,
-    network_version_16_pulse,
-    network_version_17, // future HF
-    network_version_18, // future HF
-
-    network_version_count,
+  // Network version conventions: Up until HF19, blocks have major/minor block versions as α.β where
+  // α is the hardfork version and β is the maximum hardfork version supported by the block creator,
+  // so you'd typically see something like 17.18 for a SN that is upgraded to support HF18 but
+  // hasn't forked yet, and 17.17 for a block created by a non-upgraded SN on HF17.  (Once upon a
+  // time in Monero, a long time ago, this minor version was used to potentially delay a hardfork
+  // until a certain percentage of the network had upgraded to it, but that feature has long been
+  // deactivated in Monero and never active in Loki/Oxen).
+  //
+  // Starting at HF 19 we repurpose the minor field to be an actual minor version, according to this
+  // convention:
+  //
+  // - minor versions on *testnet*/*devnet* before mainnet gets the major version update *can be*
+  //   hardforks/mandatory upgrades, with entries added to hardfork.cpp.  This lets us introduce new
+  //   breaking features into testnet without needing to hack in height exceptions or cause testnet
+  //   rollbacks.
+  // - when a *mainnet* hardfork release comes out, it starts at minor version 32 (for a x.1.0 release)
+  //   and thus automatically picks up all the x.0.z features added to testnet during development.
+  // - mainnet minor updates automatically bump the minor version (according to 32*x+y for version
+  //   z.x.y), but must remain backwards and forwards compatible with the first released minor
+  //   version of the hardfork (that is: if 19.32 is the first 19.32 mainnet release network version
+  //   then 19.33 and higher mainnet nodes must still be able to accept a block produced by 19.32,
+  //   and 19.32 nodes must be able to accept 19.33 and higher blocks.
+  //
+  struct network_version : std::pair<uint8_t, uint8_t> {
+    // Constructible however a pair is constructible:
+    using std::pair<uint8_t, uint8_t>::pair;
   };
 
-  enum network_type : uint8_t
+  // Our initial network version at the start of the chain (e.g. for genesis txes, etc.); we kept
+  // Monero's hard fork versioning, which was v7 at the time.
+  inline constexpr network_version network_version_initial{7,0};
+
+  // Maximum supported network version; this is primarily used in the test suite to generate hard
+  // fork tables.
+  inline constexpr network_version network_version_max{18,0};
+
+  // Deprecated way of doing things:
+  [[deprecated]] inline constexpr network_version network_version_7{7,0};
+  [[deprecated]] inline constexpr network_version network_version_8{8,0};
+  [[deprecated]] inline constexpr network_version network_version_9_service_nodes{9,0}; // Proof Of Stake w/ Service Nodes
+  [[deprecated]] inline constexpr network_version network_version_10_bulletproofs{10,0}; // Bulletproofs, Service Node Grace Registration Period, Batched Governance
+  [[deprecated]] inline constexpr network_version network_version_11_infinite_staking{11,0}; // Infinite Staking, CN-Turtle
+  [[deprecated]] inline constexpr network_version network_version_12_checkpointing{12,0}; // Checkpointing, Relaxed Deregistration, RandomXL, Oxen Storage Server
+  [[deprecated]] inline constexpr network_version network_version_13_enforce_checkpoints{13,0};
+  [[deprecated]] inline constexpr network_version network_version_14_blink{14,0};
+  [[deprecated]] inline constexpr network_version network_version_15_ons{15,0};
+  [[deprecated]] inline constexpr network_version network_version_16_pulse{16,0};
+  [[deprecated]] inline constexpr network_version network_version_17{17,0}; // 6 months after HF16, dropped 6/block supplemental fee
+  [[deprecated]] inline constexpr network_version network_version_18{18,0}; // new proofs, reasons, wallet ONS, timesync
+
+  // New way: set network major,minor version where feature becomes enabled on testnet (starting at
+  // HF 19), then mainnet gets it automatically when it jumps to major.32 for the stable release.
+  // Note that if you set a feature here *later* than major.32 then it won't take effect until the
+  // following hardfork (because it cannot be guaranteed supported by all nodes on the network until
+  // the next hardfork).
+  namespace feature {
+    inline constexpr network_version SERVICE_NODES{9,0};
+    inline constexpr network_version LWMA_DIFF_UPDATE{10,0};
+    inline constexpr network_version BULLETPROOFS{10,0};
+    inline constexpr network_version BATCHED_GOVERNANCE_FEE{10,0};
+    inline constexpr network_version PER_BYTE_FEE{10,0};
+    inline constexpr network_version STAKE_EXPIRY_GRACE{10,0};
+    inline constexpr network_version CN_TURTLE{11,0};
+    inline constexpr network_version INFINITE_STAKING{11,0};
+    inline constexpr network_version TX_V4_TYPES{11,0};
+    inline constexpr network_version SMALLER_BP{11,0};
+    inline constexpr network_version LONG_TERM_BLOCK_WEIGHT{11,0};
+    inline constexpr network_version INCREASE_FEE{12,0};
+    inline constexpr network_version CHECKPOINTS{12,0};
+    inline constexpr network_version SN_STATE_CHANGES{12,0};
+    inline constexpr network_version RANDOMX{12,0};
+    inline constexpr network_version ENFORCE_CHECKPOINTS{13,0};
+    inline constexpr network_version PER_OUTPUT_FEE{13,0};
+    inline constexpr network_version ED25519_KEY{13,0};
+    inline constexpr network_version LINEAR_APPROX_STAKING_REQ{13,0};
+    inline constexpr network_version MINER_PAYS_PENALTY{13,0};
+    inline constexpr network_version FIX_SWARM_UNASSIGN{13,0};
+    inline constexpr network_version SN_STATE_TRANSITION_CHECKS{13,0};
+    inline constexpr network_version FEE_BURNING{14,0};
+    inline constexpr network_version BLINK{14,0};
+    inline constexpr network_version TXTYPE_STAKE{14,0};
+    inline constexpr network_version ONS{15,0};
+    inline constexpr network_version SIMPLE_GOV_REWARD{15,0};
+    inline constexpr network_version MIN_2_OUTPUTS{16,0};
+    inline constexpr network_version REJECT_SIGS_IN_COINBASE{16,0};
+    inline constexpr network_version ENFORCE_MIN_AGE{16,0};
+    inline constexpr network_version EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY{16,0};
+    inline constexpr network_version PULSE{16,0};
+    inline constexpr network_version FIXED_STAKING_REQUIREMENT{16,0};
+    inline constexpr network_version OVERSTAKE_PROTECTION{16,0};
+    inline constexpr network_version CLSAG{16,0};
+    inline constexpr network_version ONS_LOKINET{16,0};
+    inline constexpr network_version LRC7_LIQUIDITY_END{17,0};
+    inline constexpr network_version PROOF_BTENC{18,0};
+    inline constexpr network_version OBLIGATION_REASONS{18,0};
+    inline constexpr network_version ONS_WALLET{18,0};
+    inline constexpr network_version TIMESYNC{18,0};
+    inline constexpr network_version HF18_FEES{18,0};
+
+    // Special network version that will never be satisfied (i.e. is_network_version_enabled will always return false for this)
+    inline constexpr network_version NEVER{255,255};
+  }
+
+  enum /*class*/ network_type : uint8_t
   {
     MAINNET = 0,
     TESTNET,
@@ -354,14 +423,17 @@ namespace cryptonote
   {
     switch(nettype)
     {
-      case MAINNET: return "Mainnet"sv;
-      case TESTNET: return "Testnet"sv;
-      case DEVNET: return "Devnet"sv;
-      case FAKECHAIN: return "Fakenet"sv;
-      case UNDEFINED: return "Undefined Net"sv;
+      case network_type::MAINNET: return "Mainnet"sv;
+      case network_type::TESTNET: return "Testnet"sv;
+      case network_type::DEVNET: return "Devnet"sv;
+      case network_type::FAKECHAIN: return "Fakenet"sv;
+      case network_type::UNDEFINED: return "Undefined Net"sv;
     }
     return "Unhandled Net"sv;
   }
+
+  // Convenience bundle of network type+version
+  using network_state = std::pair<network_type, network_version>;
 
   struct network_config
   {
@@ -387,30 +459,30 @@ namespace cryptonote
     std::chrono::seconds UPTIME_PROOF_FREQUENCY;
     std::chrono::seconds UPTIME_PROOF_VALIDITY;
 
-    inline constexpr std::string_view governance_wallet_address(int hard_fork_version) const {
+    inline constexpr std::string_view governance_wallet_address(network_version hard_fork_version) const {
       const auto wallet_switch =
-        (NETWORK_TYPE == MAINNET || NETWORK_TYPE == FAKECHAIN)
-        ? network_version_11_infinite_staking
-        : network_version_10_bulletproofs;
+        (NETWORK_TYPE == network_type::MAINNET || NETWORK_TYPE == network_type::FAKECHAIN)
+        ? network_version{11,0}
+        : network_version{10,0};
       return GOVERNANCE_WALLET_ADDRESS[hard_fork_version >= wallet_switch ? 1 : 0];
     }
   };
   inline constexpr network_config mainnet_config{
-    MAINNET,
-    ::config::HEIGHT_ESTIMATE_HEIGHT,
-    ::config::HEIGHT_ESTIMATE_TIMESTAMP,
-    ::config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
-    ::config::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
-    ::config::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
-    ::config::P2P_DEFAULT_PORT,
-    ::config::RPC_DEFAULT_PORT,
-    ::config::ZMQ_RPC_DEFAULT_PORT,
-    ::config::QNET_DEFAULT_PORT,
-    ::config::NETWORK_ID,
-    ::config::GENESIS_TX,
-    ::config::GENESIS_NONCE,
-    ::config::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
-    ::config::GOVERNANCE_WALLET_ADDRESS,
+    network_type::MAINNET,
+    config::HEIGHT_ESTIMATE_HEIGHT,
+    config::HEIGHT_ESTIMATE_TIMESTAMP,
+    config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
+    config::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
+    config::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
+    config::P2P_DEFAULT_PORT,
+    config::RPC_DEFAULT_PORT,
+    config::ZMQ_RPC_DEFAULT_PORT,
+    config::QNET_DEFAULT_PORT,
+    config::NETWORK_ID,
+    config::GENESIS_TX,
+    config::GENESIS_NONCE,
+    config::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
+    config::GOVERNANCE_WALLET_ADDRESS,
     config::UPTIME_PROOF_TOLERANCE,
     config::UPTIME_PROOF_STARTUP_DELAY,
     config::UPTIME_PROOF_CHECK_INTERVAL,
@@ -418,21 +490,21 @@ namespace cryptonote
     config::UPTIME_PROOF_VALIDITY,
   };
   inline constexpr network_config testnet_config{
-    TESTNET,
-    ::config::testnet::HEIGHT_ESTIMATE_HEIGHT,
-    ::config::testnet::HEIGHT_ESTIMATE_TIMESTAMP,
-    ::config::testnet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
-    ::config::testnet::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
-    ::config::testnet::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
-    ::config::testnet::P2P_DEFAULT_PORT,
-    ::config::testnet::RPC_DEFAULT_PORT,
-    ::config::testnet::ZMQ_RPC_DEFAULT_PORT,
-    ::config::testnet::QNET_DEFAULT_PORT,
-    ::config::testnet::NETWORK_ID,
-    ::config::testnet::GENESIS_TX,
-    ::config::testnet::GENESIS_NONCE,
-    ::config::testnet::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
-    ::config::testnet::GOVERNANCE_WALLET_ADDRESS,
+    network_type::TESTNET,
+    config::testnet::HEIGHT_ESTIMATE_HEIGHT,
+    config::testnet::HEIGHT_ESTIMATE_TIMESTAMP,
+    config::testnet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
+    config::testnet::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
+    config::testnet::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
+    config::testnet::P2P_DEFAULT_PORT,
+    config::testnet::RPC_DEFAULT_PORT,
+    config::testnet::ZMQ_RPC_DEFAULT_PORT,
+    config::testnet::QNET_DEFAULT_PORT,
+    config::testnet::NETWORK_ID,
+    config::testnet::GENESIS_TX,
+    config::testnet::GENESIS_NONCE,
+    config::testnet::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
+    config::testnet::GOVERNANCE_WALLET_ADDRESS,
     config::UPTIME_PROOF_TOLERANCE,
     config::UPTIME_PROOF_STARTUP_DELAY,
     config::UPTIME_PROOF_CHECK_INTERVAL,
@@ -440,21 +512,21 @@ namespace cryptonote
     config::testnet::UPTIME_PROOF_VALIDITY,
   };
   inline constexpr network_config devnet_config{
-    DEVNET,
-    ::config::devnet::HEIGHT_ESTIMATE_HEIGHT,
-    ::config::devnet::HEIGHT_ESTIMATE_TIMESTAMP,
-    ::config::devnet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
-    ::config::devnet::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
-    ::config::devnet::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
-    ::config::devnet::P2P_DEFAULT_PORT,
-    ::config::devnet::RPC_DEFAULT_PORT,
-    ::config::devnet::ZMQ_RPC_DEFAULT_PORT,
-    ::config::devnet::QNET_DEFAULT_PORT,
-    ::config::devnet::NETWORK_ID,
-    ::config::devnet::GENESIS_TX,
-    ::config::devnet::GENESIS_NONCE,
-    ::config::devnet::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
-    ::config::devnet::GOVERNANCE_WALLET_ADDRESS,
+    network_type::DEVNET,
+    config::devnet::HEIGHT_ESTIMATE_HEIGHT,
+    config::devnet::HEIGHT_ESTIMATE_TIMESTAMP,
+    config::devnet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
+    config::devnet::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
+    config::devnet::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
+    config::devnet::P2P_DEFAULT_PORT,
+    config::devnet::RPC_DEFAULT_PORT,
+    config::devnet::ZMQ_RPC_DEFAULT_PORT,
+    config::devnet::QNET_DEFAULT_PORT,
+    config::devnet::NETWORK_ID,
+    config::devnet::GENESIS_TX,
+    config::devnet::GENESIS_NONCE,
+    config::devnet::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
+    config::devnet::GOVERNANCE_WALLET_ADDRESS,
     config::UPTIME_PROOF_TOLERANCE,
     config::UPTIME_PROOF_STARTUP_DELAY,
     config::UPTIME_PROOF_CHECK_INTERVAL,
@@ -462,21 +534,21 @@ namespace cryptonote
     config::testnet::UPTIME_PROOF_VALIDITY,
   };
   inline constexpr network_config fakenet_config{
-    FAKECHAIN,
-    ::config::HEIGHT_ESTIMATE_HEIGHT,
-    ::config::HEIGHT_ESTIMATE_TIMESTAMP,
-    ::config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
-    ::config::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
-    ::config::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
-    ::config::P2P_DEFAULT_PORT,
-    ::config::RPC_DEFAULT_PORT,
-    ::config::ZMQ_RPC_DEFAULT_PORT,
-    ::config::QNET_DEFAULT_PORT,
-    ::config::NETWORK_ID,
-    ::config::GENESIS_TX,
-    ::config::GENESIS_NONCE,
-    100, //::config::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
-    ::config::GOVERNANCE_WALLET_ADDRESS,
+    network_type::FAKECHAIN,
+    config::HEIGHT_ESTIMATE_HEIGHT,
+    config::HEIGHT_ESTIMATE_TIMESTAMP,
+    config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
+    config::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX,
+    config::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX,
+    config::P2P_DEFAULT_PORT,
+    config::RPC_DEFAULT_PORT,
+    config::ZMQ_RPC_DEFAULT_PORT,
+    config::QNET_DEFAULT_PORT,
+    config::NETWORK_ID,
+    config::GENESIS_TX,
+    config::GENESIS_NONCE,
+    100, //config::GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS,
+    config::GOVERNANCE_WALLET_ADDRESS,
     config::UPTIME_PROOF_TOLERANCE,
     config::fakechain::UPTIME_PROOF_STARTUP_DELAY,
     config::fakechain::UPTIME_PROOF_CHECK_INTERVAL,
@@ -488,11 +560,12 @@ namespace cryptonote
   {
     switch (nettype)
     {
-      case MAINNET: return mainnet_config;
-      case TESTNET: return testnet_config;
-      case DEVNET: return devnet_config;
-      case FAKECHAIN: return fakenet_config;
-      default: throw std::runtime_error{"Invalid network type"};
+      case network_type::MAINNET: return mainnet_config;
+      case network_type::TESTNET: return testnet_config;
+      case network_type::DEVNET: return devnet_config;
+      case network_type::FAKECHAIN: return fakenet_config;
+      case network_type::UNDEFINED: break;
     }
+    throw std::runtime_error{"Invalid network type"};
   }
 }

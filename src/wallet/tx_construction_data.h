@@ -47,7 +47,7 @@ struct tx_construction_data
   uint32_t subaddr_account;   // subaddress account of your wallet to be used in this transfer
   std::set<uint32_t> subaddr_indices;  // set of address indices used as inputs in this transfer
 
-  uint8_t            hf_version;
+  cryptonote::network_version net_version;
   cryptonote::txtype tx_type;
 };
 
@@ -64,13 +64,13 @@ void serialize_value(Archive& ar, tx_construction_data& x) {
   field(ar, "subaddr_account", x.subaddr_account);
   field(ar, "subaddr_indices", x.subaddr_indices);
 
-  field(ar, "hf_version", x.hf_version);
+  field(ar, "net_version", x.net_version);
   field_varint(ar, "tx_type", x.tx_type, [](auto& t) { return t < cryptonote::txtype::_count; });
 }
 
 }
 
-BOOST_CLASS_VERSION(wallet::tx_construction_data, 6)
+BOOST_CLASS_VERSION(wallet::tx_construction_data, 7)
 
 namespace boost::serialization {
 
@@ -106,8 +106,10 @@ void serialize(Archive &a, wallet::tx_construction_data &x, const unsigned int v
     if (ver < 6)
     {
       x.tx_type    = cryptonote::txtype::standard;
-      x.hf_version = cryptonote::network_version_13_enforce_checkpoints;
+      x.net_version = {13, 13};
     }
+    else if (ver < 7)
+      x.net_version = {18, 18};
   }
 
   if (ver < 2)
@@ -127,7 +129,10 @@ void serialize(Archive &a, wallet::tx_construction_data &x, const unsigned int v
 
   if (ver < 6) return;
   a & x.tx_type;
-  a & x.hf_version;
+  if (ver < 7)
+    a & x.net_version.first;
+  else
+    a & x.net_version;
 }
 
 }

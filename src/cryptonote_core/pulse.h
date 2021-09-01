@@ -25,7 +25,7 @@ struct service_node_keys;
 namespace pulse
 {
 using clock      = std::chrono::system_clock;
-using time_point = std::chrono::time_point<clock>;
+using time_point = clock::time_point;
 
 enum struct message_type : uint8_t
 {

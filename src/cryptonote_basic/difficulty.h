@@ -75,7 +75,7 @@ namespace cryptonote
       normal,
     };
 
-    difficulty_calc_mode difficulty_mode(network_type nettype, uint8_t hf_version, uint64_t height);
+    difficulty_calc_mode difficulty_mode(network_state netstate, uint64_t height);
 
     difficulty_type next_difficulty_v2(std::vector<std::uint64_t> timestamps,
                                        std::vector<difficulty_type> cumulative_difficulties,

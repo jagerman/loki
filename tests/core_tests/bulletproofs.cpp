@@ -43,7 +43,7 @@ using namespace cryptonote;
 // Tests
 
 bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& events,
-    size_t n_txes, const uint64_t *amounts_paid, bool valid, const rct::RCTConfig *rct_config, uint8_t target_hf,
+    size_t n_txes, const uint64_t *amounts_paid, bool valid, const rct::RCTConfig *rct_config, std::optional<network_version> target_hf,
     const std::function<bool(std::vector<tx_source_entry> &sources, std::vector<tx_destination_entry> &destinations, size_t tx_idx)> &pre_tx,
     const std::function<bool(transaction &tx, size_t tx_idx)> &post_tx, size_t extra_blocks) const
 {
@@ -52,8 +52,6 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
   GENERATE_ACCOUNT(miner_account);
   MAKE_GENESIS_BLOCK(events, blk_0, miner_account, ts_start);
 
-  if (target_hf == 0)
-    target_hf = cryptonote::network_version_count - 1;
   // NOTE: Monero tests use multiple null terminated entries in their arrays
   {
     int amounts_paid_len = 0;
@@ -61,8 +59,10 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
       ++amounts_paid_len;
   }
 
-  std::vector<std::pair<uint8_t, uint64_t>> hard_forks = {
-    {7,0}, {8,1}, {target_hf, NUM_UNLOCKED_BLOCKS + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW + 1},
+  std::vector<hard_fork> hard_forks = {
+      {{7,0}, 0, 0},
+      {{8,0}, 1, 0},
+      {target_hf.value_or(network_version_max), NUM_UNLOCKED_BLOCKS + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW + 1},
   };
   event_replay_settings settings = {};
   settings.hard_forks            = hard_forks;
@@ -78,8 +78,8 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
   for (size_t i = 0; i < NUM_MINERS; ++i)
     miner_accounts[i].generate();
 
-  uint8_t const first_hf = hard_forks[1].first;
-  uint8_t const last_hf  = hard_forks.back().first;
+  const auto first_hf = hard_forks[1].version;
+  const auto last_hf  = hard_forks.back().version;
   generator.m_hf_version = first_hf;
   for (size_t n = 0; n < NUM_UNLOCKED_BLOCKS; ++n) {
     CHECK_AND_ASSERT_MES(
@@ -87,7 +87,6 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
                                            *prev_block,
                                            miner_accounts[n % NUM_MINERS],
                                            test_generator::bf_major_ver | test_generator::bf_minor_ver | test_generator::bf_timestamp | test_generator::bf_hf_version,
-                                           first_hf,
                                            first_hf,
                                            prev_block->timestamp + tools::to_seconds(TARGET_BLOCK_TIME) * 2, // v2 has blocks twice as long
                                            crypto::hash(),
@@ -112,7 +111,6 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
                                              blk_last,
                                              miner_account,
                                              test_generator::bf_major_ver | test_generator::bf_minor_ver | test_generator::bf_timestamp | test_generator::bf_hf_version,
-                                             first_hf,
                                              first_hf,
                                              blk_last.timestamp + tools::to_seconds(TARGET_BLOCK_TIME) * 2, // v2 has blocks twice as long
                                              crypto::hash(),
@@ -141,7 +139,6 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
                                            blk_last,
                                            miner_account,
                                            test_generator::bf_major_ver | test_generator::bf_minor_ver | test_generator::bf_timestamp | test_generator::bf_hf_version,
-                                           generator.m_hf_version,
                                            generator.m_hf_version,
                                            blk_last.timestamp + tools::to_seconds(TARGET_BLOCK_TIME) * 2, // v2 has blocks twice as long
                                            crypto::hash(),
@@ -296,7 +293,7 @@ bool gen_bp_tx_validation_base::generate_with(std::vector<test_event_entry>& eve
 
   CHECK_AND_ASSERT_MES(generator.construct_block_manually(blk_txes, blk_last, miner_account,
       test_generator::bf_major_ver | test_generator::bf_minor_ver | test_generator::bf_timestamp | test_generator::bf_tx_hashes | test_generator::bf_hf_version,
-      generator.m_hf_version, generator.m_hf_version, blk_last.timestamp + tools::to_seconds(TARGET_BLOCK_TIME) * 2, // v2 has blocks twice as long
+      generator.m_hf_version, blk_last.timestamp + tools::to_seconds(TARGET_BLOCK_TIME) * 2, // v2 has blocks twice as long
       crypto::hash(), 0, transaction(), starting_rct_tx_hashes, 0, txn_fee),
       false, "Failed to generate block");
   if (!valid)

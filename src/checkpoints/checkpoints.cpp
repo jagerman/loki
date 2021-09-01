@@ -31,6 +31,7 @@
 
 #include "checkpoints.h"
 
+#include "cryptonote_config.h"
 #include "epee/string_tools.h"
 #include "epee/storages/portable_storage_template_helper.h" // epee json include
 #include "epee/serialization/keyvalue_serialization.h"
@@ -171,7 +172,7 @@ namespace cryptonote
   bool checkpoints::block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs, checkpoint_t const *checkpoint)
   {
     uint64_t const height = get_block_height(block);
-    if (height < service_nodes::CHECKPOINT_STORE_PERSISTENTLY_INTERVAL || block.major_version < network_version_12_checkpointing)
+    if (height < service_nodes::CHECKPOINT_STORE_PERSISTENTLY_INTERVAL || !is_network_version_enabled(feature::CHECKPOINTS, {m_nettype, block.version}))
       return true;
 
     uint64_t end_cull_height = 0;

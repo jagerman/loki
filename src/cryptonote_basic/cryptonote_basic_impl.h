@@ -104,13 +104,13 @@ namespace cryptonote {
   /************************************************************************/
   /* Cryptonote helper functions                                          */
   /************************************************************************/
-  bool block_header_has_pulse_components(block_header const &blk_header);
-  bool block_has_pulse_components(block const &blk);
-  size_t get_min_block_weight(uint8_t version);
-  size_t get_max_tx_size();
+  bool block_header_has_pulse_components(network_type nettype, block_header const &blk_header);
+  bool block_has_pulse_components(network_type nettype, block const &blk);
+  constexpr size_t get_min_block_weight(network_state net) { return CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5; }
+  constexpr size_t get_max_tx_size() { return CRYPTONOTE_MAX_TX_SIZE; }
   uint64_t block_reward_unpenalized_formula_v7(uint64_t already_generated_coins, uint64_t height);
   uint64_t block_reward_unpenalized_formula_v8(uint64_t height);
-  bool get_base_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint64_t &reward_unpenalized, uint8_t version, uint64_t height);
+  bool get_base_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint64_t &reward_unpenalized, network_state net, uint64_t height);
   uint8_t get_account_address_checksum(const public_address_outer_blob& bl);
   uint8_t get_account_integrated_address_checksum(const public_integrated_address_outer_blob& bl);
 

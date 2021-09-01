@@ -12,21 +12,21 @@
 namespace service_nodes {
 
 // TODO(oxen): Move to oxen_economy, this will also need access to oxen::exp2
-uint64_t get_staking_requirement(cryptonote::network_type m_nettype, uint64_t height, uint8_t hf_version)
+uint64_t get_staking_requirement(cryptonote::network_state net, uint64_t height)
 {
-  if (m_nettype == cryptonote::TESTNET || m_nettype == cryptonote::FAKECHAIN)
+  if (net.first == cryptonote::TESTNET || net.first == cryptonote::FAKECHAIN)
       return COIN * 100;
 
   // For devnet we use the 10% of mainnet requirement at height (650k + H) so that we follow
   // (proportionally) whatever staking changes happen on mainnet.  (The 650k is because devnet
   // launched at ~600k mainnet height, so this puts it a little ahead).
-  if (m_nettype == cryptonote::DEVNET)
-      return get_staking_requirement(cryptonote::MAINNET, 600000 + height, hf_version) / 10;
+  if (net.first == cryptonote::DEVNET)
+      return get_staking_requirement({cryptonote::MAINNET, net.second}, 600000 + height) / 10;
 
-  if (hf_version >= cryptonote::network_version_16_pulse)
+  if (is_network_version_enabled(cryptonote::feature::FIXED_STAKING_REQUIREMENT, net))
     return 15000'000000000;
 
-  if (hf_version >= cryptonote::network_version_13_enforce_checkpoints)
+  if (is_network_version_enabled(cryptonote::feature::LINEAR_APPROX_STAKING_REQ, net))
   {
     constexpr int64_t heights[] = {
         385824,
@@ -69,13 +69,14 @@ uint64_t get_staking_requirement(cryptonote::network_type m_nettype, uint64_t he
     return static_cast<uint64_t>(result);
   }
 
-  uint64_t hardfork_height = 101250;
+  uint64_t hardfork_height = get_hard_fork_heights(net.first, cryptonote::feature::SERVICE_NODES).first.value_or(0);
+  assert(hardfork_height > 0);
   if (height < hardfork_height) height = hardfork_height;
 
   uint64_t height_adjusted = height - hardfork_height;
   uint64_t base = 0, variable = 0;
   std::fesetround(FE_TONEAREST);
-  if (hf_version >= cryptonote::network_version_11_infinite_staking)
+  if (is_network_version_enabled(cryptonote::feature::INFINITE_STAKING, net))
   {
     base     = 15000 * COIN;
     variable = (25007.0 * COIN) / oxen::exp2(height_adjusted/129600.0);
@@ -98,14 +99,14 @@ uint64_t portions_to_amount(uint64_t portions, uint64_t staking_requirement)
   return resultlo;
 }
 
-bool check_service_node_portions(uint8_t hf_version, const std::vector<uint64_t>& portions)
+bool check_service_node_portions(cryptonote::network_state net, const std::vector<uint64_t>& portions)
 {
   if (portions.size() > MAX_NUMBER_OF_CONTRIBUTORS) return false;
 
   uint64_t reserved = 0;
   for (auto i = 0u; i < portions.size(); ++i)
   {
-    const uint64_t min_portions = get_min_node_contribution(hf_version, STAKING_PORTIONS, reserved, i);
+    const uint64_t min_portions = get_min_node_contribution(net, STAKING_PORTIONS, reserved, i);
     if (portions[i] < min_portions) return false;
     reserved += portions[i];
   }
@@ -123,9 +124,9 @@ crypto::hash generate_request_stake_unlock_hash(uint32_t nonce)
   return result;
 }
 
-uint64_t get_locked_key_image_unlock_height(cryptonote::network_type nettype, uint64_t node_register_height, uint64_t curr_height)
+uint64_t get_locked_key_image_unlock_height(cryptonote::network_state net, uint64_t node_register_height, uint64_t curr_height)
 {
-  uint64_t blocks_to_lock = staking_num_lock_blocks(nettype);
+  uint64_t blocks_to_lock = staking_num_lock_blocks(net);
   uint64_t result         = curr_height + (blocks_to_lock / 2);
   return result;
 }
@@ -135,17 +136,17 @@ static uint64_t get_min_node_contribution_pre_v11(uint64_t staking_requirement, 
   return std::min(staking_requirement - total_reserved, staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS);
 }
 
-uint64_t get_max_node_contribution(uint8_t version, uint64_t staking_requirement, uint64_t total_reserved)
+uint64_t get_max_node_contribution(cryptonote::network_state net, uint64_t staking_requirement, uint64_t total_reserved)
 {
-  if (version >= cryptonote::network_version_16_pulse)
+  if (is_network_version_enabled(cryptonote::feature::OVERSTAKE_PROTECTION, net))
     return (staking_requirement - total_reserved) * config::MAXIMUM_ACCEPTABLE_STAKE::num
       / config::MAXIMUM_ACCEPTABLE_STAKE::den;
   return std::numeric_limits<uint64_t>::max();
 }
 
-uint64_t get_min_node_contribution(uint8_t version, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions)
+uint64_t get_min_node_contribution(cryptonote::network_state net, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions)
 {
-  if (version < cryptonote::network_version_11_infinite_staking)
+  if (!is_network_version_enabled(cryptonote::feature::INFINITE_STAKING, net))
     return get_min_node_contribution_pre_v11(staking_requirement, total_reserved);
 
   const uint64_t needed = staking_requirement - total_reserved;
@@ -156,9 +157,9 @@ uint64_t get_min_node_contribution(uint8_t version, uint64_t staking_requirement
   return needed / num_contributions_remaining_avail;
 }
 
-uint64_t get_min_node_contribution_in_portions(uint8_t version, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions)
+uint64_t get_min_node_contribution_in_portions(cryptonote::network_state net, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions)
 {
-  uint64_t atomic_amount = get_min_node_contribution(version, staking_requirement, total_reserved, num_contributions);
+  uint64_t atomic_amount = get_min_node_contribution(net, staking_requirement, total_reserved, num_contributions);
   uint64_t result        = (atomic_amount == UINT64_MAX) ? UINT64_MAX : (get_portions_to_make_amount(staking_requirement, atomic_amount));
   return result;
 }

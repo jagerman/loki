@@ -726,18 +726,16 @@ KV_SERIALIZE_MAP_CODE_END()
 
 KV_SERIALIZE_MAP_CODE_BEGIN(HARD_FORK_INFO::request)
   KV_SERIALIZE(version)
+  KV_SERIALIZE(minor)
 KV_SERIALIZE_MAP_CODE_END()
 
 
 KV_SERIALIZE_MAP_CODE_BEGIN(HARD_FORK_INFO::response)
   KV_SERIALIZE(version)
+  KV_SERIALIZE(minor)
   KV_SERIALIZE(enabled)
-  KV_SERIALIZE(window)
-  KV_SERIALIZE(votes)
-  KV_SERIALIZE(threshold)
-  KV_SERIALIZE(voting)
-  KV_SERIALIZE(state)
   KV_SERIALIZE(earliest_height)
+  KV_SERIALIZE(last_height)
   KV_SERIALIZE(status)
   KV_SERIALIZE(untrusted)
 KV_SERIALIZE_MAP_CODE_END()
@@ -1086,7 +1084,7 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_SERVICE_NODES::requested_fields_t)
   {
     KV_SERIALIZE(service_node_pubkey)
     KV_SERIALIZE(registration_height)
-    KV_SERIALIZE(registration_hf_version)
+    KV_SERIALIZE(registration_net_version)
     KV_SERIALIZE(requested_unlock_height)
     KV_SERIALIZE(last_reward_block_height)
     KV_SERIALIZE(last_reward_transaction_index)
@@ -1114,7 +1112,7 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_SERVICE_NODES::requested_fields_t)
     KV_SERIALIZE(block_hash)
     KV_SERIALIZE(height)
     KV_SERIALIZE(target_height)
-    KV_SERIALIZE(hardfork)
+    KV_SERIALIZE(network_version)
 
     KV_SERIALIZE(last_uptime_proof)
     KV_SERIALIZE(storage_server_reachable)
@@ -1147,7 +1145,7 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_SERVICE_NODES::response::entry)
 
   KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(service_node_pubkey);
   KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(registration_height);
-  KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(registration_hf_version);
+  KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(registration_net_version);
   KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(requested_unlock_height);
   KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(last_reward_block_height);
   KV_SERIALIZE_ENTRY_FIELD_IF_REQUESTED(last_reward_transaction_index);
@@ -1190,7 +1188,7 @@ KV_SERIALIZE_MAP_CODE_BEGIN(GET_SERVICE_NODES::response)
   if (fields.height || fields.all) KV_SERIALIZE(height)
   if (fields.target_height || fields.all) KV_SERIALIZE(target_height)
   if (fields.block_hash || fields.all || (polling_mode && !unchanged)) KV_SERIALIZE(block_hash)
-  if (fields.hardfork || fields.all) KV_SERIALIZE(hardfork)
+  if (fields.network_version || fields.all) KV_SERIALIZE(network_version)
   if (!as_json.empty()) KV_SERIALIZE(as_json)
   if (polling_mode) KV_SERIALIZE(unchanged);
 KV_SERIALIZE_MAP_CODE_END()

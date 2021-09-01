@@ -32,6 +32,7 @@
 #include <algorithm>
 
 #include "common/oxen.h"
+#include "cryptonote_config.h"
 #include "epee/int-util.h"
 #include "crypto/hash.h"
 #include "difficulty.h"
@@ -127,14 +128,13 @@ namespace cryptonote {
     timestamps.push_back(timestamp);
     difficulties.push_back(cumulative_difficulty);
 
-    static const uint64_t hf16_height = HardFork::get_hardcoded_hard_fork_height(nettype, cryptonote::network_version_16_pulse);
-    bool const before_hf16            = chain_height < hf16_height;
+    const bool before_pulse = !is_hard_fork_at_least(nettype, feature::PULSE, chain_height);
 
     // Trim down arrays
-    while (timestamps.size() > DIFFICULTY_BLOCKS_COUNT(before_hf16))
+    while (timestamps.size() > DIFFICULTY_BLOCKS_COUNT(before_pulse))
       timestamps.erase(timestamps.begin());
 
-    while (difficulties.size() > DIFFICULTY_BLOCKS_COUNT(before_hf16))
+    while (difficulties.size() > DIFFICULTY_BLOCKS_COUNT(before_pulse))
       difficulties.erase(difficulties.begin());
   }
 
@@ -163,27 +163,20 @@ namespace cryptonote {
   // be reduced from 60*60*2 to 500 seconds to prevent timestamp manipulation from miner's with 
   //  > 50% hash power.  If this is too small, it can be increased to 1000 at a cost in protection.
 
-  difficulty_calc_mode difficulty_mode(cryptonote::network_type nettype, uint8_t hf_version, uint64_t height)
+  difficulty_calc_mode difficulty_mode(network_state net, uint64_t height)
   {
-    static const uint64_t hf12_height = cryptonote::HardFork::get_hardcoded_hard_fork_height(nettype, cryptonote::network_version_12_checkpointing);
-    static const uint64_t hf16_height = cryptonote::HardFork::get_hardcoded_hard_fork_height(nettype, cryptonote::network_version_16_pulse);
     auto result = difficulty_calc_mode::normal;
 
-    if (hf_version <= cryptonote::network_version_9_service_nodes)
-    {
+    if (!is_network_version_enabled(feature::LWMA_DIFF_UPDATE, net))
       result = difficulty_calc_mode::use_old_lwma;
-    }
     // HF12 switches to RandomX with a likely drastically reduced hashrate versus Turtle, so override
     // difficulty for the first difficulty window blocks:
-    else if (height >= hf12_height &&
-             height < hf12_height + (DIFFICULTY_WINDOW + 1))
-    {
+    else if (auto randomx_start_height = get_hard_fork_heights(net.first, feature::RANDOMX).first;
+        randomx_start_height && height >= *randomx_start_height && height <= *randomx_start_height + DIFFICULTY_WINDOW)
       result = difficulty_calc_mode::hf12_override;
-    }
-    else if (nettype == MAINNET && height >= hf16_height && height < hf16_height + (DIFFICULTY_WINDOW + 1))
-    {
+    else if (auto pulse_start_height = get_hard_fork_heights(net.first, feature::PULSE).first;
+        net.first == MAINNET && pulse_start_height && height >= *pulse_start_height && height <= *pulse_start_height + DIFFICULTY_WINDOW)
       result = difficulty_calc_mode::hf16_override;
-    }
 
     return result;
   }

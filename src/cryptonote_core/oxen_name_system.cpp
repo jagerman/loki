@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include "common/hex.h"
+#include "cryptonote_config.h"
 #include "oxen_name_system.h"
 
 #include "common/oxen.h"
@@ -603,14 +604,14 @@ sqlite3 *init_oxen_name_system(const fs::path& file_path, bool read_only)
   return result;
 }
 
-std::vector<mapping_type> all_mapping_types(uint8_t hf_version) {
+std::vector<mapping_type> all_mapping_types(cryptonote::network_state net) {
   std::vector<mapping_type> result;
-  result.reserve(2);
-  if (hf_version >= cryptonote::network_version_15_ons)
+  result.reserve(3);
+  if (is_network_version_enabled(cryptonote::feature::ONS, net))
     result.push_back(mapping_type::session);
-  if (hf_version >= cryptonote::network_version_16_pulse)
+  if (is_network_version_enabled(cryptonote::feature::ONS_LOKINET, net))
     result.push_back(mapping_type::lokinet);
-  if (hf_version >= cryptonote::network_version_18)
+  if (is_network_version_enabled(cryptonote::feature::ONS_WALLET, net))
     result.push_back(mapping_type::wallet);
   return result;
 }
@@ -1176,7 +1177,7 @@ static bool validate_against_previous_mapping(ons::name_system_db &ons_db, uint6
 // Sanity check value to disallow the empty name hash
 static const crypto::hash null_name_hash = name_to_hash("");
 
-bool name_system_db::validate_ons_tx(uint8_t hf_version, uint64_t blockchain_height, cryptonote::transaction const &tx, cryptonote::tx_extra_oxen_name_system &ons_extra, std::string *reason)
+bool name_system_db::validate_ons_tx(cryptonote::network_state net, uint64_t blockchain_height, cryptonote::transaction const &tx, cryptonote::tx_extra_oxen_name_system &ons_extra, std::string *reason)
 {
   // -----------------------------------------------------------------------------------------------
   // Pull out ONS Extra from TX
@@ -1215,7 +1216,7 @@ bool name_system_db::validate_ons_tx(uint8_t hf_version, uint64_t blockchain_hei
     if (check_condition(ons_extra.version != 0, reason, tx, ", ", ons_extra_string(nettype, ons_extra), " unexpected version=", std::to_string(ons_extra.version), ", expected=0"))
       return false;
 
-    if (check_condition(!ons::mapping_type_allowed(hf_version, ons_extra.type), reason, tx, ", ", ons_extra_string(nettype, ons_extra), " specifying type=", ons_extra.type, " that is disallowed in hardfork ", hf_version))
+    if (check_condition(!ons::mapping_type_allowed(net, ons_extra.type), reason, tx, ", ", ons_extra_string(nettype, ons_extra), " specifying type=", ons_extra.type, " that is disallowed in hardfork ", net.second))
       return false;
 
     // -----------------------------------------------------------------------------------------------
@@ -1257,8 +1258,10 @@ bool name_system_db::validate_ons_tx(uint8_t hf_version, uint64_t blockchain_hei
   // -----------------------------------------------------------------------------------------------
   {
     uint64_t burn                = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
-    uint64_t const burn_required = (ons_extra.is_buying() || ons_extra.is_renewing()) ? burn_needed(hf_version, ons_extra.type) : 0;
-    if (hf_version == cryptonote::network_version_18 && burn > burn_required && blockchain_height < 524'000) {
+
+    uint64_t const burn_required = (ons_extra.is_buying() || ons_extra.is_renewing()) ? burn_needed(net, ons_extra.type) : 0;
+    if (net.first == cryptonote::network_type::TESTNET && is_network_version_enabled(cryptonote::feature::ONS_WALLET, net)
+        && burn > burn_required && blockchain_height < 524'000) {
         // Testnet sync fix: PR #1433 merged that lowered fees for HF18 while testnet was already on
         // HF18, but broke syncing because earlier HF18 blocks have ONS txes at the higher fees, so
         // this allows them to pass by pretending the tx burned the right amount.
@@ -1276,13 +1279,13 @@ bool name_system_db::validate_ons_tx(uint8_t hf_version, uint64_t blockchain_hei
   return true;
 }
 
-bool validate_mapping_type(std::string_view mapping_type_str, uint8_t hf_version, ons_tx_type txtype, ons::mapping_type *mapping_type, std::string *reason)
+bool validate_mapping_type(std::string_view mapping_type_str, cryptonote::network_state net, ons_tx_type txtype, ons::mapping_type *mapping_type, std::string *reason)
 {
   std::string mapping = tools::lowercase_ascii_string(mapping_type_str);
   std::optional<ons::mapping_type> mapping_type_;
   if (txtype != ons_tx_type::renew && tools::string_iequal(mapping, "session"))
     mapping_type_ = ons::mapping_type::session;
-  else if (hf_version >= cryptonote::network_version_16_pulse)
+  else if (is_network_version_enabled(cryptonote::feature::ONS_LOKINET, net))
   {
     if (tools::string_iequal(mapping, "lokinet"))
       mapping_type_ = ons::mapping_type::lokinet;
@@ -1298,7 +1301,7 @@ bool validate_mapping_type(std::string_view mapping_type_str, uint8_t hf_version
         mapping_type_ = ons::mapping_type::lokinet_10years;
     }
   }
-  if (hf_version >= cryptonote::network_version_18)
+  if (is_network_version_enabled(cryptonote::feature::ONS_WALLET, net))
   {
     if (tools::string_iequal(mapping, "wallet"))
       mapping_type_ = ons::mapping_type::wallet;
@@ -1316,6 +1319,14 @@ bool validate_mapping_type(std::string_view mapping_type_str, uint8_t hf_version
 
   if (mapping_type) *mapping_type = *mapping_type_;
   return true;
+}
+
+uint64_t burn_needed(cryptonote::network_state net, mapping_type type) {
+  uint64_t burn_base = network_dependent_value(net,
+      cryptonote::network_version{18,0}, ONS_BURN_BASE_HF18,
+      cryptonote::network_version{16,0}, ONS_BURN_BASE_HF16,
+      ONS_BURN_BASE_HF15);
+  return burn_base * ons::burn_needed_multiplier(type);
 }
 
 crypto::hash name_to_hash(std::string_view name, const std::optional<crypto::hash>& key)
@@ -2090,8 +2101,10 @@ bool name_system_db::add_block(const cryptonote::block &block, const std::vector
   if (!db_transaction)
    return false;
 
+  cryptonote::network_state net{network_type(), block.version};
+
   bool ons_parsed_from_block = false;
-  if (block.major_version >= cryptonote::network_version_15_ons)
+  if (is_network_version_enabled(cryptonote::feature::ONS, net))
   {
     for (cryptonote::transaction const &tx : txs)
     {
@@ -2100,7 +2113,7 @@ bool name_system_db::add_block(const cryptonote::block &block, const std::vector
 
       cryptonote::tx_extra_oxen_name_system entry = {};
       std::string fail_reason;
-      if (!validate_ons_tx(block.major_version, height, tx, entry, &fail_reason))
+      if (!validate_ons_tx(net, height, tx, entry, &fail_reason))
       {
         MFATAL("ONS TX: Failed to validate for tx=" << get_transaction_hash(tx) << ". This should have failed validation earlier reason=" << fail_reason);
         assert("Failed to validate acquire name service. Should already have failed validation prior" == nullptr);

@@ -46,7 +46,7 @@ struct oxen_core_block_reward_unpenalized_pre_pulse                             
 struct oxen_core_block_reward_unpenalized_post_pulse                                 : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_core_fee_burning                                                         : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_core_governance_batched_reward                                           : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
-struct oxen_core_block_rewards_lrc6                                                  : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
+struct oxen_core_block_rewards_lrc6_7                                                : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_core_test_deregister_preferred                                           : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_core_test_deregister_safety_buffer                                       : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_core_test_deregister_too_old                                             : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
@@ -65,8 +65,8 @@ struct oxen_name_system_large_reorg                                             
 struct oxen_name_system_name_renewal                                                 : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_name_system_name_value_max_lengths                                       : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_name_system_update_mapping_after_expiry_fails                            : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
-struct oxen_name_system_update_mapping                                               : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); virtual uint8_t hf(); };
-struct oxen_name_system_update_mapping_argon2                                        : public oxen_name_system_update_mapping { uint8_t hf() override; };
+struct oxen_name_system_update_mapping                                               : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); virtual network_version hf(); };
+struct oxen_name_system_update_mapping_argon2                                        : public oxen_name_system_update_mapping { network_version hf() override; };
 struct oxen_name_system_update_mapping_multiple_owners                               : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_name_system_update_mapping_non_existent_name_fails                       : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };
 struct oxen_name_system_update_mapping_invalid_signature                             : public test_chain_unit_base { bool generate(std::vector<test_event_entry>& events); };

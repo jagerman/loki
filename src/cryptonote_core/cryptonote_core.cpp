@@ -791,13 +791,12 @@ namespace cryptonote
       MERROR("Failed to parse block rate notify spec");
     }
 
-    std::vector<std::pair<uint8_t, uint64_t>> regtest_hard_forks;
-    for (uint8_t hf = cryptonote::network_version_7; hf < cryptonote::network_version_count; hf++)
-      regtest_hard_forks.emplace_back(hf, regtest_hard_forks.size() + 1);
-    const cryptonote::test_options regtest_test_options = {
-      std::move(regtest_hard_forks),
-      0
-    };
+    cryptonote::test_options regtest_test_options{};
+    for (auto [it, end] = get_hard_forks(network_type::MAINNET);
+        it != end;
+        it++) {
+      regtest_test_options.hard_forks.push_back(hard_fork{it->version, regtest_test_options.hard_forks.size() + 1, std::time(nullptr)});
+    }
 
     // Service Nodes
     {
@@ -832,7 +831,7 @@ namespace cryptonote
 
     // now that we have a valid m_blockchain_storage, we can clean out any
     // transactions in the pool that do not conform to the current fork
-    m_mempool.validate(m_blockchain_storage.get_current_hard_fork_version());
+    m_mempool.validate(m_blockchain_storage.get_network_state());
 
     bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
     m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -1346,8 +1345,8 @@ namespace cryptonote
   {
     // Caller needs to do this around both this *and* parse_incoming_txs
     //auto lock = incoming_tx_lock();
-    uint8_t version      = m_blockchain_storage.get_current_hard_fork_version();
-    bool ok              = true;
+    auto net = m_blockchain_storage.get_network_state();
+    bool ok = true;
     bool tx_pool_changed = false;
     if (blink_rollback_height)
       *blink_rollback_height = 0;
@@ -1373,7 +1372,7 @@ namespace cryptonote
         tx_opts.approved_blink = true;
         local_opts = &tx_opts;
       }
-      if (m_mempool.add_tx(info.tx, info.tx_hash, *info.blob, weight, info.tvc, *local_opts, version, blink_rollback_height))
+      if (m_mempool.add_tx(info.tx, info.tx_hash, *info.blob, weight, info.tvc, *local_opts, net, blink_rollback_height))
       {
         tx_pool_changed |= info.tvc.m_added_to_pool;
         MDEBUG("tx added: " << info.tx_hash);
@@ -1415,7 +1414,7 @@ namespace cryptonote
     auto &new_blinks = results.first;
     auto &missing_txs = results.second;
 
-    if (m_blockchain_storage.get_current_hard_fork_version() < HF_VERSION_BLINK)
+    if (!m_blockchain_storage.is_network_feature_active(feature::BLINK))
       return results;
 
     std::vector<uint8_t> want(blinks.size(), false); // Really bools, but std::vector<bool> is broken.
@@ -1821,10 +1820,11 @@ namespace cryptonote
       uint64_t coinbase_amount = get_outs_money_amount(b.miner_tx);
       get_transactions(b.tx_hashes, txs, missed_txs);
       uint64_t tx_fee_amount = 0;
+      bool burning_enabled = is_network_version_enabled(feature::FEE_BURNING, {m_nettype, b.version});
       for(const auto& tx: txs)
       {
-        tx_fee_amount += get_tx_miner_fee(tx, b.major_version >= HF_VERSION_FEE_BURNING);
-        if(b.major_version >= HF_VERSION_FEE_BURNING)
+        tx_fee_amount += get_tx_miner_fee(tx, burning_enabled);
+        if (burning_enabled)
         {
           burnt_oxen += get_burned_amount_from_tx_extra(tx.extra);
         }
@@ -1870,16 +1870,12 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   bool core::check_tx_inputs_ring_members_diff(const transaction& tx) const
   {
-    const uint8_t version = m_blockchain_storage.get_current_hard_fork_version();
-    if (version >= 6)
+    for(const auto& in: tx.vin)
     {
-      for(const auto& in: tx.vin)
-      {
-        CHECKED_GET_SPECIFIC_VARIANT(in, txin_to_key, tokey_in, false);
-        for (size_t n = 1; n < tokey_in.key_offsets.size(); ++n)
-          if (tokey_in.key_offsets[n] == 0)
-            return false;
-      }
+      CHECKED_GET_SPECIFIC_VARIANT(in, txin_to_key, tokey_in, false);
+      for (size_t n = 1; n < tokey_in.key_offsets.size(); ++n)
+        if (tokey_in.key_offsets[n] == 0)
+          return false;
     }
     return true;
   }
@@ -1995,12 +1991,12 @@ namespace cryptonote
   bool core::relay_service_node_votes()
   {
     auto height = get_current_blockchain_height();
-    auto hf_version = get_hard_fork_version(height);
+    auto net = m_blockchain_storage.get_network_state(height);
 
-    auto quorum_votes = m_quorum_cop.get_relayable_votes(height, hf_version, true);
-    auto p2p_votes    = m_quorum_cop.get_relayable_votes(height, hf_version, false);
-    if (!quorum_votes.empty() && m_quorumnet_state && m_service_node)
-      quorumnet_relay_obligation_votes(m_quorumnet_state, quorum_votes);
+    auto qnet_votes = m_quorum_cop.get_relayable_votes(height, net, true);
+    auto p2p_votes = m_quorum_cop.get_relayable_votes(height, net, false);
+    if (!qnet_votes.empty() && m_quorumnet_state && m_service_node)
+      quorumnet_relay_obligation_votes(m_quorumnet_state, qnet_votes);
 
     if (!p2p_votes.empty())
     {
@@ -2113,7 +2109,7 @@ namespace cryptonote
 
     if (bvc.m_verifivation_failed)
     {
-      bool pulse = cryptonote::block_has_pulse_components(b);
+      bool pulse = cryptonote::block_has_pulse_components(m_nettype, b);
       MERROR_VER((pulse ? "Pulse" : "Mined") << " block failed verification\n" << cryptonote::obj_to_json_str(b));
       return false;
     }
@@ -2387,7 +2383,6 @@ namespace cryptonote
       m_starter_message_showed = true;
     }
 
-    m_fork_moaner.do_call([this] { return check_fork_time(); });
     m_txpool_auto_relayer.do_call([this] { return relay_txpool_transactions(); });
     m_service_node_vote_relayer.do_call([this] { return relay_service_node_votes(); });
     m_check_disk_space_interval.do_call([this] { return check_disk_space(); });
@@ -2413,48 +2408,6 @@ namespace cryptonote
 #endif
 
     return true;
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::check_fork_time()
-  {
-    if (m_nettype == FAKECHAIN)
-      return true;
-
-    HardFork::State state = m_blockchain_storage.get_hard_fork_state();
-    const el::Level level = el::Level::Warning;
-    switch (state) {
-      case HardFork::LikelyForked:
-        MCLOG_RED(level, "global", "**********************************************************************");
-        MCLOG_RED(level, "global", "Last scheduled hard fork is too far in the past.");
-        MCLOG_RED(level, "global", "We are most likely forked from the network. Daemon update needed now.");
-        MCLOG_RED(level, "global", "**********************************************************************");
-        break;
-      case HardFork::UpdateNeeded:
-        break;
-      default:
-        break;
-    }
-    return true;
-  }
-  //-----------------------------------------------------------------------------------------------
-  uint8_t core::get_ideal_hard_fork_version() const
-  {
-    return get_blockchain_storage().get_ideal_hard_fork_version();
-  }
-  //-----------------------------------------------------------------------------------------------
-  uint8_t core::get_ideal_hard_fork_version(uint64_t height) const
-  {
-    return get_blockchain_storage().get_ideal_hard_fork_version(height);
-  }
-  //-----------------------------------------------------------------------------------------------
-  uint8_t core::get_hard_fork_version(uint64_t height) const
-  {
-    return get_blockchain_storage().get_hard_fork_version(height);
-  }
-  //-----------------------------------------------------------------------------------------------
-  uint64_t core::get_earliest_ideal_height_for_version(uint8_t version) const
-  {
-    return get_blockchain_storage().get_earliest_ideal_height_for_version(version);
   }
   //-----------------------------------------------------------------------------------------------
   bool core::check_disk_space()

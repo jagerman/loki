@@ -82,7 +82,7 @@ namespace service_nodes
 
   // Perform service node tests -- this returns true is the server node is in a good state, that is,
   // has submitted uptime proofs, participated in required quorums, etc.
-  service_node_test_results quorum_cop::check_service_node(uint8_t hf_version, const crypto::public_key &pubkey, const service_node_info &info) const
+  service_node_test_results quorum_cop::check_service_node(cryptonote::network_state net, const crypto::public_key &pubkey, const service_node_info &info) const
   {
     const auto& netconf = m_core.get_net_config();
 
@@ -96,22 +96,14 @@ namespace service_nodes
     service_nodes::participation_history<service_nodes::timestamp_participation_entry> timestamp_participation{};
     service_nodes::participation_history<service_nodes::timesync_entry> timesync_status{};
 
-    constexpr std::array<uint16_t, 3> MIN_TIMESTAMP_VERSION{9,1,0};
-    bool check_timestamp_obligation = false;
-
     m_core.get_service_node_list().access_proof(pubkey, [&](const proof_info &proof) {
       ss_reachable             = !proof.ss_unreachable_for(netconf.UPTIME_PROOF_VALIDITY - netconf.UPTIME_PROOF_FREQUENCY);
       timestamp                = std::max(proof.timestamp, proof.effective_timestamp);
       ips                      = proof.public_ips;
       checkpoint_participation = proof.checkpoint_participation;
       pulse_participation      = proof.pulse_participation;
-
-      // TODO: remove after HF18
-      if (proof.proof->version >= MIN_TIMESTAMP_VERSION && hf_version >= cryptonote::network_version_18) {
-        timestamp_participation  = proof.timestamp_participation;
-        timesync_status          = proof.timesync_status;
-        check_timestamp_obligation = true;
-      }
+      timestamp_participation  = proof.timestamp_participation;
+      timesync_status          = proof.timesync_status;
 
     });
     std::chrono::seconds time_since_last_uptime_proof{std::time(nullptr) - timestamp};
@@ -136,8 +128,7 @@ namespace service_nodes
     if (!ss_reachable)
     {
       LOG_PRINT_L1("Service Node storage server is not reachable for node: " << pubkey);
-      if (hf_version >= cryptonote::network_version_13_enforce_checkpoints)
-          result.storage_server_reachable = false;
+      result.storage_server_reachable = false;
     }
 
     // IP change checks
@@ -161,8 +152,7 @@ namespace service_nodes
         if (!checkpoint_participation.check_participation(CHECKPOINT_MAX_MISSABLE_VOTES) )
         {
           LOG_PRINT_L1("Service Node: " << pubkey << ", failed checkpoint obligation check");
-          if (hf_version >= cryptonote::network_version_13_enforce_checkpoints)
-            result.checkpoint_participation = false;
+          result.checkpoint_participation = false;
         }
       }
 
@@ -172,17 +162,15 @@ namespace service_nodes
         result.pulse_participation = false;
       }
 
-      if (check_timestamp_obligation){
-        if (!timestamp_participation.check_participation(TIMESTAMP_MAX_MISSABLE_VOTES) )
-        {
-          LOG_PRINT_L1("Service Node: " << pubkey << ", failed timestamp obligation check");
-          result.timestamp_participation = false;
-        }
-        if (!timesync_status.check_participation(TIMESYNC_MAX_UNSYNCED_VOTES) )
-        {
-          LOG_PRINT_L1("Service Node: " << pubkey << ", failed timesync obligation check");
-          result.timesync_status = false;
-        }
+      if (!timestamp_participation.check_participation(TIMESTAMP_MAX_MISSABLE_VOTES) )
+      {
+        LOG_PRINT_L1("Service Node: " << pubkey << ", failed timestamp obligation check");
+        result.timestamp_participation = false;
+      }
+      if (!timesync_status.check_participation(TIMESYNC_MAX_UNSYNCED_VOTES) )
+      {
+        LOG_PRINT_L1("Service Node: " << pubkey << ", failed timesync obligation check");
+        result.timesync_status = false;
       }
     }
 
@@ -192,10 +180,9 @@ namespace service_nodes
 
   void quorum_cop::blockchain_detached(uint64_t height, bool by_pop_blocks)
   {
-    uint8_t hf_version                        = m_core.get_hard_fork_version(height);
-    uint64_t const REORG_SAFETY_BUFFER_BLOCKS = (hf_version >= cryptonote::network_version_12_checkpointing)
-                                                    ? REORG_SAFETY_BUFFER_BLOCKS_POST_HF12
-                                                    : REORG_SAFETY_BUFFER_BLOCKS_PRE_HF12;
+    auto net = m_core.get_blockchain_storage().get_network_state();
+    uint64_t const REORG_SAFETY_BUFFER_BLOCKS = network_dependent_value(net,
+        cryptonote::feature::CHECKPOINTS, REORG_SAFETY_BUFFER_BLOCKS_POST_HF12, REORG_SAFETY_BUFFER_BLOCKS_PRE_HF12);
     if (m_obligations_height >= height)
     {
       if (!by_pop_blocks)
@@ -224,9 +211,9 @@ namespace service_nodes
     m_vote_pool.set_relayed(relayed_votes);
   }
 
-  std::vector<quorum_vote_t> quorum_cop::get_relayable_votes(uint64_t current_height, uint8_t hf_version, bool quorum_relay)
+  std::vector<quorum_vote_t> quorum_cop::get_relayable_votes(uint64_t current_height, cryptonote::network_state net, bool quorum_relay)
   {
-    return m_vote_pool.get_relayable_votes(current_height, hf_version, quorum_relay);
+    return m_vote_pool.get_relayable_votes(current_height, net, quorum_relay);
   }
 
   int find_index_in_quorum_group(std::vector<crypto::public_key> const &group, crypto::public_key const &my_pubkey)
@@ -238,17 +225,16 @@ namespace service_nodes
     return result;
   }
 
-  void quorum_cop::process_quorums(cryptonote::block const &block)
+  void quorum_cop::process_quorums(cryptonote::network_type nettype, const cryptonote::block& block)
   {
-    uint8_t const hf_version = block.major_version;
-    if (hf_version < cryptonote::network_version_9_service_nodes)
+    cryptonote::network_state net{nettype, block.version};
+    if (!is_network_version_enabled(cryptonote::feature::SERVICE_NODES, net))
       return;
 
     const auto& netconf = m_core.get_net_config();
 
-    uint64_t const REORG_SAFETY_BUFFER_BLOCKS = (hf_version >= cryptonote::network_version_12_checkpointing)
-                                                    ? REORG_SAFETY_BUFFER_BLOCKS_POST_HF12
-                                                    : REORG_SAFETY_BUFFER_BLOCKS_PRE_HF12;
+    uint64_t const REORG_SAFETY_BUFFER_BLOCKS = network_dependent_value(net,
+        cryptonote::feature::CHECKPOINTS, REORG_SAFETY_BUFFER_BLOCKS_POST_HF12, REORG_SAFETY_BUFFER_BLOCKS_PRE_HF12);
     const auto& my_keys = m_core.get_service_keys();
     bool voting_enabled = m_core.service_node() && m_core.is_service_node(my_keys.pub, /*require_active=*/true);
 
@@ -261,7 +247,7 @@ namespace service_nodes
     if (height < start_voting_from_height)
       return;
 
-    service_nodes::quorum_type const max_quorum_type = service_nodes::max_quorum_type_for_hf(hf_version);
+    service_nodes::quorum_type const max_quorum_type = service_nodes::max_quorum_type_for_hf(net);
     bool tested_myself_once_per_block                = false;
 
     time_t start_time = m_core.get_start_time();
@@ -289,14 +275,15 @@ namespace service_nodes
           m_obligations_height = std::max(m_obligations_height, start_voting_from_height);
           for (; m_obligations_height < (height - REORG_SAFETY_BUFFER_BLOCKS); m_obligations_height++)
           {
-            uint8_t const obligations_height_hf_version = m_core.get_hard_fork_version(m_obligations_height);
-            if (obligations_height_hf_version < cryptonote::network_version_9_service_nodes) continue;
+            cryptonote::network_state obligations_net{net.first, get_ideal_network_version(net.first, m_obligations_height)};
+            if (!is_network_version_enabled(cryptonote::feature::SERVICE_NODES, obligations_net))
+              continue;
 
             // NOTE: Count checkpoints for other nodes, irrespective of being
             // a service node or not for statistics. Also count checkpoints
             // before the minimum lifetime for same purposes, note, we still
             // don't vote for the first 2 hours so this is purely cosmetic
-            if (obligations_height_hf_version >= cryptonote::network_version_12_checkpointing)
+            if (is_network_version_enabled(cryptonote::feature::CHECKPOINTS, obligations_net))
             {
               service_nodes::service_node_list &node_list = m_core.get_service_node_list();
 
@@ -304,7 +291,7 @@ namespace service_nodes
               std::vector<cryptonote::block> blocks;
               if (quorum && m_core.get_blocks(m_obligations_height, 1, blocks))
               {
-                cryptonote::block const &block = blocks[0];
+                const auto& block = blocks.front();
                 if (start_time < static_cast<ptrdiff_t>(block.timestamp)) // NOTE: If we started up before receiving the block, we likely have the voting information, if not we probably don't.
                 {
                   uint64_t quorum_height = offset_testing_quorum_height(quorum_type::checkpointing, m_obligations_height);
@@ -365,7 +352,7 @@ namespace service_nodes
                 if (!info.can_be_voted_on(m_obligations_height))
                   continue;
 
-                auto test_results = check_service_node(obligations_height_hf_version, node_key, info);
+                auto test_results = check_service_node(obligations_net, node_key, info);
                 bool passed       = test_results.passed();
 
                 new_state vote_for_state;
@@ -444,7 +431,7 @@ namespace service_nodes
                 if (info.can_be_voted_on(m_obligations_height))
                 {
                   tested_myself_once_per_block = true;
-                  auto my_test_results         = check_service_node(obligations_height_hf_version, my_keys.pub, info);
+                  auto my_test_results = check_service_node(obligations_net, my_keys.pub, info);
                   if (info.is_active())
                   {
                     if (!my_test_results.passed())
@@ -485,8 +472,8 @@ namespace service_nodes
                  m_last_checkpointed_height <= height;
                  m_last_checkpointed_height += CHECKPOINT_INTERVAL)
             {
-              uint8_t checkpointed_height_hf_version = m_core.get_hard_fork_version(m_last_checkpointed_height);
-              if (checkpointed_height_hf_version <= cryptonote::network_version_11_infinite_staking)
+              cryptonote::network_state checkpoint_net{net.first, get_ideal_network_version(net.first, m_last_checkpointed_height)};
+              if (!is_network_version_enabled(cryptonote::feature::CHECKPOINTS, checkpoint_net))
                   continue;
 
               if (m_last_checkpointed_height < REORG_SAFETY_BUFFER_BLOCKS)
@@ -507,7 +494,7 @@ namespace service_nodes
               // NOTE: I am in the quorum, handle checkpointing
               //
               crypto::hash block_hash = m_core.get_block_id_by_height(m_last_checkpointed_height);
-              quorum_vote_t vote = make_checkpointing_vote(checkpointed_height_hf_version, block_hash, m_last_checkpointed_height, static_cast<uint16_t>(index_in_group), my_keys);
+              quorum_vote_t vote = make_checkpointing_vote(checkpoint_net, block_hash, m_last_checkpointed_height, static_cast<uint16_t>(index_in_group), my_keys);
               cryptonote::vote_verification_context vvc = {};
               if (!handle_vote(vote, vvc))
                 LOG_ERROR("Failed to add checkpoint vote; reason: " << print_vote_verification_context(vvc, &vote));
@@ -525,10 +512,11 @@ namespace service_nodes
 
   bool quorum_cop::block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs, cryptonote::checkpoint_t const * /*checkpoint*/)
   {
-    process_quorums(block);
+    cryptonote::network_state net{m_core.get_nettype(), block.version};
+    process_quorums(net.first, block);
     uint64_t const height = cryptonote::get_block_height(block) + 1; // chain height = new top block height + 1
     m_vote_pool.remove_expired_votes(height);
-    m_vote_pool.remove_used_votes(txs, block.major_version);
+    m_vote_pool.remove_used_votes(txs, net);
 
     // These feels out of place here because the hook system sucks: TODO replace it with
     // std::function hooks instead.
@@ -545,23 +533,22 @@ namespace service_nodes
       return true;
     }
 
-    uint8_t const hf_version = core.get_blockchain_storage().get_current_hard_fork_version();
+    auto net = core.get_blockchain_storage().get_network_state();
 
     // NOTE: Verify state change is still valid or have we processed some other state change already that makes it invalid
     {
       crypto::public_key const &service_node_pubkey = quorum.workers[vote.state_change.worker_index];
       auto service_node_infos = core.get_service_node_list_state({service_node_pubkey});
       if (!service_node_infos.size() ||
-          !service_node_infos[0].info->can_transition_to_state(hf_version, vote.block_height, vote.state_change.state))
+          !service_node_infos[0].info->can_transition_to_state(net, vote.block_height, vote.state_change.state))
         // NOTE: Vote is valid but is invalidated because we cannot apply the change to a service node or it is not on the network anymore
         //       So don't bother generating a state change tx.
         return true;
     }
 
     using version_t = cryptonote::tx_extra_service_node_state_change::version_t;
-    auto ver = hf_version >= HF_VERSION_PROOF_BTENC ? version_t::v4_reasons : version_t::v0;
     cryptonote::tx_extra_service_node_state_change state_change{
-        ver,
+        network_dependent_value(net, cryptonote::feature::PROOF_BTENC, version_t::v4_reasons, version_t::v0),
         vote.state_change.state,
         vote.block_height,
         vote.state_change.worker_index,
@@ -578,9 +565,9 @@ namespace service_nodes
     }
 
     cryptonote::transaction state_change_tx{};
-    if (cryptonote::add_service_node_state_change_to_tx_extra(state_change_tx.extra, state_change, hf_version))
+    if (cryptonote::add_service_node_state_change_to_tx_extra(state_change_tx.extra, state_change, net))
     {
-      state_change_tx.version = cryptonote::transaction::get_max_version_for_hf(hf_version);
+      state_change_tx.version = cryptonote::transaction::get_version_range(net).second;
       state_change_tx.type    = cryptonote::txtype::state_change;
 
       cryptonote::tx_verification_context tvc{};
@@ -686,7 +673,7 @@ namespace service_nodes
       return false;
     }
 
-    if (!verify_vote_signature(m_core.get_hard_fork_version(vote.block_height), vote, vvc, *quorum))
+    if (!verify_vote_signature({m_core.get_nettype(), get_ideal_network_version(m_core.get_nettype(), vote.block_height)}, vote, vvc, *quorum))
       return false;
 
     std::vector<pool_vote_entry> votes = m_vote_pool.add_pool_vote_if_unique(vote, vvc);

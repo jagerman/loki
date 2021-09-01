@@ -734,30 +734,23 @@ bool pulse::convert_time_to_round(pulse::time_point const &time, pulse::time_poi
 bool pulse::get_round_timings(cryptonote::Blockchain const &blockchain, uint64_t block_height, uint64_t prev_timestamp, pulse::timings &times)
 {
   times = {};
-  static uint64_t const hf16_height = blockchain.get_earliest_ideal_height_for_version(cryptonote::network_version_16_pulse);
-  if (hf16_height == std::numeric_limits<uint64_t>::max())
-    return false;
-
-  if (blockchain.get_current_blockchain_height() < hf16_height)
+  auto hf16_heights = get_hard_fork_heights(blockchain.nettype(), cryptonote::feature::PULSE);
+  if (!hf16_heights.first || blockchain.get_current_blockchain_height() < *hf16_heights.first)
     return false;
 
   cryptonote::block genesis_block;
-  if (!blockchain.get_block_by_height(hf16_height - 1, genesis_block))
+  if (!blockchain.get_block_by_height(*hf16_heights.first - 1, genesis_block))
     return false;
 
   uint64_t const delta_height = block_height - cryptonote::get_block_height(genesis_block);
-  times.genesis_timestamp     = pulse::time_point(std::chrono::seconds(genesis_block.timestamp));
+  times.genesis_timestamp     = pulse::clock::from_time_t(genesis_block.timestamp);
 
-  times.prev_timestamp  = pulse::time_point(std::chrono::seconds(prev_timestamp));
-  times.ideal_timestamp = pulse::time_point(times.genesis_timestamp + (TARGET_BLOCK_TIME * delta_height));
+  times.prev_timestamp  = pulse::clock::from_time_t(prev_timestamp);
+  times.ideal_timestamp = times.genesis_timestamp + TARGET_BLOCK_TIME * delta_height;
 
-#if 1
   times.r0_timestamp    = std::clamp(times.ideal_timestamp,
                                   times.prev_timestamp + service_nodes::PULSE_MIN_TARGET_BLOCK_TIME,
                                   times.prev_timestamp + service_nodes::PULSE_MAX_TARGET_BLOCK_TIME);
-#else // NOTE: Debug, make next block start relatively soon
-  times.r0_timestamp = times.prev_timestamp + service_nodes::PULSE_ROUND_TIME;
-#endif
 
   times.miner_fallback_timestamp = times.r0_timestamp + (service_nodes::PULSE_ROUND_TIME * 255);
   return true;
@@ -1163,18 +1156,13 @@ round_state prepare_for_round(round_context &context, service_nodes::service_nod
     context.transient.signed_block.wait.stage.end_time            = context.transient.random_value.wait.stage.end_time            + PULSE_WAIT_FOR_SIGNED_BLOCK_DURATION;
   }
 
-  std::vector<crypto::hash> const entropy = service_nodes::get_pulse_entropy_for_next_block(blockchain.get_db(), context.wait_for_next_block.top_hash, context.prepare_for_round.round);
+  std::vector<crypto::hash> const entropy = service_nodes::get_pulse_entropy_for_next_block(blockchain, context.wait_for_next_block.top_hash, context.prepare_for_round.round);
   auto const active_node_list             = blockchain.get_service_node_list().active_service_nodes_infos();
-  uint8_t const hf_version                = blockchain.get_current_hard_fork_version();
+  auto net = blockchain.get_network_state();
   crypto::public_key const &block_leader  = blockchain.get_service_node_list().get_block_leader().key;
 
   context.prepare_for_round.quorum =
-      service_nodes::generate_pulse_quorum(blockchain.nettype(),
-                                           block_leader,
-                                           hf_version,
-                                           active_node_list,
-                                           entropy,
-                                           context.prepare_for_round.round);
+      service_nodes::generate_pulse_quorum(net, block_leader, active_node_list, entropy, context.prepare_for_round.round);
 
   if (!service_nodes::verify_pulse_quorum_sizes(context.prepare_for_round.quorum))
   {
@@ -1685,18 +1673,18 @@ void pulse::main(void *quorumnet_state, cryptonote::core &core)
   //
   // NOTE: Early exit if too early
   //
-  static uint64_t const hf16_height = cryptonote::HardFork::get_hardcoded_hard_fork_height(blockchain.nettype(), cryptonote::network_version_16_pulse);
-  if (hf16_height == cryptonote::HardFork::INVALID_HF_VERSION_HEIGHT)
+  auto hf16_height = get_hard_fork_heights(core.get_nettype(), cryptonote::feature::PULSE).first;
+  if (!hf16_height)
   {
     for (static bool once = true; once; once = !once)
       MERROR("Pulse: HF16 is not defined, pulse worker waiting");
     return;
   }
 
-  if (uint64_t height = blockchain.get_current_blockchain_height(true /*lock*/); height < hf16_height)
+  if (uint64_t height = blockchain.get_current_blockchain_height(true /*lock*/); height < *hf16_height)
   {
     for (static bool once = true; once; once = !once)
-      MDEBUG("Pulse: Network at block " << height << " is not ready for Pulse until block " << hf16_height << ", waiting");
+      MDEBUG("Pulse: Network at block " << height << " is not ready for Pulse until block " << *hf16_height << ", waiting");
     return;
   }
 
@@ -1713,7 +1701,7 @@ void pulse::main(void *quorumnet_state, cryptonote::core &core)
         break;
 
       case round_state::wait_for_next_block:
-        context.state = wait_for_next_block(hf16_height, context, blockchain);
+        context.state = wait_for_next_block(*hf16_height, context, blockchain);
         break;
 
       case round_state::prepare_for_round:

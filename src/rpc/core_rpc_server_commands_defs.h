@@ -633,6 +633,7 @@ namespace rpc {
       bool testnet;                         // States if the node is on the testnet (`true`) or not (`false`).
       bool devnet;                          // States if the node is on the devnet (`true`) or not (`false`).
       std::string nettype;                  // Nettype value used.
+      std::array<uint8_t, 2> network_version; // The currently active, ideal network version for new blocks.
       std::string top_block_hash;           // Hash of the highest block in the chain.
       std::string immutable_block_hash;     // Hash of the highest block in the chain that can not be reorganized.
       uint64_t cumulative_difficulty;       // Cumulative difficulty of all blocks in the blockchain.
@@ -1421,14 +1422,15 @@ namespace rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Look up information regarding hard fork voting and readiness.
+  // Look up information regarding hard fork
   struct HARD_FORK_INFO : PUBLIC
   {
     static constexpr auto names() { return NAMES("hard_fork_info"); }
 
     struct request
     {
-      uint8_t version; // The major block version for the fork.
+      uint8_t version; // The required major block version of the hard fork feature being checked.  If unspecified or 0, returns information about the current hard fork.
+      uint8_t minor; // The required minor version; if omitted, uses 0.  Typically 0, unless looking for testnet hardforks.
 
       KV_MAP_SERIALIZABLE
     };
@@ -1436,15 +1438,14 @@ namespace rpc {
     struct response
     {
       uint8_t version;          // The major block version for the fork.
-      bool enabled;             // Tells if hard fork is enforced.
-      uint32_t window;          // Number of blocks over which current votes are cast. Default is 10080 blocks.
-      uint32_t votes;           // Number of votes towards hard fork.
-      uint32_t threshold;       // Minimum percent of votes to trigger hard fork. Default is 80.
-      uint8_t voting;           // Hard fork voting status.
-      uint32_t state;           // Current hard fork state: 0 (There is likely a hard fork), 1 (An update is needed to fork properly), or 2 (Everything looks good).
-      uint64_t earliest_height; // Block height at which hard fork would be enabled if voted in.
+      uint8_t minor;            // The optimal minor block version this oxend uses for the given fork.  If this is the highest fork this will be version dependent, otherwise it will be the highest permitted minor value before the next fork.
+      bool enabled;             // Indicates whether the hard fork is currently active (that is, at or above the requested hardfork).
+      std::optional<uint64_t> earliest_height; // Block height at which hard fork will be enabled.
+      std::optional<uint64_t> last_height; // The last block height at which this hard fork will be active; will be omitted if this oxend is not aware of any future hard fork.
       std::string status;       // General RPC error code. "OK" means everything looks good.
       bool untrusted;           // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
+
+      // FIXME: change all the 'untrusted' to std::optionals and don't send them when false.
 
       KV_MAP_SERIALIZABLE
     };
@@ -2020,7 +2021,7 @@ namespace rpc {
       bool all = false; // If set, overrides any individual requested fields.  Defaults to *true* if "fields" is entirely omitted
       bool service_node_pubkey;
       bool registration_height;
-      bool registration_hf_version;
+      bool registration_net_version;
       bool requested_unlock_height;
       bool last_reward_block_height;
       bool last_reward_transaction_index;
@@ -2063,7 +2064,7 @@ namespace rpc {
       bool block_hash;
       bool height;
       bool target_height;
-      bool hardfork;
+      bool network_version;
       KV_MAP_SERIALIZABLE
     };
 
@@ -2086,7 +2087,7 @@ namespace rpc {
       struct entry {
         std::string                           service_node_pubkey;           // The public key of the Service Node.
         uint64_t                              registration_height;           // The height at which the registration for the Service Node arrived on the blockchain.
-        uint16_t                              registration_hf_version;       // The hard fork at which the registration for the Service Node arrived on the blockchain.
+        std::pair<uint8_t, uint8_t>           registration_net_version;      // The hard fork at which the registration for the Service Node arrived on the blockchain.
         uint64_t                              requested_unlock_height;       // The height at which contributions will be released and the Service Node expires. 0 if not requested yet.
         uint64_t                              last_reward_block_height;      // The height that determines when this service node will next receive a reward.  This field is updated when receiving a reward, but is also updated when a SN is activated, recommissioned, or has an IP change position reset.
         uint32_t                              last_reward_transaction_index; // When multiple Service Nodes register (or become active/reactivated) at the same height (i.e. have the same last_reward_block_height), this field contains the activating transaction position in the block which is used to break ties in determining which SN is next in the reward list.
@@ -2137,7 +2138,7 @@ namespace rpc {
       uint64_t    target_height;              // Blockchain's target height.
       std::string block_hash;                 // Current block's hash.
       bool        unchanged;                  // Will be true (and `service_node_states` omitted) if you gave the current block hash to poll_block_hash
-      uint8_t     hardfork;                   // Current hardfork version.
+      std::pair<uint8_t, uint8_t> network_version; // Current network version (e.g. for new blocks).
       std::string status;                     // Generic RPC error code. "OK" is the success value.
       std::string as_json;                    // If `include_json` is set in the request, this contains the json representation of the `entry` data structure
 

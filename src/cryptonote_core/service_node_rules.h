@@ -1,6 +1,7 @@
 #pragma once
 
 #include "crypto/crypto.h"
+#include "cryptonote_basic/hardfork.h"
 #include "cryptonote_config.h"
 #include "service_node_voting.h"
 #include <chrono>
@@ -46,12 +47,12 @@ namespace service_nodes {
   static_assert(PULSE_QUORUM_NUM_VALIDATORS >= PULSE_BLOCK_REQUIRED_SIGNATURES);
   static_assert(PULSE_QUORUM_ENTROPY_LAG >= PULSE_QUORUM_SIZE, "We need to pull atleast PULSE_QUORUM_SIZE number of blocks from the Blockchain, we can't if the amount of blocks to go back from the tip of the Blockchain is less than the blocks we need.");
   
-  constexpr size_t pulse_min_service_nodes(cryptonote::network_type nettype)
+  constexpr size_t pulse_min_service_nodes(cryptonote::network_state net)
   {
-    return (nettype == cryptonote::MAINNET) ? 50 : PULSE_QUORUM_SIZE;
+    return net.first == cryptonote::MAINNET ? 50 : PULSE_QUORUM_SIZE;
   }
-  static_assert(pulse_min_service_nodes(cryptonote::MAINNET) >= PULSE_QUORUM_SIZE);
-  static_assert(pulse_min_service_nodes(cryptonote::TESTNET) >= PULSE_QUORUM_SIZE);
+  static_assert(pulse_min_service_nodes({cryptonote::MAINNET, cryptonote::network_version_max}) >= PULSE_QUORUM_SIZE);
+  static_assert(pulse_min_service_nodes({cryptonote::TESTNET, cryptonote::network_version_max}) >= PULSE_QUORUM_SIZE);
 
   constexpr uint16_t pulse_validator_bit_mask()
   {
@@ -217,17 +218,14 @@ namespace service_nodes {
   // The minimum accepted version number, broadcasted by Service Nodes via uptime proofs for each hardfork
   struct proof_version
   {
-    uint8_t hardfork;
+    cryptonote::network_version hardfork;
     std::array<uint16_t, 3> version;
   };
 
-  constexpr proof_version MIN_UPTIME_PROOF_VERSIONS[] = {
-    {cryptonote::network_version_18,                      {9,1,0}},
-    {cryptonote::network_version_16_pulse,                {8,1,0}},
-    {cryptonote::network_version_15_ons,                  {7,1,2}},
-    {cryptonote::network_version_14_blink,                {6,1,0}},
-    {cryptonote::network_version_13_enforce_checkpoints,  {5,1,0}},
-    {cryptonote::network_version_12_checkpointing,        {4,0,3}},
+  // NB: after each hardfork has happens we can delete the older values from here; we don't need to
+  // keep anything for hard forks that no longer occur on the network.
+  constexpr std::array MIN_UPTIME_PROOF_VERSIONS = {
+    proof_version{{18,0}, {9,1,0}},
   };
 
   using swarm_id_t                         = uint64_t;
@@ -241,18 +239,18 @@ namespace service_nodes {
       std::numeric_limits<size_t>::max();
   };
 
-  constexpr quorum_type max_quorum_type_for_hf(uint8_t hf_version)
+  inline quorum_type max_quorum_type_for_hf(cryptonote::network_state net)
   {
-    return
-        hf_version <= cryptonote::network_version_12_checkpointing ? quorum_type::obligations :
-        hf_version <  cryptonote::network_version_14_blink         ? quorum_type::checkpointing :
-        hf_version <  cryptonote::network_version_16_pulse         ? quorum_type::blink :
-        quorum_type::pulse;
+    return network_dependent_value(net,
+        cryptonote::feature::PULSE, quorum_type::pulse,
+        cryptonote::feature::BLINK, quorum_type::blink,
+        cryptonote::feature::CHECKPOINTS, quorum_type::checkpointing,
+        quorum_type::obligations);
   }
 
-  constexpr uint64_t staking_num_lock_blocks(cryptonote::network_type nettype)
+  constexpr uint64_t staking_num_lock_blocks(cryptonote::network_state net)
   {
-    switch (nettype)
+    switch (net.first)
     {
       case cryptonote::FAKECHAIN: return 30;
       case cryptonote::TESTNET:   return BLOCKS_EXPECTED_IN_DAYS(2);
@@ -268,8 +266,8 @@ namespace service_nodes {
 
 static_assert(STAKING_PORTIONS != UINT64_MAX, "UINT64_MAX is used as the invalid value for failing to calculate the min_node_contribution");
 // return: UINT64_MAX if (num_contributions > the max number of contributions), otherwise the amount in oxen atomic units
-uint64_t get_min_node_contribution            (uint8_t version, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions);
-uint64_t get_min_node_contribution_in_portions(uint8_t version, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions);
+uint64_t get_min_node_contribution            (cryptonote::network_state net, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions);
+uint64_t get_min_node_contribution_in_portions(cryptonote::network_state net, uint64_t staking_requirement, uint64_t total_reserved, size_t num_contributions);
 
 // Gets the maximum allowed stake amount.  This is used to prevent significant overstaking.  The
 // wallet tries to avoid this when submitting a stake, but it can still happen when competing stakes
@@ -278,18 +276,18 @@ uint64_t get_min_node_contribution_in_portions(uint8_t version, uint64_t staking
 // of stake despite locking 8k.
 // Starting in HF16, we disallow a stake if it is more than MAXIMUM_ACCEPTABLE_STAKE ratio of the
 // available contribution room, which allows slight overstaking but disallows larger overstakes.
-uint64_t get_max_node_contribution(uint8_t version, uint64_t staking_requirement, uint64_t total_reserved);
+uint64_t get_max_node_contribution(cryptonote::network_state net, uint64_t staking_requirement, uint64_t total_reserved);
 
-uint64_t get_staking_requirement(cryptonote::network_type nettype, uint64_t height, uint8_t hf_version);
+uint64_t get_staking_requirement(cryptonote::network_state net, uint64_t height);
 
 uint64_t portions_to_amount(uint64_t portions, uint64_t staking_requirement);
 
 /// Check if portions are sufficiently large (provided the contributions
 /// are made in the specified order) and don't exceed the required amount
-bool check_service_node_portions(uint8_t version, const std::vector<uint64_t>& portions);
+bool check_service_node_portions(cryptonote::network_state net, const std::vector<uint64_t>& portions);
 
 crypto::hash generate_request_stake_unlock_hash(uint32_t nonce);
-uint64_t     get_locked_key_image_unlock_height(cryptonote::network_type nettype, uint64_t node_register_height, uint64_t curr_height);
+uint64_t get_locked_key_image_unlock_height(cryptonote::network_state net, uint64_t node_register_height, uint64_t curr_height);
 
 // Returns lowest x such that (staking_requirement * x/STAKING_PORTIONS) >= amount
 uint64_t get_portions_to_make_amount(uint64_t staking_requirement, uint64_t amount, uint64_t max_portions = STAKING_PORTIONS);

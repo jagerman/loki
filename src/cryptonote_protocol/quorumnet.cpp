@@ -853,9 +853,9 @@ void handle_blink(oxenmq::Message& m, QnetState& qnet) {
 
     auto tag = get_or<uint64_t>(data, "!", 0);
 
-    auto hf_version = qnet.core.get_blockchain_storage().get_current_hard_fork_version();
-    if (hf_version < HF_VERSION_BLINK) {
-        MWARNING("Rejecting blink message: blink is not available for hardfork " << (int) hf_version);
+    auto netstate = qnet.core.get_blockchain_storage().get_network_state();
+    if (!is_network_version_enabled(cryptonote::feature::BLINK, netstate)) {
+        MWARNING("Rejecting blink message: blink is not available for hardfork " << netstate.second);
         if (tag)
             m.send_back("bl.nostart", bt_serialize(bt_dict{{"!", tag}, {"e", "Invalid blink authorization height"sv}}));
         return;
@@ -1049,8 +1049,7 @@ void handle_blink(oxenmq::Message& m, QnetState& qnet) {
 
     // Check tx for validity
     bool approved;
-    auto min = tx.get_min_version_for_hf(hf_version),
-         max = tx.get_max_version_for_hf(hf_version);
+    auto [min, max] = tx.get_version_range(netstate);
     if (tx.version < min || tx.version > max) {
         approved = false;
         MINFO("Blink TX " << tx_hash << " rejected because TX version " << tx.version << " invalid: TX version not between " << min << " and " << max);

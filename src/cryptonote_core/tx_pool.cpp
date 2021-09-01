@@ -79,13 +79,13 @@ namespace cryptonote
       return d;
     }
 
-    uint64_t get_transaction_weight_limit(uint8_t version)
+    uint64_t get_transaction_weight_limit(network_state net)
     {
+      uint64_t tx_limit = get_min_block_weight(net);
       // from v10, bulletproofs, limit a tx to 50% of the minimum block weight
-      if (version >= network_version_10_bulletproofs)
-        return get_min_block_weight(version) / 2 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
-      else
-        return get_min_block_weight(version) - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
+      if (is_network_version_enabled(feature::BULLETPROOFS, net))
+        tx_limit /= 2;
+      return tx_limit - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
     }
   }
   //---------------------------------------------------------------------------------
@@ -95,13 +95,13 @@ namespace cryptonote
 
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::have_duplicated_non_standard_tx(transaction const &tx, uint8_t hard_fork_version) const
+  bool tx_memory_pool::have_duplicated_non_standard_tx(const transaction& tx, network_state net) const
   {
     auto &service_node_list = m_blockchain.get_service_node_list();
     if (tx.type == txtype::state_change)
     {
       tx_extra_service_node_state_change state_change;
-      if (!get_service_node_state_change_from_tx_extra(tx.extra, state_change, hard_fork_version))
+      if (!get_service_node_state_change_from_tx_extra(tx.extra, state_change, net))
       {
         MERROR("Could not get service node state change from tx: " << get_transaction_hash(tx) << ", possibly corrupt tx in your blockchain, rejecting malformed state change");
         return false;
@@ -126,13 +126,13 @@ namespace cryptonote
           continue;
 
         tx_extra_service_node_state_change pool_tx_state_change;
-        if (!get_service_node_state_change_from_tx_extra(pool_tx.extra, pool_tx_state_change, hard_fork_version))
+        if (!get_service_node_state_change_from_tx_extra(pool_tx.extra, pool_tx_state_change, net))
         {
           LOG_PRINT_L1("Could not get service node state change from tx: " << get_transaction_hash(pool_tx) << ", possibly corrupt tx in the pool");
           continue;
         }
 
-        if (hard_fork_version >= cryptonote::network_version_12_checkpointing)
+        if (is_network_version_enabled(feature::SN_STATE_CHANGES, net))
         {
           crypto::public_key service_node_to_change_in_the_pool;
           bool same_service_node = false;
@@ -235,7 +235,7 @@ namespace cryptonote
   // to set `do_not_relay` to false and starts relaying it (other quorum members do the same).
 
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::add_tx(transaction &tx, const crypto::hash &id, const cryptonote::blobdata &blob, size_t tx_weight, tx_verification_context& tvc, const tx_pool_options &opts, uint8_t hf_version,
+  bool tx_memory_pool::add_tx(transaction &tx, const crypto::hash &id, const cryptonote::blobdata &blob, size_t tx_weight, tx_verification_context& tvc, const tx_pool_options &opts, network_state net,
       uint64_t *blink_rollback_height)
   {
     // this should already be called with that lock, but let's make it explicit for clarity
@@ -269,7 +269,7 @@ namespace cryptonote
 
     uint64_t fee, burned;
 
-    if (!get_tx_miner_fee(tx, fee, hf_version >= HF_VERSION_FEE_BURNING, &burned))
+    if (!get_tx_miner_fee(tx, fee, is_network_version_enabled(feature::FEE_BURNING, net), &burned))
     {
       // This code is a bit convoluted: the above sets `fee`, and returns false for a pre-ringct tx
       // with a too-low fee, but for ringct (v2+) txes it just sets `fee` but doesn't check it and
@@ -286,8 +286,8 @@ namespace cryptonote
       return false;
     }
 
-    size_t tx_weight_limit = get_transaction_weight_limit(hf_version);
-    if ((!opts.kept_by_block || hf_version >= HF_VERSION_PER_BYTE_FEE) && tx_weight > tx_weight_limit)
+    size_t tx_weight_limit = get_transaction_weight_limit(net);
+    if ((!opts.kept_by_block || is_network_version_enabled(feature::PER_BYTE_FEE, net)) && tx_weight > tx_weight_limit)
     {
       LOG_PRINT_L1("transaction is too heavy: " << tx_weight << " bytes, maximum weight: " << tx_weight_limit);
       tvc.m_verifivation_failed = true;
@@ -338,7 +338,7 @@ namespace cryptonote
         }
       }
     }
-    if (!opts.kept_by_block && have_duplicated_non_standard_tx(tx, hf_version))
+    if (!opts.kept_by_block && have_duplicated_non_standard_tx(tx, net))
     {
       mark_double_spend(tx);
       LOG_PRINT_L1("Transaction with id= "<< id << " already has a duplicate tx for height");
@@ -383,7 +383,7 @@ namespace cryptonote
         meta.last_relayed_time = time(NULL);
         meta.relayed = opts.relayed;
         meta.do_not_relay = opts.do_not_relay;
-        meta.double_spend_seen = (have_tx_keyimges_as_spent(tx) || have_duplicated_non_standard_tx(tx, hf_version));
+        meta.double_spend_seen = (have_tx_keyimges_as_spent(tx) || have_duplicated_non_standard_tx(tx, net));
         meta.bf_padding = 0;
         memset(meta.padding, 0, sizeof(meta.padding));
         try
@@ -470,7 +470,7 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::add_tx(transaction &tx, tx_verification_context& tvc, const tx_pool_options &opts, uint8_t version)
+  bool tx_memory_pool::add_tx(transaction &tx, tx_verification_context& tvc, const tx_pool_options &opts, network_state net)
   {
     crypto::hash h = null_hash;
     size_t blob_size = 0;
@@ -478,7 +478,7 @@ namespace cryptonote
     t_serializable_object_to_blob(tx, bl);
     if (bl.size() == 0 || !get_transaction_hash(tx, h))
       return false;
-    return add_tx(tx, h, bl, get_transaction_weight(tx, bl.size()), tvc, opts, version);
+    return add_tx(tx, h, bl, get_transaction_weight(tx, bl.size()), tvc, opts, net);
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::add_new_blink(const std::shared_ptr<blink_tx> &blink_ptr, tx_verification_context &tvc, bool &blink_exists)
@@ -497,8 +497,7 @@ namespace cryptonote
     }
 
     bool approved = blink.approved();
-    auto hf_version = m_blockchain.get_ideal_hard_fork_version(blink.height);
-    bool result = add_tx(tx, tvc, tx_pool_options::new_blink(approved, hf_version), hf_version);
+    bool result = add_tx(tx, tvc, tx_pool_options::new_blink(approved), m_blockchain.get_network_state(blink.height));
     if (result && approved)
     {
       auto lock = blink_unique_lock();
@@ -1402,7 +1401,7 @@ namespace cryptonote
       tx_extra_service_node_state_change state_change;
       crypto::public_key service_node_pubkey;
       if (pool_tx.type == txtype::state_change &&
-          get_service_node_state_change_from_tx_extra(pool_tx.extra, state_change, blk.major_version))
+          get_service_node_state_change_from_tx_extra(pool_tx.extra, state_change, {m_blockchain.nettype(), blk.version}))
       {
         // TODO(oxen): PERF(oxen): On pop_blocks we return all the TXs to the
         // pool. The greater the pop_blocks, the more txs that are queued in the
@@ -1441,7 +1440,7 @@ namespace cryptonote
 
           std::vector<service_nodes::service_node_pubkey_info> service_node_array = service_node_list.get_service_node_list_state({service_node_pubkey});
           if (service_node_array.empty() ||
-              !service_node_array[0].info->can_transition_to_state(blk.major_version, state_change.block_height, state_change.state))
+              !service_node_array[0].info->can_transition_to_state({m_blockchain.nettype(), blk.version}, state_change.block_height, state_change.state))
           {
             transaction tx;
             cryptonote::blobdata blob;
@@ -1760,7 +1759,7 @@ end:
   }
   //---------------------------------------------------------------------------------
   //TODO: investigate whether boolean return is appropriate
-  bool tx_memory_pool::fill_block_template(block &bl, size_t median_weight, uint64_t already_generated_coins, size_t &total_weight, uint64_t &raw_fee, uint64_t &expected_reward, uint8_t version, uint64_t height)
+  bool tx_memory_pool::fill_block_template(block &bl, size_t median_weight, uint64_t already_generated_coins, size_t &total_weight, uint64_t &raw_fee, uint64_t &expected_reward, network_state net, uint64_t height)
   {
     auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);
 
@@ -1773,13 +1772,13 @@ end:
       block_reward_context.height                    = height;
 
       block_reward_parts reward_parts = {};
-      if (!get_oxen_block_reward(median_weight, total_weight, already_generated_coins, version, reward_parts, block_reward_context))
+      if (!get_oxen_block_reward(median_weight, total_weight, already_generated_coins, net, reward_parts, block_reward_context))
       {
         MERROR("Failed to get block reward for empty block");
         return false;
       }
 
-      best_reward = version >= cryptonote::network_version_16_pulse ? 0 /*Empty block, starts with 0 fee*/ : reward_parts.base_miner;
+      best_reward = is_network_version_enabled(feature::PULSE, net) ? 0 /*Empty block, starts with 0 fee*/ : reward_parts.base_miner;
     }
 
     size_t const max_total_weight = 2 * median_weight - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
@@ -1815,7 +1814,7 @@ end:
       next_block_reward_context.fee                       = raw_fee + meta.fee;
 
       block_reward_parts next_reward_parts           = {};
-      if(!get_oxen_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, version, next_reward_parts, next_block_reward_context))
+      if(!get_oxen_block_reward(median_weight, total_weight + meta.weight, already_generated_coins, net, next_reward_parts, next_block_reward_context))
       {
         LOG_PRINT_L2("Block reward calculation bug");
         return false;
@@ -1824,13 +1823,10 @@ end:
       // NOTE: Use the net fee for comparison (after penalty is applied).
       // After HF16, penalty is applied on the miner fee. Before, penalty is
       // applied on the base reward.
-      if (version >= cryptonote::network_version_16_pulse)
+      next_reward = next_reward_parts.miner_fee;
+      if (!is_network_version_enabled(feature::PULSE, net))
       {
-        next_reward = next_reward_parts.miner_fee;
-      }
-      else
-      {
-        next_reward = next_reward_parts.base_miner + next_reward_parts.miner_fee;
+        next_reward += next_reward_parts.base_miner;
         assert(next_reward_parts.miner_fee == raw_fee + meta.fee);
       }
 
@@ -1898,11 +1894,11 @@ end:
     return true;
   }
   //---------------------------------------------------------------------------------
-  size_t tx_memory_pool::validate(uint8_t version)
+  size_t tx_memory_pool::validate(network_state net)
   {
     auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);
 
-    size_t tx_weight_limit = get_transaction_weight_limit(version);
+    size_t tx_weight_limit = get_transaction_weight_limit(net);
     std::unordered_set<crypto::hash> remove;
 
     m_txpool_weight = 0;

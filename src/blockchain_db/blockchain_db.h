@@ -39,7 +39,6 @@
 #include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/difficulty.h"
-#include "cryptonote_basic/hardfork.h"
 
 /** \file
  * Cryptonote Blockchain Database Interface
@@ -549,14 +548,12 @@ protected:
   uint64_t time_commit1 = 0;  //!< a performance metric
   bool m_auto_remove_logs = true;  //!< whether or not to automatically remove old logs
 
-  HardFork* m_hardfork;
-
 public:
 
   /**
    * @brief An empty constructor.
    */
-  BlockchainDB(): m_hardfork(NULL), m_open(false) { }
+  BlockchainDB() = default;
 
   /**
    * @brief An empty destructor.
@@ -795,8 +792,6 @@ public:
   virtual bool block_rtxn_start() const = 0;
   virtual void block_rtxn_stop() const = 0;
   virtual void block_rtxn_abort() const = 0;
-
-  virtual void set_hard_fork(HardFork* hf);
 
   // adds a block with the given metadata to the top of the blockchain, returns the new height
   /**
@@ -1776,37 +1771,6 @@ public:
   virtual bool for_all_alt_blocks(std::function<bool(const crypto::hash &blkid, const alt_block_data_t &data, const cryptonote::blobdata *block_blob, const cryptonote::blobdata *checkpoint_blob)> f, bool include_blob = false) const = 0;
 
 
-  //
-  // Hard fork related storage
-  //
-
-  /**
-   * @brief sets which hardfork version a height is on
-   *
-   * @param height the height
-   * @param version the version
-   */
-  virtual void set_hard_fork_version(uint64_t height, uint8_t version) = 0;
-
-  /**
-   * @brief checks which hardfork version a height is on
-   *
-   * @param height the height
-   *
-   * @return the version
-   */
-  virtual uint8_t get_hard_fork_version(uint64_t height) const = 0;
-
-  /**
-   * @brief verify hard fork info in database
-   */
-  virtual void check_hard_fork_info() = 0;
-
-  /**
-   * @brief delete hard fork info from database
-   */
-  virtual void drop_hard_fork_info() = 0;
-
   /**
    * @brief return a histogram of outputs on the blockchain
    *
@@ -1897,7 +1861,7 @@ public:
    */
   void set_auto_remove_logs(bool auto_remove) { m_auto_remove_logs = auto_remove; }
 
-  bool m_open;  //!< Whether or not the BlockchainDB is open/ready for use
+  bool m_open = false;  //!< Whether or not the BlockchainDB is open/ready for use
 
 };  // class BlockchainDB
 

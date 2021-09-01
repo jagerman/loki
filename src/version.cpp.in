@@ -8,3 +8,12 @@ const std::string_view OXEN_VERSION_TAG = "@VERSIONTAG@"sv;
 const std::string_view OXEN_VERSION_STR = "@PROJECT_VERSION@"sv;
 const std::string_view OXEN_RELEASE_NAME = "@OXEN_RELEASE_CODENAME@"sv;
 const std::string_view OXEN_VERSION_FULL = "@PROJECT_VERSION@-@VERSIONTAG@@OXEN_RELEASE_SUFFIX@"sv;
+
+// When building block versions we construct the minor block version from the oxend version: x.y.z corresponds to minor version
+// 32*y+z (e.g. the 10.0.7 dev version will have block minor version 7 and 10.1.2 will have block
+// minor version 34).  This means we can't let `z` go bigger than 31, and ideally should let y go
+// beyond 3 to keep our miner version below 128.  (It *can* go above that, but then starts to use
+// multi-byte encoding which might cause issues, so better to fail here to keep us from accidentally
+// reaching it).
+static_assert(@PROJECT_VERSION_MINOR@ < 4 && @PROJECT_VERSION_PATCH@ < 32,
+    "hardfork.h/cpp ideal version calculation assumes minor version < 4 and patch version < 32");

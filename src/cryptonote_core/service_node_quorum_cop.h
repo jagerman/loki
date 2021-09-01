@@ -111,14 +111,14 @@ namespace service_nodes
     void blockchain_detached(uint64_t height, bool by_pop_blocks) override;
 
     void                       set_votes_relayed  (std::vector<quorum_vote_t> const &relayed_votes);
-    std::vector<quorum_vote_t> get_relayable_votes(uint64_t current_height, uint8_t hf_version, bool quorum_relay);
+    std::vector<quorum_vote_t> get_relayable_votes(uint64_t current_height, cryptonote::network_state net, bool quorum_relay);
     bool                       handle_vote        (quorum_vote_t const &vote, cryptonote::vote_verification_context &vvc);
 
     static int64_t calculate_decommission_credit(const service_node_info &info, uint64_t current_height);
 
   private:
-    void process_quorums(cryptonote::block const &block);
-    service_node_test_results check_service_node(uint8_t hf_version, const crypto::public_key &pubkey, const service_node_info &info) const;
+    void process_quorums(cryptonote::network_type nettype, const cryptonote::block& block);
+    service_node_test_results check_service_node(cryptonote::network_state net, const crypto::public_key& pubkey, const service_node_info& info) const;
 
     cryptonote::core& m_core;
     voting_pool       m_vote_pool;

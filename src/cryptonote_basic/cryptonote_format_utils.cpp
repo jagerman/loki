@@ -642,10 +642,10 @@ namespace cryptonote
     return true;
   }
 
-  bool add_service_node_state_change_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_service_node_state_change& state_change, const uint8_t hf_version)
+  bool add_service_node_state_change_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_service_node_state_change& state_change, network_state net)
   {
     tx_extra_field field;
-    if (hf_version < network_version_12_checkpointing)
+    if (!is_network_version_enabled(feature::CHECKPOINTS, net))
     {
       CHECK_AND_ASSERT_MES(state_change.state == service_nodes::new_state::deregister, false, "internal error: cannot construct an old deregistration for a non-deregistration state change (before hardfork v12)");
       field = tx_extra_service_node_deregister_old{state_change};
@@ -761,9 +761,9 @@ namespace cryptonote
     add_tx_extra<tx_extra_service_node_winner>(tx_extra, winner);
   }
   //---------------------------------------------------------------
-  bool get_service_node_state_change_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_state_change &state_change, const uint8_t hf_version)
+  bool get_service_node_state_change_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_state_change &state_change, network_state net)
   {
-    if (hf_version >= cryptonote::network_version_12_checkpointing) {
+    if (is_network_version_enabled(feature::CHECKPOINTS, net)) {
       // Look for a new-style state change field:
       return get_field_from_tx_extra(tx_extra, state_change);
     }

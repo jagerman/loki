@@ -51,10 +51,9 @@ public:
   bool get_target_height(uint64_t &height) const;
   bool get_immutable_height(uint64_t &height) const;
   bool get_block_weight_limit(uint64_t &block_weight_limit) const;
-  bool get_earliest_height(uint8_t version, uint64_t &earliest_height) const;
   bool get_dynamic_base_fee_estimate(uint64_t grace_blocks, cryptonote::byte_and_output_fees &fees) const;
   bool get_fee_quantization_mask(uint64_t &fee_quantization_mask) const;
-  std::optional<uint8_t> get_hardfork_version() const;
+  std::optional<cryptonote::network_state> get_network_state() const;
 
   std::pair<bool, std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry>>             get_service_nodes(std::vector<std::string> pubkeys) const;
   std::pair<bool, std::vector<cryptonote::rpc::GET_SERVICE_NODES::response::entry>>             get_all_service_nodes() const;
@@ -131,7 +130,6 @@ private:
 
   mutable uint64_t m_height;
   mutable uint64_t m_immutable_height;
-  mutable std::array<uint64_t, 256> m_earliest_height;
   mutable cryptonote::byte_and_output_fees m_dynamic_base_fee_estimate;
   mutable uint64_t m_dynamic_base_fee_estimate_cached_height;
   mutable uint64_t m_dynamic_base_fee_estimate_grace_blocks;
@@ -140,6 +138,7 @@ private:
   mutable cryptonote::rpc::version_t m_rpc_version;
   mutable uint64_t m_target_height;
   mutable uint64_t m_block_weight_limit;
+  mutable cryptonote::network_state m_net_state;
   mutable std::chrono::steady_clock::time_point m_get_info_time;
   mutable std::chrono::steady_clock::time_point m_height_time;
 };

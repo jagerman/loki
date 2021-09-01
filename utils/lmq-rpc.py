@@ -59,7 +59,7 @@ to_send = [sys.argv[1].encode(), b'tagxyz123']
 to_send += (x.encode() for x in sys.argv[2:])
 print("Sending {}".format(to_send[0]), file=sys.stderr)
 socket.send_multipart(to_send)
-if socket.poll(timeout=5000):
+if socket.poll(timeout=15000):
     m = socket.recv_multipart()
     recv_time = time.clock_gettime(time.CLOCK_MONOTONIC)
     if len(m) < 3 or m[0:2] != [b'REPLY', b'tagxyz123']:
@@ -67,9 +67,9 @@ if socket.poll(timeout=5000):
         for x in m:
             print("- {}".format(x))
     else:
-        print("Received {} reply in {:.6f}s:".format(m[2].decode(), recv_time - beginning_of_time), file=sys.stderr)
-        if len(m) < 4:
-            print("(empty reply data)", file=sys.stderr)
+        print("Received {} reply in {:.6f}s:".format("a" if len(m) < 4 else m[2].decode(), recv_time - beginning_of_time), file=sys.stderr)
+        if len(m) == 3:
+            print(m[2].decode(), end="\n\n");
         else:
             for x in m[3:]:
                 print(x.decode(), end="\n\n")

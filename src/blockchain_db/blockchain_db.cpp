@@ -32,6 +32,7 @@
 #include "epee/string_tools.h"
 #include "blockchain_db.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "cryptonote_basic/hardfork.h"
 #include "epee/profile_tools.h"
 #include "ringct/rctOps.h"
 #include "common/hex.h"
@@ -222,16 +223,9 @@ uint64_t BlockchainDB::add_block( const std::pair<block, blobdata>& blck
   TIME_MEASURE_FINISH(time1);
   time_add_block1 += time1;
 
-  m_hardfork->add(blk, prev_height);
-
   ++num_calls;
 
   return prev_height;
-}
-
-void BlockchainDB::set_hard_fork(HardFork* hf)
-{
-  m_hardfork = hf;
 }
 
 void BlockchainDB::pop_block(block& blk, std::vector<transaction>& txs)
@@ -438,7 +432,7 @@ void BlockchainDB::fill_timestamps_and_difficulties_for_pow(cryptonote::network_
     return;
 
   uint64_t const top_block_height   = chain_height - 1;
-  static const uint64_t hf16_height = HardFork::get_hardcoded_hard_fork_height(nettype, cryptonote::network_version_16_pulse);
+  static const uint64_t hf16_height = get_hard_fork_heights(nettype, cryptonote::network_version_16_pulse).first;
   bool const before_hf16            = chain_height < hf16_height;
   uint64_t const block_count        = DIFFICULTY_BLOCKS_COUNT(before_hf16);
 

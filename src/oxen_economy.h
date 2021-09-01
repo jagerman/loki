@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <limits>
 
 constexpr uint64_t COIN                       = (uint64_t)1000000000; // 1 LOKI = pow(10, 9)
 constexpr uint64_t MONEY_SUPPLY               = ((uint64_t)(-1)); // MONEY_SUPPLY - total number coins to be generated
@@ -73,34 +74,33 @@ constexpr bool is_lokinet_type(mapping_type t) { return t >= mapping_type::lokin
 // days per registration "year" to allow for some blockchain time drift + leap years.
 constexpr uint64_t REGISTRATION_YEAR_DAYS = 368;
 
-constexpr uint64_t burn_needed(uint8_t hf_version, mapping_type type)
-{
-  uint64_t result = 0;
+// The base amount for session/wallet/lokinet-1year:
+constexpr uint64_t ONS_BURN_BASE_HF15 = 20;
+constexpr uint64_t ONS_BURN_BASE_HF16 = 15;
+constexpr uint64_t ONS_BURN_BASE_HF18 = 7;
 
-  // The base amount for session/wallet/lokinet-1year:
-  const uint64_t basic_fee = (
-      hf_version >= 18 ? 7*COIN :  // cryptonote::network_version_18
-      hf_version >= 16 ? 15*COIN :  // cryptonote::network_version_16_pulse -- but don't want to add cryptonote_config.h include
-      20*COIN                       // cryptonote::network_version_15_ons
-  );
+// Returns the burn fee multiplier required for given ONS type. Typically called via the
+// ons::burn_needed wrapper.
+constexpr uint64_t burn_needed_multiplier(mapping_type type)
+{
   switch (type)
   {
+    case mapping_type::_count:
+      break;
     case mapping_type::update_record_internal:
-      result = 0;
-      break;
+      return 0;
 
-    case mapping_type::lokinet: /* FALLTHRU */
-    case mapping_type::session: /* FALLTHRU */
-    case mapping_type::wallet: /* FALLTHRU */
-    default:
-      result = basic_fee;
-      break;
+    case mapping_type::lokinet: [[fallthrough]];
+    case mapping_type::session: [[fallthrough]];
+    case mapping_type::wallet:
+      return 1;
 
-    case mapping_type::lokinet_2years: result = 2 * basic_fee; break;
-    case mapping_type::lokinet_5years: result = 4 * basic_fee; break;
-    case mapping_type::lokinet_10years: result = 6 * basic_fee; break;
+    case mapping_type::lokinet_2years: return 2;
+    case mapping_type::lokinet_5years: return 4;
+    case mapping_type::lokinet_10years: return 6;
   }
-  return result;
+  // Error or unhandled value:
+  return std::numeric_limits<uint64_t>::max();
 }
-}; // namespace ons
 
+} // namespace ons

@@ -453,10 +453,9 @@ struct Wallet
     bool testnet() const { return nettype() == TESTNET; }
     bool devnet() const { return nettype() == DEVNET; }
     //! returns current hard fork info
-    virtual void hardForkInfo(uint8_t &version, uint64_t &earliest_height) const = 0;
-    virtual std::optional<uint8_t> hardForkVersion() const = 0;
+    virtual std::optional<std::pair<uint8_t, uint8_t>> hardForkVersion() const = 0;
     //! check if hard fork rules should be used
-    virtual bool useForkRules(uint8_t version, int64_t early_blocks) const = 0;  
+    virtual bool useForkRules(std::pair<uint8_t, uint8_t> feature) const = 0;  
     /*!
      * \brief integratedAddress - returns integrated address for current wallet address and given payment_id.
      *                            if passed "payment_id" param is an empty string or not-valid payment id string
