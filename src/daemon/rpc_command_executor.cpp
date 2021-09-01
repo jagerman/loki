@@ -1228,14 +1228,15 @@ bool rpc_command_executor::banned(const std::string &address)
 
 bool rpc_command_executor::flush_txpool(std::string txid)
 {
-    FLUSH_TRANSACTION_POOL::request req{};
-    FLUSH_TRANSACTION_POOL::response res{};
-
+    std::vector<std::string> txids{};
     if (!txid.empty())
-      req.txids.push_back(std::move(txid));
+      txids.push_back(std::move(txid));
 
-    if (!invoke<FLUSH_TRANSACTION_POOL>(std::move(req), res, "Failed to flush tx pool"))
+    if (!invoke<FLUSH_TRANSACTION_POOL>(json{{txids, std::move(txids)}}))
+    {
+      tools::fail_msg_writer() << "Failed to flush tx pool";
       return false;
+    }
 
     tools::success_msg_writer() << "Pool successfully flushed";
     return true;

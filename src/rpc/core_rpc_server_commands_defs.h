@@ -1284,20 +1284,22 @@ namespace cryptonote::rpc {
     } request;
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Flush tx ids from transaction pool..
+  /// Flush tx ids from transaction pool..
+  ///
+  /// Inputs:
+  /// - \p txids Optional, list of transactions IDs to flosh from pool (all tx ids flushed if empty)
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
   struct FLUSH_TRANSACTION_POOL : RPC_COMMAND
   {
     static constexpr auto names() { return NAMES("flush_txpool"); }
 
-    struct request
+    struct request_parameters
     {
       std::vector<std::string> txids; // Optional, list of transactions IDs to flush from pool (all tx ids flushed if empty).
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response : STATUS {};
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT

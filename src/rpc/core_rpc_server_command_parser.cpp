@@ -409,4 +409,8 @@ namespace cryptonote::rpc {
   void parse_request(BANNED& banned, rpc_input in) {
     get_values(in, "address", banned.request.address);
   }
+
+  void parse_request(FLUSH_TRANSACTION_POOL& flush_transaction_pool, rpc_input in) {
+    get_values(in, "txids", flush_transaction_pool.request.txids);
+  }
 }

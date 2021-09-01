@@ -1993,15 +1993,13 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  FLUSH_TRANSACTION_POOL::response core_rpc_server::invoke(FLUSH_TRANSACTION_POOL::request&& req, rpc_context context)
+  void core_rpc_server::invoke(FLUSH_TRANSACTION_POOL& flush_transaction_pool, rpc_context context)
   {
-    FLUSH_TRANSACTION_POOL::response res{};
-
     PERF_TIMER(on_flush_txpool);
 
     bool failed = false;
     std::vector<crypto::hash> txids;
-    if (req.txids.empty())
+    if (flush_transaction_pool.request.txids.empty())
     {
       std::vector<transaction> pool_txs;
       m_core.get_pool().get_transactions(pool_txs);
@@ -2012,7 +2010,7 @@ namespace cryptonote::rpc {
     }
     else
     {
-      for (const auto &str: req.txids)
+      for (const auto &str: flush_transaction_pool.request.txids)
       {
         cryptonote::blobdata txid_data;
         if(!epee::string_tools::parse_hexstr_to_binbuff(str, txid_data))
@@ -2028,16 +2026,15 @@ namespace cryptonote::rpc {
     }
     if (!m_core.get_blockchain_storage().flush_txes_from_pool(txids))
     {
-      res.status = "Failed to remove one or more tx(es)";
-      return res;
+      flush_transaction_pool.response["status"] = "Failed to remove one or more tx(es)";
+      return;
     }
 
-    res.status = failed
+    flush_transaction_pool.response["status"] = failed
       ? txids.empty()
         ? "Failed to parse txid"
         : "Failed to parse some of the txids"
       : STATUS_OK;
-    return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_OUTPUT_HISTOGRAM::response core_rpc_server::invoke(GET_OUTPUT_HISTOGRAM::request&& req, rpc_context context)
