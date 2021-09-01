@@ -1345,21 +1345,18 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
-  // Get current RPC protocol version.
-  struct GET_VERSION : PUBLIC
+  /// Get current RPC protocol version.
+  ///
+  /// Inputs: None
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p version RPC current version.
+  /// - \p untrusted States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced
+  struct GET_VERSION : PUBLIC, NO_ARGS
   {
     static constexpr auto names() { return NAMES("get_version"); }
-
-    struct request : EMPTY {};
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good.
-      uint32_t version;   // RPC current version.
-      bool untrusted;     // States if the result is obtained using the bootstrap mode, and is therefore not trusted (`true`), or when the daemon is fully synced (`false`).
-
-      KV_MAP_SERIALIZABLE
-    };
   };
 
   OXEN_RPC_DOC_INTROSPECT

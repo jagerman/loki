@@ -2074,17 +2074,15 @@ namespace cryptonote::rpc {
     return res;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_VERSION::response core_rpc_server::invoke(GET_VERSION::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_VERSION& version, rpc_context context)
   {
-    GET_VERSION::response res{};
-
     PERF_TIMER(on_get_version);
-    if (use_bootstrap_daemon_if_necessary<GET_VERSION>(req, res))
-      return res;
+    //TODO how replace bootstrap daemon
+    //if (use_bootstrap_daemon_if_necessary<GET_VERSION>(req, res))
+      //return res;
 
-    res.version = pack_version(VERSION);
-    res.status = STATUS_OK;
-    return res;
+    version.response["version"] = pack_version(VERSION);
+    version.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   void core_rpc_server::invoke(GET_SERVICE_NODE_STATUS& sns, rpc_context context)
