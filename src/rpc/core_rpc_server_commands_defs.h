@@ -1344,7 +1344,6 @@ namespace cryptonote::rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
   /// Get current RPC protocol version.
   ///
   /// Inputs: None
@@ -1359,29 +1358,28 @@ namespace cryptonote::rpc {
     static constexpr auto names() { return NAMES("get_version"); }
   };
 
-  OXEN_RPC_DOC_INTROSPECT
-  // Get the coinbase amount and the fees amount for n last blocks starting at particular height.
+  /// Get the coinbase amount and the fees amount for n last blocks starting at particular height.
+  ///
+  /// Inputs:
+  ///
+  /// - \p height Block height from which getting the amounts.
+  /// - \p count Number of blocks to include in the sum.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p emission_amount Amount of coinbase reward in atomic units.
+  /// - \p fee_amount Amount of fees in atomic units.
+  /// - \p burn_amount Amount of burnt oxen.
   struct GET_COINBASE_TX_SUM : RPC_COMMAND
   {
     static constexpr auto names() { return NAMES("get_coinbase_tx_sum"); }
 
-    struct request
+    struct request_parameters
     {
       uint64_t height; // Block height from which getting the amounts.
       uint64_t count;  // Number of blocks to include in the sum.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status;       // General RPC error code. "OK" means everything looks good.
-      uint64_t emission_amount; // Amount of coinbase reward in atomic units.
-      uint64_t fee_amount;      // Amount of fees in atomic units.
-      uint64_t burn_amount;      // Amount of burnt oxen.
-
-      KV_MAP_SERIALIZABLE
-    };
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT

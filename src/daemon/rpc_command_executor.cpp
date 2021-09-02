@@ -1268,16 +1268,17 @@ bool rpc_command_executor::output_histogram(const std::vector<uint64_t> &amounts
 
 bool rpc_command_executor::print_coinbase_tx_sum(uint64_t height, uint64_t count)
 {
-  GET_COINBASE_TX_SUM::response res{};
-  if (!invoke<GET_COINBASE_TX_SUM>({height, count}, res, "Failed to retrieve coinbase info"))
-    return false;
+    auto maybe_coinbase = try_running([this, &height, &count] { return invoke<GET_COINBASE_TX_SUM>(json{{"height", height}, {"count", count}}); }, "Failed to retrieve coinbase info");
+    if (!maybe_coinbase)
+        return false;
+    auto& coinbase = *maybe_coinbase;
 
-  tools::msg_writer() << "Sum of coinbase transactions between block heights ["
-    << height << ", " << (height + count) << ") is "
-    << cryptonote::print_money(res.emission_amount + res.fee_amount) << " "
-    << "consisting of " << cryptonote::print_money(res.emission_amount)
-    << " in emissions, and " << cryptonote::print_money(res.fee_amount) << " in fees";
-  return true;
+    tools::msg_writer() << "Sum of coinbase transactions between block heights ["
+        << height << ", " << (height + count) << ") is "
+        << cryptonote::print_money(coinbase["emission_amount"].get<int64_t>() + coinbase["fee_amount"].get<int64_t>()) << " "
+        << "consisting of " << cryptonote::print_money(coinbase["emission_amount"])
+        << " in emissions, and " << cryptonote::print_money(coinbase["fee_amount"]) << " in fees";
+    return true;
 }
 
 bool rpc_command_executor::alt_chain_info(const std::string &tip, size_t above, uint64_t last_blocks)

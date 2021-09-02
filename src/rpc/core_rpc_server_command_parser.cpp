@@ -413,4 +413,9 @@ namespace cryptonote::rpc {
   void parse_request(FLUSH_TRANSACTION_POOL& flush_transaction_pool, rpc_input in) {
     get_values(in, "txids", flush_transaction_pool.request.txids);
   }
+
+  void parse_request(GET_COINBASE_TX_SUM& get_coinbase_tx_sum, rpc_input in) {
+    get_values(in, "height", get_coinbase_tx_sum.request.height);
+    get_values(in, "count", get_coinbase_tx_sum.request.count);
+  }
 }

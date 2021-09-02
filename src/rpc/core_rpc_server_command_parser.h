@@ -26,4 +26,5 @@ namespace cryptonote::rpc {
   void parse_request(SET_LOG_CATEGORIES& set_log_categories, rpc_input in);
   void parse_request(BANNED& banned, rpc_input in);
   void parse_request(FLUSH_TRANSACTION_POOL& flush_transaction_pool, rpc_input in);
+  void parse_request(GET_COINBASE_TX_SUM& get_coinbase_tx_sum, rpc_input in);
 }
