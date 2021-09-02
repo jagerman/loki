@@ -2209,26 +2209,20 @@ namespace cryptonote::rpc {
       {"status", STATUS_OK}};
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  OUT_PEERS::response core_rpc_server::invoke(OUT_PEERS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(OUT_PEERS& out_peers, rpc_context context)
   {
-    OUT_PEERS::response res{};
-
     PERF_TIMER(on_out_peers);
-    if (req.set)
-      m_p2p.change_max_out_public_peers(req.out_peers);
-    res.status = STATUS_OK;
-    return res;
+    if (out_peers.request.set)
+      m_p2p.change_max_out_public_peers(out_peers.request.out_peers);
+    out_peers.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  IN_PEERS::response core_rpc_server::invoke(IN_PEERS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(IN_PEERS& in_peers, rpc_context context)
   {
-    IN_PEERS::response res{};
-
     PERF_TIMER(on_in_peers);
-    if (req.set)
-      m_p2p.change_max_in_public_peers(req.in_peers);
-    res.status = STATUS_OK;
-    return res;
+    if (in_peers.request.set)
+      m_p2p.change_max_in_public_peers(in_peers.request.in_peers);
+    in_peers.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   POP_BLOCKS::response core_rpc_server::invoke(POP_BLOCKS::request&& req, rpc_context context)

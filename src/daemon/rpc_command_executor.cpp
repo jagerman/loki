@@ -1137,12 +1137,12 @@ bool rpc_command_executor::set_limit(int64_t limit_down, int64_t limit_up)
 
 bool rpc_command_executor::out_peers(bool set, uint32_t limit)
 {
-    OUT_PEERS::request req{set, limit};
-	OUT_PEERS::response res{};
-    if (!invoke<OUT_PEERS>(std::move(req), res, "Failed to set max out peers"))
-      return false;
+  auto maybe_out_peers = try_running([this, set, limit] { return invoke<OUT_PEERS>(json{{"set", set}, {"out_peers", limit}}); }, "Failed to set max out peers");
+  if (!maybe_out_peers)
+    return false;
+  auto& out_peers = *maybe_out_peers;
 
-	const std::string s = res.out_peers == (uint32_t)-1 ? "unlimited" : std::to_string(res.out_peers);
+	const std::string s = out_peers["out_peers"] == (uint32_t)-1 ? "unlimited" : out_peers["out_peers"].get<std::string>();
 	tools::msg_writer() << "Max number of out peers set to " << s << std::endl;
 
 	return true;
@@ -1150,12 +1150,12 @@ bool rpc_command_executor::out_peers(bool set, uint32_t limit)
 
 bool rpc_command_executor::in_peers(bool set, uint32_t limit)
 {
-    IN_PEERS::request req{set, limit};
-	IN_PEERS::response res{};
-    if (!invoke<IN_PEERS>(std::move(req), res, "Failed to set max in peers"))
-      return false;
+  auto maybe_in_peers = try_running([this, set, limit] { return invoke<IN_PEERS>(json{{"set", set}, {"in_peers", limit}}); }, "Failed to set max in peers");
+  if (!maybe_in_peers)
+    return false;
+  auto& in_peers = *maybe_in_peers;
 
-	const std::string s = res.in_peers == (uint32_t)-1 ? "unlimited" : std::to_string(res.in_peers);
+	const std::string s = in_peers["in_peers"] == (uint32_t)-1 ? "unlimited" : in_peers["in_peers"].get<std::string>();
 	tools::msg_writer() << "Max number of in peers set to " << s << std::endl;
 
 	return true;
