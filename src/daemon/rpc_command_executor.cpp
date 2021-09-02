@@ -1919,11 +1919,12 @@ bool rpc_command_executor::print_sr(uint64_t height)
 
 bool rpc_command_executor::pop_blocks(uint64_t num_blocks)
 {
-  POP_BLOCKS::response res{};
-  if (!invoke<POP_BLOCKS>({num_blocks}, res, "Popping blocks failed"))
+  auto maybe_pop_blocks = try_running([this, num_blocks] { return invoke<POP_BLOCKS>(json{{"nblocks", num_blocks}}); }, "Failed to pop blocks");
+  if (!maybe_pop_blocks)
     return false;
+  auto& pop_blocks = *maybe_pop_blocks;
 
-  tools::success_msg_writer() << "new height: " << res.height;
+  tools::success_msg_writer() << "new height: " << pop_blocks["height"].get<std::string_view>();
   return true;
 }
 

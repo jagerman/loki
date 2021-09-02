@@ -2225,18 +2225,14 @@ namespace cryptonote::rpc {
     in_peers.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  POP_BLOCKS::response core_rpc_server::invoke(POP_BLOCKS::request&& req, rpc_context context)
+  void core_rpc_server::invoke(POP_BLOCKS& pop_blocks, rpc_context context)
   {
-    POP_BLOCKS::response res{};
-
     PERF_TIMER(on_pop_blocks);
 
-    m_core.get_blockchain_storage().pop_blocks(req.nblocks);
+    m_core.get_blockchain_storage().pop_blocks(pop_blocks.request.nblocks);
 
-    res.height = m_core.get_current_blockchain_height();
-    res.status = STATUS_OK;
-
-    return res;
+    pop_blocks.response["height"] = m_core.get_current_blockchain_height();
+    pop_blocks.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   RELAY_TX::response core_rpc_server::invoke(RELAY_TX::request&& req, rpc_context context)

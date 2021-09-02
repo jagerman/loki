@@ -30,4 +30,5 @@ namespace cryptonote::rpc {
   void parse_request(GET_BASE_FEE_ESTIMATE& get_base_fee_estimate, rpc_input in);
   void parse_request(OUT_PEERS& out_peers, rpc_input in);
   void parse_request(IN_PEERS& in_peers, rpc_input in);
+  void parse_request(POP_BLOCKS& pop_blocks, rpc_input in);
 }

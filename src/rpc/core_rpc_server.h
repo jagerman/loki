@@ -239,6 +239,7 @@ namespace cryptonote::rpc {
     void invoke(GET_BASE_FEE_ESTIMATE& get_base_fee_estimate, rpc_context context);
     void invoke(OUT_PEERS& out_peers, rpc_context context);
     void invoke(IN_PEERS& in_peers, rpc_context context);
+    void invoke(POP_BLOCKS& pop_blocks, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -254,7 +255,6 @@ namespace cryptonote::rpc {
     // FIXME: unconverted JSON RPC endpoints:
     SET_BOOTSTRAP_DAEMON::response                      invoke(SET_BOOTSTRAP_DAEMON::request&& req, rpc_context context);
     GET_OUTPUT_DISTRIBUTION::response                   invoke(GET_OUTPUT_DISTRIBUTION::request&& req, rpc_context context, bool binary = false);
-    POP_BLOCKS::response                                invoke(POP_BLOCKS::request&& req, rpc_context context);
     GET_LAST_BLOCK_HEADER::response                     invoke(GET_LAST_BLOCK_HEADER::request&& req, rpc_context context);
     GET_BLOCK_HEADER_BY_HASH::response                  invoke(GET_BLOCK_HEADER_BY_HASH::request&& req, rpc_context context);
     GET_BLOCK_HEADER_BY_HEIGHT::response                invoke(GET_BLOCK_HEADER_BY_HEIGHT::request&& req, rpc_context context);

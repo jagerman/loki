@@ -422,4 +422,18 @@ namespace cryptonote::rpc {
   void parse_request(GET_BASE_FEE_ESTIMATE& get_base_fee_estimate, rpc_input in) {
     get_values(in, "grace_blocks", get_base_fee_estimate.request.grace_blocks);
   }
+
+  void parse_request(OUT_PEERS& out_peers, rpc_input in){
+    get_values(in, "set", out_peers.request.set);
+    get_values(in, "out_peers", out_peers.request.out_peers);
+  }
+
+  void parse_request(IN_PEERS& in_peers, rpc_input in){
+    get_values(in, "set", in_peers.request.set);
+    get_values(in, "in_peers", in_peers.request.in_peers);
+  }
+
+  void parse_request(POP_BLOCKS& pop_blocks, rpc_input in){
+    get_values(in, "nblocks", pop_blocks.request.nblocks);
+  }
 }

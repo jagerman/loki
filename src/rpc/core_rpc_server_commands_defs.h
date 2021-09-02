@@ -1539,24 +1539,24 @@ namespace cryptonote::rpc {
   };
 
   OXEN_RPC_DOC_INTROSPECT
+  /// Pop blocks off the main chain
+  ///
+  /// Inputs:
+  ///
+  /// - \p nblocks Number of blocks in that span.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p height Height of the blockchain after blocks have been popped.
   struct POP_BLOCKS : LEGACY
   {
     static constexpr auto names() { return NAMES("pop_blocks"); }
 
-    struct request
+    struct request_parameters
     {
       uint64_t nblocks; // Number of blocks in that span.
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      std::string status; // General RPC error code. "OK" means everything looks good.
-      uint64_t height;
-
-      KV_MAP_SERIALIZABLE
-    };
+    } request;
   };
 
   OXEN_RPC_DOC_INTROSPECT
@@ -2378,7 +2378,17 @@ namespace cryptonote::rpc {
     GET_SERVICE_NODE_STATUS,
     SUBMIT_TRANSACTION,
     GET_BLOCK_HASH,
-    GET_PEER_LIST
+    GET_PEER_LIST,
+    SET_LOG_LEVEL,
+    SET_LOG_CATEGORIES,
+    BANNED,
+    FLUSH_TRANSACTION_POOL,
+    GET_VERSION,
+    GET_COINBASE_TX_SUM,
+    GET_BASE_FEE_ESTIMATE,
+    OUT_PEERS,
+    IN_PEERS,
+    POP_BLOCKS
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
@@ -2387,24 +2397,14 @@ namespace cryptonote::rpc {
     GET_BLOCK_HEADER_BY_HASH,
     GET_BLOCK_HEADER_BY_HEIGHT,
     GET_BLOCK,
-    SET_LOG_LEVEL,
-    SET_LOG_CATEGORIES,
     GET_BLOCK_HEADERS_RANGE,
     SET_BOOTSTRAP_DAEMON,
-    OUT_PEERS,
-    IN_PEERS,
     GETBANS,
     SETBANS,
-    BANNED,
-    FLUSH_TRANSACTION_POOL,
     GET_OUTPUT_HISTOGRAM,
-    GET_VERSION,
-    GET_COINBASE_TX_SUM,
-    GET_BASE_FEE_ESTIMATE,
     GET_ALTERNATE_CHAINS,
     RELAY_TX,
     GET_OUTPUT_DISTRIBUTION,
-    POP_BLOCKS,
     PRUNE_BLOCKCHAIN,
     GET_QUORUM_STATE,
     GET_SERVICE_NODE_REGISTRATION_CMD_RAW,
