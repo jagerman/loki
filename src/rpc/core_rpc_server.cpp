@@ -2128,24 +2128,22 @@ namespace cryptonote::rpc {
     }
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  GET_BASE_FEE_ESTIMATE::response core_rpc_server::invoke(GET_BASE_FEE_ESTIMATE::request&& req, rpc_context context)
+  void core_rpc_server::invoke(GET_BASE_FEE_ESTIMATE& get_base_fee_estimate, rpc_context context)
   {
-    GET_BASE_FEE_ESTIMATE::response res{};
-
     PERF_TIMER(on_get_base_fee_estimate);
-    if (use_bootstrap_daemon_if_necessary<GET_BASE_FEE_ESTIMATE>(req, res))
-      return res;
+    //TODO handle bootstrap daemon in new RPC format
+    //if (use_bootstrap_daemon_if_necessary<GET_BASE_FEE_ESTIMATE>(req, res))
+      //return res;
 
-    auto fees = m_core.get_blockchain_storage().get_dynamic_base_fee_estimate(req.grace_blocks);
-    res.fee_per_byte = fees.first;
-    res.fee_per_output = fees.second;
-    res.blink_fee_fixed = BLINK_BURN_FIXED;
+    auto fees = m_core.get_blockchain_storage().get_dynamic_base_fee_estimate(get_base_fee_estimate.request.grace_blocks);
+    get_base_fee_estimate.response["fee_per_byte"] = fees.first;
+    get_base_fee_estimate.response["fee_per_output"] = fees.second;
+    get_base_fee_estimate.response["blink_fee_fixed"] = BLINK_BURN_FIXED;
     constexpr auto blink_percent = BLINK_MINER_TX_FEE_PERCENT + BLINK_BURN_TX_FEE_PERCENT_V18;
-    res.blink_fee_per_byte = res.fee_per_byte * blink_percent / 100;
-    res.blink_fee_per_output = res.fee_per_output * blink_percent / 100;
-    res.quantization_mask = Blockchain::get_fee_quantization_mask();
-    res.status = STATUS_OK;
-    return res;
+    get_base_fee_estimate.response["blink_fee_per_byte"] = fees.first * blink_percent / 100;
+    get_base_fee_estimate.response["blink_fee_per_output"] = fees.second * blink_percent / 100;
+    get_base_fee_estimate.response["quantization_mask"] = Blockchain::get_fee_quantization_mask();
+    get_base_fee_estimate.response["status"] = STATUS_OK;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_ALTERNATE_CHAINS::response core_rpc_server::invoke(GET_ALTERNATE_CHAINS::request&& req, rpc_context context)

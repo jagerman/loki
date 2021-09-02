@@ -1383,14 +1383,15 @@ bool rpc_command_executor::print_blockchain_dynamic_stats(uint64_t nblocks)
     return false;
   auto& hfinfo = *maybe_hf;
 
-  GET_BASE_FEE_ESTIMATE::response feres{};
-  if (!invoke<GET_BASE_FEE_ESTIMATE>({}, feres, "Failed to retrieve current fee info"))
-    return false;
+  auto maybe_fees = try_running([this] { return invoke<GET_BASE_FEE_ESTIMATE>(json{}); }, "Failed to retrieve current fee info");
+  if (!maybe_fees)
+      return false;
+  auto& feres = *maybe_fees;
 
   auto height = info["height"].get<uint64_t>();
   tools::msg_writer() << "Height: " << height << ", diff " << info["difficulty"].get<uint64_t>() << ", cum. diff " << info["cumulative_difficulty"].get<uint64_t>()
-      << ", target " << info["target"].get<int>() << " sec" << ", dyn fee " << cryptonote::print_money(feres.fee_per_byte) << "/" << (hfinfo["enabled"].get<bool>() ? "byte" : "kB")
-      << " + " << cryptonote::print_money(feres.fee_per_output) << "/out";
+      << ", target " << info["target"].get<int>() << " sec" << ", dyn fee " << cryptonote::print_money(feres["fee_per_byte"]) << "/" << (hfinfo["enabled"].get<bool>() ? "byte" : "kB")
+      << " + " << cryptonote::print_money(feres["fee_per_output"]) << "/out";
 
   if (nblocks > 0)
   {

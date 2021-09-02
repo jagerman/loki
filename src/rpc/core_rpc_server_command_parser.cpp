@@ -418,4 +418,8 @@ namespace cryptonote::rpc {
     get_values(in, "height", get_coinbase_tx_sum.request.height);
     get_values(in, "count", get_coinbase_tx_sum.request.count);
   }
+
+  void parse_request(GET_BASE_FEE_ESTIMATE& get_base_fee_estimate, rpc_input in) {
+    get_values(in, "grace_blocks", get_base_fee_estimate.request.grace_blocks);
+  }
 }
