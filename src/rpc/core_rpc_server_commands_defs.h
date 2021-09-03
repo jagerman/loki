@@ -188,6 +188,8 @@ namespace cryptonote::rpc {
   /// if specified).
   struct LEGACY : virtual RPC_COMMAND {};
 
+  /// Specifies that the RPC call can be forwarded to the Bootstrap daemon
+  struct BOOTSTRAP : virtual RPC_COMMAND {};
   
   // FIXME: won't need these after conversion
   /// (Not a tag). Generic, serializable, no-argument request type, use as `struct request : EMPTY {};`

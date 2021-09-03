@@ -22,6 +22,7 @@ namespace cryptonote
     // request will attempt to use a different bootstrap server (if configured).
     void set_failed() { m_failed = true; }
 
+    //TODO remove after new RPC format
     template <class RPC, std::enable_if_t<std::is_base_of_v<rpc::RPC_COMMAND, RPC>, int> = 0>
     bool invoke(const typename RPC::request& req, typename RPC::response& res)
     {
@@ -33,6 +34,28 @@ namespace cryptonote
           res = m_http_client.binary<RPC>(RPC::names().front(), req);
         else
           res = m_http_client.json_rpc<RPC>(RPC::names().front(), req);
+      } catch (const std::exception& e) {
+        MWARNING("bootstrap daemon request failed: " << e.what());
+        set_failed();
+        return false;
+      }
+      return true;
+    }
+
+    // The boostrap daemon mirrors the RPC server structure, if we are booting/syncing and need 
+    // to use the boostrap daemon we will simply forward call to our external RPC daemon
+    // of choice
+    template <class RPC, std::enable_if_t<std::is_base_of_v<rpc::RPC_COMMAND, RPC>, int> = 0>
+    bool invoke(RPC& rpc, std::optional<nlohmann::json> params)
+    {
+      if (!switch_server_if_needed())
+        return false;
+
+      try {
+        if constexpr (std::is_base_of_v<rpc::BINARY, RPC>)
+          rpc.response = m_http_client.binary<RPC>(RPC::names().front(), params);
+        else
+          rpc.response = m_http_client.json_rpc<RPC>(RPC::names().front(), params);
       } catch (const std::exception& e) {
         MWARNING("bootstrap daemon request failed: " << e.what());
         set_failed();

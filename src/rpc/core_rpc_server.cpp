@@ -123,6 +123,29 @@ namespace cryptonote::rpc {
       cmd->invoke = [](rpc_request&& request, core_rpc_server& server) -> rpc_command::result_type {
         RPC rpc{};
         try {
+          if constexpr (std::is_base_of_v<BOOTSTRAP, RPC>) {
+            auto bs_lock = server.should_bootstrap_lock();
+            rpc.response["untrusted"] = false; // If compilation fails here then the type being instantiated doesn't support using a bootstrap daemon
+            if (bs_lock) {
+                if (auto body = request.body_view()) {
+                    //FIXME -> What to do if we receive a raw string
+                    //if (!m_bootstrap_daemon->invoke<RPC>(rpc, *body))
+                      //throw std::runtime_error{"Bootstrap request failed"};
+                } else if (auto* j = std::get_if<json>(&request.body)) {
+                  if (!server.m_bootstrap_daemon->invoke<RPC>(rpc, *j))
+                    throw std::runtime_error{"Bootstrap request failed"};
+                } else {
+                  //FIXME -> What to do if we receive a monostate
+                  //assert(std::holds_alternative<std::monostate>(request.body));
+                  //if (!m_bootstrap_daemon->invoke<RPC>(rpc, std::monostate{}))
+                    //throw std::runtime_error{"Bootstrap request failed"};
+                }
+
+                server.m_was_bootstrap_ever_used = true;
+                rpc.response["untrusted"] = true;
+                return std::move(rpc.response);
+            }
+          }
           if (auto body = request.body_view()) {
             if (body->front() == 'd') { // Looks like a bt dict
               rpc.set_bt();
@@ -1643,6 +1666,7 @@ namespace cryptonote::rpc {
     return lock;
   }
 
+  //TODO remove this after upgrading to new RPC
   //------------------------------------------------------------------------------------------------------------------------------
   // If we have a bootstrap daemon configured and we haven't fully synched yet then forward the
   // request to the bootstrap daemon.  Returns true if the request was bootstrapped, false if the
@@ -1657,8 +1681,6 @@ namespace cryptonote::rpc {
     auto bs_lock = should_bootstrap_lock();
     if (!bs_lock)
       return false;
-
-    std::string command_name{RPC::names().front()};
 
     if (!m_bootstrap_daemon->invoke<RPC>(req, res))
       throw std::runtime_error{"Bootstrap request failed"};
@@ -2077,10 +2099,6 @@ namespace cryptonote::rpc {
   void core_rpc_server::invoke(GET_VERSION& version, rpc_context context)
   {
     PERF_TIMER(on_get_version);
-    //TODO how replace bootstrap daemon
-    //if (use_bootstrap_daemon_if_necessary<GET_VERSION>(req, res))
-      //return res;
-
     version.response["version"] = pack_version(VERSION);
     version.response["status"] = STATUS_OK;
   }
