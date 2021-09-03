@@ -3000,8 +3000,8 @@ namespace cryptonote::rpc {
     // after the ping had expired).  `Success` is a callback that is invoked with a single boolean
     // argument: true if this ping should trigger an immediate proof send (i.e. first ping after
     // startup or after a ping expiry), false for an ordinary ping.
-    template <typename RPC, typename Success>
-    auto handle_ping(
+    template <typename Success>
+    std::string handle_ping(
             std::array<uint16_t, 3> cur_version,
             std::array<uint16_t, 3> required,
             std::string_view name,
@@ -3009,12 +3009,12 @@ namespace cryptonote::rpc {
             std::chrono::seconds lifetime,
             Success success)
     {
-      typename RPC::response res{};
+      std::string status{};
       if (cur_version < required) {
-        std::ostringstream status;
-        status << "Outdated " << name << ". Current: " << version_printer{cur_version} << " Required: " << version_printer{required};
-        res.status = status.str();
-        MERROR(res.status);
+        std::ostringstream os;
+        os << "Outdated " << name << ". Current: " << version_printer{cur_version} << " Required: " << version_printer{required};
+        status = os.str();
+        MERROR(status);
       } else {
         auto now = std::time(nullptr);
         auto old = update.exchange(now);
@@ -3024,32 +3024,32 @@ namespace cryptonote::rpc {
         else
           MDEBUG("Accepted ping from " << name << " " << version_printer{cur_version});
         success(significant);
-        res.status = STATUS_OK;
+        status = STATUS_OK;
       }
-      return res;
+      return status;
     }
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
-  STORAGE_SERVER_PING::response core_rpc_server::invoke(STORAGE_SERVER_PING::request&& req, rpc_context context)
+  void core_rpc_server::invoke(STORAGE_SERVER_PING& storage_server_ping, rpc_context context)
   {
-    m_core.ss_version = req.version;
-    return handle_ping<STORAGE_SERVER_PING>(
-      req.version, service_nodes::MIN_STORAGE_SERVER_VERSION,
+    m_core.ss_version = storage_server_ping.request.version;
+    storage_server_ping.response["status"] = handle_ping(
+      storage_server_ping.request.version, service_nodes::MIN_STORAGE_SERVER_VERSION,
       "Storage Server", m_core.m_last_storage_server_ping, m_core.get_net_config().UPTIME_PROOF_FREQUENCY,
-      [this, &req](bool significant) {
-        m_core.m_storage_https_port = req.https_port;
-        m_core.m_storage_omq_port = req.omq_port;
+      [this, &storage_server_ping](bool significant) {
+        m_core.m_storage_https_port = storage_server_ping.request.https_port;
+        m_core.m_storage_omq_port = storage_server_ping.request.omq_port;
         if (significant)
           m_core.reset_proof_interval();
       });
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  LOKINET_PING::response core_rpc_server::invoke(LOKINET_PING::request&& req, rpc_context context)
+  void core_rpc_server::invoke(LOKINET_PING& lokinet_ping, rpc_context context)
   {
-    m_core.lokinet_version = req.version;
-    return handle_ping<LOKINET_PING>(
-        req.version, service_nodes::MIN_LOKINET_VERSION,
+    m_core.lokinet_version = lokinet_ping.request.version;
+    lokinet_ping.response["status"] = handle_ping(
+        lokinet_ping.request.version, service_nodes::MIN_LOKINET_VERSION,
         "Lokinet", m_core.m_last_lokinet_ping, m_core.get_net_config().UPTIME_PROOF_FREQUENCY,
         [this](bool significant) { if (significant) m_core.reset_proof_interval(); });
   }

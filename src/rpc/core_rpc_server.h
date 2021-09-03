@@ -240,6 +240,8 @@ namespace cryptonote::rpc {
     void invoke(OUT_PEERS& out_peers, rpc_context context);
     void invoke(IN_PEERS& in_peers, rpc_context context);
     void invoke(POP_BLOCKS& pop_blocks, rpc_context context);
+    void invoke(LOKINET_PING& lokinet_ping, rpc_context context);
+    void invoke(STORAGE_SERVER_PING& storage_server_ping, rpc_context context);
 
     // Deprecated Monero NIH binary endpoints:
     GET_ALT_BLOCKS_HASHES_BIN::response         invoke(GET_ALT_BLOCKS_HASHES_BIN::request&& req, rpc_context context);
@@ -273,8 +275,6 @@ namespace cryptonote::rpc {
     GET_SERVICE_KEYS::response                          invoke(GET_SERVICE_KEYS::request&& req, rpc_context context);
     GET_SERVICE_PRIVKEYS::response                      invoke(GET_SERVICE_PRIVKEYS::request&& req, rpc_context context);
     GET_STAKING_REQUIREMENT::response                   invoke(GET_STAKING_REQUIREMENT::request&& req, rpc_context context);
-    STORAGE_SERVER_PING::response                       invoke(STORAGE_SERVER_PING::request&& req, rpc_context context);
-    LOKINET_PING::response                              invoke(LOKINET_PING::request&& req, rpc_context context);
     GET_CHECKPOINTS::response                           invoke(GET_CHECKPOINTS::request&& req, rpc_context context);
     GET_SN_STATE_CHANGES::response                      invoke(GET_SN_STATE_CHANGES::request&& req, rpc_context context);
     REPORT_PEER_STATUS::response                        invoke(REPORT_PEER_STATUS::request&& req, rpc_context context);

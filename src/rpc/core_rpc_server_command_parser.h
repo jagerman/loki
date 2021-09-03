@@ -31,4 +31,6 @@ namespace cryptonote::rpc {
   void parse_request(OUT_PEERS& out_peers, rpc_input in);
   void parse_request(IN_PEERS& in_peers, rpc_input in);
   void parse_request(POP_BLOCKS& pop_blocks, rpc_input in);
+  void parse_request(LOKINET_PING& lokinet_ping, rpc_input in);
+  void parse_request(STORAGE_SERVER_PING& storage_server_ping, rpc_input in);
 }

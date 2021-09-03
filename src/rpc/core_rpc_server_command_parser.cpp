@@ -436,4 +436,14 @@ namespace cryptonote::rpc {
   void parse_request(POP_BLOCKS& pop_blocks, rpc_input in){
     get_values(in, "nblocks", pop_blocks.request.nblocks);
   }
+
+  void parse_request(LOKINET_PING& lokinet_ping, rpc_input in){
+    get_values(in, "version", lokinet_ping.request.version);
+  }
+
+  void parse_request(STORAGE_SERVER_PING& storage_server_ping, rpc_input in){
+    get_values(in, "version", storage_server_ping.request.version);
+    get_values(in, "https_port", storage_server_ping.request.https_port);
+    get_values(in, "omq_port", storage_server_ping.request.omq_port);
+  }
 }
