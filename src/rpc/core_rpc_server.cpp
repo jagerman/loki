@@ -2481,24 +2481,22 @@ namespace cryptonote::rpc {
     return invoke(std::move(static_cast<GET_OUTPUT_DISTRIBUTION::request&>(req)), context, true);
   }
   //------------------------------------------------------------------------------------------------------------------------------
-  PRUNE_BLOCKCHAIN::response core_rpc_server::invoke(PRUNE_BLOCKCHAIN::request&& req, rpc_context context)
+  void core_rpc_server::invoke(PRUNE_BLOCKCHAIN& prune_blockchain, rpc_context context)
   {
-    PRUNE_BLOCKCHAIN::response res{};
-
     try
     {
-      if (!(req.check ? m_core.check_blockchain_pruning() : m_core.prune_blockchain()))
-        throw rpc_error{ERROR_INTERNAL, req.check ? "Failed to check blockchain pruning" : "Failed to prune blockchain"};
-      res.pruning_seed = m_core.get_blockchain_pruning_seed();
-      res.pruned = res.pruning_seed != 0;
+      if (!(prune_blockchain.request.check ? m_core.check_blockchain_pruning() : m_core.prune_blockchain()))
+        throw rpc_error{ERROR_INTERNAL, prune_blockchain.request.check ? "Failed to check blockchain pruning" : "Failed to prune blockchain"};
+      auto pruning_seed = m_core.get_blockchain_pruning_seed();
+      prune_blockchain.response["pruning_seed"] = pruning_seed;
+      prune_blockchain.response["pruned"] = pruning_seed != 0;
     }
     catch (const std::exception &e)
     {
       throw rpc_error{ERROR_INTERNAL, "Failed to prune blockchain"};
     }
 
-    res.status = STATUS_OK;
-    return res;
+    prune_blockchain.response["status"] = STATUS_OK;
   }
 
 
@@ -3049,9 +3047,9 @@ namespace cryptonote::rpc {
   {
     m_core.lokinet_version = lokinet_ping.request.version;
     lokinet_ping.response["status"] = handle_ping(
-        lokinet_ping.request.version, service_nodes::MIN_LOKINET_VERSION,
-        "Lokinet", m_core.m_last_lokinet_ping, m_core.get_net_config().UPTIME_PROOF_FREQUENCY,
-        [this](bool significant) { if (significant) m_core.reset_proof_interval(); });
+      lokinet_ping.request.version, service_nodes::MIN_LOKINET_VERSION,
+      "Lokinet", m_core.m_last_lokinet_ping, m_core.get_net_config().UPTIME_PROOF_FREQUENCY,
+      [this](bool significant) { if (significant) m_core.reset_proof_interval(); });
   }
   //------------------------------------------------------------------------------------------------------------------------------
   GET_STAKING_REQUIREMENT::response core_rpc_server::invoke(GET_STAKING_REQUIREMENT::request&& req, rpc_context context)

@@ -446,4 +446,8 @@ namespace cryptonote::rpc {
     get_values(in, "https_port", storage_server_ping.request.https_port);
     get_values(in, "omq_port", storage_server_ping.request.omq_port);
   }
+
+  void parse_request(PRUNE_BLOCKCHAIN& prune_blockchain, rpc_input in){
+    get_values(in, "check", prune_blockchain.request.check);
+  }
 }

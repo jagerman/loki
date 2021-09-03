@@ -2514,10 +2514,8 @@ bool rpc_command_executor::prepare_registration(bool force_registration)
 bool rpc_command_executor::prune_blockchain()
 {
 #if 0
-    PRUNE_BLOCKCHAIN::response res{};
-    if (!invoke<PRUNE_BLOCKCHAIN>({false}, res, "Failed to prune blockchain"))
+    if (!invoke<PRUNE_BLOCKCHAIN>(json{{"check", false}}, "Failed to prune blockchain"))
       return false;
-
     tools::success_msg_writer() << "Blockchain pruned";
 #else
     tools::fail_msg_writer() << "Blockchain pruning is not supported in Oxen yet";
@@ -2527,11 +2525,12 @@ bool rpc_command_executor::prune_blockchain()
 
 bool rpc_command_executor::check_blockchain_pruning()
 {
-    PRUNE_BLOCKCHAIN::response res{};
-    if (!invoke<PRUNE_BLOCKCHAIN>({true}, res, "Failed to check blockchain pruning status"))
+    auto maybe_pruning = try_running([this] { return invoke<PRUNE_BLOCKCHAIN>(json{{"check", true}}); }, "Failed to check blockchain pruning status");
+    if (!maybe_pruning)
       return false;
+    auto& pruning = *maybe_pruning;
 
-    tools::success_msg_writer() << "Blockchain is" << (res.pruning_seed ? "" : " not") << " pruned";
+    tools::success_msg_writer() << "Blockchain is" << (pruning["pruning_seed"] ? "" : " not") << " pruned";
     return true;
 }
 

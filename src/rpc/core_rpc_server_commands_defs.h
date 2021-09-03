@@ -1538,7 +1538,6 @@ namespace cryptonote::rpc {
     };
   };
 
-  OXEN_RPC_DOC_INTROSPECT
   /// Pop blocks off the main chain
   ///
   /// Inputs:
@@ -1559,26 +1558,29 @@ namespace cryptonote::rpc {
     } request;
   };
 
-  OXEN_RPC_DOC_INTROSPECT
+  /// Pruning is the process of removing non-critical blockchain information from local storage. 
+  /// Full nodes keep an entire copy of everything that is stored on the blockchain, including data
+  /// that is not very useful anymore. Pruned nodes remove much of this less relevant information 
+  /// to have a lighter footprint. Of course, running a full node is always better; however, pruned 
+  /// nodes have most of the important information and can still support the network.
+  ///
+  /// Inputs:
+  ///
+  /// - \p check Instead of running check if the blockchain has already been pruned.
+  ///
+  /// Output values available from a restricted/admin RPC endpoint:
+  ///
+  /// - \p status General RPC status string. `"OK"` means everything looks good.
+  /// - \p pruned Bool returning whether the blockchain was pruned or not.
+  /// - \p pruning_seed The seed that determined how the blockchain was to be pruned.
   struct PRUNE_BLOCKCHAIN : RPC_COMMAND
   {
     static constexpr auto names() { return NAMES("prune_blockchain"); }
 
-    struct request
+    struct request_parameters
     {
       bool check;
-
-      KV_MAP_SERIALIZABLE
-    };
-
-    struct response
-    {
-      bool pruned;
-      uint32_t pruning_seed;
-      std::string status;
-
-      KV_MAP_SERIALIZABLE
-    };
+    } request;
   };
 
 
@@ -2408,7 +2410,8 @@ namespace cryptonote::rpc {
     IN_PEERS,
     POP_BLOCKS,
     STORAGE_SERVER_PING,
-    LOKINET_PING
+    LOKINET_PING,
+    PRUNE_BLOCKCHAIN
   >;
 
   using FIXME_old_rpc_types = tools::type_list<
@@ -2425,7 +2428,6 @@ namespace cryptonote::rpc {
     GET_ALTERNATE_CHAINS,
     RELAY_TX,
     GET_OUTPUT_DISTRIBUTION,
-    PRUNE_BLOCKCHAIN,
     GET_QUORUM_STATE,
     GET_SERVICE_NODE_REGISTRATION_CMD_RAW,
     GET_SERVICE_NODE_REGISTRATION_CMD,
