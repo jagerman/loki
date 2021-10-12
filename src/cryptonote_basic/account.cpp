@@ -34,6 +34,9 @@
 #include "account.h"
 #include "epee/warnings.h"
 #include "crypto/crypto.h"
+#include <oxenmq/hex.h>
+#include <algorithm>
+#include <string>
 extern "C"
 {
 #include "crypto/keccak.h"
@@ -177,13 +180,57 @@ DISABLE_VS_WARNINGS(4244 4345)
   //-----------------------------------------------------------------
   crypto::secret_key account_base::generate(const crypto::secret_key& recovery_key, bool recover, bool two_random)
   {
-    crypto::secret_key first = generate_keys(m_keys.m_account_address.m_spend_public_key, m_keys.m_spend_secret_key, recovery_key, recover);
+    constexpr static const char *want = "error";
+    constexpr static const uint8_t want_size = 5;   // The size of the want string above
+    constexpr static const uint8_t prefix_len = 2;  // Length of the address prefix (e.g. 2 for loki with "L6" or whatever).
+
+    uint8_t match = 0;
+    std::string addr;
+    crypto::secret_key first, second;
+    uint64_t count = 0;
+    int best = 0;
+    auto last = std::chrono::system_clock::now();
+do {
+    first = generate_keys(m_keys.m_account_address.m_spend_public_key, m_keys.m_spend_secret_key, recovery_key, recover);
+
+    // Don't worry about the view key yet; the vanity portion is based entirely on the public spend
+    // key (which comes first in the address); the address we generate here is invalid, but the
+    // first half of it (roughly) will be right
+    addr = get_public_address_str(MAINNET);
+
+    count++;
+    match = want_size;
+    for (uint8_t i = 0; i < want_size; i++) {
+        if (addr[prefix_len + i] != want[i]) {
+            match = i;
+            break;
+        }
+    }
+    if (match >= best) {
 
     // rng for generating second set of keys is hash of first rng.  means only one set of electrum-style words needed for recovery
-    crypto::secret_key second;
     keccak((uint8_t *)&m_keys.m_spend_secret_key, sizeof(crypto::secret_key), (uint8_t *)&second, sizeof(crypto::secret_key));
 
     generate_keys(m_keys.m_account_address.m_view_public_key, m_keys.m_view_secret_key, second, two_random ? false : true);
+
+    addr = get_public_address_str(MAINNET);
+
+        best = match;
+        if (match >= 3) {
+            std::cerr << "attempt " << count << " produced new best: " << addr << "\n";
+            std::cerr << "keys: view: " << oxenmq::to_hex(tools::view_guts(m_keys.m_view_secret_key)) <<
+                ", spend: " << oxenmq::to_hex(tools::view_guts(m_keys.m_spend_secret_key)) << "\n";
+        }
+    }
+    if (count % 100000 == 0) {
+        auto now = std::chrono::system_clock::now();
+        std::chrono::duration<double> diff = now - last;
+        std::cerr << count << " attempts; speed=" << 100000 / diff.count() << " wallets per second\n";
+        last = now;
+    }
+
+} while (match < want_size);
+
     m_creation_timestamp = creation_timestamp(recover /*use_genesis_timestamp*/);
     return first;
   }
