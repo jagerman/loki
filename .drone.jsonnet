@@ -190,20 +190,6 @@ local gui_wallet_step_darwin = {
 
 
 [
-    // Various debian builds
-    debian_pipeline("Debian (w/ tests) (amd64)", "debian:sid", lto=true, run_tests=true),
-    debian_pipeline("Debian Debug (amd64)", "debian:sid", build_type='Debug'),
-    debian_pipeline("Debian clang-11 (amd64)", "debian:sid", deps='clang-11 '+default_deps_base,
-                    cmake_extra='-DCMAKE_C_COMPILER=clang-11 -DCMAKE_CXX_COMPILER=clang++-11 ', lto=true),
-    debian_pipeline("Debian gcc-10 (amd64)", "debian:testing", deps='g++-10 '+default_deps_base,
-                    cmake_extra='-DCMAKE_C_COMPILER=gcc-10 -DCMAKE_CXX_COMPILER=g++-10 -DBUILD_DEBUG_UTILS=ON'),
-    debian_pipeline("Debian buster (i386)", "i386/debian:buster", cmake_extra='-DDOWNLOAD_SODIUM=ON -DARCH_ID=i386'),
-    debian_pipeline("Ubuntu focal (amd64)", "ubuntu:focal"),
-
-    // ARM builds (ARM64 and armhf)
-    debian_pipeline("Debian (ARM64)", "debian:sid", arch="arm64", build_tests=false),
-    debian_pipeline("Debian buster (armhf)", "arm32v7/debian:buster", arch="arm64", build_tests=false, cmake_extra='-DDOWNLOAD_SODIUM=ON -DARCH_ID=armhf'),
-
     // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
     debian_pipeline("Static (bionic amd64)", "ubuntu:bionic", deps='g++-8 '+static_build_deps,
                     cmake_extra='-DBUILD_STATIC_DEPS=ON -DCMAKE_C_COMPILER=gcc-8 -DCMAKE_CXX_COMPILER=g++-8 -DARCH=x86-64',
@@ -220,58 +206,5 @@ local gui_wallet_step_darwin = {
     // Macos builds:
     mac_builder('macOS (Static)', cmake_extra='-DBUILD_STATIC_DEPS=ON -DARCH=core2 -DARCH_ID=amd64',
                 build_tests=false, lto=true, extra_cmds=static_check_and_upload, /*extra_steps=[gui_wallet_step_darwin]*/),
-    mac_builder('macOS (Release)', run_tests=true),
-    mac_builder('macOS (Debug)', build_type='Debug', cmake_extra='-DBUILD_DEBUG_UTILS=ON'),
 
-
-    // Android builds; we do them all in one image because the android NDK is huge
-    {   name: 'Android wallet_api', kind: 'pipeline', type: 'docker', platform: { arch: 'amd64' },
-        steps: [submodules, {
-                name: 'build',
-                image: 'debian:sid',
-                environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
-                commands: [
-                    'echo "man-db man-db/auto-update boolean false" | debconf-set-selections',
-                    'echo deb http://deb.debian.org/debian sid contrib >/etc/apt/sources.list.d/sid-contrib.list',
-                    apt_get_quiet + ' update',
-                    apt_get_quiet + ' install -y eatmydata',
-                    'eatmydata ' + apt_get_quiet + ' dist-upgrade -y',
-                    // Keep cached copies of the android NDK around because it is huge:
-                    'if [ -d /cache ]; then if ! [ -d /cache/google-android-ndk-installer ]; then mkdir /cache/google-android-ndk-installer; fi; ln -s /cache/google-android-ndk-installer /var/cache/; fi',
-                    'eatmydata ' + apt_get_quiet + ' install -y --no-install-recommends cmake g++ git ninja-build ccache tar xz-utils google-android-ndk-installer ' + static_build_deps,
-                    ]
-                    + android_build_steps('armeabi-v7a', cmake_extra='-DARCH=armv7-a -DARCH_ID=arm32')
-                    + android_build_steps('arm64-v8a', cmake_extra='-DARCH=armv8-a -DARCH_ID=arm64')
-                    + android_build_steps('x86_64', cmake_extra='-DARCH="x86-64 -msse4.2 -mpopcnt" -DARCH_ID=x86-64')
-                    + [
-                    './utils/build_scripts/drone-android-static-upload.sh armeabi-v7a arm64-v8a x86_64'
-                ]
-            }
-        ]
-    },
-
-    // iOS build
-    {   name: 'iOS wallet_api', kind: 'pipeline', type: 'exec', platform: { os: 'darwin', arch: 'amd64' },
-        steps: [{
-            name: 'build',
-            environment: { SSH_KEY: { from_secret: "SSH_KEY" } },
-            commands: submodules_commands + [
-                'mkdir -p build/{arm64,sim64}',
-                'cd build/arm64',
-                'cmake ../.. -G Ninja ' +
-                    '-DCMAKE_TOOLCHAIN_FILE=../../cmake/ios.toolchain.cmake -DPLATFORM=OS -DDEPLOYMENT_TARGET=11 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF ' +
-                    '-DSTATIC=ON -DBUILD_STATIC_DEPS=ON -DUSE_LTO=OFF -DCMAKE_BUILD_TYPE=Release ' +
-                    '-DRANDOMX_ENABLE_JIT=OFF -DCMAKE_CXX_FLAGS=-fcolor-diagnostics',
-                'ninja -j6 -v wallet_merged',
-                'cd ../sim64',
-                'cmake ../.. -G Ninja ' +
-                    '-DCMAKE_TOOLCHAIN_FILE=../../cmake/ios.toolchain.cmake -DPLATFORM=SIMULATOR64 -DDEPLOYMENT_TARGET=11 -DENABLE_VISIBILITY=ON -DENABLE_BITCODE=OFF ' +
-                    '-DSTATIC=ON -DBUILD_STATIC_DEPS=ON -DUSE_LTO=OFF -DCMAKE_BUILD_TYPE=Release ' +
-                    '-DRANDOMX_ENABLE_JIT=OFF -DCMAKE_CXX_FLAGS=-fcolor-diagnostics',
-                'ninja -j6 -v wallet_merged',
-                'cd ../..',
-                './utils/build_scripts/drone-ios-static-upload.sh'
-            ]
-        }]
-    },
 ]
