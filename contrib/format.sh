@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-CLANG_FORMAT_DESIRED_VERSION=11
+CLANG_FORMAT_DESIRED_VERSION=14
 
-TARGET_DIRS=(src/wallet3 src/sqlitedb src/logging)
+TARGET_DIRS=(src pybind)
 
 binary=$(which clang-format-$CLANG_FORMAT_DESIRED_VERSION 2>/dev/null)
 if [ $? -ne 0 ]; then
