@@ -237,6 +237,24 @@ local gui_wallet_step_darwin = {
 
 
 [
+  {
+    name: 'lint check',
+    kind: 'pipeline',
+    type: 'docker',
+    steps: [{
+      name: 'build',
+      image: docker_base + 'lint',
+      pull: 'always',
+      commands: [
+        'echo "Building on ${DRONE_STAGE_MACHINE}"',
+        apt_get_quiet + ' update',
+        apt_get_quiet + ' install -y eatmydata',
+        'eatmydata ' + apt_get_quiet + ' install --no-install-recommends -y git clang-format-14 jsonnet',
+        './contrib/drone-format-verify.sh',
+      ],
+    }],
+  },
+
   // Static build to make wallet3:
   {
     name: 'Static (wallet3)',
