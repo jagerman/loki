@@ -9,8 +9,15 @@ pywallet3_sources = ['$<TARGET_PROPERTY:pywallet3,SOURCE_DIR>/' + src for src in
     '$<JOIN:$<TARGET_PROPERTY:pywallet3,SOURCES>,',
     '>')]
 pywallet3_include_dirs = [
-    '$<JOIN:$<TARGET_PROPERTY:wallet3,INCLUDE_DIRECTORIES>,',
+    '$<JOIN:$<TARGET_PROPERTY:pywallet3,INCLUDE_DIRECTORIES>,',
     '>']
+pywallet3_defs = []
+for d in [
+    '$<JOIN:$<TARGET_PROPERTY:pywallet3,COMPILE_DEFINITIONS>,',
+    '>']:
+    parts = d.split("=", 1)
+    pywallet3_defs.append((parts[0], parts[1] if len(parts) == 2 else None))
+
 
 # Note:
 #   Sort input source files if you glob sources to ensure bit-for-bit
@@ -21,6 +28,7 @@ ext_modules = [Pybind11Extension(
         pywallet3_sources,
         cxx_std=17,
         include_dirs=pywallet3_include_dirs,
+        define_macros=pywallet3_defs,
         extra_objects=['$<TARGET_PROPERTY:wallet3,BINARY_DIR>/libwallet3_merged.a'],
         ),
 ]

@@ -9,7 +9,13 @@ pybind11_add_module(pywallet3 MODULE
   wallet/daemon_comms_config.cpp
   wallet/rpc_config.cpp
 )
-target_link_libraries(pywallet3 PUBLIC wallet3)
+target_link_libraries(pywallet3
+    PUBLIC
+    wallet3
+    logging
+    oxen::logging
+    spdlog::spdlog
+    fmt::fmt)
 target_include_directories(pywallet3 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 file(GENERATE
