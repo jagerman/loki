@@ -30,7 +30,6 @@
 
 #include "pending_transaction.h"
 
-#include <boost/format.hpp>
 #include <memory>
 #include <vector>
 
@@ -60,7 +59,7 @@ PendingTransactionImpl::~PendingTransactionImpl() {}
 
 EXPORT
 void PendingTransactionImpl::setError(std::string error_msg) {
-    m_status = {Status_Error, tr(error_msg)};
+    m_status = {Status_Error, std::move(error_msg)};
 }
 
 EXPORT
@@ -85,15 +84,15 @@ bool PendingTransactionImpl::commit(std::string_view filename_, bool overwrite, 
             if (std::error_code ec_ignore; fs::exists(filename, ec_ignore) && !overwrite) {
                 m_status = {
                         Status_Error,
-                        tr("Attempting to save transaction to file, but specified file(s) exist. "
-                           "Exiting to not risk overwriting. File:") +
+                        "Attempting to save transaction to file, but specified file(s) exist. "
+                        "Exiting to not risk overwriting. File:" +
                                 filename.u8string()};
                 log::error(logcat, m_status.second);
                 return false;
             }
             bool r = w->save_tx(m_pending_tx, filename);
             if (!r) {
-                m_status = {Status_Error, tr("Failed to write transaction(s) to file")};
+                m_status = {Status_Error, "Failed to write transaction(s) to file"};
             } else {
                 m_status = {Status_Ok, ""};
             }
@@ -130,23 +129,20 @@ bool PendingTransactionImpl::commit(std::string_view filename_, bool overwrite, 
             }  // TODO: extract method;
         }
     } catch (const tools::error::daemon_busy&) {
-        m_status = {Status_Error, tr("daemon is busy. Please try again later.")};
+        m_status = {Status_Error, "daemon is busy. Please try again later."};
     } catch (const tools::error::no_connection_to_daemon&) {
-        m_status = {
-                Status_Error, tr("no connection to daemon. Please make sure daemon is running.")};
+        m_status = {Status_Error, "no connection to daemon. Please make sure daemon is running."};
     } catch (const tools::error::tx_rejected& e) {
         m_status.first = Status_Error;
-        m_status.second += (boost::format(tr("transaction %s was rejected by daemon with "
-                                             "status: ")) %
-                            "{}"_format(get_transaction_hash(e.tx())))
-                                   .str();
+        m_status.second += "transaction {} was rejected by daemon with status: {}"_format(
+                get_transaction_hash(e.tx()), e.status());
         m_status.second += e.status();
         if (auto& reason = e.reason(); !reason.empty())
-            m_status.second += tr(". Reason: ") + reason;
+            m_status.second += ". Reason: " + reason;
     } catch (const std::exception& e) {
-        m_status = {Status_Error, std::string(tr("Unknown exception: ")) + e.what()};
+        m_status = {Status_Error, std::string("Unknown exception: ") + e.what()};
     } catch (...) {
-        m_status = {Status_Error, tr("Unhandled exception")};
+        m_status = {Status_Error, "Unhandled exception"};
         log::error(logcat, m_status.second);
     }
 
@@ -232,7 +228,7 @@ std::string PendingTransactionImpl::multisigSignData() {
 
         return oxenc::to_hex(cipher);
     } catch (const std::exception& e) {
-        m_status = {Status_Error, std::string(tr("Couldn't multisig sign data: ")) + e.what()};
+        m_status = {Status_Error, std::string("Couldn't multisig sign data: ") + e.what()};
     }
 
     return std::string();
@@ -254,8 +250,7 @@ void PendingTransactionImpl::signMultisigTx() {
         std::swap(m_pending_tx, txSet.m_ptx);
         std::swap(m_signers, txSet.m_signers);
     } catch (const std::exception& e) {
-        m_status = {
-                Status_Error, std::string(tr("Couldn't sign multisig transaction: ")) + e.what()};
+        m_status = {Status_Error, std::string("Couldn't sign multisig transaction: ") + e.what()};
     }
 }
 

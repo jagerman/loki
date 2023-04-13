@@ -34,7 +34,6 @@
 #define __STDC_FORMAT_MACROS  // NOTE(oxen): Explicitly define the PRIu64 macro on Mingw
 #endif
 
-#include <boost/format.hpp>
 #include <cinttypes>
 #include <sstream>
 #include <thread>
@@ -355,20 +354,20 @@ bool Wallet::keyValid(
     cryptonote::address_parse_info info;
     if (!get_account_address_from_str(
                 info, static_cast<cryptonote::network_type>(nettype), address_string)) {
-        error = tr("Failed to parse address");
+        error = "Failed to parse address";
         return false;
     }
 
     crypto::secret_key key;
     if (!tools::hex_to_type(secret_key_string, unwrap(unwrap(key)))) {
-        error = tr("Failed to parse key");
+        error = "Failed to parse key";
         return false;
     }
 
     // check the key match the given address
     crypto::public_key pkey;
     if (!crypto::secret_key_to_public_key(key, pkey)) {
-        error = tr("failed to verify key");
+        error = "failed to verify key";
         return false;
     }
     bool matchAddress = false;
@@ -378,7 +377,7 @@ bool Wallet::keyValid(
         matchAddress = info.address.m_spend_public_key == pkey;
 
     if (!matchAddress) {
-        error = tr("key does not match address");
+        error = "key does not match address";
         return false;
     }
 
@@ -636,7 +635,7 @@ bool WalletImpl::recoverFromKeysWithPassword(
     auto path = fs::u8path(path_);
     cryptonote::address_parse_info info;
     if (!get_account_address_from_str(info, m_wallet_ptr->nettype(), address_string)) {
-        setStatusError(tr("failed to parse address"));
+        setStatusError("failed to parse address");
         return false;
     }
 
@@ -644,7 +643,7 @@ bool WalletImpl::recoverFromKeysWithPassword(
     crypto::secret_key spendkey;
     bool has_spendkey = !spendkey_string.empty();
     if (has_spendkey && !tools::hex_to_type(spendkey_string, unwrap(unwrap(spendkey)))) {
-        setStatusError(tr("failed to parse secret spend key"));
+        setStatusError("failed to parse secret spend key");
         return false;
     }
 
@@ -655,13 +654,13 @@ bool WalletImpl::recoverFromKeysWithPassword(
         if (has_spendkey) {
             has_viewkey = false;
         } else {
-            setStatusError(tr("Neither view key nor spend key supplied, cancelled"));
+            setStatusError("Neither view key nor spend key supplied, cancelled");
             return false;
         }
     }
     if (has_viewkey) {
         if (!tools::hex_to_type(viewkey_string, unwrap(unwrap(viewkey)))) {
-            setStatusError(tr("failed to parse secret view key"));
+            setStatusError("failed to parse secret view key");
             return false;
         }
     }
@@ -669,21 +668,21 @@ bool WalletImpl::recoverFromKeysWithPassword(
     crypto::public_key pkey;
     if (has_spendkey) {
         if (!crypto::secret_key_to_public_key(spendkey, pkey)) {
-            setStatusError(tr("failed to verify secret spend key"));
+            setStatusError("failed to verify secret spend key");
             return false;
         }
         if (info.address.m_spend_public_key != pkey) {
-            setStatusError(tr("spend key does not match address"));
+            setStatusError("spend key does not match address");
             return false;
         }
     }
     if (has_viewkey) {
         if (!crypto::secret_key_to_public_key(viewkey, pkey)) {
-            setStatusError(tr("failed to verify secret view key"));
+            setStatusError("failed to verify secret view key");
             return false;
         }
         if (info.address.m_view_public_key != pkey) {
-            setStatusError(tr("view key does not match address"));
+            setStatusError("view key does not match address");
             return false;
         }
     }
@@ -708,7 +707,7 @@ bool WalletImpl::recoverFromKeysWithPassword(
         }
 
     } catch (const std::exception& e) {
-        setStatusError(std::string(tr("failed to generate new wallet: ")) + e.what());
+        setStatusError(std::string("failed to generate new wallet: ") + e.what());
         return false;
     }
     return true;
@@ -726,7 +725,7 @@ bool WalletImpl::recoverFromDevice(
         w->restore_from_device(path, password, device_name);
         log::info(logcat, "Generated new wallet from device: " + device_name);
     } catch (const std::exception& e) {
-        setStatusError(std::string(tr("failed to generate new wallet: ")) + e.what());
+        setStatusError(std::string("failed to generate new wallet: ") + e.what());
         return false;
     }
     return true;
@@ -775,7 +774,7 @@ bool WalletImpl::recover(
     clearStatus();
     if (seed.empty()) {
         log::error(logcat, "Electrum seed is empty");
-        setStatusError(tr("Electrum seed is empty"));
+        setStatusError("Electrum seed is empty");
         return false;
     }
 
@@ -784,7 +783,7 @@ bool WalletImpl::recover(
     crypto::secret_key recovery_key;
     std::string old_language;
     if (!crypto::ElectrumWords::words_to_bytes(seed, recovery_key, old_language)) {
-        setStatusError(tr("Electrum-style word list failed verification"));
+        setStatusError("Electrum-style word list failed verification");
         return false;
     }
     if (!seed_offset.empty()) {
@@ -1011,7 +1010,7 @@ bool WalletImpl::lightWalletImportWalletRequest(
     try {
         tools::light_rpc::IMPORT_WALLET_REQUEST::response response{};
         if (!wallet()->light_wallet_import_wallet_request(response)) {
-            setStatusError(tr("Failed to send import wallet request"));
+            setStatusError("Failed to send import wallet request");
             return false;
         }
         fee = response.import_fee;
@@ -1239,7 +1238,7 @@ UnsignedTransaction* WalletImpl::loadUnsignedTx(std::string_view unsigned_filena
     clearStatus();
     UnsignedTransactionImpl* transaction = new UnsignedTransactionImpl(*this);
     if (!wallet()->load_unsigned_tx(unsigned_filename, transaction->m_unsigned_tx_set)) {
-        setStatusError(tr("Failed to load unsigned transactions"));
+        setStatusError("Failed to load unsigned transactions");
         transaction->m_status = {UnsignedTransaction::Status::Status_Error, status().second};
 
         return transaction;
@@ -1248,9 +1247,8 @@ UnsignedTransaction* WalletImpl::loadUnsignedTx(std::string_view unsigned_filena
     // Check tx data and construct confirmation message
     std::string extra_message;
     if (!transaction->m_unsigned_tx_set.transfers.second.empty())
-        extra_message = (boost::format("%u outputs to import. ") %
-                         (unsigned)transaction->m_unsigned_tx_set.transfers.second.size())
-                                .str();
+        extra_message = "{} outputs to import. "_format(
+                transaction->m_unsigned_tx_set.transfers.second.size());
     transaction->checkLoadedTx(
             [&transaction]() { return transaction->m_unsigned_tx_set.txes.size(); },
             [&transaction](size_t n) -> const wallet::tx_construction_data& {
@@ -1271,7 +1269,7 @@ bool WalletImpl::submitTransaction(std::string_view filename_) {
 
     bool r = wallet()->load_tx(fileName, transaction->m_pending_tx);
     if (!r) {
-        setStatus(Status_Error, tr("Failed to load transaction from file"));
+        setStatus(Status_Error, "Failed to load transaction from file");
         return false;
     }
 
@@ -1288,13 +1286,13 @@ bool WalletImpl::exportKeyImages(std::string_view filename_) {
     auto filename = fs::u8path(filename_);
     auto w = wallet();
     if (w->watch_only()) {
-        setStatusError(tr("Wallet is view only"));
+        setStatusError("Wallet is view only");
         return false;
     }
 
     try {
         if (!w->export_key_images_to_file(filename, false /* requested_ki_only */)) {
-            setStatusError(tr("failed to save file ") + filename.u8string());
+            setStatusError("failed to save file " + filename.u8string());
             return false;
         }
     } catch (const std::exception& e) {
@@ -1309,7 +1307,7 @@ EXPORT
 bool WalletImpl::importKeyImages(std::string_view filename_) {
     auto filename = fs::u8path(filename_);
     if (!trustedDaemon()) {
-        setStatusError(tr("Key images can only be imported with a trusted daemon"));
+        setStatusError("Key images can only be imported with a trusted daemon");
         return false;
     }
     try {
@@ -1323,7 +1321,7 @@ bool WalletImpl::importKeyImages(std::string_view filename_) {
                 print_money(unspent));
     } catch (const std::exception& e) {
         log::error(logcat, "Error exporting key images: {}", e.what());
-        setStatusError(std::string(tr("Failed to import key images: ")) + e.what());
+        setStatusError(std::string("Failed to import key images: ") + e.what());
         return false;
     }
 
@@ -1352,7 +1350,7 @@ std::string WalletImpl::getSubaddressLabel(uint32_t accountIndex, uint32_t addre
         return wallet()->get_subaddress_label({accountIndex, addressIndex});
     } catch (const std::exception& e) {
         log::error(logcat, "Error getting subaddress label: {}", e.what());
-        setStatusError(std::string(tr("Failed to get subaddress label: ")) + e.what());
+        setStatusError(std::string("Failed to get subaddress label: ") + e.what());
         return "";
     }
 }
@@ -1363,7 +1361,7 @@ void WalletImpl::setSubaddressLabel(
         return wallet()->set_subaddress_label({accountIndex, addressIndex}, label);
     } catch (const std::exception& e) {
         log::error(logcat, "Error setting subaddress label: {}", e.what());
-        setStatusError(std::string(tr("Failed to set subaddress label: ")) + e.what());
+        setStatusError(std::string("Failed to set subaddress label: ") + e.what());
     }
 }
 
@@ -1386,7 +1384,7 @@ std::string WalletImpl::getMultisigInfo() const {
         return wallet()->get_multisig_info();
     } catch (const std::exception& e) {
         log::error(logcat, "Error on generating multisig info: {}", e.what());
-        setStatusError(std::string(tr("Failed to get multisig info: ")) + e.what());
+        setStatusError(std::string("Failed to get multisig info: ") + e.what());
     }
 
     return {};
@@ -1404,7 +1402,7 @@ std::string WalletImpl::makeMultisig(const std::vector<std::string>& info, uint3
         return w->make_multisig(epee::wipeable_string(m_password), info, threshold);
     } catch (const std::exception& e) {
         log::error(logcat, "Error on making multisig wallet: {}", e.what());
-        setStatusError(std::string(tr("Failed to make multisig: ")) + e.what());
+        setStatusError(std::string("Failed to make multisig: ") + e.what());
     }
 
     return {};
@@ -1420,7 +1418,7 @@ std::string WalletImpl::exchangeMultisigKeys(const std::vector<std::string>& inf
         return w->exchange_multisig_keys(epee::wipeable_string(m_password), info);
     } catch (const std::exception& e) {
         log::error(logcat, "Error on exchanging multisig keys: {}", e.what());
-        setStatusError(std::string(tr("Failed to make multisig: ")) + e.what());
+        setStatusError(std::string("Failed to make multisig: ") + e.what());
     }
 
     return {};
@@ -1437,10 +1435,10 @@ bool WalletImpl::finalizeMultisig(const std::vector<std::string>& extraMultisigI
             return true;
         }
 
-        setStatusError(tr("Failed to finalize multisig wallet creation"));
+        setStatusError("Failed to finalize multisig wallet creation");
     } catch (const std::exception& e) {
         log::error(logcat, "Error on finalizing multisig wallet creation: {}", e.what());
-        setStatusError(std::string(tr("Failed to finalize multisig wallet creation: ")) + e.what());
+        setStatusError(std::string("Failed to finalize multisig wallet creation: ") + e.what());
     }
 
     return false;
@@ -1458,7 +1456,7 @@ bool WalletImpl::exportMultisigImages(std::string& images) {
         return true;
     } catch (const std::exception& e) {
         log::error(logcat, "Error on exporting multisig images: {}", e.what());
-        setStatusError(std::string(tr("Failed to export multisig images: ")) + e.what());
+        setStatusError(std::string("Failed to export multisig images: ") + e.what());
     }
 
     return false;
@@ -1477,7 +1475,7 @@ size_t WalletImpl::importMultisigImages(const std::vector<std::string>& images) 
         for (const auto& image : images) {
             if (!oxenc::is_hex(image)) {
                 log::error(logcat, "Failed to parse imported multisig images");
-                setStatusError(tr("Failed to parse imported multisig images"));
+                setStatusError("Failed to parse imported multisig images");
                 return 0;
             }
 
@@ -1487,7 +1485,7 @@ size_t WalletImpl::importMultisigImages(const std::vector<std::string>& images) 
         return w->import_multisig(blobs);
     } catch (const std::exception& e) {
         log::error(logcat, "Error on importing multisig images: {}", e.what());
-        setStatusError(std::string(tr("Failed to import multisig images: ")) + e.what());
+        setStatusError(std::string("Failed to import multisig images: ") + e.what());
     }
 
     return 0;
@@ -1503,8 +1501,7 @@ bool WalletImpl::hasMultisigPartialKeyImages() const {
         return w->has_multisig_partial_key_images();
     } catch (const std::exception& e) {
         log::error(logcat, "Error on checking for partial multisig key images: {}", e.what());
-        setStatusError(
-                std::string(tr("Failed to check for partial multisig key images: ")) + e.what());
+        setStatusError(std::string("Failed to check for partial multisig key images: ") + e.what());
     }
 
     return false;
@@ -1531,7 +1528,7 @@ PendingTransaction* WalletImpl::restoreMultisigTransaction(const std::string& si
         return ptx;
     } catch (std::exception& e) {
         log::error(logcat, "Error on restoring multisig transaction: {}", e.what());
-        setStatusError(std::string(tr("Failed to restore multisig transaction: ")) + e.what());
+        setStatusError(std::string("Failed to restore multisig transaction: ") + e.what());
     }
 
     return nullptr;
@@ -1568,11 +1565,11 @@ PendingTransaction* WalletImpl::createTransactionMultDest(
         std::string extra_nonce;
         std::vector<cryptonote::tx_destination_entry> dsts;
         if (!amount && dst_addr.size() > 1) {
-            setStatusError(tr("Sending all requires one destination address"));
+            setStatusError("Sending all requires one destination address");
             break;
         }
         if (amount && (dst_addr.size() != (*amount).size())) {
-            setStatusError(tr("Destinations and amounts are unequal"));
+            setStatusError("Destinations and amounts are unequal");
             break;
         }
         bool error = false;
@@ -1582,13 +1579,13 @@ PendingTransaction* WalletImpl::createTransactionMultDest(
                         info, m_wallet_ptr->nettype(), dst_addr[i])) {
                 // TODO: copy-paste 'if treating as an address fails, try as url' from
                 // simplewallet.cpp:1982
-                setStatusError(tr("Invalid destination address"));
+                setStatusError("Invalid destination address");
                 error = true;
                 break;
             }
             if (info.has_payment_id) {
                 if (!extra_nonce.empty()) {
-                    setStatusError(tr("a single transaction cannot use more than one payment id"));
+                    setStatusError("a single transaction cannot use more than one payment id");
                     error = true;
                     break;
                 }
@@ -1616,7 +1613,7 @@ PendingTransaction* WalletImpl::createTransactionMultDest(
             break;
         }
         if (!extra_nonce.empty() && !add_extra_nonce_to_tx_extra(extra, extra_nonce)) {
-            setStatusError(tr("failed to set up payment id, though it was decoded correctly"));
+            setStatusError("failed to set up payment id, though it was decoded correctly");
             break;
         }
         try {
@@ -1660,69 +1657,59 @@ PendingTransaction* WalletImpl::createTransactionMultDest(
             }
         } catch (const tools::error::daemon_busy&) {
             // TODO: make it translatable with "tr"?
-            setStatusError(tr("daemon is busy. Please try again later."));
+            setStatusError("daemon is busy. Please try again later.");
         } catch (const tools::error::no_connection_to_daemon&) {
-            setStatusError(tr("no connection to daemon. Please make sure daemon is running."));
+            setStatusError("no connection to daemon. Please make sure daemon is running.");
         } catch (const tools::error::wallet_rpc_error& e) {
-            setStatusError(tr("RPC error: ") + e.to_string());
+            setStatusError("RPC error: " + e.to_string());
         } catch (const tools::error::get_outs_error& e) {
-            setStatusError(
-                    (boost::format(tr("failed to get outputs to mix: %s")) % e.what()).str());
+            setStatusError("failed to get outputs to mix: {}"_format(e.what()));
         } catch (const tools::error::not_enough_unlocked_money& e) {
-            std::ostringstream writer;
-
-            writer << boost::format(tr("not enough money to transfer, available only %s, sent "
-                                       "amount %s")) %
-                              print_money(e.available()) % print_money(e.tx_amount());
-            setStatusError(writer.str());
+            setStatusError("not enough money to transfer, available only {}, sent amount {}"_format(
+                    print_money(e.available()), print_money(e.tx_amount())));
         } catch (const tools::error::not_enough_money& e) {
-            std::ostringstream writer;
-
-            writer << boost::format(tr("not enough money to transfer, overall balance only %s, "
-                                       "sent amount %s")) %
-                              print_money(e.available()) % print_money(e.tx_amount());
-            setStatusError(writer.str());
+            setStatusError(
+                    "not enough money to transfer, overall balance only {}, sent amount {}"_format(
+                            print_money(e.available()), print_money(e.tx_amount())));
         } catch (const tools::error::tx_not_possible& e) {
-            std::ostringstream writer;
-
-            writer << boost::format(tr("not enough money to transfer, available only %s, "
-                                       "transaction amount %s = %s + %s (fee)")) %
-                              print_money(e.available()) % print_money(e.tx_amount() + e.fee()) %
-                              print_money(e.tx_amount()) % print_money(e.fee());
-            setStatusError(writer.str());
+            setStatusError(
+                    "not enough money to transfer, available only {}, "
+                    "transaction amount {} = {} + {} (fee)"_format(
+                            print_money(e.available()),
+                            print_money(e.tx_amount() + e.fee()),
+                            print_money(e.tx_amount()),
+                            print_money(e.fee())));
         } catch (const tools::error::not_enough_outs_to_mix& e) {
-            std::ostringstream writer;
-            writer << tr("not enough outputs for specified ring size") << " = "
-                   << (e.mixin_count() + 1) << ":";
-            for (const std::pair<uint64_t, uint64_t> outs_for_amount : e.scanty_outs()) {
-                writer << "\n"
-                       << tr("output amount") << " = " << print_money(outs_for_amount.first) << ", "
-                       << tr("found outputs to use") << " = " << outs_for_amount.second;
-            }
-            writer << "\n" << tr("Please sweep unmixable outputs.");
-            setStatusError(writer.str());
+            std::string msg =
+                    "not enough outputs for specified ring size = {}:"_format(e.mixin_count() + 1);
+            auto msg_append = std::back_inserter(msg);
+            for (const auto& [amount, out] : e.scanty_outs())
+                fmt::format_to(
+                        msg_append,
+                        "\noutput amount = {}, found outputs to use = {}",
+                        print_money(amount),
+                        out);
+            msg += "\nPlease sweep unmixable outputs.";
+            setStatusError(msg);
         } catch (const tools::error::tx_not_constructed&) {
-            setStatusError(tr("transaction was not constructed"));
+            setStatusError("transaction was not constructed");
         } catch (const tools::error::tx_rejected& e) {
-            std::ostringstream writer;
-            writer << (boost::format(tr("transaction %s was rejected by daemon with status: ")) %
-                       "{}"_format(get_transaction_hash(e.tx())))
-                   << e.status();
-            setStatusError(writer.str());
+            setStatusError("transaction {} was rejected by daemon with status: {}"_format(
+                    get_transaction_hash(e.tx()), e.status()));
         } catch (const tools::error::tx_sum_overflow& e) {
             setStatusError(e.what());
         } catch (const tools::error::zero_destination&) {
-            setStatusError(tr("one of destinations is zero"));
+            setStatusError("one of destinations is zero");
         } catch (const tools::error::tx_too_big& e) {
-            setStatusError(tr("failed to find a suitable way to split transactions"));
+            setStatusError("failed to find a suitable way to split transactions");
         } catch (const tools::error::transfer_error& e) {
-            setStatusError(std::string(tr("unknown transfer error: ")) + e.what());
+            setStatusError(std::string("unknown transfer error: ") + e.what());
         } catch (const tools::error::wallet_internal_error& e) {
-            setStatusError(std::string(tr("internal error: ")) + e.what());
+            setStatusError(std::string("internal error: ") + e.what());
         } catch (const std::exception& e) {
-            setStatusError(std::string(tr("unexpected error: ")) + e.what());
+            setStatusError(std::string("unexpected error: ") + e.what());
         } catch (...) {
-            setStatusError(tr("unknown error"));
+            setStatusError("unknown error");
         }
     } while (false);
 
@@ -1764,70 +1751,58 @@ PendingTransaction* WalletImpl::createSweepUnmixableTransaction()
 
     } catch (const tools::error::daemon_busy&) {
         // TODO: make it translatable with "tr"?
-        setStatusError(tr("daemon is busy. Please try again later."));
+        setStatusError("daemon is busy. Please try again later.");
     } catch (const tools::error::no_connection_to_daemon&) {
-        setStatusError(tr("no connection to daemon. Please make sure daemon is running."));
+        setStatusError("no connection to daemon. Please make sure daemon is running.");
     } catch (const tools::error::wallet_rpc_error& e) {
-        setStatusError(tr("RPC error: ") + e.to_string());
+        setStatusError("RPC error: " + e.to_string());
     } catch (const tools::error::get_outs_error&) {
-        setStatusError(tr("failed to get outputs to mix"));
+        setStatusError("failed to get outputs to mix");
     } catch (const tools::error::not_enough_unlocked_money& e) {
-        setStatusError("");
-        std::ostringstream writer;
-
-        writer << boost::format(tr("not enough money to transfer, available only %s, sent amount "
-                                   "%s")) %
-                          print_money(e.available()) % print_money(e.tx_amount());
-        setStatusError(writer.str());
+        setStatusError("not enough money to transfer, available only {}, sent amount {}"_format(
+                print_money(e.available()), print_money(e.tx_amount())));
     } catch (const tools::error::not_enough_money& e) {
-        setStatusError("");
-        std::ostringstream writer;
-
-        writer << boost::format(tr("not enough money to transfer, overall balance only %s, sent "
-                                   "amount %s")) %
-                          print_money(e.available()) % print_money(e.tx_amount());
-        setStatusError(writer.str());
+        setStatusError(
+                "not enough money to transfer, overall balance only {}, sent amount {}"_format(
+                        print_money(e.available()), print_money(e.tx_amount())));
     } catch (const tools::error::tx_not_possible& e) {
-        setStatusError("");
-        std::ostringstream writer;
-
-        writer << boost::format(tr("not enough money to transfer, available only %s, transaction "
-                                   "amount %s = %s + %s (fee)")) %
-                          print_money(e.available()) % print_money(e.tx_amount() + e.fee()) %
-                          print_money(e.tx_amount()) % print_money(e.fee());
-        setStatusError(writer.str());
+        setStatusError(
+                "not enough money to transfer, available only {}, "
+                "transaction amount {} = {} + {} (fee)"_format(
+                        print_money(e.available()),
+                        print_money(e.tx_amount() + e.fee()),
+                        print_money(e.tx_amount()),
+                        print_money(e.fee())));
     } catch (const tools::error::not_enough_outs_to_mix& e) {
-        std::ostringstream writer;
-        writer << tr("not enough outputs for specified ring size") << " = " << (e.mixin_count() + 1)
-               << ":";
-        for (const std::pair<uint64_t, uint64_t> outs_for_amount : e.scanty_outs()) {
-            writer << "\n"
-                   << tr("output amount") << " = " << print_money(outs_for_amount.first) << ", "
-                   << tr("found outputs to use") << " = " << outs_for_amount.second;
-        }
-        setStatusError(writer.str());
+        std::string msg =
+                "not enough outputs for specified ring size = {}:"_format(e.mixin_count() + 1);
+        auto msg_append = std::back_inserter(msg);
+        for (const auto& [amount, out] : e.scanty_outs())
+            fmt::format_to(
+                    msg_append,
+                    "\noutput amount = {}, found outputs to use = {}",
+                    print_money(amount),
+                    out);
+        setStatusError(std::move(msg));
     } catch (const tools::error::tx_not_constructed&) {
-        setStatusError(tr("transaction was not constructed"));
+        setStatusError("transaction was not constructed");
     } catch (const tools::error::tx_rejected& e) {
-        std::ostringstream writer;
-        writer << (boost::format(tr("transaction %s was rejected by daemon with status: ")) %
-                   "{}"_format(get_transaction_hash(e.tx())))
-               << e.status();
-        setStatusError(writer.str());
+        setStatusError("transaction {} was rejected by daemon with status: {}"_format(
+                get_transaction_hash(e.tx()), e.status()));
     } catch (const tools::error::tx_sum_overflow& e) {
         setStatusError(e.what());
     } catch (const tools::error::zero_destination&) {
-        setStatusError(tr("one of destinations is zero"));
+        setStatusError("one of destinations is zero");
     } catch (const tools::error::tx_too_big& e) {
-        setStatusError(tr("failed to find a suitable way to split transactions"));
+        setStatusError("failed to find a suitable way to split transactions");
     } catch (const tools::error::transfer_error& e) {
-        setStatusError(std::string(tr("unknown transfer error: ")) + e.what());
+        setStatusError(std::string("unknown transfer error: ") + e.what());
     } catch (const tools::error::wallet_internal_error& e) {
-        setStatusError(std::string(tr("internal error: ")) + e.what());
+        setStatusError(std::string("internal error: ") + e.what());
     } catch (const std::exception& e) {
-        setStatusError(std::string(tr("unexpected error: ")) + e.what());
+        setStatusError(std::string("unexpected error: ") + e.what());
     } catch (...) {
-        setStatusError(tr("unknown error"));
+        setStatusError("unknown error");
     }
 
     transaction->m_status = status();
@@ -1908,7 +1883,7 @@ EXPORT
 std::string WalletImpl::getTxKey(const std::string& txid_str) const {
     crypto::hash txid;
     if (!tools::hex_to_type(txid_str, txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return "";
     }
 
@@ -1924,7 +1899,7 @@ std::string WalletImpl::getTxKey(const std::string& txid_str) const {
                 oss << tools::type_to_hex(additional_tx_keys[i]);
             return oss.str();
         } else {
-            setStatusError(tr("no tx keys found for this txid"));
+            setStatusError("no tx keys found for this txid");
             return "";
         }
     } catch (const std::exception& e) {
@@ -1943,7 +1918,7 @@ bool WalletImpl::checkTxKey(
         uint64_t& confirmations) {
     crypto::hash txid;
     if (!tools::hex_to_type(txid_str, txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return false;
     }
 
@@ -1956,7 +1931,7 @@ bool WalletImpl::checkTxKey(
             first = false;
 
         if (!tools::hex_to_type(tx_key_str.substr(0, 64), key)) {
-            setStatusError(tr("Failed to parse tx key"));
+            setStatusError("Failed to parse tx key");
             return false;
         }
         tx_key_str.remove_prefix(64);
@@ -1964,7 +1939,7 @@ bool WalletImpl::checkTxKey(
 
     cryptonote::address_parse_info info;
     if (!cryptonote::get_account_address_from_str(info, m_wallet_ptr->nettype(), address_str)) {
-        setStatusError(tr("Failed to parse address"));
+        setStatusError("Failed to parse address");
         return false;
     }
 
@@ -1986,13 +1961,13 @@ std::string WalletImpl::getTxProof(
         const std::string& message) const {
     crypto::hash txid;
     if (!tools::hex_to_type(txid_str, txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return "";
     }
 
     cryptonote::address_parse_info info;
     if (!cryptonote::get_account_address_from_str(info, m_wallet_ptr->nettype(), address_str)) {
-        setStatusError(tr("Failed to parse address"));
+        setStatusError("Failed to parse address");
         return "";
     }
 
@@ -2017,13 +1992,13 @@ bool WalletImpl::checkTxProof(
         uint64_t& confirmations) {
     crypto::hash txid;
     if (!tools::hex_to_type(txid_str, txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return false;
     }
 
     cryptonote::address_parse_info info;
     if (!cryptonote::get_account_address_from_str(info, m_wallet_ptr->nettype(), address_str)) {
-        setStatusError(tr("Failed to parse address"));
+        setStatusError("Failed to parse address");
         return false;
     }
 
@@ -2050,7 +2025,7 @@ std::string WalletImpl::getSpendProof(
         const std::string& txid_str, const std::string& message) const {
     crypto::hash txid;
     if (!tools::hex_to_type(txid_str, txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return "";
     }
 
@@ -2072,7 +2047,7 @@ bool WalletImpl::checkSpendProof(
     good = false;
     crypto::hash txid;
     if (!tools::hex_to_type(txid_str, txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return false;
     }
 
@@ -2112,11 +2087,11 @@ bool WalletImpl::checkReserveProof(
         uint64_t& spent) const {
     cryptonote::address_parse_info info;
     if (!cryptonote::get_account_address_from_str(info, m_wallet_ptr->nettype(), address)) {
-        setStatusError(tr("Failed to parse address"));
+        setStatusError("Failed to parse address");
         return false;
     }
     if (info.is_subaddress) {
-        setStatusError(tr("Address must not be a subaddress"));
+        setStatusError("Address must not be a subaddress");
         return false;
     }
 
@@ -2156,7 +2131,7 @@ std::string WalletImpl::signMultisigParticipant(const std::string& message) cons
     bool ready = false;
     auto w = wallet();
     if (!w->multisig(&ready) || !ready) {
-        setStatusError(tr("The wallet must be in multisig ready state"));
+        setStatusError("The wallet must be in multisig ready state");
         return {};
     }
 
@@ -2178,7 +2153,7 @@ bool WalletImpl::verifyMessageWithPublicKey(
 
     crypto::public_key pkey;
     if (!tools::hex_to_type(publicKey, pkey))
-        return setStatusError(tr("Given string is not a key"));
+        return setStatusError("Given string is not a key");
 
     try {
         return wallet()->verify_with_public_key(message, pkey, signature);
@@ -2456,7 +2431,7 @@ EXPORT
 bool WalletImpl::rescanSpent() {
     clearStatus();
     if (!trustedDaemon()) {
-        setStatusError(tr("Rescan spent can only be used with a trusted daemon"));
+        setStatusError("Rescan spent can only be used with a trusted daemon");
         return false;
     }
     try {
@@ -2506,13 +2481,13 @@ bool WalletImpl::blackballOutputs(const std::vector<std::string>& outputs, bool 
         } else if (sscanf(str.c_str(), "%" PRIu64, &offset) == 1) {
             raw_outputs.push_back(std::make_pair(amount, offset));
         } else {
-            setStatusError(tr("Invalid output: ") + str);
+            setStatusError("Invalid output: " + str);
             return false;
         }
     }
     bool ret = wallet()->set_blackballed_outputs(raw_outputs, add);
     if (!ret) {
-        setStatusError(tr("Failed to mark outputs as spent"));
+        setStatusError("Failed to mark outputs as spent");
         return false;
     }
     return true;
@@ -2522,16 +2497,16 @@ EXPORT
 bool WalletImpl::blackballOutput(const std::string& amount, const std::string& offset) {
     uint64_t raw_amount, raw_offset;
     if (!epee::string_tools::get_xtype_from_string(raw_amount, amount)) {
-        setStatusError(tr("Failed to parse output amount"));
+        setStatusError("Failed to parse output amount");
         return false;
     }
     if (!epee::string_tools::get_xtype_from_string(raw_offset, offset)) {
-        setStatusError(tr("Failed to parse output offset"));
+        setStatusError("Failed to parse output offset");
         return false;
     }
     bool ret = wallet()->blackball_output(std::make_pair(raw_amount, raw_offset));
     if (!ret) {
-        setStatusError(tr("Failed to mark output as spent"));
+        setStatusError("Failed to mark output as spent");
         return false;
     }
     return true;
@@ -2541,16 +2516,16 @@ EXPORT
 bool WalletImpl::unblackballOutput(const std::string& amount, const std::string& offset) {
     uint64_t raw_amount, raw_offset;
     if (!epee::string_tools::get_xtype_from_string(raw_amount, amount)) {
-        setStatusError(tr("Failed to parse output amount"));
+        setStatusError("Failed to parse output amount");
         return false;
     }
     if (!epee::string_tools::get_xtype_from_string(raw_offset, offset)) {
-        setStatusError(tr("Failed to parse output offset"));
+        setStatusError("Failed to parse output offset");
         return false;
     }
     bool ret = wallet()->unblackball_output(std::make_pair(raw_amount, raw_offset));
     if (!ret) {
-        setStatusError(tr("Failed to mark output as unspent"));
+        setStatusError("Failed to mark output as unspent");
         return false;
     }
     return true;
@@ -2560,12 +2535,12 @@ EXPORT
 bool WalletImpl::getRing(const std::string& key_image, std::vector<uint64_t>& ring) const {
     crypto::key_image raw_key_image;
     if (!tools::hex_to_type(key_image, raw_key_image)) {
-        setStatusError(tr("Failed to parse key image"));
+        setStatusError("Failed to parse key image");
         return false;
     }
     bool ret = wallet()->get_ring(raw_key_image, ring);
     if (!ret) {
-        setStatusError(tr("Failed to get ring"));
+        setStatusError("Failed to get ring");
         return false;
     }
     return true;
@@ -2577,13 +2552,13 @@ bool WalletImpl::getRings(
         std::vector<std::pair<std::string, std::vector<uint64_t>>>& rings) const {
     crypto::hash raw_txid;
     if (!tools::hex_to_type(txid, raw_txid)) {
-        setStatusError(tr("Failed to parse txid"));
+        setStatusError("Failed to parse txid");
         return false;
     }
     std::vector<std::pair<crypto::key_image, std::vector<uint64_t>>> raw_rings;
     bool ret = wallet()->get_rings(raw_txid, raw_rings);
     if (!ret) {
-        setStatusError(tr("Failed to get rings"));
+        setStatusError("Failed to get rings");
         return false;
     }
     for (const auto& r : raw_rings) {
@@ -2597,12 +2572,12 @@ bool WalletImpl::setRing(
         const std::string& key_image, const std::vector<uint64_t>& ring, bool relative) {
     crypto::key_image raw_key_image;
     if (!tools::hex_to_type(key_image, raw_key_image)) {
-        setStatusError(tr("Failed to parse key image"));
+        setStatusError("Failed to parse key image");
         return false;
     }
     bool ret = wallet()->set_ring(raw_key_image, ring, relative);
     if (!ret) {
-        setStatusError(tr("Failed to set ring"));
+        setStatusError("Failed to set ring");
         return false;
     }
     return true;
@@ -2702,7 +2677,7 @@ StakeUnlockResult* WalletImpl::requestStakeUnlock(const std::string& sn_key) {
         }
     } else {
         res.success = false;
-        res.msg = tr("Cannot request stake unlock: " + unlock_result.msg);
+        res.msg = "Cannot request stake unlock: " + unlock_result.msg;
         return new StakeUnlockResultImpl(*this, res);
     }
 

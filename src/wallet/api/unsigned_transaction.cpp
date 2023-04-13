@@ -30,7 +30,6 @@
 
 #include "unsigned_transaction.h"
 
-#include <boost/format.hpp>
 #include <memory>
 #include <vector>
 
@@ -57,18 +56,18 @@ EXPORT
 bool UnsignedTransactionImpl::sign(std::string_view signedFileName_) {
     auto signedFileName = fs::u8path(signedFileName_);
     if (m_wallet.watchOnly()) {
-        m_status = {Status_Error, tr("This is a watch only wallet")};
+        m_status = {Status_Error, "This is a watch only wallet"};
         return false;
     }
     std::vector<tools::wallet2::pending_tx> ptx;
     try {
         bool r = m_wallet.wallet()->sign_tx(m_unsigned_tx_set, signedFileName, ptx);
         if (!r) {
-            m_status = {Status_Error, tr("Failed to sign transaction")};
+            m_status = {Status_Error, "Failed to sign transaction"};
             return false;
         }
     } catch (const std::exception& e) {
-        m_status = {Status_Error, std::string(tr("Failed to sign transaction")) + e.what()};
+        m_status = {Status_Error, std::string("Failed to sign transaction") + e.what()};
         return false;
     }
     return true;
@@ -141,13 +140,13 @@ bool UnsignedTransactionImpl::checkLoadedTx(
         if (cd.change_dts.amount > 0) {
             auto it = dests.find(cd.change_dts.addr);
             if (it == dests.end()) {
-                m_status = {Status_Error, tr("Claimed change does not go to a paid address")};
+                m_status = {Status_Error, "Claimed change does not go to a paid address"};
                 return false;
             }
             if (it->second.second < cd.change_dts.amount) {
                 m_status = {
                         Status_Error,
-                        tr("Claimed change is larger than payment to the change address")};
+                        "Claimed change is larger than payment to the change address"};
                 return false;
             }
             if (cd.change_dts.amount > 0) {
@@ -156,7 +155,7 @@ bool UnsignedTransactionImpl::checkLoadedTx(
                 if (memcmp(&cd.change_dts.addr,
                            &get_tx(first_known_non_zero_change_index).change_dts.addr,
                            sizeof(cd.change_dts.addr))) {
-                    m_status = {Status_Error, tr("Change goes to more than one address")};
+                    m_status = {Status_Error, "Change goes to more than one address"};
                     return false;
                 }
             }
@@ -168,32 +167,38 @@ bool UnsignedTransactionImpl::checkLoadedTx(
     }
     std::string dest_string;
     for (auto i = dests.begin(); i != dests.end();) {
-        dest_string += (boost::format(tr("sending %s to %s")) %
-                        cryptonote::print_money(i->second.second) % i->second.first)
-                               .str();
+        fmt::format_to(
+                std::back_inserter(dest_string),
+                "sending {} to {}",
+                cryptonote::print_money(i->second.second),
+                i->second.first);
         ++i;
         if (i != dests.end())
             dest_string += ", ";
     }
     if (dest_string.empty())
-        dest_string = tr("with no destinations");
+        dest_string = "with no destinations";
 
     std::string change_string;
-    if (change > 0) {
-        std::string address = get_account_address_as_str(
-                nettype, get_tx(0).subaddr_account > 0, get_tx(0).change_dts.addr);
-        change_string +=
-                (boost::format(tr("%s change to %s")) % cryptonote::print_money(change) % address)
-                        .str();
-    } else
-        change_string += tr("no change");
+    if (change > 0)
+        fmt::format_to(
+                std::back_inserter(change_string),
+                "{} change to {}",
+                cryptonote::print_money(change),
+                get_account_address_as_str(
+                        nettype, get_tx(0).subaddr_account > 0, get_tx(0).change_dts.addr));
+    else
+        change_string += "no change";
     uint64_t fee = amount - amount_to_dests;
-    m_confirmationMessage = (boost::format(tr("Loaded %lu transactions, for %s, fee %s, %s, %s, "
-                                              "with min ring size %lu. %s")) %
-                             (unsigned long)get_num_txes() % cryptonote::print_money(amount) %
-                             cryptonote::print_money(fee) % dest_string % change_string %
-                             (unsigned long)min_ring_size % extra_message)
-                                    .str();
+    m_confirmationMessage =
+            "Loaded {} transactions, for {}, fee {}, {}, {}, with min ring size {}. {}"_format(
+                    get_num_txes(),
+                    cryptonote::print_money(amount),
+                    cryptonote::print_money(fee),
+                    dest_string,
+                    change_string,
+                    min_ring_size,
+                    extra_message);
     return true;
 }
 
