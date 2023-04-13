@@ -37,6 +37,7 @@
 #include "version.h"
 
 namespace po = boost::program_options;
+using namespace blockchain_utils;
 
 int main(int argc, char* argv[]) {
     using namespace oxen;

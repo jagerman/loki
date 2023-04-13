@@ -45,7 +45,9 @@ Public domain.
 
 static const char sigma[] = "expand 32-byte k";
 
-DISABLE_GCC_AND_CLANG_WARNING(strict - aliasing)
+// clang-format off
+DISABLE_GCC_AND_CLANG_WARNING(strict-aliasing)
+// clang-format on
 
 static void chacha(
         unsigned rounds,

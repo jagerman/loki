@@ -158,9 +158,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
         std::string connect_string;
     };
 
-    // Relay data to a random subset of the quorum up to num_peers. If the sender is
-    // a validator in the quorum, prefer peer_info to get a fully connected relay
-    // with redundancy.
+    // Relay data to a random subset of the quorum up to num_peers. If the sender is a validator in
+    // the quorum, prefer peer_info to get a fully connected relay with redundancy.
+    //
     // Returns the number of peers it actually prepared relay destinations.
     template <typename It>
     std::vector<prepared_relay_destinations> peer_prepare_relay_to_quorum_subset(
@@ -174,8 +174,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
         log::debug(logcat, "Have {} SN candidates", candidates.size());
 
+        // {x25519 pubkey, connect string, version}
         std::vector<std::tuple<std::string, std::string, decltype(proof_info{}.proof->version)>>
-                remotes;  // {x25519 pubkey, connect string, version}
+                remotes;
         remotes.reserve(candidates.size());
         core.get_service_node_list().for_each_service_node_info_and_proof(
                 candidates.begin(),
@@ -200,10 +201,10 @@ E get_enum(const bt_dict &d, const std::string &key) {
                     }
                     remotes.emplace_back(
                             get_data_as_string(proof.pubkey_x25519),
-                            "tcp://" +
+                            "tcp://{}:{}"_format(
                                     epee::string_tools::get_ip_string_from_int32(
-                                            proof.proof->public_ip) +
-                                    ":" + std::to_string(proof.proof->qnet_port),
+                                            proof.proof->public_ip),
+                                    proof.proof->qnet_port),
                             proof.proof->version);
                 });
 
@@ -277,26 +278,26 @@ E get_enum(const bt_dict &d, const std::string &key) {
                 bool opportunistic = true,
                 exclude_set exclude = {},
                 bool include_workers = false) :
-                peer_info(
+                peer_info{
                         qnet,
                         q_type,
                         &quorum,
                         &quorum + 1,
                         opportunistic,
                         std::move(exclude),
-                        include_workers) {}
+                        include_workers} {}
 
         /// Constructs peer information for the given quorums and quorum position of the caller.
         /// \param qnet - the QnetState reference
         /// \param q_type - the type of quorum
         /// \param qbegin, qend - the iterators to a set of pointers (or other deferenceable type)
-        /// to quorums \param opportunistic - if true then the peers to relay will also attempt to
-        /// relay to any
-        ///     incoming peers *if* those peers are already connected when the message is relayed.
+        ///     to quorums
+        /// \param opportunistic - if true then the peers to relay will also attempt to
+        ///     relay to any incoming peers *if* those peers are already connected when the message
+        ///     is relayed.
         /// \param exclude - can be specified as a set of peers that should be excluded from the
-        /// peer
-        ///     list.  Typically for peers that we already know have the relayed information.  This
-        ///     SN's pubkey is always added to this exclude list.
+        ///     peer list.  Typically for peers that we already know have the relayed information.
+        ///     This SN's pubkey is always added to this exclude list.
         template <typename QuorumIt>
         peer_info(
                 QnetState& qnet,
@@ -315,8 +316,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
             // - Find my position(s) in the quorum(s)
             // - Build a list of all other quorum members so we can look them all up at once (i.e.
-            // to
-            //   lock the required lookup mutex only once).
+            //   to lock the required lookup mutex only once).
             my_position_count = 0;
             std::unordered_set<crypto::public_key> need_remotes;
             for (auto qit = qbegin; qit != qend; ++qit) {
@@ -352,10 +352,10 @@ E get_enum(const bt_dict &d, const std::string &key) {
                                     pubkey,
                                     std::make_pair(
                                             proof.pubkey_x25519,
-                                            "tcp://" +
+                                            "tcp://{}:{}"_format(
                                                     epee::string_tools::get_ip_string_from_int32(
-                                                            proof.proof->public_ip) +
-                                                    ":" + std::to_string(proof.proof->qnet_port)));
+                                                            proof.proof->public_ip),
+                                                    proof.proof->qnet_port)));
                     });
 
             compute_validator_peers(qbegin, qend, opportunistic);
@@ -706,8 +706,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
     void handle_timestamp(Message& m) {
         log::debug(logcat, "Received a timestamp request from {}", to_hex(m.conn.pubkey()));
-        const time_t seconds = time(nullptr);
-        m.send_reply(std::to_string(seconds));
+        m.send_reply("{}"_format(time(nullptr)));
     }
 
     /// Gets an integer value out of a bt_dict, if present and fits (i.e. get_int<> succeeds); if
@@ -760,9 +759,8 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
         if (input_checksum) {
             if (*input_checksum != local_checksum)
-                throw std::runtime_error(
-                        "wrong quorum checksum: expected " + std::to_string(local_checksum) +
-                        ", received " + std::to_string(*input_checksum));
+                throw std::runtime_error{"wrong quorum checksum: expected {}, received {}"_format(
+                        local_checksum, *input_checksum)};
 
             log::trace(logcat, "Blink quorum checksum matched");
         }
@@ -799,17 +797,27 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
     /// Processes blink signatures; called immediately upon receiving a signature if we know about
     /// the tx; otherwise signatures are stored until we learn about the tx and then processed.
-    void process_blink_signatures(QnetState &qnet, const std::shared_ptr<blink_tx> &btxptr, quorum_array &blink_quorums, uint64_t quorum_checksum, std::list<pending_signature> &&signatures,
-        uint64_t reply_tag, // > 0 if we are expected to send a status update if it becomes accepted/rejected
-        oxenmq::ConnectionID reply_conn, // who we are supposed to send the status update to
-        const std::string &received_from = ""s /* x25519 of the peer that sent this, if available (to avoid trying to pointlessly relay back to them) */) {
+    ///
+    /// reply_tag: > 0 if we are expected to send a status update if it becomes accepted/rejected
+    /// reply_conn: who we are supposed to send the status update to
+    /// received_from: x25519 of the peer that sent this, if available (to avoid trying to
+    /// pointlessly relay back to them)
+    void process_blink_signatures(
+            QnetState& qnet,
+            const std::shared_ptr<blink_tx>& btxptr,
+            quorum_array& blink_quorums,
+            uint64_t quorum_checksum,
+            std::list<pending_signature>&& signatures,
+            uint64_t reply_tag,
+            oxenmq::ConnectionID reply_conn,
+            const std::string& received_from = ""s) {
 
         auto& btx = *btxptr;
 
         // First check values and discard any signatures for positions we already have.
         {
-            auto lock = btx.shared_lock();  // Don't take out a heavier unique lock until later when
-                                            // we are sure we need
+            // Don't take out a heavier unique lock until later when we are sure we need
+            auto lock = btx.shared_lock();
             for (auto it = signatures.begin(); it != signatures.end();) {
                 auto& pending = *it;
                 auto& qi = std::get<uint8_t>(pending);
@@ -1013,8 +1021,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
     ///     "t" - the serialized transaction data.
     ///
     ///     "#" - precomputed tx hash.  This much match the actual hash of the transaction (the
-    ///     blink
-    ///           submission will fail immediately if it does not).
+    ///           blink submission will fail immediately if it does not).
     ///
     void handle_blink(Message& m, QnetState& qnet) {
         // TODO: if someone sends an invalid tx (i.e. one that doesn't get to the distribution
@@ -1022,9 +1029,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
         // for a short time. If an incoming connection:
         // - We can refuse new connections from that IP in the ZAP handler
         // - We can (somewhat hackily) disconnect by getting the raw fd via the SRCFD property of
-        // the
-        //   message and close it.
-        // If an outgoing connection - refuse reconnections via ZAP and just close it.
+        //   the message and close it.
+        // If an outgoing connection:
+        // - refuse reconnections via ZAP and just close it.
 
         log::debug(
                 logcat,
@@ -1368,31 +1375,29 @@ E get_enum(const bt_dict &d, const std::string &key) {
             std::list<pending_signature>& signatures,
             Consume consume) {
         if (!data.skip_until(key))
-            throw std::invalid_argument(
-                    "Invalid blink signature data: missing required field '" + std::string{key} +
-                    "'");
+            throw std::invalid_argument{
+                    "Invalid blink signature data: missing required field '{}'"_format(key)};
         auto list = data.consume_list_consumer();
         auto it = signatures.begin();
         for (; !list.is_finished(); ++it) {
             if (it == signatures.end())
-                throw std::invalid_argument(
-                        "Invalid blink signature data: " + std::string{key} + " size > i size");
+                throw std::invalid_argument{
+                        "Invalid blink signature data: {} size > i size"_format(key)};
             std::get<decltype(consume(list))>(*it) = consume(list);
         }
         if (it != signatures.end())
             throw std::invalid_argument(
-                    "Invalid blink signature data: " + std::string{key} + " size < i size");
+                    "Invalid blink signature data: {} size < i size"_format(key));
     }
 
     crypto::signature convert_string_view_bytes_to_signature(std::string_view sig_str) {
         if (sig_str.size() != sizeof(crypto::signature))
-            throw std::invalid_argument(
-                    "Invalid signature data size: " + std::to_string(sig_str.size()));
+            throw std::invalid_argument{"Invalid signature data size: {}"_format(sig_str.size())};
 
         crypto::signature result;
         std::memcpy(&result, sig_str.data(), sizeof(crypto::signature));
         if (!result)
-            throw std::invalid_argument("Invalid signature data: null signature given");
+            throw std::invalid_argument{"Invalid signature data: null signature given"};
 
         return result;
     }
@@ -1423,9 +1428,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
         log::debug(logcat, "Received a blink tx signature from SN {}", to_hex(m.conn.pubkey()));
 
         if (m.data.size() != 1)
-            throw std::runtime_error(
-                    "Rejecting blink signature: expected one data entry not " +
-                    std::to_string(m.data.size()));
+            throw std::runtime_error{
+                    "Rejecting blink signature: expected one data entry not {}"_format(
+                            m.data.size())};
 
         // Note: this dict_consumer processes in ASCII-order.  Also worth noting is that we skip
         // over unknown values here (which could be helpful if we want to add fields in the future).
@@ -1433,31 +1438,31 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
         // # - hash (32 bytes)
         if (!data.skip_until("#"))
-            throw std::invalid_argument("Invalid blink signature data: missing required field '#'");
+            throw std::invalid_argument{"Invalid blink signature data: missing required field '#'"};
         auto hash_str = data.consume_string_view();
         if (hash_str.size() != sizeof(crypto::hash))
-            throw std::invalid_argument("Invalid blink signature data: invalid tx hash");
+            throw std::invalid_argument{"Invalid blink signature data: invalid tx hash"};
         crypto::hash tx_hash;
         std::memcpy(tx_hash.data(), hash_str.data(), hash_str.size());
 
         // h - height
         if (!data.skip_until("h"))
-            throw std::invalid_argument("Invalid blink signature data: missing required field 'h'");
+            throw std::invalid_argument{"Invalid blink signature data: missing required field 'h'"};
         uint64_t blink_height = data.consume_integer<uint64_t>();
         if (!blink_height)
-            throw std::invalid_argument("Invalid blink signature data: height cannot be 0");
+            throw std::invalid_argument{"Invalid blink signature data: height cannot be 0"};
 
         std::list<pending_signature> signatures;
 
         // i - list of quorum indices
         if (!data.skip_until("i"))
-            throw std::invalid_argument("Invalid blink signature data: missing required field 'i'");
+            throw std::invalid_argument{"Invalid blink signature data: missing required field 'i'"};
         auto quorum_indices = data.consume_list_consumer();
         while (!quorum_indices.is_finished()) {
             uint8_t q = quorum_indices.consume_integer<uint8_t>();
             if (q >= NUM_BLINK_QUORUMS)
-                throw std::invalid_argument(
-                        "Invalid blink signature data: invalid quorum index " + std::to_string(q));
+                throw std::invalid_argument{
+                        "Invalid blink signature data: invalid quorum index {}"_format(q)};
             signatures.emplace_back();
             std::get<uint8_t>(signatures.back()) = q;
         }
@@ -1468,15 +1473,14 @@ E get_enum(const bt_dict &d, const std::string &key) {
             if (pos < 0 || pos >= BLINK_SUBQUORUM_SIZE)  // This is only input validation: it might
                                                          // actually have to be smaller depending on
                                                          // the actual quorum (we check later)
-                throw std::invalid_argument(
-                        "Invalid blink signature data: invalid quorum position " +
-                        std::to_string(pos));
+                throw std::invalid_argument{
+                        "Invalid blink signature data: invalid quorum position {}"_format(pos)};
             return pos;
         });
 
         // q - quorum membership checksum
         if (!data.skip_until("q"))
-            throw std::invalid_argument("Invalid blink signature data: missing required field 'q'");
+            throw std::invalid_argument{"Invalid blink signature data: missing required field 'q'"};
         // Before 7.1.8 we get a int64_t on the wire, using 2s-complement representation when the
         // value is a uint64_t that exceeds the max of an int64_t so, if negative, pull it off and
         // static cast it back (the static_cast assumes a 2s-complement architecture which isn't
@@ -1931,9 +1935,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
     // contents of the message is left to the caller.
     void handle_pulse_participation_bit_or_bitset(Message& m, QnetState& qnet, bool bitset) {
         if (m.data.size() != 1)
-            throw std::runtime_error(
-                    "Rejecting pulse participation "s + (bitset ? "bitset" : "handshake") +
-                    ": expected one data entry not " + std::to_string(m.data.size()));
+            throw std::runtime_error{
+                    "Rejecting pulse participation {}: expected one data entry not {}"_format(
+                            bitset ? "bitset" : "handshake", m.data.size())};
 
         std::string_view const INVALID_ARG_PREFIX =
                 bitset ? "Invalid pulse validator bitset: missing required field '"sv
@@ -1947,7 +1951,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
             if (auto const& tag = PULSE_TAG_VALIDATOR_BITSET; data.skip_until(tag))
                 msg.handshakes.validator_bitset = data.consume_integer<uint16_t>();
             else
-                throw std::invalid_argument(std::string(INVALID_ARG_PREFIX) + tag + "'");
+                throw std::invalid_argument{"{}{}'"_format(INVALID_ARG_PREFIX, tag)};
         }
 
         qnet.omq.job(
@@ -1957,9 +1961,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
     void handle_pulse_block_template(Message& m, QnetState& qnet) {
         if (m.data.size() != 1)
-            throw std::runtime_error(
-                    "Rejecting pulse block template expected one data entry not "s +
-                    std::to_string(m.data.size()));
+            throw std::runtime_error{
+                    "Rejecting pulse block template expected one data entry not {}"_format(
+                            m.data.size())};
 
         bt_dict_consumer data{m.data[0]};
         std::string_view constexpr INVALID_ARG_PREFIX =
@@ -1970,7 +1974,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
         if (auto const& tag = PULSE_TAG_BLOCK_TEMPLATE; data.skip_until(tag))
             msg.block_template.blob = data.consume_string_view();
         else
-            throw std::invalid_argument(std::string(INVALID_ARG_PREFIX) + tag + "'");
+            throw std::invalid_argument{"{}{}'"_format(INVALID_ARG_PREFIX, tag)};
 
         qnet.omq.job(
                 [&qnet, data = std::move(msg)]() { pulse::handle_message(&qnet, data); },
@@ -1998,7 +2002,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
             std::memcpy(msg.random_value_hash.hash.data(), str.data(), str.size());
         } else {
-            throw std::invalid_argument(std::string(INVALID_ARG_PREFIX) + tag + "'");
+            throw std::invalid_argument{"{}{}'"_format(INVALID_ARG_PREFIX, tag)};
         }
 
         qnet.omq.job(
@@ -2024,7 +2028,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
                 throw std::invalid_argument("Invalid data size: " + std::to_string(str.size()));
             std::memcpy(msg.random_value.value.data, str.data(), str.size());
         } else {
-            throw std::invalid_argument(std::string(INVALID_ARG_PREFIX) + tag + "'");
+            throw std::invalid_argument{"{}{}'"_format(INVALID_ARG_PREFIX, tag)};
         }
 
         qnet.omq.job(
@@ -2034,9 +2038,9 @@ E get_enum(const bt_dict &d, const std::string &key) {
 
     void handle_pulse_signed_block(Message& m, QnetState& qnet) {
         if (m.data.size() != 1)
-            throw std::runtime_error(
-                    "Rejecting pulse signed block expected one data entry not "s +
-                    std::to_string(m.data.size()));
+            throw std::runtime_error{
+                    "Rejecting pulse signed block expected one data entry not {}"_format(
+                            m.data.size())};
 
         std::string_view constexpr INVALID_ARG_PREFIX =
                 "Invalid pulse signed block: missing required field '"sv;
@@ -2049,8 +2053,7 @@ E get_enum(const bt_dict &d, const std::string &key) {
             msg.signed_block.signature_of_final_block_hash =
                     convert_string_view_bytes_to_signature(sig_str);
         } else {
-            throw std::invalid_argument(
-                    "Invalid pulse signed block: missing required field '"s + tag + "'");
+            throw std::invalid_argument{"{}{}'"_format(INVALID_ARG_PREFIX, tag)};
         }
 
         qnet.omq.job(
@@ -2077,6 +2080,10 @@ namespace {
 
         auto& omq = core.get_omq();
 
+        Access sn_to_sn{AuthLevel::none, true /*remote sn*/, true /*local sn*/},
+                sn_incoming{AuthLevel::none, false /*remote sn*/, true /*local sn*/},
+                from_sn{AuthLevel::none, true /*remote sn*/, false /*local sn*/};
+
         if (core.service_node()) {
             if (!obj)
                 throw std::logic_error{
@@ -2085,10 +2092,7 @@ namespace {
             auto& qnet = QnetState::from(obj);
             // quorum.*: commands between quorum members, requires that both side of the connection
             // is a SN
-            omq.add_category(
-                       "quorum",
-                       Access{AuthLevel::none, true /*remote sn*/, true /*local sn*/},
-                       2 /*reserved threads*/)
+            omq.add_category("quorum", sn_to_sn, 2 /*reserved threads*/)
                     // Receives an obligation vote
                     .add_command(
                             "vote_ob", [&qnet](Message& m) { handle_obligation_vote(m, qnet); })
@@ -2100,18 +2104,12 @@ namespace {
                     .add_request_command("timestamp", [](Message& m) { handle_timestamp(m); });
 
             // blink.*: commands sent to blink quorum members from anyone (e.g. blink submission)
-            omq.add_category(
-                       "blink",
-                       Access{AuthLevel::none, false /*remote sn*/, true /*local sn*/},
-                       1 /*reserved thread*/)
+            omq.add_category("blink", sn_incoming, 1 /*reserved thread*/)
                     // Receives a new blink tx submission from an external node, or forward from
                     // other quorum members who received it from an external node.
                     .add_command("submit", [&qnet](Message& m) { handle_blink(m, qnet); });
 
-            omq.add_category(
-                       PULSE_CMD_CATEGORY,
-                       Access{AuthLevel::none, true /*remote sn*/, true /*local sn*/},
-                       1 /*reserved thread*/)
+            omq.add_category(PULSE_CMD_CATEGORY, sn_to_sn, 1 /*reserved thread*/)
                     .add_command(
                             PULSE_CMD_VALIDATOR_BIT,
                             [&qnet](Message& m) {
@@ -2138,7 +2136,7 @@ namespace {
 
         // bl.*: responses to blinks sent from quorum members back to the node who submitted the
         // blink
-        omq.add_category("bl", Access{AuthLevel::none, true /*remote sn*/, false /*local sn*/})
+        omq.add_category("bl", from_sn)
                 // Message sent back to the blink initiator that the transaction was NOT relayed,
                 // either because the height was invalid or the quorum checksum failed.  This is
                 // only sent by the entry point service nodes into the quorum to let it know the tx

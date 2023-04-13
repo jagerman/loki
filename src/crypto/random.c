@@ -40,10 +40,11 @@
 static void generate_system_random_bytes(size_t n, void* result);
 
 #if defined(_WIN32)
-
+// clang-format off
+#include <windows.h>
 #include <stdio.h>
 #include <wincrypt.h>
-#include <windows.h>
+// clang-format on
 
 static void generate_system_random_bytes(size_t n, void* result) {
     HCRYPTPROV prov;

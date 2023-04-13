@@ -32,6 +32,7 @@
 #pragma once
 
 #include <boost/uuid/uuid.hpp>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <string>

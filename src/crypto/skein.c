@@ -174,7 +174,8 @@ static int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define SKEIN_T1_BLK_TYPE_KEY SKEIN_T1_BLK_TYPE(KEY)   /* key, for MAC and KDF */
 #define SKEIN_T1_BLK_TYPE_CFG SKEIN_T1_BLK_TYPE(CFG)   /* configuration block */
 #define SKEIN_T1_BLK_TYPE_PERS SKEIN_T1_BLK_TYPE(PERS) /* personalization string */
-#define SKEIN_T1_BLK_TYPE_PK SKEIN_T1_BLK_TYPE(PK)   /* public key (for digital signature hashing) \
+#define SKEIN_T1_BLK_TYPE_PK                                                                       \
+    SKEIN_T1_BLK_TYPE(PK)                            /* public key (for digital signature hashing) \
                                                       */
 #define SKEIN_T1_BLK_TYPE_KDF SKEIN_T1_BLK_TYPE(KDF) /* key identifier for KDF */
 #define SKEIN_T1_BLK_TYPE_NONCE SKEIN_T1_BLK_TYPE(NONCE) /* nonce for PRNG */

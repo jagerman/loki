@@ -57,14 +57,14 @@ inline constexpr size_t TX_BULLETPROOF_MAX_OUTPUTS = 16;
 inline constexpr uint64_t BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW = 11;
 
 inline constexpr uint64_t REWARD_BLOCKS_WINDOW = 100;
-inline constexpr uint64_t BLOCK_GRANTED_FULL_REWARD_ZONE_V1 =
-        20000;  // NOTE(oxen): For testing suite, //size of block (bytes) after which reward for
-                // block calculated using block size - before first fork
-inline constexpr uint64_t BLOCK_GRANTED_FULL_REWARD_ZONE_V5 =
-        300000;  // size of block (bytes) after which reward for block calculated using block size -
-                 // second change, from v5
-inline constexpr uint64_t LONG_TERM_BLOCK_WEIGHT_WINDOW_SIZE =
-        100000;  // size in blocks of the long term block weight median window
+// NOTE(oxen): For testing suite, size of block (bytes) after which reward for block calculated
+// using block size - before first fork:
+inline constexpr uint64_t BLOCK_GRANTED_FULL_REWARD_ZONE_V1 = 20000;
+// size of block (bytes) after which reward for block calculated using block size -
+// second change, from v5
+inline constexpr uint64_t BLOCK_GRANTED_FULL_REWARD_ZONE_V5 = 300000;
+// size in blocks of the long term block weight median window
+inline constexpr uint64_t LONG_TERM_BLOCK_WEIGHT_WINDOW_SIZE = 100000;
 inline constexpr uint64_t SHORT_TERM_BLOCK_WEIGHT_SURGE_FACTOR = 50;
 inline constexpr uint64_t COINBASE_BLOB_RESERVED_SIZE = 600;
 
@@ -77,23 +77,23 @@ inline constexpr uint64_t LOCKED_TX_ALLOWED_DELTA_BLOCKS = 1;
 inline constexpr auto MEMPOOL_TX_LIVETIME = 3 * 24h;
 inline constexpr auto MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME = 7 * 24h;
 inline constexpr auto MEMPOOL_PRUNE_NON_STANDARD_TX_LIFETIME = 2h;
-inline constexpr size_t DEFAULT_MEMPOOL_MAX_WEIGHT =
-        72h / TARGET_BLOCK_TIME * 300'000;  // 3 days worth of full 300kB blocks
+// 3 days worth of full 300kB blocks:
+inline constexpr size_t DEFAULT_MEMPOOL_MAX_WEIGHT = 72h / TARGET_BLOCK_TIME * 300'000;
 
-inline constexpr uint64_t FEE_PER_BYTE_V13 =
-        215;  // Fallback used in wallet if no fee is available from RPC
-inline constexpr uint64_t FEE_PER_OUTPUT_V18 =
-        5000000;  // 0.005 OXEN per tx output (in addition to the per-byte fee), starting in v18
+// Fallback used in wallet if no fee is available from RPC:
+inline constexpr uint64_t FEE_PER_BYTE_V13 = 215;
+// 0.005 OXEN per tx output (in addition to the per-byte fee), starting in v18:
+inline constexpr uint64_t FEE_PER_OUTPUT_V18 = 5000000;
 inline constexpr uint64_t DYNAMIC_FEE_REFERENCE_TRANSACTION_WEIGHT = 3000;
 inline constexpr uint64_t FEE_QUANTIZATION_DECIMALS = 8;
 
-inline constexpr size_t BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT =
-        10000;  // by default, blocks ids count in synchronizing
-inline constexpr size_t BLOCKS_SYNCHRONIZING_DEFAULT_COUNT =
-        100;  // by default, blocks count in blocks downloading
-inline constexpr size_t BLOCKS_SYNCHRONIZING_MAX_COUNT =
-        2048;  // must be a power of 2, greater than 128, equal to SEEDHASH_EPOCH_BLOCKS in
-               // rx-slow-hash.c
+// by default, blocks ids count in synchronizing
+inline constexpr size_t BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT = 10000;
+// by default, blocks count in blocks downloading
+inline constexpr size_t BLOCKS_SYNCHRONIZING_DEFAULT_COUNT = 100;
+// must be a power of 2, greater than 128, equal to SEEDHASH_EPOCH_BLOCKS in
+// rx-slow-hash.c
+inline constexpr size_t BLOCKS_SYNCHRONIZING_MAX_COUNT = 2048;
 
 inline constexpr size_t HASH_OF_HASHES_STEP = 256;
 
@@ -108,7 +108,8 @@ namespace hashkey {
     inline constexpr unsigned char RPC_PAYMENT_NONCE = 0x58;
     inline constexpr unsigned char MEMORY = 'k';
     inline constexpr std::string_view MULTISIG =
-            "Multisig\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"sv;
+            "Multisig\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            "\x00\x00\x00\x00\x00"sv;
     inline constexpr std::string_view CLSAG_ROUND = "CLSAG_round"sv;
     inline constexpr std::string_view CLSAG_AGG_0 = "CLSAG_agg_0"sv;
     inline constexpr std::string_view CLSAG_AGG_1 = "CLSAG_agg_1"sv;
@@ -137,8 +138,8 @@ inline constexpr auto NOISE_MIN_DELAY = 10s;
 inline constexpr auto NOISE_DELAY_RANGE = 5s;
 inline constexpr uint64_t NOISE_BYTES = 3 * 1024;  // 3 kiB
 inline constexpr size_t NOISE_CHANNELS = 2;
-inline constexpr size_t MAX_FRAGMENTS =
-        20;  // ~20 * NOISE_BYTES max payload size for covert/noise send
+// ~20 * NOISE_BYTES max payload size for covert/noise send:
+inline constexpr size_t MAX_FRAGMENTS = 20;
 
 // p2p-specific constants:
 namespace p2p {
@@ -285,12 +286,12 @@ namespace old {
     // registration has ever been sent to the blockchain then it should still sync fine).
     inline constexpr std::chrono::seconds STAKING_AUTHORIZATION_EXPIRATION_WINDOW = 14 * 24h;
 
-    inline constexpr uint64_t FEE_PER_BYTE_V12 =
-            17200;  // Higher fee in v12 (only, v13 switches back)
-    inline constexpr uint64_t FEE_PER_OUTPUT_V13 =
-            20000000;  // 0.02 OXEN per tx output (in addition to the per-byte fee), HF13 until HF18
-    inline constexpr uint64_t DYNAMIC_FEE_REFERENCE_TRANSACTION_WEIGHT_V12 =
-            240000;  // Only v12 (v13 switches back)
+    // Higher fee in v12 (only, v13 switches back):
+    inline constexpr uint64_t FEE_PER_BYTE_V12 = 17200;
+    // 0.02 OXEN per tx output (in addition to the per-byte fee), HF13 until HF18:
+    inline constexpr uint64_t FEE_PER_OUTPUT_V13 = 20000000;
+    // Only v12 (v13 switches back):
+    inline constexpr uint64_t DYNAMIC_FEE_REFERENCE_TRANSACTION_WEIGHT_V12 = 240000;
     // Dynamic fee calculations used before HF10:
     inline constexpr uint64_t DYNAMIC_FEE_PER_KB_BASE_BLOCK_REWARD =
             UINT64_C(10000000000000);  // 10 * pow(10,12)
@@ -305,13 +306,12 @@ namespace old {
         //
         // And we resized timestamps/difficulties to (N+1) (chopping off the latest timestamp).
         //
-        // Now we re-adjust DIFFICULTY_WINDOW to 59. To preserve the old behaviour we
-        // add +2. After HF16 we avoid trimming the top block and just add +1.
+        // Now we re-adjust DIFFICULTY_WINDOW to 59. To preserve the old behaviour we add +2. After
+        // HF16 we avoid trimming the top block and just add +1.
         //
         // Ideally, we just set DIFFICULTY_BLOCKS_COUNT to DIFFICULTY_WINDOW
-        // + 1 for before and after HF16 (having one unified constant) but this
-        // requires some more investigation to get it working with pre HF16 blocks and
-        // alt chain code without bugs.
+        // + 1 for before and after HF16 (having one unified constant) but this requires some more
+        //   investigation to get it working with pre HF16 blocks and alt chain code without bugs.
         uint64_t result = (before_hf16) ? DIFFICULTY_WINDOW + 2 : DIFFICULTY_WINDOW + 1;
         return result;
     }
@@ -361,38 +361,41 @@ namespace config {
              0x65,
              0x79}};  // Bender's nightmare
     inline constexpr std::string_view GENESIS_TX =
-            "021e01ff000380808d93f5d771027c4fd4553bc9886f1f49e3f76d945bf71e8632a94e6c177b19cbc780e7e6bdb48080b4ccd4dfc60302c8b9f6461f58ef3f2107e577c7425d06af584a1c7482bf19060e84059c98b4c3808088fccdbcc32302732b53b0b0db706fcc3087074fb4b786da5ab72b2065699f9453448b0db27f892101ed71f2ce3fc70d7b2036f8a4e4b3fb75c66c12184b55a908e7d1a1d6995566cf00"sv;
+            "021e01ff000380808d93f5d771027c4fd4553bc9886f1f49e3f76d945bf71e8632a94e6c177b19cb"
+            "c780e7e6bdb48080b4ccd4dfc60302c8b9f6461f58ef3f2107e577c7425d06af584a1c7482bf1906"
+            "0e84059c98b4c3808088fccdbcc32302732b53b0b0db706fcc3087074fb4b786da5ab72b2065699f"
+            "9453448b0db27f892101ed71f2ce3fc70d7b2036f8a4e4b3fb75c66c12184b55a908e7d1a1d69955"
+            "66cf00"sv;
     inline constexpr uint32_t GENESIS_NONCE = 1022201;
 
     inline constexpr uint64_t GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 7 * cryptonote::BLOCKS_PER_DAY;
     inline constexpr std::array GOVERNANCE_WALLET_ADDRESS = {
-            "LCFxT37LAogDn1jLQKf4y7aAqfi21DjovX9qyijaLYQSdrxY1U5VGcnMJMjWrD9RhjeK5Lym67wZ73uh9AujXLQ1RKmXEyL"sv,  // hardfork v7-10
-            "LDBEN6Ut4NkMwyaXWZ7kBEAx8X64o6YtDhLXUP26uLHyYT4nFmcaPU2Z2fauqrhTLh4Qfr61pUUZVLaTHqAdycETKM1STrz"sv,  // hardfork v11
+            // hardfork v7-10:
+            "LCFxT37LAogDn1jLQKf4y7aAqfi21DjovX9qyijaLYQSdrxY1U5VGcnMJMjWrD9RhjeK5Lym67wZ73uh9AujXLQ1RKmXEyL"sv,
+            // hardfork v11
+            "LDBEN6Ut4NkMwyaXWZ7kBEAx8X64o6YtDhLXUP26uLHyYT4nFmcaPU2Z2fauqrhTLh4Qfr61pUUZVLaTHqAdycETKM1STrz"sv,
     };
 
-    inline constexpr uint64_t HARDFORK_DEREGISTRATION_GRACE_PERIOD =
-            7 * cryptonote::BLOCKS_PER_DAY;  // After a hardfork we will decommission sns but wont
-                                             // dereg, allowing time to update
-
-    inline constexpr auto UPTIME_PROOF_TOLERANCE =
-            5min;  // How much an uptime proof timestamp can deviate from our timestamp before we
-                   // refuse it
-    inline constexpr auto UPTIME_PROOF_STARTUP_DELAY =
-            30s;  // How long to wait after startup before broadcasting a proof
-    inline constexpr auto UPTIME_PROOF_CHECK_INTERVAL =
-            30s;  // How frequently to check whether we need to broadcast a proof
-    inline constexpr auto UPTIME_PROOF_FREQUENCY =
-            1h;  // How often to send proofs out to the network since the last proof we successfully
-                 // sent.  (Approximately; this can be up to CHECK_INTERFACE/2 off in either
-                 // direction).  The minimum accepted time between proofs is half of this.
-    inline constexpr auto UPTIME_PROOF_VALIDITY =
-            2h + 5min;  // The maximum time that we consider an uptime proof to be valid (i.e. after
-                        // this time since the last proof we consider the SN to be down)
-    inline constexpr auto REACHABLE_MAX_FAILURE_VALIDITY =
-            5min;  // If we don't hear any SS ping/lokinet session test failures for more than this
-                   // long then we start considering the SN as passing for the purpose of obligation
-                   // testing until we get another test result.  This should be somewhat larger than
-                   // SS/lokinet's max re-test backoff (2min).
+    // After a hardfork we will decommission sns but won't dereg, allowing time to update
+    inline constexpr uint64_t HARDFORK_DEREGISTRATION_GRACE_PERIOD = 7 * cryptonote::BLOCKS_PER_DAY;
+    // How much an uptime proof timestamp can deviate from our timestamp before we refuse it:
+    inline constexpr auto UPTIME_PROOF_TOLERANCE = 5min;
+    // How long to wait after startup before broadcasting a proof
+    inline constexpr auto UPTIME_PROOF_STARTUP_DELAY = 30s;
+    // How frequently to check whether we need to broadcast a proof
+    inline constexpr auto UPTIME_PROOF_CHECK_INTERVAL = 30s;
+    // How often to send proofs out to the network since the last proof we successfully sent.
+    // (Approximately; this can be up to CHECK_INTERFACE/2 off in either direction).  The minimum
+    // accepted time between proofs is half of this.
+    inline constexpr auto UPTIME_PROOF_FREQUENCY = 1h;
+    // The maximum time that we consider an uptime proof to be valid (i.e. after this time since the
+    // last proof we consider the SN to be down)
+    inline constexpr auto UPTIME_PROOF_VALIDITY = 2h + 5min;
+    // If we don't hear any SS ping/lokinet session test failures for more than this long then we
+    // start considering the SN as passing for the purpose of obligation testing until we get
+    // another test result.  This should be somewhat larger than SS/lokinet's max re-test backoff
+    // (2min).
+    inline constexpr auto REACHABLE_MAX_FAILURE_VALIDITY = 5min;
 
     // Batching SN Rewards
     inline constexpr uint64_t BATCHING_INTERVAL = 2520;
@@ -433,13 +436,17 @@ namespace config {
                 0xbe,
         }};
         inline constexpr std::string_view GENESIS_TX =
-                "04011e1e01ff00018080c9db97f4fb2702fa27e905f604faa4eb084ee675faca77b0cfea9adec1526da33cae5e286f31624201dae05bf3fa1662b7fd373c92426763d921cf3745e10ee43edb510f690c656f247200000000000000000000000000000000000000000000000000000000000000000000"sv;
+                "04011e1e01ff00018080c9db97f4fb2702fa27e905f604faa4eb084ee675faca77b0cfea9adec152"
+                "6da33cae5e286f31624201dae05bf3fa1662b7fd373c92426763d921cf3745e10ee43edb510f690c"
+                "656f247200000000000000000000000000000000000000000000000000000000000000000000"sv;
         inline constexpr uint32_t GENESIS_NONCE = 12345;
 
         inline constexpr uint64_t GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 1000;
         inline constexpr std::array GOVERNANCE_WALLET_ADDRESS = {
-                "T6Tnu9YUgVcSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M482ypm7"sv,  // hardfork v7-9
-                "T6Tnu9YUgVcSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M482ypm7"sv,  // hardfork v10
+                // hardfork v7-9
+                "T6Tnu9YUgVcSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M482ypm7"sv,
+                // hardfork v10
+                "T6Tnu9YUgVcSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M482ypm7"sv,
         };
 
         // Testnet uptime proofs are 6x faster than mainnet (devnet config also uses these)
@@ -477,13 +484,17 @@ namespace config {
                  0xab,
                  0xd4}};
         inline constexpr std::string_view GENESIS_TX =
-                "04011e1e01ff00018080c9db97f4fb2702fa27e905f604faa4eb084ee675faca77b0cfea9adec1526da33cae5e286f31624201dae05bf3fa1662b7fd373c92426763d921cf3745e10ee43edb510f690c656f247200000000000000000000000000000000000000000000000000000000000000000000"sv;
+                "04011e1e01ff00018080c9db97f4fb2702fa27e905f604faa4eb084ee675faca77b0cfea9adec152"
+                "6da33cae5e286f31624201dae05bf3fa1662b7fd373c92426763d921cf3745e10ee43edb510f690c"
+                "656f247200000000000000000000000000000000000000000000000000000000000000000000"sv;
         inline constexpr uint32_t GENESIS_NONCE = 12345;
 
         inline constexpr uint64_t GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 7 * BLOCKS_PER_DAY;
         inline constexpr std::array GOVERNANCE_WALLET_ADDRESS = {
-                "dV3EhSE1xXgSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M4A7Uimp"sv,  // hardfork v7-9
-                "dV3EhSE1xXgSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M4A7Uimp"sv,  // hardfork v10
+                // hardfork v7-9
+                "dV3EhSE1xXgSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M4A7Uimp"sv,
+                // hardfork v10
+                "dV3EhSE1xXgSzswBgVioqFNTfcqGopvTrcYjs4YDLHUfU64DuHxFoEmbwoyipTidGiTXx5EuYdgzZhDLMTo9uEv82M4A7Uimp"sv,
         };
 
         inline constexpr auto UPTIME_PROOF_STARTUP_DELAY = 5s;

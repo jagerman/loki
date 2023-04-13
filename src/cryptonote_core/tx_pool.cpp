@@ -52,7 +52,7 @@
 #include "epee/warnings.h"
 
 DISABLE_VS_WARNINGS(4244 4345 4503)  //'boost::foreach_detail_::or_' : decorated name length
-                                     //exceeded, name was truncated
+                                     // exceeded, name was truncated
 
 using namespace crypto;
 

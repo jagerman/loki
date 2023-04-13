@@ -34,6 +34,7 @@
 #include "serialization/binary_utils.h"  // dump_binary(), parse_binary()
 
 using namespace cryptonote;
+using namespace blockchain_utils;
 
 namespace {
 // This number was picked by taking the leading 4 bytes from this output:

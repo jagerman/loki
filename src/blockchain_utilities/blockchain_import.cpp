@@ -49,6 +49,8 @@
 #include "logging/oxen_logger.h"
 #include "serialization/binary_utils.h"
 
+using namespace blockchain_utils;
+
 namespace {
 // CONFIG
 bool opt_batch = true;

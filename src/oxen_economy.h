@@ -7,8 +7,9 @@ inline constexpr uint64_t COIN = 1000000000;  // 1 LOKI = pow(10, 9)
 inline constexpr size_t DISPLAY_DECIMAL_POINT = 9;
 
 // Pre-HF15 money supply parameters:
-inline constexpr uint64_t MONEY_SUPPLY =
-        ((uint64_t)(-1));  // MONEY_SUPPLY - total number coins to be generated
+
+// total number coins to be generated (old curve)
+inline constexpr uint64_t MONEY_SUPPLY = ((uint64_t)(-1));
 inline constexpr uint64_t EMISSION_LINEAR_BASE = ((uint64_t)(1) << 58);
 inline constexpr uint64_t EMISSION_SUPPLY_MULTIPLIER = 19;
 inline constexpr uint64_t EMISSION_SUPPLY_DIVISOR = 10;
@@ -67,16 +68,17 @@ inline constexpr uint64_t MINIMUM_OPERATOR_CONTRIBUTION_TESTNET = STAKING_REQUIR
 // Blink fees: in total the sender must pay (MINER_TX_FEE_PERCENT + BURN_TX_FEE_PERCENT) * [minimum
 // tx fee] + BLINK_BURN_FIXED, and the miner including the tx includes MINER_TX_FEE_PERCENT *
 // [minimum tx fee]; the rest must be left unclaimed.
-constexpr uint64_t BLINK_MINER_TX_FEE_PERCENT =
-        100;  // The blink miner tx fee (as a percentage of the minimum tx fee)
-constexpr uint64_t BLINK_BURN_FIXED =
-        0;  // A fixed amount (in atomic currency units) that the sender must burn
-constexpr uint64_t BLINK_BURN_TX_FEE_PERCENT_V15 =
-        150;  // A percentage of the minimum miner tx fee that the sender must burn.  (Adds to
-              // BLINK_BURN_FIXED)
-constexpr uint64_t BLINK_BURN_TX_FEE_PERCENT_V18 =
-        200;  // A percentage of the minimum miner tx fee that the sender must burn.  (Adds to
-              // BLINK_BURN_FIXED)
+
+// The blink miner tx fee (as a percentage of the minimum tx fee)
+constexpr uint64_t BLINK_MINER_TX_FEE_PERCENT = 100;
+// A fixed amount (in atomic currency units) that the sender must burn
+constexpr uint64_t BLINK_BURN_FIXED = 0;
+// A percentage of the minimum miner tx fee that the sender must burn.  (Adds to
+// BLINK_BURN_FIXED)
+constexpr uint64_t BLINK_BURN_TX_FEE_PERCENT_V15 = 150;
+// A percentage of the minimum miner tx fee that the sender must burn.  (Adds to
+// BLINK_BURN_FIXED)
+constexpr uint64_t BLINK_BURN_TX_FEE_PERCENT_V18 = 200;
 
 static_assert(
         BLINK_MINER_TX_FEE_PERCENT >= 100,

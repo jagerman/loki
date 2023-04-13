@@ -1108,6 +1108,10 @@ void core_rpc_server::invoke(IS_KEY_IMAGE_SPENT& spent, rpc_context context) {
     spent.response["status"] = STATUS_OK;
     spent.response["spent_status"] = std::move(spent_status);
 }
+
+static constexpr auto BLINK_TIMEOUT = "Blink quorum timeout"sv;
+static constexpr auto BLINK_REJECTED = "Transaction rejected by blink quorum"sv;
+
 //------------------------------------------------------------------------------------------------------------------------------
 void core_rpc_server::invoke(SUBMIT_TRANSACTION& tx, rpc_context context) {
     if (!check_core_ready()) {
@@ -1126,7 +1130,7 @@ void core_rpc_server::invoke(SUBMIT_TRANSACTION& tx, rpc_context context) {
         auto status = future.wait_for(10s);
         if (status != std::future_status::ready) {
             tx.response["status"] = STATUS_FAILED;
-            tx.response["reason"] = "Blink quorum timeout";
+            tx.response["reason"] = BLINK_TIMEOUT;
             tx.response["blink_status"] = blink_result::timeout;
             return;
         }
@@ -1139,11 +1143,8 @@ void core_rpc_server::invoke(SUBMIT_TRANSACTION& tx, rpc_context context) {
             } else {
                 tx.response["status"] = STATUS_FAILED;
                 tx.response["reason"] = !result.second.empty()                ? result.second
-                                      : result.first == blink_result::timeout ? "Blink quorum "
-                                                                                "timeout"
-                                                                              : "Transaction "
-                                                                                "rejected by blink "
-                                                                                "quorum";
+                                      : result.first == blink_result::timeout ? BLINK_TIMEOUT
+                                                                              : BLINK_REJECTED;
             }
         } catch (const std::exception& e) {
             tx.response["blink_status"] = blink_result::rejected;

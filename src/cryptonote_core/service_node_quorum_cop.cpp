@@ -299,21 +299,16 @@ void quorum_cop::process_quorums(cryptonote::block const& block) {
                     // before the minimum lifetime for same purposes, note, we still
                     // don't vote for the first 2 hours so this is purely cosmetic
                     if (obligations_height_hf_version >= hf::hf12_checkpointing) {
-                        service_nodes::service_node_list& node_list =
-                                m_core.get_service_node_list();
+                        auto& node_list = m_core.get_service_node_list();
 
                         auto quorum = node_list.get_quorum(
                                 quorum_type::checkpointing, m_obligations_height);
                         std::vector<cryptonote::block> blocks;
                         if (quorum && m_core.get_blocks(m_obligations_height, 1, blocks)) {
                             cryptonote::block const& block = blocks[0];
-                            if (start_time <
-                                static_cast<ptrdiff_t>(
-                                        block.timestamp))  // NOTE: If we started up before
-                                                           // receiving the block, we likely have
-                                                           // the voting information, if not we
-                                                           // probably don't.
-                            {
+                            if (start_time < static_cast<ptrdiff_t>(block.timestamp)) {
+                                // NOTE: If we started up before receiving the block, we likely have
+                                // the voting information, if not we probably don't.
                                 uint64_t quorum_height = offset_testing_quorum_height(
                                         quorum_type::checkpointing, m_obligations_height);
                                 for (size_t index_in_quorum = 0;

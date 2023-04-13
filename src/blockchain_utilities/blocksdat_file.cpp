@@ -32,6 +32,7 @@
 #include "common/fs-format.h"
 
 using namespace cryptonote;
+using namespace blockchain_utils;
 
 namespace {
 static auto logcat = log::Cat("bcutil");

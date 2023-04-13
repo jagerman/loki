@@ -31,8 +31,10 @@
 
 #include "daemonizer/windows_service.h"
 
-#include <shellapi.h>
+// clang-format off
 #include <windows.h>
+#include <shellapi.h>
+// clang-format on
 
 #include <chrono>
 #include <iostream>
