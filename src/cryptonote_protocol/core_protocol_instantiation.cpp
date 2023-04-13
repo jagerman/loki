@@ -29,5 +29,6 @@
 #include "cryptonote_protocol_handler.h"
 #include "cryptonote_protocol_handler.inl"
 
-namespace cryptonote { template class t_cryptonote_protocol_handler<cryptonote::core>; }
-
+namespace cryptonote {
+template class t_cryptonote_protocol_handler<cryptonote::core>;
+}

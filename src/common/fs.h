@@ -12,11 +12,11 @@
 
 #include <filesystem>
 namespace fs {
-  using namespace std::filesystem;
-  using ifstream = std::ifstream;
-  using ofstream = std::ofstream;
-  using fstream = std::fstream;
-}
+using namespace std::filesystem;
+using ifstream = std::ifstream;
+using ofstream = std::ofstream;
+using fstream = std::fstream;
+}  // namespace fs
 #else
 
 #include <ghc/filesystem.hpp>

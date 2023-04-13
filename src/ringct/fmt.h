@@ -28,12 +28,11 @@
 
 #pragma once
 
-#include "rctTypes.h" 
+#include "rctTypes.h"
 
 template <>
 struct fmt::formatter<rct::key> : fmt::formatter<std::string> {
-  auto format(rct::key k, format_context& ctx) {
-    return formatter<std::string>::format(
-      fmt::format("<{}>", tools::type_to_hex(k)), ctx);
-  }
+    auto format(rct::key k, format_context& ctx) {
+        return formatter<std::string>::format(fmt::format("<{}>", tools::type_to_hex(k)), ctx);
+    }
 };

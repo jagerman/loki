@@ -3,30 +3,23 @@
 #include <memory>
 #include <string_view>
 
-namespace oxenmq { class OxenMQ; }
+namespace oxenmq {
+class OxenMQ;
+}
 
-namespace wallet::rpc
-{
+namespace wallet::rpc {
 
 class RequestHandler;
 struct Config;
 
-class OmqServer
-{
-  std::shared_ptr<oxenmq::OxenMQ> omq;
-  RequestHandler& request_handler;
+class OmqServer {
+    std::shared_ptr<oxenmq::OxenMQ> omq;
+    RequestHandler& request_handler;
 
-public:
+  public:
+    OmqServer(RequestHandler& request_handler) : omq(nullptr), request_handler(request_handler) {}
 
-  OmqServer(RequestHandler& request_handler) :
-    omq(nullptr), request_handler(request_handler)
-  {}
-
-  void
-  set_omq(std::shared_ptr<oxenmq::OxenMQ> omq, wallet::rpc::Config config);
+    void set_omq(std::shared_ptr<oxenmq::OxenMQ> omq, wallet::rpc::Config config);
 };
 
-
-
-
-} // namespace wallet::rpc
+}  // namespace wallet::rpc

@@ -28,41 +28,40 @@
 //
 #pragma once
 
-#include <optional>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <optional>
 #include <string>
 
 #include "common/command_line.h"
 #include "common/password.h"
 
-namespace cryptonote
-{
-  //! Processes command line arguments related to server-side RPC
-  struct rpc_args
-  {
+namespace cryptonote {
+//! Processes command line arguments related to server-side RPC
+struct rpc_args {
     // non-static construction prevents initialization order issues
-    struct descriptors
-    {
-      descriptors();
-      descriptors(const descriptors&) = delete;
-      descriptors(descriptors&&) = delete;
-      descriptors& operator=(const descriptors&) = delete;
-      descriptors& operator=(descriptors&&) = delete;
+    struct descriptors {
+        descriptors();
+        descriptors(const descriptors&) = delete;
+        descriptors(descriptors&&) = delete;
+        descriptors& operator=(const descriptors&) = delete;
+        descriptors& operator=(descriptors&&) = delete;
 
-      const command_line::arg_descriptor<std::string> rpc_bind_ip;
-      const command_line::arg_descriptor<std::string> rpc_bind_ipv6_address;
-      const command_line::arg_descriptor<bool> rpc_use_ipv6;
-      const command_line::arg_descriptor<bool> rpc_ignore_ipv4;
-      const command_line::arg_descriptor<std::string> rpc_login;
-      const command_line::arg_descriptor<bool> confirm_external_bind;
-      const command_line::arg_descriptor<std::string> rpc_access_control_origins;
-      const command_line::arg_descriptor<std::string> zmq_rpc_bind_ip;   // Deprecated & ignored
-      const command_line::arg_descriptor<std::string> zmq_rpc_bind_port; // Deprecated & ignored
+        const command_line::arg_descriptor<std::string> rpc_bind_ip;
+        const command_line::arg_descriptor<std::string> rpc_bind_ipv6_address;
+        const command_line::arg_descriptor<bool> rpc_use_ipv6;
+        const command_line::arg_descriptor<bool> rpc_ignore_ipv4;
+        const command_line::arg_descriptor<std::string> rpc_login;
+        const command_line::arg_descriptor<bool> confirm_external_bind;
+        const command_line::arg_descriptor<std::string> rpc_access_control_origins;
+        const command_line::arg_descriptor<std::string> zmq_rpc_bind_ip;    // Deprecated & ignored
+        const command_line::arg_descriptor<std::string> zmq_rpc_bind_port;  // Deprecated & ignored
     };
 
     static const char* tr(const char* str);
-    static void init_options(boost::program_options::options_description& desc, boost::program_options::options_description& hidden);
+    static void init_options(
+            boost::program_options::options_description& desc,
+            boost::program_options::options_description& hidden);
 
     //! \return Arguments specified by user.  Throws on error.
     static rpc_args process(const boost::program_options::variables_map& vm);
@@ -73,6 +72,6 @@ namespace cryptonote
     bool use_ipv6;
     bool require_ipv4;
     std::vector<std::string> access_control_origins;
-    std::optional<tools::login> login; // currently `std::nullopt` if unspecified by user
-  };
-}
+    std::optional<tools::login> login;  // currently `std::nullopt` if unspecified by user
+};
+}  // namespace cryptonote

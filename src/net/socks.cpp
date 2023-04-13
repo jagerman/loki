@@ -28,41 +28,40 @@
 
 #include "socks.h"
 
+#include <oxenc/endian.h>
+
 #include <algorithm>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
-#include <oxenc/endian.h>
 #include <cstring>
 #include <limits>
 #include <string>
 #include <string_view>
 
 #include "epee/net/net_utils_base.h"
-#include "net/tor_address.h"
 #include "net/i2p_address.h"
+#include "net/tor_address.h"
 
-namespace net
-{
-namespace socks
-{
-    namespace
-    {
+namespace net { namespace socks {
+    namespace {
         constexpr const unsigned v4_reply_size = 8;
         constexpr const std::uint8_t v4_connect_command = 1;
         constexpr const std::uint8_t v4tor_resolve_command = 0xf0;
         constexpr const std::uint8_t v4_request_granted = 90;
 
-        struct v4_header
-        {
+        struct v4_header {
             std::uint8_t version;
             std::uint8_t command_code;
             std::uint16_t port;
             std::uint32_t ip;
         };
 
-        std::size_t write_domain_header(epee::span<std::uint8_t> out, const std::uint8_t command, const std::uint16_t port, std::string_view domain)
-        {
+        std::size_t write_domain_header(
+                epee::span<std::uint8_t> out,
+                const std::uint8_t command,
+                const std::uint16_t port,
+                std::string_view domain) {
             if (std::numeric_limits<std::size_t>::max() - sizeof(v4_header) - 2 < domain.size())
                 return 0;
 
@@ -71,7 +70,11 @@ namespace socks
                 return 0;
 
             // version 4, 1 indicates invalid ip for domain extension
-            const v4_header temp{4, command, oxenc::host_to_little(port), oxenc::host_to_little(std::uint32_t{1})};
+            const v4_header temp{
+                    4,
+                    command,
+                    oxenc::host_to_little(port),
+                    oxenc::host_to_little(std::uint32_t{1})};
             std::memcpy(out.data(), std::addressof(temp), sizeof(temp));
             out.remove_prefix(sizeof(temp));
 
@@ -85,52 +88,41 @@ namespace socks
             return buf_size;
         }
 
-        struct socks_category : boost::system::error_category
-        {
-            explicit socks_category() noexcept
-              : boost::system::error_category()
-            {}
+        struct socks_category : boost::system::error_category {
+            explicit socks_category() noexcept : boost::system::error_category() {}
 
-            const char* name() const noexcept override
-            {
-                return "net::socks::error_category";
-            }
+            const char* name() const noexcept override { return "net::socks::error_category"; }
 
-            virtual std::string message(int value) const override
-            {
-                switch (socks::error(value))
-                {
-                case socks::error::rejected:
-                    return "Socks request rejected or failed";
-                case socks::error::identd_connection:
-                    return "Socks request rejected because server cannot connect to identd on the client";
-                case socks::error::identd_user:
-                    return "Socks request rejected because the client program and identd report different user-ids";
+            virtual std::string message(int value) const override {
+                switch (socks::error(value)) {
+                    case socks::error::rejected: return "Socks request rejected or failed";
+                    case socks::error::identd_connection:
+                        return "Socks request rejected because server cannot connect to identd on "
+                               "the client";
+                    case socks::error::identd_user:
+                        return "Socks request rejected because the client program and identd "
+                               "report different user-ids";
 
-                case socks::error::bad_read:
-                    return "Socks boost::async_read read fewer bytes than expected";
-                case socks::error::bad_write:
-                    return "Socks boost::async_write wrote fewer bytes than expected";
-                case socks::error::unexpected_version:
-                    return "Socks server returned unexpected version in reply";
+                    case socks::error::bad_read:
+                        return "Socks boost::async_read read fewer bytes than expected";
+                    case socks::error::bad_write:
+                        return "Socks boost::async_write wrote fewer bytes than expected";
+                    case socks::error::unexpected_version:
+                        return "Socks server returned unexpected version in reply";
 
-                default:
-                    break;
+                    default: break;
                 }
                 return "Unknown net::socks::error";
             }
 
-            boost::system::error_condition default_error_condition(int value) const noexcept override
-            {
-                switch (socks::error(value))
-                {
-                case socks::error::bad_read:
-                case socks::error::bad_write:
-                    return boost::system::errc::io_error;
-                case socks::error::unexpected_version:
-                    return boost::system::errc::protocol_error;
-                default:
-                    break;
+            boost::system::error_condition default_error_condition(
+                    int value) const noexcept override {
+                switch (socks::error(value)) {
+                    case socks::error::bad_read:
+                    case socks::error::bad_write: return boost::system::errc::io_error;
+                    case socks::error::unexpected_version:
+                        return boost::system::errc::protocol_error;
+                    default: break;
                 };
                 if (1 <= value && value <= 256)
                     return boost::system::errc::protocol_error;
@@ -138,24 +130,20 @@ namespace socks
                 return boost::system::error_condition{value, *this};
             }
         };
-    }
+    }  // namespace
 
-    const boost::system::error_category& error_category() noexcept
-    {
+    const boost::system::error_category& error_category() noexcept {
         static const socks_category instance{};
         return instance;
     }
 
-    struct client::completed
-    {
+    struct client::completed {
         std::shared_ptr<client> self_;
 
-        void operator()(const boost::system::error_code error, const std::size_t bytes) const
-        {
+        void operator()(const boost::system::error_code error, const std::size_t bytes) const {
             static_assert(1 < sizeof(self_->buffer_), "buffer too small for v4 response");
 
-            if (self_)
-            {
+            if (self_) {
                 client& self = *self_;
                 self.buffer_size_ = std::min(bytes, sizeof(self.buffer_));
 
@@ -163,7 +151,7 @@ namespace socks
                     self.done(error, std::move(self_));
                 else if (self.buffer().size() < sizeof(v4_header))
                     self.done(socks::error::bad_read, std::move(self_));
-                else if (self.buffer_[0] != 0) // response version
+                else if (self.buffer_[0] != 0)  // response version
                     self.done(socks::error::unexpected_version, std::move(self_));
                 else if (self.buffer_[1] != v4_request_granted)
                     self.done(socks::error(int(self.buffer_[1]) + 1), std::move(self_));
@@ -173,76 +161,78 @@ namespace socks
         }
     };
 
-    struct client::read
-    {
+    struct client::read {
         std::shared_ptr<client> self_;
 
-        static boost::asio::mutable_buffers_1 get_buffer(client& self) noexcept
-        {
-            static_assert(sizeof(v4_header) <= sizeof(self.buffer_), "buffer too small for v4 response");
+        static boost::asio::mutable_buffers_1 get_buffer(client& self) noexcept {
+            static_assert(
+                    sizeof(v4_header) <= sizeof(self.buffer_), "buffer too small for v4 response");
             return boost::asio::buffer(self.buffer_, sizeof(v4_header));
         }
 
-        void operator()(const boost::system::error_code error, const std::size_t bytes)
-        {
-            if (self_)
-            {
+        void operator()(const boost::system::error_code error, const std::size_t bytes) {
+            if (self_) {
                 client& self = *self_;
                 if (error)
                     self.done(error, std::move(self_));
                 else if (bytes < self.buffer().size())
                     self.done(socks::error::bad_write, std::move(self_));
                 else
-                    boost::asio::async_read(self.proxy_, get_buffer(self), self.strand_.wrap(completed{std::move(self_)}));
+                    boost::asio::async_read(
+                            self.proxy_,
+                            get_buffer(self),
+                            self.strand_.wrap(completed{std::move(self_)}));
             }
         }
     };
 
-    struct client::write
-    {
+    struct client::write {
         std::shared_ptr<client> self_;
 
-        static boost::asio::const_buffers_1 get_buffer(client const& self) noexcept
-        {
+        static boost::asio::const_buffers_1 get_buffer(client const& self) noexcept {
             return boost::asio::buffer(self.buffer_, self.buffer_size_);
         }
 
-        void operator()(const boost::system::error_code error)
-        {
-            if (self_)
-            {
+        void operator()(const boost::system::error_code error) {
+            if (self_) {
                 client& self = *self_;
                 if (error)
                     self.done(error, std::move(self_));
                 else
-                    boost::asio::async_write(self.proxy_, get_buffer(self), self.strand_.wrap(read{std::move(self_)}));
+                    boost::asio::async_write(
+                            self.proxy_,
+                            get_buffer(self),
+                            self.strand_.wrap(read{std::move(self_)}));
             }
         }
     };
 
-    client::client(stream_type::socket&& proxy, socks::version ver)
-      : proxy_(std::move(proxy)), strand_(GET_IO_SERVICE(proxy_)), buffer_size_(0), buffer_(), ver_(ver)
-    {}
+    client::client(stream_type::socket&& proxy, socks::version ver) :
+            proxy_(std::move(proxy)),
+            strand_(GET_IO_SERVICE(proxy_)),
+            buffer_size_(0),
+            buffer_(),
+            ver_(ver) {}
 
     client::~client() {}
 
-    bool client::set_connect_command(const epee::net_utils::ipv4_network_address& address)
-    {
-        switch (socks_version())
-        {
-        case version::v4:
-        case version::v4a:
-        case version::v4a_tor:
-            break;
-        default:
-            return false;
+    bool client::set_connect_command(const epee::net_utils::ipv4_network_address& address) {
+        switch (socks_version()) {
+            case version::v4:
+            case version::v4a:
+            case version::v4a_tor: break;
+            default: return false;
         }
 
         static_assert(sizeof(v4_header) < sizeof(buffer_), "buffer size too small for request");
         static_assert(0 < sizeof(buffer_), "buffer size too small for null termination");
 
         // version 4
-        const v4_header temp{4, v4_connect_command, oxenc::host_to_big(address.port()), oxenc::host_to_big(address.ip())};
+        const v4_header temp{
+                4,
+                v4_connect_command,
+                oxenc::host_to_big(address.port()),
+                oxenc::host_to_big(address.ip())};
         std::memcpy(std::addressof(buffer_), std::addressof(temp), sizeof(temp));
         buffer_[sizeof(temp)] = 0;
         buffer_size_ = sizeof(temp) + 1;
@@ -250,16 +240,12 @@ namespace socks
         return true;
     }
 
-    bool client::set_connect_command(std::string_view domain, std::uint16_t port)
-    {
-        switch (socks_version())
-        {
-        case version::v4a:
-        case version::v4a_tor:
-            break;
+    bool client::set_connect_command(std::string_view domain, std::uint16_t port) {
+        switch (socks_version()) {
+            case version::v4a:
+            case version::v4a_tor: break;
 
-        default:
-            return false;
+            default: return false;
         }
 
         const std::size_t buf_used = write_domain_header(buffer_, v4_connect_command, port, domain);
@@ -267,22 +253,19 @@ namespace socks
         return buf_used != 0;
     }
 
-    bool client::set_connect_command(const net::tor_address& address)
-    {
+    bool client::set_connect_command(const net::tor_address& address) {
         if (!address.is_unknown())
             return set_connect_command(address.host_str(), address.port());
         return false;
     }
 
-    bool client::set_connect_command(const net::i2p_address& address)
-    {
+    bool client::set_connect_command(const net::i2p_address& address) {
         if (!address.is_unknown())
             return set_connect_command(address.host_str(), address.port());
         return false;
     }
 
-    bool client::set_resolve_command(std::string_view domain)
-    {
+    bool client::set_resolve_command(std::string_view domain) {
         if (socks_version() != version::v4a_tor)
             return false;
 
@@ -291,10 +274,9 @@ namespace socks
         return buf_used != 0;
     }
 
-    bool client::connect_and_send(std::shared_ptr<client> self, const stream_type::endpoint& proxy_address)
-    {
-        if (self && !self->buffer().empty())
-        {
+    bool client::connect_and_send(
+            std::shared_ptr<client> self, const stream_type::endpoint& proxy_address) {
+        if (self && !self->buffer().empty()) {
             client& alias = *self;
             alias.proxy_.async_connect(proxy_address, alias.strand_.wrap(write{std::move(self)}));
             return true;
@@ -302,31 +284,27 @@ namespace socks
         return false;
     }
 
-    bool client::send(std::shared_ptr<client> self)
-    {
-        if (self && !self->buffer().empty())
-        {
+    bool client::send(std::shared_ptr<client> self) {
+        if (self && !self->buffer().empty()) {
             client& alias = *self;
-            boost::asio::async_write(alias.proxy_, write::get_buffer(alias), alias.strand_.wrap(read{std::move(self)}));
+            boost::asio::async_write(
+                    alias.proxy_,
+                    write::get_buffer(alias),
+                    alias.strand_.wrap(read{std::move(self)}));
             return true;
         }
         return false;
     }
 
-    void client::async_close::operator()(boost::system::error_code error)
-    {
-        if (self_ && error != boost::system::errc::operation_canceled)
-        {
+    void client::async_close::operator()(boost::system::error_code error) {
+        if (self_ && error != boost::system::errc::operation_canceled) {
             const std::shared_ptr<client> self = std::move(self_);
-            self->strand_.dispatch([self] ()
-            {
-                if (self && self->proxy_.is_open())
-                {
+            self->strand_.dispatch([self]() {
+                if (self && self->proxy_.is_open()) {
                     self->proxy_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
                     self->proxy_.close();
                 }
             });
         }
     }
-} // socks
-} // net
+}}  // namespace net::socks

@@ -1,24 +1,21 @@
 #pragma once
 
 #include <crypto/crypto.h>
-#include <ringct/rctTypes.h>
-#include <device/device.hpp>
 #include <cryptonote_basic/cryptonote_basic.h>
+#include <ringct/rctTypes.h>
 
-namespace wallet25
-{
-  uint64_t
-  output_amount(
-      const rct::rctSig& rv,
-      const crypto::key_derivation& derivation,
-      unsigned int i,
-      rct::key& mask,
-      hw::device& hwdev);
+#include <device/device.hpp>
 
-  crypto::hash
-  tx_hash(const cryptonote::transaction& tx);
+namespace wallet25 {
+uint64_t output_amount(
+        const rct::rctSig& rv,
+        const crypto::key_derivation& derivation,
+        unsigned int i,
+        rct::key& mask,
+        hw::device& hwdev);
 
-  cryptonote::transaction
-  tx_from_blob(const std::string_view blob);
+crypto::hash tx_hash(const cryptonote::transaction& tx);
 
-}  // namespace wallet2½
+cryptonote::transaction tx_from_blob(const std::string_view blob);
+
+}  // namespace wallet25

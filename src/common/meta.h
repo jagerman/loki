@@ -1,10 +1,12 @@
 #pragma once
-#include <string>
 #include <oxenc/variant.h>
+
 #include <array>
+#include <string>
 #include <typeinfo>
 #ifdef __GNUG__
 #include <cxxabi.h>
+
 #include <cstdlib>
 #endif
 
@@ -12,24 +14,28 @@ namespace tools {
 
 namespace detail {
 
-template <typename T, typename T1, typename... Ts>
-constexpr size_t template_index_impl_inner() {
-    if constexpr (std::is_same_v<T, T1>) return 0;
-    else {
-        static_assert(sizeof...(Ts) > 0, "Type not found");
-        return 1 + template_index_impl_inner<T, Ts...>();
+    template <typename T, typename T1, typename... Ts>
+    constexpr size_t template_index_impl_inner() {
+        if constexpr (std::is_same_v<T, T1>)
+            return 0;
+        else {
+            static_assert(sizeof...(Ts) > 0, "Type not found");
+            return 1 + template_index_impl_inner<T, Ts...>();
+        }
     }
-}
 
-template <typename T, typename C> struct template_index_impl {};
+    template <typename T, typename C>
+    struct template_index_impl {};
 
-template <typename T, template<typename...> typename C, typename... Ts>
-struct template_index_impl<T, C<Ts...>> : std::integral_constant<size_t, template_index_impl_inner<T, Ts...>()> {};
+    template <typename T, template <typename...> typename C, typename... Ts>
+    struct template_index_impl<T, C<Ts...>>
+            : std::integral_constant<size_t, template_index_impl_inner<T, Ts...>()> {};
 
-} // namespace detail
+}  // namespace detail
 
 /// Type wrapper that contains an arbitrary list of types.
-template <typename...> struct type_list {};
+template <typename...>
+struct type_list {};
 
 /// Accesses the index of the first T within a template type's type list.  E.g.
 ///
@@ -70,6 +76,8 @@ inline std::string type_name(const std::type_info& ti) {
 
 /// Same as above, but uses a templated type instead of a type_info argument.
 template <typename T>
-inline std::string type_name() { return type_name(typeid(T)); }
+inline std::string type_name() {
+    return type_name(typeid(T));
+}
 
-} // namespace tools
+}  // namespace tools

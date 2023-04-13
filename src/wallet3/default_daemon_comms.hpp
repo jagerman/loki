@@ -1,78 +1,62 @@
 #pragma once
 
-#include "daemon_comms.hpp"
-#include "cryptonote_config.h"
-#include "config/config.hpp"
-
 #include <crypto/crypto.h>
-
 #include <oxenmq/oxenmq.h>
 
 #include <list>
 #include <memory>
 
-namespace wallet
-{
-  struct Wallet;
-  struct Block;
-  struct BlockTX;
+#include "config/config.hpp"
+#include "cryptonote_config.h"
+#include "daemon_comms.hpp"
 
-  class DefaultDaemonComms : public DaemonComms, public std::enable_shared_from_this<DefaultDaemonComms>
-  {
-   private:
-    static constexpr int64_t DEFAULT_MAX_RESPONSE_SIZE = 1 * 1024 * 1024; // 1 MiB
+namespace wallet {
+struct Wallet;
+struct Block;
+struct BlockTX;
+
+class DefaultDaemonComms : public DaemonComms,
+                           public std::enable_shared_from_this<DefaultDaemonComms> {
+  private:
+    static constexpr int64_t DEFAULT_MAX_RESPONSE_SIZE = 1 * 1024 * 1024;  // 1 MiB
     static constexpr int64_t DEFAULT_MAX_SYNC_BLOCKS = 200;
 
-    void
-    on_get_blocks_response(std::vector<std::string> response);
+    void on_get_blocks_response(std::vector<std::string> response);
 
-    void
-    request_top_block_info();
+    void request_top_block_info();
 
-   public:
-
+  public:
     DefaultDaemonComms(std::shared_ptr<oxenmq::OxenMQ> omq, DaemonCommsConfig cfg = {});
 
-    void
-    set_remote(std::string_view address);
+    void set_remote(std::string_view address);
 
-    void
-    propogate_config();
+    void propogate_config();
 
-    int64_t
-    get_height() { return top_block_height; }
+    int64_t get_height() { return top_block_height; }
 
-    void
-    register_wallet(wallet::Wallet& wallet, int64_t height, bool check_sync_height, bool new_wallet);
+    void register_wallet(
+            wallet::Wallet& wallet, int64_t height, bool check_sync_height, bool new_wallet);
 
-    void
-    deregister_wallet(Wallet& wallet, std::promise<void>& p);
+    void deregister_wallet(Wallet& wallet, std::promise<void>& p);
 
-    std::pair<int64_t, int64_t>
-    get_fee_parameters();
+    std::pair<int64_t, int64_t> get_fee_parameters();
 
-    std::future<std::vector<Decoy>>
-    fetch_decoys(const std::vector<int64_t>& indexes, bool with_txid);
+    std::future<std::vector<Decoy>> fetch_decoys(
+            const std::vector<int64_t>& indexes, bool with_txid);
 
-    std::future<std::string>
-    submit_transaction(const cryptonote::transaction& tx, bool blink);
+    std::future<std::string> submit_transaction(const cryptonote::transaction& tx, bool blink);
 
-    std::future<std::pair<std::string, crypto::hash>>
-    ons_names_to_owners(const std::string& name_hash, const uint16_t type);
+    std::future<std::pair<std::string, crypto::hash>> ons_names_to_owners(
+            const std::string& name_hash, const uint16_t type);
 
-   private:
+  private:
+    void for_each_wallet(std::function<void(std::shared_ptr<Wallet>)> func);
 
-    void
-    for_each_wallet(std::function<void(std::shared_ptr<Wallet>)> func);
+    void get_blocks();
 
-    void
-    get_blocks();
+    void got_blocks(int64_t start_height, int64_t end_height);
 
-    void
-    got_blocks(int64_t start_height, int64_t end_height);
-
-    void
-    start_syncing();
+    void start_syncing();
 
     std::unordered_map<std::shared_ptr<Wallet>, int64_t> wallets;
 
@@ -94,6 +78,6 @@ namespace wallet
 
     int64_t fee_per_byte = cryptonote::FEE_PER_BYTE_V13;
     int64_t fee_per_output = cryptonote::FEE_PER_OUTPUT_V18;
-  };
+};
 
 }  // namespace wallet

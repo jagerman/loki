@@ -2,16 +2,18 @@
 extern "C" {
 #include <sodium.h>
 }
-#include <iostream>
-#include <fstream>
-#include <oxenc/hex.h>
 #include <oxenc/base32z.h>
-#include <string_view>
-#include <string>
-#include <list>
+#include <oxenc/hex.h>
+
 #include <array>
 #include <cstring>
+#include <fstream>
+#include <iostream>
+#include <list>
 #include <optional>
+#include <string>
+#include <string_view>
+
 #include "common/fs.h"
 
 std::string_view arg0;
@@ -91,7 +93,8 @@ std::array<unsigned char, crypto_core_ed25519_BYTES> pubkey_from_privkey(ustring
     return pubkey;
 }
 template <size_t N, std::enable_if_t<(N >= 32), int> = 0>
-std::array<unsigned char, crypto_core_ed25519_BYTES> pubkey_from_privkey(const std::array<unsigned char, N>& privkey) {
+std::array<unsigned char, crypto_core_ed25519_BYTES> pubkey_from_privkey(
+        const std::array<unsigned char, N>& privkey) {
     return pubkey_from_privkey(ustring_view{privkey.data(), 32});
 }
 
@@ -117,7 +120,11 @@ int generate(bool ed25519, std::list<std::string_view> args) {
         overwrite = true;
 
     if (!overwrite && fs::exists(fs::u8path(filename)))
-        return error(2, filename + " to generate already exists, pass `--overwrite' if you want to overwrite it");
+        return error(
+                2,
+                filename +
+                        " to generate already exists, pass `--overwrite' if you want to overwrite "
+                        "it");
 
     std::array<unsigned char, crypto_sign_PUBLICKEYBYTES> pubkey;
     std::array<unsigned char, crypto_sign_SECRETKEYBYTES> seckey;
@@ -147,18 +154,20 @@ int generate(bool ed25519, std::list<std::string_view> args) {
         out.write(reinterpret_cast<const char*>(privkey.data()), privkey.size());
 
     if (!out.good())
-        return error(2, "Failed to write to output file '" + filename + "': " + std::strerror(errno));
+        return error(
+                2, "Failed to write to output file '" + filename + "': " + std::strerror(errno));
 
-    std::cout << "Generated SN " << (ed25519 ? "Ed25519 secret key" : "legacy private key") << " in " << filename << "\n";
+    std::cout << "Generated SN " << (ed25519 ? "Ed25519 secret key" : "legacy private key")
+              << " in " << filename << "\n";
 
     if (ed25519) {
         std::array<unsigned char, crypto_scalarmult_curve25519_BYTES> x_pubkey;
         if (0 != crypto_sign_ed25519_pk_to_curve25519(x_pubkey.data(), pubkey.data()))
             return error(14, "Internal error: unable to convert Ed25519 pubkey to X25519 pubkey");
-        std::cout <<
-              "Public key:      " << oxenc::to_hex(pubkey.begin(), pubkey.end()) <<
-            "\nX25519 pubkey:   " << oxenc::to_hex(x_pubkey.begin(), x_pubkey.end()) <<
-            "\nLokinet address: " << oxenc::to_base32z(pubkey.begin(), pubkey.end()) << ".snode\n";
+        std::cout << "Public key:      " << oxenc::to_hex(pubkey.begin(), pubkey.end())
+                  << "\nX25519 pubkey:   " << oxenc::to_hex(x_pubkey.begin(), x_pubkey.end())
+                  << "\nLokinet address: " << oxenc::to_base32z(pubkey.begin(), pubkey.end())
+                  << ".snode\n";
     } else {
         std::cout << "Public key: " << oxenc::to_hex(pubkey.begin(), pubkey.end()) << "\n";
     }
@@ -204,10 +213,15 @@ int show(std::list<std::string_view> args) {
             ed25519 = true;
     }
     if (!legacy && !ed25519)
-        return error(2, "Could not autodetect key type from " + std::to_string(size) + "-byte file; check the file or pass the --ed25519 or --legacy argument");
+        return error(
+                2,
+                "Could not autodetect key type from " + std::to_string(size) +
+                        "-byte file; check the file or pass the --ed25519 or --legacy argument");
 
     if (size < 32)
-        return error(2, "File size (" + std::to_string(size) + " bytes) is too small to be a secret key");
+        return error(
+                2,
+                "File size (" + std::to_string(size) + " bytes) is too small to be a secret key");
 
     std::array<unsigned char, crypto_core_ed25519_BYTES> pubkey;
     std::array<unsigned char, crypto_scalarmult_curve25519_BYTES> x_pubkey;
@@ -219,9 +233,10 @@ int show(std::list<std::string_view> args) {
     if (legacy) {
         pubkey = pubkey_from_privkey(seckey);
 
-        std::cout << filename.u8string() << " (legacy SN keypair)" << "\n==========" <<
-            "\nPrivate key: " << oxenc::to_hex(seckey.begin(), seckey.begin() + 32) <<
-            "\nPublic key:  " << oxenc::to_hex(pubkey.begin(), pubkey.end()) << "\n\n";
+        std::cout << filename.u8string() << " (legacy SN keypair)"
+                  << "\n=========="
+                  << "\nPrivate key: " << oxenc::to_hex(seckey.begin(), seckey.begin() + 32)
+                  << "\nPublic key:  " << oxenc::to_hex(pubkey.begin(), pubkey.end()) << "\n\n";
         return 0;
     }
 
@@ -233,17 +248,27 @@ int show(std::list<std::string_view> args) {
 
     ustring_view privkey{privkey_signhash.data(), 32};
     pubkey = pubkey_from_privkey(privkey);
-    if (size >= 64 && ustring_view{pubkey.data(), pubkey.size()} != ustring_view{seckey.data() + 32, 32})
-        return error(13, "Error: derived pubkey (" + oxenc::to_hex(pubkey.begin(), pubkey.end()) + ")"
-                " != embedded pubkey (" + oxenc::to_hex(seckey.begin() + 32, seckey.end()) + ")");
+    if (size >= 64 &&
+        ustring_view{pubkey.data(), pubkey.size()} != ustring_view{seckey.data() + 32, 32})
+        return error(
+                13,
+                "Error: derived pubkey (" + oxenc::to_hex(pubkey.begin(), pubkey.end()) +
+                        ")"
+                        " != embedded pubkey (" +
+                        oxenc::to_hex(seckey.begin() + 32, seckey.end()) + ")");
     if (0 != crypto_sign_ed25519_pk_to_curve25519(x_pubkey.data(), pubkey.data()))
-        return error(14, "Unable to convert Ed25519 pubkey to X25519 pubkey; is this a really valid secret key?");
+        return error(
+                14,
+                "Unable to convert Ed25519 pubkey to X25519 pubkey; is this a really valid secret "
+                "key?");
 
-    std::cout << filename << " (Ed25519 SN keypair)" << "\n==========" <<
-        "\nSecret key:      " << oxenc::to_hex(seckey.begin(), seckey.begin() + 32) <<
-        "\nPublic key:      " << oxenc::to_hex(pubkey.begin(), pubkey.end()) <<
-        "\nX25519 pubkey:   " << oxenc::to_hex(x_pubkey.begin(), x_pubkey.end()) <<
-        "\nLokinet address: " << oxenc::to_base32z(pubkey.begin(), pubkey.end()) << ".snode\n\n";
+    std::cout << filename << " (Ed25519 SN keypair)"
+              << "\n=========="
+              << "\nSecret key:      " << oxenc::to_hex(seckey.begin(), seckey.begin() + 32)
+              << "\nPublic key:      " << oxenc::to_hex(pubkey.begin(), pubkey.end())
+              << "\nX25519 pubkey:   " << oxenc::to_hex(x_pubkey.begin(), x_pubkey.end())
+              << "\nLokinet address: " << oxenc::to_base32z(pubkey.begin(), pubkey.end())
+              << ".snode\n\n";
     return 0;
 }
 
@@ -298,23 +323,33 @@ int restore(bool ed25519, std::list<std::string_view> args) {
     if (ed25519) {
         std::array<unsigned char, crypto_scalarmult_curve25519_BYTES> x_pubkey;
         if (0 != crypto_sign_ed25519_pk_to_curve25519(x_pubkey.data(), pubkey.data()))
-            return error(14, "Unable to convert Ed25519 pubkey to X25519 pubkey; is this a really valid secret key?");
-        std::cout << "X25519 pubkey:   " << oxenc::to_hex(x_pubkey.begin(), x_pubkey.end()) <<
-            "\nLokinet address: " << oxenc::to_base32z(pubkey.begin(), pubkey.end()) << ".snode";
+            return error(
+                    14,
+                    "Unable to convert Ed25519 pubkey to X25519 pubkey; is this a really valid "
+                    "secret key?");
+        std::cout << "X25519 pubkey:   " << oxenc::to_hex(x_pubkey.begin(), x_pubkey.end())
+                  << "\nLokinet address: " << oxenc::to_base32z(pubkey.begin(), pubkey.end())
+                  << ".snode";
     }
 
     if (pubkey_expected) {
         if (*pubkey_expected != pubkey)
-            return error(2, "Derived pubkey (" + oxenc::to_hex(pubkey.begin(), pubkey.end()) + ") doesn't match "
-                    "provided pubkey (" + oxenc::to_hex(pubkey_expected->begin(), pubkey_expected->end()) + ")");
+            return error(
+                    2,
+                    "Derived pubkey (" + oxenc::to_hex(pubkey.begin(), pubkey.end()) +
+                            ") doesn't match "
+                            "provided pubkey (" +
+                            oxenc::to_hex(pubkey_expected->begin(), pubkey_expected->end()) + ")");
     } else {
 
         if (ed25519 && filename.size() >= 4 && filename.substr(filename.size() - 4) == "/key") {
             std::cout << "\n\n\x1b[31;1m"
-                "Warning: You are trying to restore a file named 'key' using the 'restore'\n"
-                "command, which is intended for the key_ed25519 key file; for old service nodes\n"
-                "with both key files you want to use 'restore-legacy' to restore the old\n"
-                "(pre-Loki 8.x) pubkey.\x1b[0m\n";
+                         "Warning: You are trying to restore a file named 'key' using the "
+                         "'restore'\n"
+                         "command, which is intended for the key_ed25519 key file; for old service "
+                         "nodes\n"
+                         "with both key files you want to use 'restore-legacy' to restore the old\n"
+                         "(pre-Loki 8.x) pubkey.\x1b[0m\n";
         }
 
         std::cout << "\nIs this correct?  Press Enter to continue, Ctrl-C to cancel.\n";
@@ -328,7 +363,11 @@ int restore(bool ed25519, std::list<std::string_view> args) {
 
     auto filepath = fs::u8path(filename);
     if (!overwrite && fs::exists(filepath))
-        return error(2, filename + " to generate already exists, pass `--overwrite' if you want to overwrite it");
+        return error(
+                2,
+                filename +
+                        " to generate already exists, pass `--overwrite' if you want to overwrite "
+                        "it");
 
     fs::ofstream out{filepath, std::ios::trunc | std::ios::binary};
     if (!out.good())
@@ -339,12 +378,12 @@ int restore(bool ed25519, std::list<std::string_view> args) {
         out.write(reinterpret_cast<const char*>(seed.data()), seed.size());
 
     if (!out.good())
-        return error(2, "Failed to write to output file '" + filename + "': " + std::strerror(errno));
+        return error(
+                2, "Failed to write to output file '" + filename + "': " + std::strerror(errno));
 
     std::cout << "Saved secret key to " << filename << "\n";
     return 0;
 }
-
 
 int main(int argc, char* argv[]) {
     arg0 = argv[0];

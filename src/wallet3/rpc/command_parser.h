@@ -1,8 +1,10 @@
 #pragma once
 
-#include "commands.h"
-#include <nlohmann/json.hpp>
 #include <oxenc/bt_serialize.h>
+
+#include <nlohmann/json.hpp>
+
+#include "commands.h"
 
 namespace wallet::rpc {
 
@@ -111,4 +113,4 @@ void parse_request(ONS_ADD_KNOWN_NAMES& req, rpc_input in);
 void parse_request(ONS_ENCRYPT_VALUE& req, rpc_input in);
 void parse_request(ONS_DECRYPT_VALUE& req, rpc_input in);
 
-} // namespace wallet::rpc
+}  // namespace wallet::rpc

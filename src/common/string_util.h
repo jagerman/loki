@@ -1,13 +1,15 @@
 #pragma once
-#include <string_view>
-#include <vector>
-#include <cstring>
-#include <iterator>
+#include <fmt/format.h>
+
+#include <cassert>
 #include <charconv>
 #include <chrono>
-#include <cassert>
-#include <fmt/format.h>
-#include "epee/span.h" // epee
+#include <cstring>
+#include <iterator>
+#include <string_view>
+#include <vector>
+
+#include "epee/span.h"  // epee
 
 namespace tools {
 
@@ -15,25 +17,27 @@ using namespace std::literals;
 
 /// Returns true if the first string is equal to the second string, compared case-insensitively.
 inline bool string_iequal(std::string_view s1, std::string_view s2) {
-  return std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(), [](char a, char b) {
-      return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b)); });
+    return std::equal(s1.begin(), s1.end(), s2.begin(), s2.end(), [](char a, char b) {
+        return std::tolower(static_cast<unsigned char>(a)) ==
+               std::tolower(static_cast<unsigned char>(b));
+    });
 }
 
 /// Returns true if the first string matches any of the given strings case-insensitively.  Arguments
 /// must be string literals, std::string, or std::string_views
 template <typename S1, typename... S>
 bool string_iequal_any(const S1& s1, const S&... s) {
-  return (... || string_iequal(s1, s));
+    return (... || string_iequal(s1, s));
 }
 
 /// Returns true if the first argument begins with the second argument
 inline bool starts_with(std::string_view str, std::string_view prefix) {
-  return str.substr(0, prefix.size()) == prefix;
+    return str.substr(0, prefix.size()) == prefix;
 }
 
 /// Returns true if the first argument ends with the second argument
 inline bool ends_with(std::string_view str, std::string_view suffix) {
-  return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
+    return str.size() >= suffix.size() && str.substr(str.size() - suffix.size()) == suffix;
 }
 
 /// Splits a string on some delimiter string and returns a vector of string_view's pointing into the
@@ -49,7 +53,8 @@ inline bool ends_with(std::string_view str, std::string_view suffix) {
 ///     auto v = split("-a--b--", "-"); // v is {"", "a", "", "b", "", ""}
 ///     auto v = split("-a--b--", "-", true); // v is {"a", "", "b"}
 ///
-std::vector<std::string_view> split(std::string_view str, std::string_view delim, bool trim = false);
+std::vector<std::string_view> split(
+        std::string_view str, std::string_view delim, bool trim = false);
 
 /// Splits a string on any 1 or more of the given delimiter characters and returns a vector of
 /// string_view's pointing into the pieces of the original string.  If delims is empty this works
@@ -57,56 +62,58 @@ std::vector<std::string_view> split(std::string_view str, std::string_view delim
 /// pieces).
 ///
 ///     auto v = split_any("abcdedf", "dcx"); // v is {"ab", "e", "f"}
-std::vector<std::string_view> split_any(std::string_view str, std::string_view delims, bool trim = false);
+std::vector<std::string_view> split_any(
+        std::string_view str, std::string_view delims, bool trim = false);
 
 /// Joins [begin, end) with a delimiter and returns the resulting string.  Elements can be anything
 /// that can be formatted.  Semi-deprecated: this just uses fmt to join.
 template <typename It>
 std::string join(std::string_view delimiter, It begin, It end) {
-  return fmt::format("{}", fmt::join(begin, end, delimiter));
+    return fmt::format("{}", fmt::join(begin, end, delimiter));
 }
 
 /// Same as the above, but works on a container.  Just use fmt::join.
 template <typename Container>
 std::string join(std::string_view delimiter, const Container& c) {
-  return fmt::format("{}", fmt::join(c, delimiter));
+    return fmt::format("{}", fmt::join(c, delimiter));
 }
 
 /// Similar to join(), but first applies a transformation to each element.
 template <typename It, typename UnaryOperation>
 std::string join_transform(std::string_view delimiter, It begin, It end, UnaryOperation transform) {
-  std::string result;
-  auto append = std::back_inserter(result);
-  if (begin != end)
-    result = fmt::format("{}", transform(*begin++));
-  while (begin != end)
-    fmt::format_to(append, "{}{}", delimiter, transform(*begin++));
-  return result;
+    std::string result;
+    auto append = std::back_inserter(result);
+    if (begin != end)
+        result = fmt::format("{}", transform(*begin++));
+    while (begin != end)
+        fmt::format_to(append, "{}{}", delimiter, transform(*begin++));
+    return result;
 }
 
 /// Wrapper around the above that takes a container and passes c.begin(), c.end().
 template <typename Container, typename UnaryOperation>
-std::string join_transform(std::string_view delimiter, const Container& c, UnaryOperation&& transform) {
-  return join_transform(delimiter, c.begin(), c.end(), std::forward<UnaryOperation>(transform));
+std::string join_transform(
+        std::string_view delimiter, const Container& c, UnaryOperation&& transform) {
+    return join_transform(delimiter, c.begin(), c.end(), std::forward<UnaryOperation>(transform));
 }
 
 /// Concatenates a bunch of random values together with delim as a separator via fmt::format.
 /// Returns the result as a string.
 template <typename T, typename... Ts>
 std::string join_stuff(std::string_view delim, T&& first, Ts&&... stuff) {
-  std::string result = fmt::format(std::forward<T>(first));
-  auto append = std::back_inserter(result);
-  (fmt::format_to(append, "{}{}", delim, std::forward<Ts>(stuff)), ...);
-  return result;
+    std::string result = fmt::format(std::forward<T>(first));
+    auto append = std::back_inserter(result);
+    (fmt::format_to(append, "{}{}", delim, std::forward<Ts>(stuff)), ...);
+    return result;
 }
 
 /// Concatenates arguments via fmt::format operator, returns as a string.
 template <typename... T>
 std::string concat(T&&... stuff) {
-  std::string result;
-  auto append = std::back_inserter(result);
-  (fmt::format_to(append, "{}", std::forward<T>(stuff)), ...);
-  return result;
+    std::string result;
+    auto append = std::back_inserter(result);
+    (fmt::format_to(append, "{}", std::forward<T>(stuff)), ...);
+    return result;
 }
 
 /// Simple version of whitespace trimming: mutates the given string view to remove leading
@@ -118,13 +125,13 @@ void trim(std::string_view& s);
 /// string was consumed.
 template <typename T>
 bool parse_int(const std::string_view str, T& value, int base = 10) {
-  T tmp;
-  auto* strend = str.data() + str.size();
-  auto [p, ec] = std::from_chars(str.data(), strend, tmp, base);
-  if (ec != std::errc() || p != strend)
-    return false;
-  value = tmp;
-  return true;
+    T tmp;
+    auto* strend = str.data() + str.size();
+    auto [p, ec] = std::from_chars(str.data(), strend, tmp, base);
+    if (ec != std::errc() || p != strend)
+        return false;
+    value = tmp;
+    return true;
 }
 
 /// Returns a string_view that views the data of the given object; this is not something you want to
@@ -133,24 +140,26 @@ bool parse_int(const std::string_view str, T& value, int base = 10) {
 /// that aren't C++-trivial but are still designed to be accessed this way.
 template <typename T>
 std::string_view view_guts(const T& val) {
-    static_assert((std::is_standard_layout_v<T> && std::has_unique_object_representations_v<T>)
-        || epee::is_byte_spannable<T>,
-        "cannot safely access non-trivial class as string_view");
-    return {reinterpret_cast<const char *>(&val), sizeof(val)};
+    static_assert(
+            (std::is_standard_layout_v<T> && std::has_unique_object_representations_v<T>) ||
+                    epee::is_byte_spannable<T>,
+            "cannot safely access non-trivial class as string_view");
+    return {reinterpret_cast<const char*>(&val), sizeof(val)};
 }
 
 /// Convenience wrapper around the above that also copies the result into a new string
 template <typename T>
 std::string copy_guts(const T& val) {
-  return std::string{view_guts(val)};
+    return std::string{view_guts(val)};
 }
 
 /// Function to reverse the above view_guts
 template <typename T>
 T make_from_guts(std::string_view s) {
-    static_assert((std::is_standard_layout_v<T> && std::has_unique_object_representations_v<T>)
-        || epee::is_byte_spannable<T>,
-        "cannot safely reconstitute a non-trivial class from data");
+    static_assert(
+            (std::is_standard_layout_v<T> && std::has_unique_object_representations_v<T>) ||
+                    epee::is_byte_spannable<T>,
+            "cannot safely reconstitute a non-trivial class from data");
     if (s.size() != sizeof(T))
         throw std::runtime_error("Cannot reconstitute type: wrong type content size");
     T x;
@@ -166,13 +175,13 @@ std::string friendly_duration(std::chrono::nanoseconds dur);
 /// Converts a duration into a shorter, single-unit fractional display such as `42.3min`
 std::string short_duration(std::chrono::duration<double> dur);
 
-/// Given an array of string arguments, look for strings of the format <prefix><value> and return <value>
-/// Returns empty string view if not found.
+/// Given an array of string arguments, look for strings of the format <prefix><value> and return
+/// <value> Returns empty string view if not found.
 template <typename It>
-std::string_view find_prefixed_value(It begin, It end, std::string_view prefix)
-{
-  auto it = std::find_if(begin, end, [&](const auto& s) { return starts_with(s, prefix); });
-  if (it == end) return {};
-  return std::string_view{*it}.substr(prefix.size());
+std::string_view find_prefixed_value(It begin, It end, std::string_view prefix) {
+    auto it = std::find_if(begin, end, [&](const auto& s) { return starts_with(s, prefix); });
+    if (it == end)
+        return {};
+    return std::string_view{*it}.substr(prefix.size());
 }
-}
+}  // namespace tools

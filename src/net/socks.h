@@ -28,42 +28,34 @@
 
 #pragma once
 
-#include <cstdint>
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/type_traits/integral_constant.hpp>
-#include <string_view>
+#include <cstdint>
 #include <memory>
+#include <string_view>
 #include <utility>
 
-#include "net/fwd.h"
 #include "epee/span.h"
+#include "net/fwd.h"
 
-namespace epee
-{
-namespace net_utils
-{
+namespace epee { namespace net_utils {
     class ipv4_network_address;
-}
-}
+}}  // namespace epee::net_utils
 
-namespace net
-{
-namespace socks
-{
+namespace net { namespace socks {
     //! Supported socks variants.
-    enum class version : std::uint8_t
-    {
+    enum class version : std::uint8_t {
         v4 = 0,
         v4a,
         v4a_tor  //!< Extensions defined in Tor codebase
     };
 
-    //! Possible errors with socks communication. Defined in https://www.openssh.com/txt/socks4.protocol
-    enum class error : int
-    {
+    //! Possible errors with socks communication. Defined in
+    //! https://www.openssh.com/txt/socks4.protocol
+    enum class error : int {
         // 0 is reserved for success value
         // 1-256 -> reserved for error values from socks server (+1 from wire value).
         rejected = 92,
@@ -84,14 +76,12 @@ namespace socks
     const boost::system::error_category& error_category() noexcept;
 
     //! \return net::socks::error as a boost::system::error_code.
-    inline boost::system::error_code make_error_code(error value) noexcept
-    {
+    inline boost::system::error_code make_error_code(error value) noexcept {
         return boost::system::error_code{int(value), socks::error_category()};
     }
 
     //! Client support for socks connect and resolve commands.
-    class client
-    {
+    class client {
         boost::asio::ip::tcp::socket proxy_;
         boost::asio::io_service::strand strand_;
         std::uint16_t buffer_size_;
@@ -111,7 +101,7 @@ namespace socks
          */
         virtual void done(boost::system::error_code error, std::shared_ptr<client> self) = 0;
 
-    public:
+      public:
         using stream_type = boost::asio::ip::tcp;
 
         // defined in cpp
@@ -131,19 +121,13 @@ namespace socks
         client& operator=(const client&) = delete;
 
         //! \return Ownership of socks client socket object.
-        stream_type::socket take_socket()
-        {
-            return stream_type::socket{std::move(proxy_)};
-        }
+        stream_type::socket take_socket() { return stream_type::socket{std::move(proxy_)}; }
 
         //! \return Socks version.
         socks::version socks_version() const noexcept { return ver_; }
 
         //! \return Contents of internal buffer.
-        epee::span<const std::uint8_t> buffer() const noexcept
-        {
-            return {buffer_, buffer_size_};
-        }
+        epee::span<const std::uint8_t> buffer() const noexcept { return {buffer_, buffer_size_}; }
 
         //! \post `buffer.empty()`.
         void clear_command() noexcept { buffer_size_ = 0; }
@@ -177,7 +161,8 @@ namespace socks
             \param proxy_address of the socks server.
             \return False if `self->buffer().empty()` (no command set).
          */
-        static bool connect_and_send(std::shared_ptr<client> self, const stream_type::endpoint& proxy_address);
+        static bool connect_and_send(
+                std::shared_ptr<client> self, const stream_type::endpoint& proxy_address);
 
         /*!
             Assume existing connection to proxy server; asynchronously issue
@@ -196,47 +181,36 @@ namespace socks
 
         /*! Callback for closing socket. Thread-safe with `*send` functions;
             never blocks (uses strands). */
-        struct async_close
-        {
+        struct async_close {
             std::shared_ptr<client> self_;
             void operator()(boost::system::error_code error = boost::system::error_code{});
         };
     };
 
-    template<typename Handler>
-    class connect_client : public client
-    {
+    template <typename Handler>
+    class connect_client : public client {
         Handler handler_;
 
-        virtual void done(boost::system::error_code error, std::shared_ptr<client>) override
-        {
+        virtual void done(boost::system::error_code error, std::shared_ptr<client>) override {
             handler_(error, take_socket());
         }
 
-    public:
-        explicit connect_client(stream_type::socket&& proxy, socks::version ver, Handler&& handler)
-          : client(std::move(proxy), ver), handler_(std::move(handler))
-        {}
+      public:
+        explicit connect_client(
+                stream_type::socket&& proxy, socks::version ver, Handler&& handler) :
+                client(std::move(proxy), ver), handler_(std::move(handler)) {}
 
         virtual ~connect_client() override {}
     };
 
-    template<typename Handler>
-    inline std::shared_ptr<client>
-    make_connect_client(client::stream_type::socket&& proxy, socks::version ver, Handler handler)
-    {
+    template <typename Handler>
+    inline std::shared_ptr<client> make_connect_client(
+            client::stream_type::socket&& proxy, socks::version ver, Handler handler) {
         return std::make_shared<connect_client<Handler>>(std::move(proxy), ver, std::move(handler));
     }
-} // socks
-} // net
+}}  // namespace net::socks
 
-namespace boost
-{
-namespace system
-{
-    template<>
-    struct is_error_code_enum<net::socks::error>
-      : true_type
-    {};
-} // system
-} // boost
+namespace boost { namespace system {
+    template <>
+    struct is_error_code_enum<net::socks::error> : true_type {};
+}}  // namespace boost::system

@@ -1,21 +1,21 @@
 // Copyright (c) 2014-2019, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -25,62 +25,58 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 #pragma once
 
 #include <boost/uuid/uuid.hpp>
-#include "epee/serialization/keyvalue_serialization.h"
-#include "epee/net/net_utils_base.h"
-#include "cryptonote_protocol/cryptonote_protocol_defs.h"
-#include "net/tor_address.h" // needed for serialization
-#include "net/i2p_address.h" // needed for serialization
-#include "epee/string_tools.h"
-#include "cryptonote_config.h"
+
 #include "crypto/crypto.h"
+#include "cryptonote_config.h"
+#include "cryptonote_protocol/cryptonote_protocol_defs.h"
+#include "epee/net/net_utils_base.h"
+#include "epee/serialization/keyvalue_serialization.h"
+#include "epee/string_tools.h"
+#include "net/i2p_address.h"  // needed for serialization
+#include "net/tor_address.h"  // needed for serialization
 
-namespace nodetool
-{
-  using boost::uuids::uuid;
-  using peerid_type = uint64_t;
+namespace nodetool {
+using boost::uuids::uuid;
+using peerid_type = uint64_t;
 
-#pragma pack (push, 1)
+#pragma pack(push, 1)
 
-  struct peerlist_entry
-  {
+struct peerlist_entry {
     epee::net_utils::network_address adr;
     peerid_type id;
     int64_t last_seen;
     uint32_t pruning_seed;
 
     KV_MAP_SERIALIZABLE
-  };
+};
 
-  struct anchor_peerlist_entry
-  {
+struct anchor_peerlist_entry {
     epee::net_utils::network_address adr;
     peerid_type id;
     int64_t first_seen;
 
     KV_MAP_SERIALIZABLE
-  };
+};
 
-  struct connection_entry
-  {
+struct connection_entry {
     epee::net_utils::network_address adr;
     peerid_type id;
     bool is_income;
 
     KV_MAP_SERIALIZABLE
-  };
+};
 
 #pragma pack(pop)
 
-  std::string print_peerlist_to_string(const std::vector<peerlist_entry>& pl);
+std::string print_peerlist_to_string(const std::vector<peerlist_entry>& pl);
 
-  struct network_config
-  {
+struct network_config {
     uint32_t max_out_connection_count;
     uint32_t max_in_connection_count;
     std::chrono::milliseconds connection_timeout;
@@ -91,76 +87,66 @@ namespace nodetool
     uint32_t send_peerlist_sz;
 
     KV_MAP_SERIALIZABLE
-  };
+};
 
-  struct basic_node_data
-  {
+struct basic_node_data {
     uuid network_id;
     uint32_t my_port;
     peerid_type peer_id;
 
     KV_MAP_SERIALIZABLE
-  };
+};
 
+inline constexpr int P2P_COMMANDS_POOL_BASE = 1000;
 
-  inline constexpr int P2P_COMMANDS_POOL_BASE = 1000;
-
-  /************************************************************************/
-  /*                                                                      */
-  /************************************************************************/
-  struct COMMAND_HANDSHAKE
-  {
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
+struct COMMAND_HANDSHAKE {
     const static int ID = P2P_COMMANDS_POOL_BASE + 1;
 
-    struct request
-    {
-      basic_node_data node_data;
-      cryptonote::CORE_SYNC_DATA payload_data;
+    struct request {
+        basic_node_data node_data;
+        cryptonote::CORE_SYNC_DATA payload_data;
 
-      KV_MAP_SERIALIZABLE
+        KV_MAP_SERIALIZABLE
     };
 
-    struct response
-    {
-      basic_node_data node_data;
-      cryptonote::CORE_SYNC_DATA payload_data;
-      std::vector<peerlist_entry> local_peerlist_new;
+    struct response {
+        basic_node_data node_data;
+        cryptonote::CORE_SYNC_DATA payload_data;
+        std::vector<peerlist_entry> local_peerlist_new;
 
-      KV_MAP_SERIALIZABLE
+        KV_MAP_SERIALIZABLE
     };
-  };
+};
 
-
-  /************************************************************************/
-  /*                                                                      */
-  /************************************************************************/
-  struct COMMAND_TIMED_SYNC
-  {
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
+struct COMMAND_TIMED_SYNC {
     const static int ID = P2P_COMMANDS_POOL_BASE + 2;
 
-    struct request
-    {
-      cryptonote::CORE_SYNC_DATA payload_data;
+    struct request {
+        cryptonote::CORE_SYNC_DATA payload_data;
 
-      KV_MAP_SERIALIZABLE
+        KV_MAP_SERIALIZABLE
     };
 
-    struct response
-    {
-      uint64_t local_time;
-      cryptonote::CORE_SYNC_DATA payload_data;
-      std::vector<peerlist_entry> local_peerlist_new;
+    struct response {
+        uint64_t local_time;
+        cryptonote::CORE_SYNC_DATA payload_data;
+        std::vector<peerlist_entry> local_peerlist_new;
 
-      KV_MAP_SERIALIZABLE
+        KV_MAP_SERIALIZABLE
     };
-  };
+};
 
-  /************************************************************************/
-  /*                                                                      */
-  /************************************************************************/
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
 
-  struct COMMAND_PING
-  {
+struct COMMAND_PING {
     /*
       Used to make "callback" connection, to be sure that opponent node
       have accessible connection point. Only other nodes can add peer to peerlist,
@@ -170,40 +156,34 @@ namespace nodetool
 
     static constexpr auto OK_RESPONSE = "OK"sv;
 
-    struct request
-    {
-      /*actually we don't need to send any real data*/
-      KV_MAP_SERIALIZABLE
+    struct request {
+        /*actually we don't need to send any real data*/
+        KV_MAP_SERIALIZABLE
     };
 
-    struct response
-    {
-      std::string status;
-      peerid_type peer_id;
+    struct response {
+        std::string status;
+        peerid_type peer_id;
 
-      KV_MAP_SERIALIZABLE
+        KV_MAP_SERIALIZABLE
     };
-  };
+};
 
-
-  /************************************************************************/
-  /*                                                                      */
-  /************************************************************************/
-  // TODO: remove after HF19
-  struct COMMAND_REQUEST_SUPPORT_FLAGS
-  {
+/************************************************************************/
+/*                                                                      */
+/************************************************************************/
+// TODO: remove after HF19
+struct COMMAND_REQUEST_SUPPORT_FLAGS {
     const static int ID = P2P_COMMANDS_POOL_BASE + 7;
 
-    struct request
-    {
-      KV_MAP_SERIALIZABLE
+    struct request {
+        KV_MAP_SERIALIZABLE
     };
 
-    struct response
-    {
-      uint32_t support_flags;
+    struct response {
+        uint32_t support_flags;
 
-      KV_MAP_SERIALIZABLE
+        KV_MAP_SERIALIZABLE
     };
-  };
-}
+};
+}  // namespace nodetool

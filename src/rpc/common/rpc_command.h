@@ -1,9 +1,10 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
 #include <oxenc/bt_serialize.h>
-#include "json_bt.h"
 
+#include <nlohmann/json.hpp>
+
+#include "json_bt.h"
 
 namespace cryptonote::rpc {
 
@@ -15,7 +16,9 @@ using rpc_input = std::variant<std::monostate, nlohmann::json, oxenc::bt_dict_co
 
 /// Exception when trying to invoke an RPC command that indicate a parameter parse failure (will
 /// give an invalid params error for JSON-RPC, for example).
-struct parse_error : std::runtime_error { using std::runtime_error::runtime_error; };
+struct parse_error : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 
 /// Exception used to signal various types of errors with a request back to the caller.  This
 /// exception indicates that the caller did something wrong: bad data, invalid value, etc., but
@@ -30,16 +33,18 @@ struct parse_error : std::runtime_error { using std::runtime_error::runtime_erro
 /// For OxenMQ the code becomes the first part of the response and the message becomes the
 /// second part of the response.
 struct rpc_error : std::runtime_error {
-  /// \param code - a signed, 16-bit numeric code.  0 must not be used (as it is used for a
-  /// success code in OxenMQ), and values in the -32xxx range are reserved by JSON-RPC.
-  ///
-  /// \param message - a message to send along with the error code (see general description above).
-  rpc_error(int16_t code, std::string message)
-    : std::runtime_error{"RPC error " + std::to_string(code) + ": " + message},
-      code{code}, message{std::move(message)} {}
+    /// \param code - a signed, 16-bit numeric code.  0 must not be used (as it is used for a
+    /// success code in OxenMQ), and values in the -32xxx range are reserved by JSON-RPC.
+    ///
+    /// \param message - a message to send along with the error code (see general description
+    /// above).
+    rpc_error(int16_t code, std::string message) :
+            std::runtime_error{"RPC error " + std::to_string(code) + ": " + message},
+            code{code},
+            message{std::move(message)} {}
 
-  int16_t code;
-  std::string message;
+    int16_t code;
+    std::string message;
 };
 
 enum struct rpc_source : uint8_t { internal, http, omq };
@@ -47,81 +52,83 @@ enum struct rpc_source : uint8_t { internal, http, omq };
 /// Contains the context of the invocation, which must be filled out by the glue code (e.g. HTTP
 /// RPC server) with requester-specific context details.
 struct rpc_context {
-  // Specifies that the requestor has admin permissions (e.g. is on an unrestricted RPC port, or
-  // is a local internal request).  This can be used to provide different results for an admin
-  // versus non-admin when invoking a public RPC command.  (Note that non-public RPC commands do
-  // not need to check this field for authentication: a non-public invoke() is not called in the
-  // first place if attempted by a public requestor).
-  bool admin = false;
+    // Specifies that the requestor has admin permissions (e.g. is on an unrestricted RPC port, or
+    // is a local internal request).  This can be used to provide different results for an admin
+    // versus non-admin when invoking a public RPC command.  (Note that non-public RPC commands do
+    // not need to check this field for authentication: a non-public invoke() is not called in the
+    // first place if attempted by a public requestor).
+    bool admin = false;
 
-  // The RPC engine source of the request, i.e. internal, HTTP, OMQ
-  rpc_source source = rpc_source::internal;
+    // The RPC engine source of the request, i.e. internal, HTTP, OMQ
+    rpc_source source = rpc_source::internal;
 
-  // A free-form identifier (meant for humans) identifiying the remote address of the request;
-  // this might be IP:PORT, or could contain a pubkey, or ...
-  std::string remote;
+    // A free-form identifier (meant for humans) identifiying the remote address of the request;
+    // this might be IP:PORT, or could contain a pubkey, or ...
+    std::string remote;
 };
 
 struct rpc_request {
-  // The request body:
-  // - for an HTTP, non-JSONRPC POST request the string or string_view will be populated with the
-  // unparsed request body.
-  // - for an HTTP JSONRPC request with a "params" value the nlohmann::json will be set to the
-  // parsed "params" value of the request.
-  // - for OMQ requests with a data part the string or string_view will be set to the provided value
-  // - for all other requests (i.e. JSONRPC with no params; HTTP GET requests; no-data OMQ
-  // requests) the variant will contain a std::monostate.
-  //
-  // If something goes wrong, throw.
-  std::variant<std::monostate, std::string_view, std::string, nlohmann::json> body;
+    // The request body:
+    // - for an HTTP, non-JSONRPC POST request the string or string_view will be populated with the
+    // unparsed request body.
+    // - for an HTTP JSONRPC request with a "params" value the nlohmann::json will be set to the
+    // parsed "params" value of the request.
+    // - for OMQ requests with a data part the string or string_view will be set to the provided
+    // value
+    // - for all other requests (i.e. JSONRPC with no params; HTTP GET requests; no-data OMQ
+    // requests) the variant will contain a std::monostate.
+    //
+    // If something goes wrong, throw.
+    std::variant<std::monostate, std::string_view, std::string, nlohmann::json> body;
 
-  // Returns a string_view of the body, if the body is a string or string_view.  Returns
-  // std::nullopt if the body is empty (std::monostate) or parsed jsonrpc params.
-  std::optional<std::string_view> body_view() const {
-    if (auto* sv = std::get_if<std::string_view>(&body)) return *sv;
-    if (auto* s = std::get_if<std::string>(&body)) return *s;
-    return std::nullopt;
-  }
+    // Returns a string_view of the body, if the body is a string or string_view.  Returns
+    // std::nullopt if the body is empty (std::monostate) or parsed jsonrpc params.
+    std::optional<std::string_view> body_view() const {
+        if (auto* sv = std::get_if<std::string_view>(&body))
+            return *sv;
+        if (auto* s = std::get_if<std::string>(&body))
+            return *s;
+        return std::nullopt;
+    }
 
-  // Values to pass through to the invoke() call
-  rpc_context context;
+    // Values to pass through to the invoke() call
+    rpc_context context;
 };
 
 // Note: to use, parse_request(RPC, rpc_input) must be defined for each typename RPC
 // this is used on.
 template <typename RPC, typename RPCServer, typename RPCCallback>
 auto make_invoke() {
-  return [](rpc_request&& request, RPCServer& server) -> typename RPCCallback::result_type {
-    RPC rpc{};
+    return [](rpc_request&& request, RPCServer& server) -> typename RPCCallback::result_type {
+        RPC rpc{};
 
-    try {
-      if (auto body = request.body_view()) {
-        if (body->front() == 'd') { // Looks like a bt dict
-          rpc.set_bt();
-          parse_request(rpc, oxenc::bt_dict_consumer{*body});
+        try {
+            if (auto body = request.body_view()) {
+                if (body->front() == 'd') {  // Looks like a bt dict
+                    rpc.set_bt();
+                    parse_request(rpc, oxenc::bt_dict_consumer{*body});
+                } else
+                    parse_request(rpc, json::parse(*body));
+            } else if (auto* j = std::get_if<json>(&request.body)) {
+                parse_request(rpc, std::move(*j));
+            } else {
+                assert(std::holds_alternative<std::monostate>(request.body));
+                parse_request(rpc, std::monostate{});
+            }
+        } catch (const std::exception& e) {
+            throw parse_error{"Failed to parse request parameters: "s + e.what()};
         }
+
+        server.invoke(rpc, std::move(request.context));
+
+        if (rpc.response.is_null())
+            rpc.response = json::object();
+
+        if (rpc.is_bt())
+            return json_to_bt(std::move(rpc.response));
         else
-          parse_request(rpc, json::parse(*body));
-      } else if (auto* j = std::get_if<json>(&request.body)) {
-        parse_request(rpc, std::move(*j));
-      } else {
-        assert(std::holds_alternative<std::monostate>(request.body));
-        parse_request(rpc, std::monostate{});
-      }
-    } catch (const std::exception& e) {
-      throw parse_error{"Failed to parse request parameters: "s + e.what()};
-    }
-
-    server.invoke(rpc, std::move(request.context));
-
-    if (rpc.response.is_null())
-      rpc.response = json::object();
-
-    if (rpc.is_bt())
-      return json_to_bt(std::move(rpc.response));
-    else
-      return std::move(rpc.response);
-  };
+            return std::move(rpc.response);
+    };
 }
 
-} // namespace cryptonote::rpc
+}  // namespace cryptonote::rpc

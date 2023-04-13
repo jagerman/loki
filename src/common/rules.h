@@ -30,9 +30,8 @@
 
 #include <cstdint>
 
-namespace cryptonote::rules
-{
+namespace cryptonote::rules {
 
 bool is_output_unlocked(uint64_t unlock_time, uint64_t height);
 
-} // namespace cryptonote::rules
+}  // namespace cryptonote::rules
