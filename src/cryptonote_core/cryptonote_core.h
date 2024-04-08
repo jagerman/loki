@@ -57,6 +57,10 @@
 PUSH_WARNINGS
 DISABLE_VS_WARNINGS(4355)
 
+namespace oxen::quic {
+    class Endpoint;
+}
+
 namespace cryptonote
 {
    struct test_options {
@@ -684,6 +688,9 @@ namespace cryptonote
      /// Returns a reference to the OxenMQ object.  Must not be called before init(), and should not
      /// be used for any omq communication until after start_oxenmq() has been called.
      oxenmq::OxenMQ& get_omq() { return *m_omq; }
+
+     /// Accesses the libquic endpoint, if enabled; nullptr if not.
+     std::shared_ptr<oxen::quic::Endpoint> get_quic();
 
      /**
       * @copydoc miner::on_synchronized

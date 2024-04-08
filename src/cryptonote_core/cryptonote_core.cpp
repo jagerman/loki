@@ -193,7 +193,7 @@ namespace cryptonote
   static const command_line::arg_descriptor<uint16_t, false, true, 2> arg_quorumnet_port = {
     "quorumnet-port"
   , "The port on which this service node listen for direct connections from other "
-    "service nodes for quorum messages.  The port must be publicly reachable "
+    "service nodes for quorum messages on both TCP and UDP.  The port must be publicly reachable "
     "on the `--service-node-public-ip' address and binds to the p2p IP address."
     " Only applies when running as a service node."
   , config::QNET_DEFAULT_PORT
