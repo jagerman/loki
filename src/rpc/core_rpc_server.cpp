@@ -582,8 +582,12 @@ namespace {
             return *x = std::forward<T>(value);
         }
 
-        void operator()(const tx_extra_pub_key& x) { set("pubkey", x.pub_key); }
+        void operator()(const tx_extra_pub_key& x) {
+            set("type", "pub_key");
+            set("pubkey", x.pub_key);
+        }
         void operator()(const tx_extra_nonce& x) {
+            set("type", "nonce");
             if ((x.nonce.size() == sizeof(crypto::hash) + 1 &&
                  x.nonce[0] == TX_EXTRA_NONCE_PAYMENT_ID) ||
                 (x.nonce.size() == sizeof(crypto::hash8) + 1 &&
@@ -593,21 +597,26 @@ namespace {
                 set("extra_nonce", x.nonce, true);
         }
         void operator()(const tx_extra_merge_mining_tag& x) {
+            set("type", "merge_mining_tag");
             set("mm_depth", x.depth);
             set("mm_root", x.merkle_root);
         }
         void operator()(const tx_extra_additional_pub_keys& x) {
+            set("type", "additional_pub_keys");
             set("additional_pubkeys", x.data);
         }
         void operator()(const tx_extra_burn& x) { set("burn_amount", x.amount); }
         void operator()(const tx_extra_service_node_winner& x) {
+            set("type", "service_node_winner");
             set("sn_winner", x.m_service_node_key);
         }
         void operator()(const tx_extra_service_node_pubkey& x) {
+            set("type", "service_node_pubkey");
             set("sn_pubkey", x.m_service_node_key);
         }
         void operator()(const tx_extra_service_node_register& x) {
             // MERGEFIX: confirm this is correct
+            set("type", "service_node_register");
             json new_reg{};
             if (x.hf_or_expiration <= 255) {  // hard fork value
                 new_reg["hardfork"] = static_cast<hf>(x.hf_or_expiration);
@@ -647,6 +656,7 @@ namespace {
             set("sn_registration", std::move(new_reg));
         }
         void operator()(const tx_extra_service_node_contributor& x) {
+            set("type", "service_node_contributor");
             set("sn_contributor",
                 get_account_address_as_str(
                         nettype, false, {x.m_spend_public_key, x.m_view_public_key}));
@@ -664,11 +674,13 @@ namespace {
             return set("sn_state_change", std::move(sc));
         }
         void operator()(const tx_extra_service_node_deregister_old& x) {
+            set("type", "service_node_deregister_old");
             auto& sc = _state_change(x);
             sc["old_dereg"] = true;
             sc["type"] = "dereg";
         }
         void operator()(const tx_extra_service_node_state_change& x) {
+            set("type", "service_node_state_change");
             auto& sc = _state_change(x);
             if (x.reason_consensus_all)
                 sc["reasons"] = cryptonote::coded_reasons(x.reason_consensus_all);
@@ -684,9 +696,11 @@ namespace {
             }
         }
         void operator()(const tx_extra_tx_secret_key& x) {
+            set("type", "tx_secret_key");
             set("tx_secret_key", tools::view_guts(x.key), true);
         }
         void operator()(const tx_extra_tx_key_image_proofs& x) {
+            set("type", "tx_key_image_proofs");
             std::vector<crypto::key_image> kis;
             kis.reserve(x.proofs.size());
             for (auto& proof : x.proofs)
@@ -694,6 +708,7 @@ namespace {
             set("locked_key_images", std::move(kis));
         }
         void operator()(const tx_extra_tx_key_image_unlock& x) {
+            set("type", "key_image_unlock");
             set("key_image_unlock", x.key_image);
         }
         void _load_owner(json& parent, const std::string& key, const ons::generic_owner& owner) {
@@ -706,6 +721,7 @@ namespace {
                 json_binary_proxy{parent[key], format} = owner.ed25519;
         }
         void operator()(const tx_extra_oxen_name_system& x) {
+            set("type", "oxen_name_system");
             json ons{};
             if (auto maybe_exp = ons::expiry_blocks(nettype, x.type))
                 ons["blocks"] = *maybe_exp;
@@ -735,6 +751,7 @@ namespace {
             _load_owner(ons, "backup_owner", x.backup_owner);
         }
         void operator()(const tx_extra_ethereum_new_service_node& x) {
+            set("type", "ethereum_new_service_node");
             set("bls_pubkey", x.bls_pubkey);
             set("eth_address", x.eth_address);
             set("service_node_pubkey", x.service_node_pubkey);
@@ -749,14 +766,17 @@ namespace {
             set("contributors", contributors);
         }
         void operator()(const tx_extra_ethereum_service_node_leave_request& x) {
+            set("type", "ethereum_service_node_leave_request");
             set("bls_pubkey", x.bls_pubkey);
         }
         void operator()(const tx_extra_ethereum_service_node_exit& x) {
+            set("type", "ethereum_service_node_exit");
             set("eth_address", x.eth_address);
             set("amount", x.amount);
             set("bls_pubkey", x.bls_pubkey);
         }
         void operator()(const tx_extra_ethereum_service_node_deregister& x) {
+            set("type", "ethereum_service_node_deregister");
             set("bls_pubkey", x.bls_pubkey);
         }
 
