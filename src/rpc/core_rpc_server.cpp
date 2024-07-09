@@ -203,22 +203,20 @@ void core_rpc_server::invoke(GET_HEIGHT& get_height, [[maybe_unused]] rpc_contex
 //------------------------------------------------------------------------------------------------------------------------------
 void core_rpc_server::invoke(GET_INFO& info, [[maybe_unused]] rpc_context context) {
 
-    auto [top_height, top_hash] = m_core.get_blockchain_top();
-
     auto& bs = m_core.get_blockchain_storage();
     auto& db = bs.get_db();
-
-    auto prev_ts = db.get_block_timestamp(top_height);
-    auto height = top_height + 1;  // turn top block height into blockchain height
+    const cryptonote::block top_block = db.get_top_block();
+    auto height = top_block.height + 1;  // turn top block height into blockchain height
 
     info.response["height"] = height;
-    info.response_hex["top_block_hash"] = top_hash;
+    info.response["l2_height"] = top_block.l2_height;
+    info.response_hex["top_block_hash"] = top_block.hash;
     info.response["target_height"] = m_core.get_target_blockchain_height();
 
     info.response["hard_fork"] = m_core.get_blockchain_storage().get_network_version();
 
     bool next_block_is_pulse = false;
-    if (pulse::timings t; pulse::get_round_timings(bs, height, prev_ts, t)) {
+    if (pulse::timings t; pulse::get_round_timings(bs, height, top_block.timestamp, t)) {
         info.response["pulse_ideal_timestamp"] =
                 tools::to_seconds(t.ideal_timestamp.time_since_epoch());
         info.response["pulse_target_timestamp"] =
@@ -226,7 +224,7 @@ void core_rpc_server::invoke(GET_INFO& info, [[maybe_unused]] rpc_context contex
         next_block_is_pulse = pulse::clock::now() < t.miner_fallback_timestamp;
     }
 
-    if (cryptonote::checkpoint_t checkpoint; db.get_immutable_checkpoint(&checkpoint, top_height)) {
+    if (cryptonote::checkpoint_t checkpoint; db.get_immutable_checkpoint(&checkpoint, top_block.height)) {
         info.response["immutable_height"] = checkpoint.height;
         info.response_hex["immutable_block_hash"] = checkpoint.block_hash;
     }
@@ -257,11 +255,11 @@ void core_rpc_server::invoke(GET_INFO& info, [[maybe_unused]] rpc_context contex
     info.response["nettype"] = network_type_to_string(nettype);
 
     try {
-        auto cd = db.get_block_cumulative_difficulty(top_height);
+        auto cd = db.get_block_cumulative_difficulty(top_block.height);
         info.response["cumulative_difficulty"] = cd;
     } catch (std::exception const& e) {
         info.response["status"] =
-                "Error retrieving cumulative difficulty at height " + std::to_string(top_height);
+                "Error retrieving cumulative difficulty at height " + std::to_string(top_block.height);
         return;
     }
 
