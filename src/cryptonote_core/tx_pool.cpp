@@ -1905,7 +1905,7 @@ bool tx_memory_pool::fill_block_template(
                 max_total_weight,
                 print_money(best_reward));
 
-        if (meta.l2_height != 0) {
+        if (false && meta.l2_height != 0) {
             if (l2_max && meta.l2_height > *l2_max) {
                 log::debug(
                         logcat,
