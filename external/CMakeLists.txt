@@ -128,6 +128,7 @@ endif()
 
 
 set(ethyl_ENABLE_CRYPTO_LIBRARY FALSE CACHE BOOL "" FORCE)
+set(ethyl_ENABLE_LTO FALSE CACHE BOOL "" FORCE)
 add_subdirectory(ethyl EXCLUDE_FROM_ALL)
 oxen_install_library(ethyl)
 oxen_install_library(cpr)  # comes via ethyl
