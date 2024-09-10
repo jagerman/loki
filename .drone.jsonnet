@@ -318,12 +318,15 @@ local gui_wallet_step_darwin = {
   debian_pipeline('Debian sid (w/ tests) (amd64)', docker_base + 'debian-sid', lto=true, run_tests=true, build_everything=true),
   debian_pipeline('Debian sid Debug (amd64)', docker_base + 'debian-sid', build_type='Debug', build_everything=true, cmake_extra='-DBUILD_DEBUG_UTILS=ON'),
   clang(18),
-  debian_pipeline('Debian stable (i386)', docker_base + 'debian-stable/i386', cmake_extra='-DDOWNLOAD_SODIUM=ON -DARCH_ID=i386 -DARCH=i686'),
   debian_pipeline('Debian buster (amd64)', docker_base + 'debian-bullseye'),
   debian_pipeline('Ubuntu LTS (amd64)', docker_base + 'ubuntu-lts'),
   debian_pipeline('Ubuntu latest (amd64)', docker_base + 'ubuntu-rolling'),
 
-  // ARM builds (ARM64 and armhf) -- requires clang as of Oxen 11 (for mcl)
+  // Non-amd64 builds requires clang as of Oxen 11 (for mcl)
+  debian_pipeline('Debian stable (i386)',
+                  docker_base + 'debian-stable/i386',
+                  cmake_extra='-DARCH_ID=i386 -DARCH=i686 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++',
+                  deps=['clang++', 'llvm'] + default_deps_nocxx),
   debian_pipeline('Debian sid (ARM64)',
                   docker_base + 'debian-sid',
                   arch='arm64',
