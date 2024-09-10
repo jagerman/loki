@@ -323,13 +323,19 @@ local gui_wallet_step_darwin = {
   debian_pipeline('Ubuntu LTS (amd64)', docker_base + 'ubuntu-lts'),
   debian_pipeline('Ubuntu latest (amd64)', docker_base + 'ubuntu-rolling'),
 
-  // ARM builds (ARM64 and armhf)
-  debian_pipeline('Debian sid (ARM64)', docker_base + 'debian-sid', arch='arm64', build_tests=false),
-  debian_pipeline('Debian stable (armhf)',
-                  docker_base + 'debian-stable/arm32v7',
+  // ARM builds (ARM64 and armhf) -- requires clang as of Oxen 11 (for mcl)
+  debian_pipeline('Debian sid (ARM64)',
+                  docker_base + 'debian-sid',
                   arch='arm64',
                   build_tests=false,
-                  cmake_extra='-DARCH_ID=armhf'),
+                  cmake_extra='-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++',
+                  deps=['clang++', 'llvm'] + default_deps_nocxx),
+  debian_pipeline('Debian sid (armhf)',
+                  docker_base + 'debian-sid/arm32v7',
+                  arch='arm64',
+                  build_tests=false,
+                  cmake_extra='-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DARCH_ID=armhf',
+                  deps=['clang++', 'llvm'] + default_deps_nocxx),
 
   // Static build (on bionic) which gets uploaded to builds.lokinet.dev:
   debian_pipeline(
