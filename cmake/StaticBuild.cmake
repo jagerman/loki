@@ -5,12 +5,12 @@
 
 set(LOCAL_MIRROR "" CACHE STRING "local mirror path/URL for lib downloads")
 
-set(BOOST_VERSION 1.79.0 CACHE STRING "boost version")
-set(BOOST_MIRROR ${LOCAL_MIRROR} https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source
+set(BOOST_VERSION 1.86.0 CACHE STRING "boost version")
+set(BOOST_MIRROR ${LOCAL_MIRROR} https://archives.boost.io/release/${BOOST_VERSION}/source
     CACHE STRING "boost download mirror(s)")
 string(REPLACE "." "_" BOOST_VERSION_ ${BOOST_VERSION})
 set(BOOST_SOURCE boost_${BOOST_VERSION_}.tar.bz2)
-set(BOOST_HASH SHA256=475d589d51a7f8b3ba2ba4eda022b170e562ca3b760ee922c146b6c65856ef39
+set(BOOST_HASH SHA256=1bed88e40401b2cb7a1f76d4bab499e352fa4d0c5f31c0dbae64e24d34d7513b
     CACHE STRING "boost source hash")
 
 set(NCURSES_VERSION 6.3 CACHE STRING "ncurses version")
@@ -27,11 +27,11 @@ set(READLINE_SOURCE readline-${READLINE_VERSION}.tar.gz)
 set(READLINE_HASH SHA512=27790d0461da3093a7fee6e89a51dcab5dc61928ec42e9228ab36493b17220641d5e481ea3d8fee5ee0044c70bf960f55c7d3f1a704cf6b9c42e5c269b797e00
     CACHE STRING "readline source hash")
 
-set(SQLITE3_VERSION 3390400 CACHE STRING "sqlite3 version")
+set(SQLITE3_VERSION 3460100 CACHE STRING "sqlite3 version")
 set(SQLITE3_MIRROR ${LOCAL_MIRROR} https://www.sqlite.org/2022
     CACHE STRING "sqlite3 download mirror(s)")
 set(SQLITE3_SOURCE sqlite-autoconf-${SQLITE3_VERSION}.tar.gz)
-set(SQLITE3_HASH SHA512=cc1de214e69ef677cac3f6dd2000ccfcf4b672ab464a115d96f24707009a408630e762c3cda89741b728ab34c4d9f5b8f8b12e9b11448e8364642b4421c3393d
+set(SQLITE3_HASH SHA512=a5ba5af9c8d6440d39ba67e3d5903c165df3f1d111e299efbe7c1cca4876d4d5aecd722e0133670daa6eb5cbf8a85c6a3d9852ab507a393615fb5245a3e1a743
     CACHE STRING "sqlite3 source hash")
 
 if(SQLITE3_VERSION MATCHES "^([0-9]+)(0([0-9])|([1-9][0-9]))(0([0-9])|([1-9][0-9]))[0-9][0-9]$")
@@ -72,13 +72,13 @@ set(PROTOBUF_SOURCE protobuf-cpp-${PROTOBUF_VERSION}.tar.gz)
 set(PROTOBUF_HASH SHA512=89a3d6207d14cc9afbd50a514a7c0f781c0e530bdbbe720e7e2f645301cdf59fb6772d5a95aea4a35ebcb2e17a738d8fdba8314fbc3aa6f34a97427ccf0c7342
   CACHE STRING "protobuf source hash")
 
-set(SODIUM_VERSION 1.0.19 CACHE STRING "libsodium version")
+set(SODIUM_VERSION 1.0.20 CACHE STRING "libsodium version")
 set(SODIUM_MIRROR ${LOCAL_MIRROR}
   https://download.libsodium.org/libsodium/releases
   https://github.com/jedisct1/libsodium/releases/download/${SODIUM_VERSION}-RELEASE
   CACHE STRING "libsodium mirror(s)")
 set(SODIUM_SOURCE libsodium-${SODIUM_VERSION}.tar.gz)
-set(SODIUM_HASH SHA512=8e9b6d796f6330e00921ce37f1b43545966094250938626ae227deef5fd1279f2fc18b5cd55e23484732a27df4d919cf0d2f07b9c2f1aa0c0ef689e668b0d439
+set(SODIUM_HASH SHA512=7ea165f3c1b1609790e30a16348b9dfdc5731302da00c07c65e125c8ab115c75419a5631876973600f8a4b560ca2c8267001770b68f2eb3eebc9ba095d312702
   CACHE STRING "libsodium source hash")
 
 set(ZMQ_VERSION 4.3.5 CACHE STRING "libzmq version")
@@ -95,17 +95,17 @@ set(ZLIB_SOURCE zlib-${ZLIB_VERSION}.tar.xz)
 set(ZLIB_HASH SHA256=38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32
     CACHE STRING "zlib source hash")
 
-set(CURL_VERSION 8.6.0 CACHE STRING "curl version")
+set(CURL_VERSION 8.9.1 CACHE STRING "curl version")
 set(CURL_MIRROR ${LOCAL_MIRROR} https://curl.se/download https://curl.askapache.com
     CACHE STRING "curl mirror(s)")
 set(CURL_SOURCE curl-${CURL_VERSION}.tar.xz)
-set(CURL_HASH SHA512=359c08d88a5dec441255b36afe1a821730eca0ca8800ba52f57132b9e7d21f32457623907b4ae4876904b5e505eb1a59652372bb7de8dbd8db429dae9785e036
+set(CURL_HASH SHA512=a0fe234402875db194aad4e4208b7e67e7ffc1562622eea90948d4b9b0122c95c3dde8bbe2f7445a687cb3de7cb09f20e5819d424570442d976aa4c913227fc7
     CACHE STRING "curl source hash")
 
-set(OPENSSL_VERSION 3.0.13 CACHE STRING "openssl version")
-set(OPENSSL_MIRROR ${LOCAL_MIRROR} https://www.openssl.org/source CACHE STRING "openssl download mirror(s)")
+set(OPENSSL_VERSION 3.0.15 CACHE STRING "openssl version")
+set(OPENSSL_MIRROR ${LOCAL_MIRROR} https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION} CACHE STRING "openssl download mirror(s)")
 set(OPENSSL_SOURCE openssl-${OPENSSL_VERSION}.tar.gz)
-set(OPENSSL_HASH SHA256=88525753f79d3bec27d2fa7c66aa0b92b3aa9498dafd93d7cfa4b3780cdae313
+set(OPENSSL_HASH SHA256=23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
     CACHE STRING "openssl source hash")
 
 include(ExternalProject)
