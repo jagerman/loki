@@ -2706,12 +2706,7 @@ void node_server<t_payload_net_handler>::add_used_stripe_peer(
     const uint32_t index = stripe - 1;
     std::lock_guard lock{m_used_stripe_peers_mutex};
     log::info(logcat, "adding stripe {} peer: {}", stripe, context.m_remote_address.str());
-    std::remove_if(
-            m_used_stripe_peers[index].begin(),
-            m_used_stripe_peers[index].end(),
-            [&context](const epee::net_utils::network_address& na) {
-                return context.m_remote_address == na;
-            });
+    std::erase(m_used_stripe_peers[index], context.m_remote_address);
     m_used_stripe_peers[index].push_back(context.m_remote_address);
 }
 
@@ -2724,12 +2719,7 @@ void node_server<t_payload_net_handler>::remove_used_stripe_peer(
     const uint32_t index = stripe - 1;
     std::lock_guard lock{m_used_stripe_peers_mutex};
     log::info(logcat, "removing stripe {} peer: {}", stripe, context.m_remote_address.str());
-    std::remove_if(
-            m_used_stripe_peers[index].begin(),
-            m_used_stripe_peers[index].end(),
-            [&context](const epee::net_utils::network_address& na) {
-                return context.m_remote_address == na;
-            });
+    std::erase(m_used_stripe_peers[index], context.m_remote_address);
 }
 
 template <class t_payload_net_handler>
