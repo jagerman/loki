@@ -575,9 +575,13 @@ bool core::init(
         // blockchain format, and even if we could, it's not worth the time because it'll pop all
         // the way back to empty anyway).
         auto block1_hash = get_block_hash(db->get_block_from_height(1));
-        constexpr auto STAGENET_V1_BLOCK1_HASH =
-                "13633f8335998fe174f12752ea86d25636c9f777f441e9fa205ae4b8868e1f03"sv;
-        if (tools::hex_guts(block1_hash) == STAGENET_V1_BLOCK1_HASH) {
+        constexpr std::array STAGENET_OLD_BLOCK1_HASHES = {
+                "13633f8335998fe174f12752ea86d25636c9f777f441e9fa205ae4b8868e1f03"sv,
+                "11597c2be5719701d8d1000cfccf46ef7b52a3d80573300d38aa5bf283b43b6a"sv};
+        if (std::find(
+                    STAGENET_OLD_BLOCK1_HASHES.begin(),
+                    STAGENET_OLD_BLOCK1_HASHES.end(),
+                    tools::hex_guts(block1_hash)) != STAGENET_OLD_BLOCK1_HASHES.end()) {
             log::warning(globallogcat, "Detected old stagenet data; resetting databases...");
 
             db->close();
