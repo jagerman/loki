@@ -3,6 +3,8 @@
 set -e
 
 if [ "$1" = configure ]; then
+    prev_ver="$2"
+
     # Create _loki user if it doesn't exist
     if ! getent passwd _loki >/dev/null; then
         adduser --force-badname --system --quiet --home /var/lib/oxen --group --gecos "Session node" _loki
@@ -36,6 +38,15 @@ if [ "$1" = configure ]; then
     # this)
     if ! [ -d /var/lib/loki ] && ! [ -h /var/lib/loki ] && [ -d /var/lib/oxen ]; then
         ln -s oxen /var/lib/loki
+    fi
+
+    if [ -n "$prev_ver" ] && dpkg --compare-versions "$prev_ver" '<=' 11.0.6~dev20241024150554; then
+        if [ -d /var/lib/oxen/stagenet/lmdb/data.mdb ]; then
+            echo "Removing obsolete stagenet databases"
+            rm -f /var/lib/oxen/stagenet/lmdb/data.mdb
+            rm -f /var/lib/oxen/stagenet/ons.db*
+            rm -f /var/lib/oxen/stagenet/sqlite.db*
+        fi
     fi
 fi
 
