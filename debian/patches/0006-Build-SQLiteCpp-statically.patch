@@ -7,14 +7,17 @@ Subject: Build SQLiteCpp statically
  1 file changed, 3 insertions(+)
 
 diff --git a/external/CMakeLists.txt b/external/CMakeLists.txt
-index 6503121..d08c98d 100644
+index 23da312..e69c9d6 100644
 --- a/external/CMakeLists.txt
 +++ b/external/CMakeLists.txt
-@@ -169,4 +169,7 @@ set(SQLITECPP_RUN_DOXYGEN OFF CACHE BOOL "" FORCE)
- set(SQLITECPP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
- set(SQLITECPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+@@ -135,7 +135,10 @@ set(SQLITECPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+ set(SQLITE_OMIT_LOAD_EXTENSION ON CACHE BOOL "" FORCE)
+ 
  
 +set(BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
 +set(BUILD_SHARED_LIBS OFF)
- add_subdirectory(SQLiteCpp)
+ add_subdirectory(SQLiteCpp EXCLUDE_FROM_ALL)
 +set(BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS_SAVED}")
+ oxen_install_library(SQLiteCpp)
+ 
+ 
