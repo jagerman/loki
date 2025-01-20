@@ -465,7 +465,7 @@ struct payout {
     std::vector<payout_entry> payouts;
 };
 
-crypto::x25519_public_key snpk_to_xpk(const crypto::public_key& snpk);
+crypto::x25519_public_key snpk_to_xpk(const crypto::public_key& snpk, bool _already_locked = false);
 
 /// Collection of keys used by a service node
 struct service_node_keys {

@@ -577,7 +577,8 @@ bool core::init(
         auto block1_hash = get_block_hash(db->get_block_from_height(1));
         constexpr std::array STAGENET_OLD_BLOCK1_HASHES = {
                 "13633f8335998fe174f12752ea86d25636c9f777f441e9fa205ae4b8868e1f03"sv,
-                "11597c2be5719701d8d1000cfccf46ef7b52a3d80573300d38aa5bf283b43b6a"sv};
+                "11597c2be5719701d8d1000cfccf46ef7b52a3d80573300d38aa5bf283b43b6a"sv,
+                "efd64cb09bd3cadb127731d2919769314100d85e6d09fdcd022327e65d43e9f2"sv};
         if (std::find(
                     STAGENET_OLD_BLOCK1_HASHES.begin(),
                     STAGENET_OLD_BLOCK1_HASHES.end(),
