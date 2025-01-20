@@ -1,3 +1,45 @@
+oxen (11.0.7-1~deb12) bookworm; urgency=medium
+
+  [ Sean Darcy ]
+  * updated testnet contracts
+
+  [ Jason Rhinelander ]
+  * Rediff patches
+
+  [ doylet ]
+  * Stagenet network reboot v4
+  * Fix linting errors for stagenet v4 reboot
+
+  [ Jason Rhinelander ]
+  * Fix ARM64 compilation for a modified arch
+  * Add some arm64 snapshot deb builds
+
+  [ Sean ]
+  * Git hash to uptime proof (#1772)
+
+  [ Jason Rhinelander ]
+  * Update time/byte formatting to use fmt
+  * Subsystem rescan statistics and logging fixes
+  * add ubuntu 24.10 snapshot build
+  * Add a persistent Ed->X conversion cache
+
+  [ doylet ]
+  * Install static boost to consistent 'system' layout
+  * Ensure static Boost build on Windows uses win32 threadapi
+  * Add Windows host workaround to configuring static zlib
+  * Handle MSYS MinGW compiler which does not have a posix suffixed executable
+  * Fix HIDAPI static build failing w/ relative toolchain path
+  * Force windows build w/ STATIC_DEPS
+  * Update windows instructions, remove 32 bit instructions
+  * Set ARCH triplet before using it in MinGW cmake toolchain file
+  * Fix MacOS CI failing w/ emplace back in agg_log
+  * MacOS target fails to capture structured unbinding into lambda
+  * Fix another MacOS emplace back complaint
+  * More MacOS fix for structured bindings capture into lambda
+  * Fix log_detailed_peer_stats declared static in header
+
+ -- Jason Rhinelander <jason@imaginary.ca>  Mon, 20 Jan 2025 19:16:19 -0400
+
 oxen (11.0.6-0+git20250113~deb12) bookworm; urgency=medium
 
   [ Jason Rhinelander ]
