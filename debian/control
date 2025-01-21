@@ -1,7 +1,7 @@
 Source: oxen
 Section: net
 Priority: optional
-Maintainer: Jason Rhinelander <jason@loki.network>
+Maintainer: Jason Rhinelander <jason@session.foundation>
 Build-Depends: debhelper (>= 11), cmake (>= 3.10), ninja-build, g++, qttools5-dev,
     libboost-dev (>= 1.65), libboost-thread-dev, libboost-serialization-dev, libboost-program-options-dev,
     nettle-dev, libevent-dev, libunwind8-dev, libsodium-dev,
@@ -11,48 +11,33 @@ Build-Depends: debhelper (>= 11), cmake (>= 3.10), ninja-build, g++, qttools5-de
 Standards-Version: 4.1.3
 Homepage: https://oxen.io
 
-Package: liboxen11.0.6
+Package: liboxen11.0.7
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Oxen shared libraries
  This package contains the common Oxen library code used by the various Oxen
  binaries.
 
-Package: liboxen-wallet11.0.6
+Package: liboxen-wallet11.0.7
 Architecture: any
-Depends: liboxen11.0.6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: liboxen11.0.7 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: Oxen wallet shared libraries
  This package contains the common Oxen library code used by the various Oxen
  wallet-related code.
 
 Package: oxend
 Architecture: any
-Depends: liboxen11.0.6 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, debconf
+Depends: liboxen11.0.7 (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, debconf
 Suggests: oxen-blockchain-tools, oxen-wallet-cli
-Replaces: lokid (<< 8.1.5-1~)
-Breaks: lokid (<< 8.1.5-1~)
 Description: Oxen network daemon
  This package contains the Oxen network daemon, oxend, for running an Oxen node
  or Oxen service node.
 
-Package: lokid
-Depends: oxend, ${misc:Depends}
-Architecture: all
-Section: oldlibs
-Description: transitional package
- Transitional package for LOKI to OXEN rename.
- .
- This package provides the lokid -> oxend compatibility symlink for
- transitional purposes.  It can be safely removed if the lokid symlink is no
- longer needed.
-
 Package: oxen-wallet-cli
 Architecture: any
-Depends: liboxen-wallet11.0.6 (= ${binary:Version}), liboxen11.0.6 (= ${binary:Version}),
+Depends: liboxen-wallet11.0.7 (= ${binary:Version}), liboxen11.0.7 (= ${binary:Version}),
     ${shlibs:Depends}, ${misc:Depends}
 Suggests: oxend
-Replaces: loki-wallet-cli (<< 8.1.5-1~)
-Breaks: loki-wallet-cli (<< 8.1.5-1~)
 Description: Oxen command-line wallet and JSON RPC wallet
  This package contains the Oxen command-line wallet for accessing a wallet
  stored on the Oxen blockchain.
@@ -60,24 +45,11 @@ Description: Oxen command-line wallet and JSON RPC wallet
  The wallets require a oxend node to work, such as the one provided in the
  oxend package, but can also work with a remote Oxen node.
 
-Package: loki-wallet-cli
-Depends: oxen-wallet-cli, ${misc:Depends}
-Architecture: all
-Section: oldlibs
-Description: transitional package
- Transitional package for LOKI to OXEN rename.
- .
- This package provides the loki-wallet-cli -> oxen-wallet-cli compatibility
- symlink for transitional purposes.  It can be safely removed if
- loki-wallet-cli symlink is no longer needed.
-
 Package: oxen-wallet-rpc
 Architecture: any
-Depends: liboxen-wallet11.0.6 (= ${binary:Version}), liboxen11.0.6 (= ${binary:Version}),
+Depends: liboxen-wallet11.0.7 (= ${binary:Version}), liboxen11.0.7 (= ${binary:Version}),
     ${shlibs:Depends}, ${misc:Depends}
 Suggests: oxend
-Replaces: loki-wallet-rpc (<< 8.1.5-1~)
-Breaks: loki-wallet-rpc (<< 8.1.5-1~)
 Description: Oxen RPC wallet
  This package contains the Oxen JSON RPC wallet interface to accessing a wallet
  on the Oxen blockchain.  This wallet interface is typically used by external
@@ -86,73 +58,41 @@ Description: Oxen RPC wallet
  The wallet requires a oxend node to work, such as the one provided in the
  oxend package, but can also work with a remote Oxen node.
 
-Package: loki-wallet-rpc
-Depends: oxen-wallet-rpc, ${misc:Depends}
-Architecture: all
-Section: oldlibs
-Description: transitional package
- Transitional package for LOKI to OXEN rename.
- .
- This package provides the loki-wallet-rpc -> oxen-wallet-rpc compatibility
- symlink for transitional purposes.  It can be safely removed if
- loki-wallet-rpc symlink is no longer needed.
-
 Package: oxen-blockchain-tools
 Architecture: any
-Depends: liboxen-wallet11.0.6 (= ${binary:Version}), liboxen11.0.6 (= ${binary:Version}),
+Depends: liboxen-wallet11.0.7 (= ${binary:Version}), liboxen11.0.7 (= ${binary:Version}),
     ${shlibs:Depends}, ${misc:Depends}
 Recommends: oxend
-Replaces: loki-blockchain-tools (<< 8.1.5-1~)
-Breaks: loki-blockchain-tools (<< 8.1.5-1~)
 Description: Oxen blockchain utilities
  This contains the oxen-blockchain-* binaries for managing and querying the
  oxend blockchain database.  These tools are used for blockchain diagnostics
  and are not typically needed to run an ordinary node or service node.
 
-Package: loki-blockchain-tools
-Depends: oxen-blockchain-tools, ${misc:Depends}
-Architecture: all
-Section: oldlibs
-Description: transitional package
- Transitional package for LOKI to OXEN rename.
- .
- This package provides the loki-blockchain-* -> oxen-blockchain-* compatibility
- symlinks for transitional purposes.  It can be safely removed if
- loki-blockchain-* symlinks are no longer needed.
-
 Package: liboxen-dev
 Architecture: any
 Multi-Arch: same
 Section: libdevel
-Depends: liboxen-wallet11.0.6 (= ${binary:Version}), liboxen11.0.6 (= ${binary:Version}),
+Depends: liboxen-wallet11.0.7 (= ${binary:Version}), liboxen11.0.7 (= ${binary:Version}),
  libboost-dev (>= 1.58), libboost-thread-dev, libboost-serialization-dev, libboost-program-options-dev,
  libsodium-dev, libreadline-dev, libhidapi-dev, liboxenmq-dev (>= 1.2.13-2~),
  libsqlite3-dev, libcurl4-dev, ${misc:Depends}
-Replaces: libloki-core-dev (<< 8.1.5-1~)
-Breaks: libloki-core-dev (<< 8.1.5-1~)
 Description: Oxen development files
  This contains the headers needed to compile code that uses the oxen libraries.
 
-Package: libloki-core-dev
-Depends: liboxen-dev, ${misc:Depends}
+Package: session-node
 Architecture: all
-Section: oldlibs
-Description: transitional package
- This is a transitional package. It can safely be removed.
+Pre-Depends: curl, jq
+Depends: oxend (=${binary:Version}), oxen-storage-server (>= 2.8.0), lokinet-router (>= 0.9.11~), ucf
+Replaces: oxen-service-node (<< 11)
+Breaks: oxen-service-node (<< 11)
+Description: Session Node metapackage
+ This package depends on the necessary components to run a Session Node
+ (consisting of oxend, oxen-storage-server, and lokinet) and updates the oxend
+ configuration to operate as a Session node instead of a regular Oxen
+ blockchain node.
 
 Package: oxen-service-node
-Architecture: all
-Pre-Depends: curl
-Depends: oxend (=${binary:Version}), oxen-storage-server (>= 2.8.0), lokinet-router (>= 0.9.11~), ucf
-Replaces: loki-service-node (<< 8.1.5-1~)
-Breaks: loki-service-node (<< 8.1.5-1~)
-Description: Oxen service node metapackage
- This package depends on the necessary components to run a oxen service node
- and updates the oxend configuration to operate as a service node instead of a
- regular node.
-
-Package: loki-service-node
-Depends: oxen-service-node, ${misc:Depends}
+Depends: session-node, ${misc:Depends}
 Architecture: all
 Section: oldlibs
 Description: transitional package
