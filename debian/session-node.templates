@@ -29,8 +29,8 @@ Description: Retry IP address entry/lookup?
  .
  Do you want to go back and enter an IP manually (or try automatic lookup
  again)?  Note that if you say no here you will have to update the
- /etc/oxen/oxen.conf (or testnet.conf) files yourself with the IP before oxend
- will start properly.
+ /etc/oxen/oxen.conf file yourself with the IP before oxend will start
+ properly.
 
 Template: oxen-service-node/invalid-ip
 Type: boolean
@@ -41,4 +41,32 @@ Description: Retry IP address entry?
  You entered an invalid IPv4 address.  Choose yes here to return to the IP
  entry dialog and try again (or to use the automatic lookup service).  If you
  say no here your oxend will not start until you manually update the
- /etc/oxen/oxen.conf (or testnet.conf) file yourself with a valid public IP.
+ /etc/oxen/oxen.conf file yourself with a valid public IP.
+
+Template: session-node/l2-provider
+Type: string
+Description: Enter your L2 Arbitrum One RPC provider URL
+ Session nodes require an L2 Arbitrum RPC provider to synchronize the state
+ between the Arbitrum contracts and the Oxen backend blockchain.
+ .
+ Enter the HTTP(S) URL of your provider here.
+ .
+ If you wish to provide multiple L2 providers for redundancy, separate them
+ with spaces.  The first one will be used normally but if it is unreachable or
+ starts falling behind, requests will go to a backup until the primary is
+ reachable again.
+ .
+ You can change or add providers later by changing the 'l2-provider=...'
+ setting in /etc/oxen/oxen.conf.
+
+Template: session-node/l2-provider-failed
+Type: boolean
+Default: false
+Description: Re-enter L2 provider URL?
+ A test request to the given L2 provider failed:
+ .
+ ${REASON}
+ .
+ Do you want to go back and enter the provider URL again?  Note that if you
+ say no here you will have to fix the provider and/or update the
+ /etc/oxen/oxend.conf file yourself before oxend will properly start.

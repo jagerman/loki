@@ -1,0 +1,70 @@
+#!/bin/sh
+
+set -e
+
+restart_oxend=
+
+if [ "$1" = configure ]; then
+    . /usr/share/debconf/confmodule
+    db_get oxen-service-node/ip-address
+    IP="$RET"
+
+    db_get session-node/l2-provider
+    L2="$RET"
+
+    dpkg-divert --package session-node --add --rename --divert /etc/oxen/oxen.conf.no-service-node /etc/oxen/oxen.conf
+
+    tmpdir=$(mktemp --tmpdir -d session-node.XXXXXXXXXX)
+    if [ -f "/etc/oxen/oxen.conf" ]; then
+        cp /etc/oxen/oxen.conf ${tmpdir}/oxen.conf
+    elif [ -f "/etc/oxen/oxen.conf.no-service-node" ]; then
+        cp /etc/oxen/oxen.conf.no-service-node ${tmpdir}/oxen.conf
+    elif [ -f "/usr/share/oxend/oxen.conf" ]; then
+        cp /usr/share/oxend/oxen.conf ${tmpdir}/oxen.conf
+    else
+        echo "Internal error: cannot find an existing oxen.conf to update!"
+        false
+    fi
+
+    sed -i '/^#\?service-node=/{h;s/.*=.*/service-node=1/};${x;/^$/{s//service-node=1/;H};x}' \
+        ${tmpdir}/oxen.conf
+    sed -i '/^storage-server-port=/{h;s/=.*/=22021/};${x;/^$/{s//storage-server-port=22021/;H};x}' \
+        ${tmpdir}/oxen.conf
+    sed -i '/^service-node-public-ip=/{h;s/=.*/='"$IP"'/};${x;/^$/{s//service-node-public-ip='"$IP"'/;H};x}' \
+        ${tmpdir}/oxen.conf
+    if [ -n "$L2" ]; then
+        sed -i '/^l2-provider=.*/d' ${tmpdir}/oxen.conf
+        for one_l2 in $L2; do
+            echo "l2-provider=$one_l2" >>${tmpdir}/oxen.conf
+        done
+    fi
+
+    orig_md5=$(md5sum /etc/oxen/oxen.conf 2>/dev/null || true)
+
+    if ! [ -f /etc/oxen/oxen.conf ]; then
+        mv ${tmpdir}/oxen.conf /etc/oxen/oxen.conf
+        ucfr session-node /etc/oxen/oxen.conf
+    else
+        ucf --debconf-ok ${tmpdir}/oxen.conf /etc/oxen/oxen.conf
+    fi
+
+    rm -rf ${tmpdir}
+
+    # NB: also purge in postrm
+    ucfr session-node /etc/oxen/$conf
+
+    # If we updated config files then we need to make sure oxend restarts below.
+    if [ "$(md5sum /etc/oxen/oxen.conf 2>/dev/null || true)" != "$orig_main_md5" ]; then
+        restart_oxend=1
+    fi
+fi
+
+#DEBHELPER#
+
+# Debhelper doesn't do this here because the session-node package doesn't contain the service files:
+if [ "$1" = "configure" ] || [ "$1" = "abort-upgrade" ] || [ "$1" = "abort-deconfigure" ] || [ "$1" = "abort-remove" ] ; then
+    if [ -d /run/systemd/system ] && [ -n "$restart_oxend" ]; then
+        systemctl --system daemon-reload >/dev/null || true
+        deb-systemd-invoke restart oxen-node.service || true
+    fi
+fi
