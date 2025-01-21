@@ -10,7 +10,7 @@ Patch the oxen cmake files to properly build and install shared libs.
  3 files changed, 17 insertions(+), 1 deletion(-)
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d62e2aa..90cd652 100644
+index 5ceb9a1..4f3c0bc 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -899,6 +899,17 @@ if(BUILD_DOCUMENTATION)

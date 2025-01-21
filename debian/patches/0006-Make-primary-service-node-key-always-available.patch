@@ -12,10 +12,10 @@ simplify that greatly.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/cryptonote_core/cryptonote_core.cpp b/src/cryptonote_core/cryptonote_core.cpp
-index aaa2e8c..5ff179c 100644
+index 0c0a082..af43ea7 100644
 --- a/src/cryptonote_core/cryptonote_core.cpp
 +++ b/src/cryptonote_core/cryptonote_core.cpp
-@@ -1049,7 +1049,7 @@ bool core::init_service_keys() {
+@@ -1050,7 +1050,7 @@ bool core::init_service_keys() {
      // backwards compatibility with existing active service nodes.)  The legacy key consists of
      // *just* the private point, but not the seed, and so cannot be used for full Ed25519 signatures
      // (which rely on the seed for signing).
