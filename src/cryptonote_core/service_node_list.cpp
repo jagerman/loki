@@ -4663,11 +4663,12 @@ void proof_info::store(const crypto::public_key& pubkey, cryptonote::Blockchain&
     db.set_service_node_proof(pubkey, *this);
 }
 
-bool proof_info::update(
+std::pair<bool, bool> proof_info::update(
         uint64_t ts,
         std::unique_ptr<uptime_proof::Proof> new_proof,
         const crypto::x25519_public_key& pk_x2) {
     bool update_db = false;
+    bool contact_changed = !proof || proof->contact_info_changed(*new_proof);
     if (!proof || *proof != *new_proof) {
         update_db = true;
         proof = std::move(new_proof);
@@ -4692,7 +4693,7 @@ bool proof_info::update(
     else
         public_ips[0] = {proof->public_ip, now};
 
-    return update_db;
+    return {update_db, contact_changed};
 }
 
 void proof_info::update_pubkey(const crypto::ed25519_public_key& pk) {
@@ -4970,12 +4971,10 @@ bool service_node_list::handle_uptime_proof(
     }
 
     auto old_x25519 = iproof.pubkey_x25519;
-    if (iproof.update(
-                std::chrono::system_clock::to_time_t(now),
-                std::move(proof),
-                derived_x25519_pubkey)) {
+    auto [updated, contact_changed] = iproof.update(
+            std::chrono::system_clock::to_time_t(now), std::move(proof), derived_x25519_pubkey);
+    if (updated)
         iproof.store(iproof.proof->pubkey, blockchain);
-    }
 
     if (vers.first < feature::SN_PK_IS_ED25519) {
         if (now - x25519_map_last_pruned >= X25519_MAP_PRUNING_INTERVAL) {
@@ -4995,6 +4994,9 @@ bool service_node_list::handle_uptime_proof(
         if (derived_x25519_pubkey && (old_x25519 != derived_x25519_pubkey))
             x25519_pkey = derived_x25519_pubkey;
     }
+
+    if (contact_changed && snode_addr_change_notifier)
+        snode_addr_change_notifier(*iproof.proof, derived_x25519_pubkey);
 
     return true;
 }

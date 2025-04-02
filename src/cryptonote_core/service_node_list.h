@@ -171,10 +171,14 @@ struct proof_info {
     void update_pubkey(const crypto::ed25519_public_key& pk);
 
     // Called to update data received from a proof is received, updating values in the local object.
-    // Returns true if serializable data is changed (in which case `store()` should be called).
+    // Returns a pair of bools:
+    // - the first is true if serializable data is changed (in which case `store()` should be
+    // called).
+    // - the second value is true if this proof has updated the contact info for this node (i.e. if
+    //   any of edpk/ip/ports have changed).
     // Note that this does not update the m_x25519_to_pub map if the x25519 key changes (that's the
     // caller's responsibility).
-    bool update(
+    std::pair<bool, bool> update(
             uint64_t ts,
             std::unique_ptr<uptime_proof::Proof> new_proof,
             const crypto::x25519_public_key& pk_x2);
@@ -803,6 +807,9 @@ class service_node_list {
             std::unique_ptr<uptime_proof::Proof> proof,
             bool& my_uptime_proof_confirmation,
             crypto::x25519_public_key& x25519_pkey);
+
+    std::function<void(const uptime_proof::Proof&, const crypto::x25519_public_key&)>
+            snode_addr_change_notifier;
 
     void record_checkpoint_participation(
             crypto::public_key const& pubkey, uint64_t height, bool participated);

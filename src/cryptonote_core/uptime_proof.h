@@ -45,6 +45,18 @@ class Proof {
     uint16_t storage_omq_port{};
     uint16_t qnet_port{};
 
+    // Returns true if this Proof and the given Proof value have different contact-dependent fields:
+    // that is, if any of the ed pubkey, IP, or ports of various services are different across the
+    // two proofs.
+    bool contact_info_changed(const Proof& other) const {
+        return pubkey_ed25519 != other.pubkey_ed25519 || public_ip != other.public_ip ||
+               storage_https_port != other.storage_https_port ||
+               storage_omq_port != other.storage_omq_port || qnet_port != other.qnet_port;
+    }
+
+    // Non-consensus field: stores the current git version or release tag to assist debugging.
+    std::string version_tag;
+
     // The hash of the proof data, computed during construction as either the hash of the incoming
     // proof data, or the hash of the outgoing serialized proof data.  This is only available for a
     // freshly created proof (incoming or outgoing) but will not be available across restarts (i.e.
