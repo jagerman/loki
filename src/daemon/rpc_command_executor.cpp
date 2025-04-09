@@ -544,7 +544,9 @@ bool rpc_command_executor::show_status() {
     std::string my_sn_key, my_bls;
     int64_t my_decomm_remaining = 0;
     uint64_t my_sn_last_uptime = 0;
-    bool my_sn_registered = false, my_sn_staked = false, my_sn_active = false;
+    bool my_sn_registered = false, my_sn_staked = false, my_sn_active = false,
+         my_reg_in_mempool = false, my_reg_confirming = false;
+    double my_reg_conf = 0, my_reg_conf_required = 0;
     uint16_t my_reason_all = 0, my_reason_any = 0;
     if (info["service_node"].get<bool>()) {
         auto maybe_service_keys = try_running(
@@ -574,6 +576,23 @@ bool rpc_command_executor::show_status() {
                 my_sn_last_uptime = state["last_uptime_proof"].get<uint64_t>();
                 my_reason_all = state.value<uint16_t>("last_decommission_reason_consensus_all", 0);
                 my_reason_any = state.value<uint16_t>("last_decommission_reason_consensus_any", 0);
+            }
+        }
+        if (!my_sn_registered) {
+            if (auto maybe_pending = try_running(
+                        [this] {
+                            return invoke<GET_PENDING_EVENTS>(json{{"include_mempool", true}});
+                        },
+                        "Failed to retrieve pending L2 events")) {
+                for (const auto& reg : maybe_pending->at("registrations")) {
+                    if (reg.at("sn_pubkey") != my_sn_key)
+                        continue;
+
+                    auto reg_height = reg.value<uint64_t>("height", 0);
+                    (reg_height == 0 ? my_reg_in_mempool : my_reg_confirming) = true;
+                    my_reg_conf = reg.value<double>("confirmations", 0);
+                    my_reg_conf_required = reg.value<double>("required", 0);
+                }
             }
         }
     }
@@ -628,9 +647,15 @@ bool rpc_command_executor::show_status() {
 
     if (!my_sn_key.empty()) {
         msg.flush().append("SN: {} ", my_sn_key);
-        if (!my_sn_registered)
-            msg += "not registered";
-        else if (!my_sn_staked)
+        if (!my_sn_registered) {
+            if (my_reg_in_mempool)
+                msg += "incoming reg";
+            else if (my_reg_confirming)
+                msg += "confirming reg ({}/{})"_format(
+                        my_reg_conf, my_reg_conf + my_reg_conf_required);
+            else
+                msg += "not registered";
+        } else if (!my_sn_staked)
             msg += "awaiting";
         else if (my_sn_active)
             msg += "active";
