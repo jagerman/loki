@@ -2665,8 +2665,7 @@ void core::do_uptime_proof_call() {
             }
 
             if (auto hf = blockchain.get_network_version();
-                hf > feature::ETH_TRANSITION ||
-                (hf == feature::ETH_TRANSITION && !m_skip_proof_l2_check)) {
+                hf >= feature::ETH_BLS || !m_skip_proof_l2_check) {
 
                 auto l2_update_age = l2_tracker().latest_height_age();
                 if (!l2_update_age || *l2_update_age > netconf.UPTIME_PROOF_FREQUENCY) {
