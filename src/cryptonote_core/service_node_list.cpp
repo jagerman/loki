@@ -2898,7 +2898,9 @@ void service_node_list::verify_block(
             prev_timestamp = blockchain.db().get_block_timestamp(prev_height);
         }
 
-        if (!pulse::get_round_timings(blockchain, height, prev_timestamp, timings))
+        if (auto t = pulse::get_round_timings(blockchain, height, prev_timestamp))
+            timings = std::move(*t);
+        else
             throw oxen::traced<std::runtime_error>{
                     "Failed to query the block data for Pulse timings to validate incoming {} at height {}"_format(
                             block_type, height)};

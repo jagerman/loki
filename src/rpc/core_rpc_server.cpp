@@ -234,12 +234,12 @@ void core_rpc_server::invoke(GET_INFO& info, rpc_context context) {
     info.response["hard_fork"] = m_core.blockchain.get_network_version();
 
     bool next_block_is_pulse = false;
-    if (pulse::timings t; pulse::get_round_timings(bs, height, top_block.timestamp, t)) {
+    if (auto t = pulse::get_round_timings(bs, height, top_block.timestamp)) {
         info.response["pulse_ideal_timestamp"] =
-                tools::to_seconds(t.ideal_timestamp.time_since_epoch());
+                tools::to_seconds(t->ideal_timestamp.time_since_epoch());
         info.response["pulse_target_timestamp"] =
-                tools::to_seconds(t.r0_timestamp.time_since_epoch());
-        next_block_is_pulse = pulse::clock::now() < t.miner_fallback_timestamp;
+                tools::to_seconds(t->r0_timestamp.time_since_epoch());
+        next_block_is_pulse = pulse::clock::now() < t->miner_fallback_timestamp;
     }
 
     if (cryptonote::checkpoint_t checkpoint; db.get_immutable_checkpoint(&checkpoint, top_height)) {
@@ -2438,11 +2438,12 @@ void core_rpc_server::invoke(GET_QUORUM_STATE& get_quorum_state, rpc_context con
         const auto& blockchain = m_core.blockchain;
         const auto& top_header = blockchain.db().get_block_header_from_height(curr_height - 1);
 
-        pulse::timings next_timings{};
         uint8_t pulse_round = 0;
-        if (pulse::get_round_timings(blockchain, curr_height, top_header.timestamp, next_timings) &&
+        if (auto next_timings =
+                    pulse::get_round_timings(blockchain, curr_height, top_header.timestamp);
+            next_timings &&
             pulse::convert_time_to_round(
-                    nettype(), pulse::clock::now(), next_timings.r0_timestamp, &pulse_round)) {
+                    nettype(), pulse::clock::now(), next_timings->r0_timestamp, &pulse_round)) {
             auto entropy =
                     service_nodes::get_pulse_entropy_for_next_block(blockchain.db(), pulse_round);
             auto& sn_list = m_core.service_node_list;

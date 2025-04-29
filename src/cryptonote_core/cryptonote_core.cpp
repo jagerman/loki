@@ -249,7 +249,9 @@ static const command_line::arg_flag arg_disable_ip_check = {
 void (*long_poll_trigger)(tx_memory_pool& pool) = [](tx_memory_pool&) {
     need_core_init("long_poll_trigger"sv);
 };
-quorumnet_new_proc* quorumnet_new = [](core&) -> void* { need_core_init("quorumnet_new"sv); };
+quorumnet_new_proc* quorumnet_new = [](core&, pulse::pulse) -> void* {
+    need_core_init("quorumnet_new"sv);
+};
 quorumnet_init_proc* quorumnet_init = [](core&, void*) { need_core_init("quorumnet_init"sv); };
 quorumnet_delete_proc* quorumnet_delete = [](void*&) { need_core_init("quorumnet_delete"sv); };
 quorumnet_relay_obligation_votes_proc* quorumnet_relay_obligation_votes =
@@ -1331,7 +1333,8 @@ void core::init_oxenmq(const boost::program_options::variables_map& vm) {
                     return omq_allow(ip, pk, public_ ? AuthLevel::basic : AuthLevel::none);
                 });
 
-        m_quorumnet_state = quorumnet_new(*this);
+        m_pulse = pulse::pulse{*this};
+        m_quorumnet_state = quorumnet_new(*this, m_pulse);
     }
 
     quorumnet_init(*this, m_quorumnet_state);
@@ -1342,11 +1345,8 @@ void core::start_oxenmq() {
 
     if (m_service_node) {
         m_pulse_thread_id = m_omq->add_tagged_thread("pulse");
-        m_omq->add_timer(
-                [this]() { pulse::main(m_quorumnet_state, *this); },
-                std::chrono::milliseconds(500),
-                false,
-                m_pulse_thread_id);
+        m_pulse.init(m_quorumnet_state);
+        m_omq->add_timer(m_pulse, 500ms, false, m_pulse_thread_id);
         m_omq->add_timer([this]() { check_service_node_time(); }, 5s, false);
         m_omq->add_timer([this]() { check_service_node_ip_address(); }, 15min, false);
     }

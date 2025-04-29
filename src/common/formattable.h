@@ -6,6 +6,7 @@
 #include <oxenc/base64.h>
 #include <oxenc/hex.h>
 
+#include <concepts>
 #include <span>
 #include <string_view>
 #include <type_traits>
@@ -22,9 +23,12 @@ namespace formattable {
 //
 // The function should return something string-like (string, string_view, const char*).
 //
-// For instance to opt-in MyType for such string formatting, use:
+// For instance to opt-in MyType for such string formatting, either specialize via_to_string with a
+// true value:
 //
 //     template <> inline constexpr bool formattable::via_to_string<MyType> = true;
+//
+// or have a `static constexpr bool to_string_formattable = true;` in the class.
 //
 // You can also partially specialize via concepts; for instance to make all derived classes of a
 // common base type formattable via to_string you could do:
@@ -43,9 +47,17 @@ constexpr bool via_underlying = false;
 namespace detail {
 
     template <typename T>
-    concept callable_to_string_method = requires(T v) { v.to_string(); };
+    concept callable_to_string_method = requires(const T v) {
+        { v.to_string() } -> std::convertible_to<std::string_view>;
+    };
     template <typename T>
-    concept callable_to_hex_string_method = requires(T v) { v.to_hex_string(); };
+    concept callable_to_hex_string_method = requires(const T v) {
+        { v.to_hex_string() } -> std::convertible_to<std::string_view>;
+    };
+
+    template <typename T>
+    concept static_member_to_string_formattable =
+            T::to_string_formattable && callable_to_string_method<T>;
 
 }  // namespace detail
 
@@ -251,7 +263,8 @@ struct underlying_t_formatter : fmt::formatter<std::underlying_type_t<T>> {
 namespace fmt {
 
 template <typename T, typename Char>
-    requires ::formattable::via_to_string<T>
+    requires ::formattable::via_to_string<T> ||
+             ::formattable::detail::static_member_to_string_formattable<T>
 struct formatter<T, Char> : ::formattable::to_string_formatter<T> {};
 
 template <typename T, typename Char>
