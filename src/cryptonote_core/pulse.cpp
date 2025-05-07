@@ -603,8 +603,8 @@ void handle_message(void* quorumnet_state, message const& msg) {
     }
 
     uint16_t const validator_bit = (1 << msg.quorum_position);
-    if (context.state > round_state::wait_for_handshake_bitsets &&
-        msg.type > message_type::handshake_bitset) {
+    if (context.state > round_state::wait_for_block_template &&
+        msg.type > message_type::block_template) {
         // After the validator bitset has been set, the participating validators are
         // locked in. Any stray messages from other validators are rejected.
         if ((validator_bit & context.transient.wait_for_handshake_bitsets.best_bitset) == 0) {
