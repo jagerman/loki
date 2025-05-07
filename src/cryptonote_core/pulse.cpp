@@ -408,6 +408,10 @@ namespace {
                 if (bool received = quorum[quorum_index]; received)
                     msg.handshakes.validator_bitset |= (1 << quorum_index);
         } else {
+            // DEBUG FIXME TODO XXX
+            if (context.prepare_for_round.my_quorum_position == 0)
+                return;
+            // </DEBUG FIXME TODO XXX>
             msg.type = message_type::handshake;
         }
         crypto::generate_signature(
@@ -607,7 +611,7 @@ void handle_message(void* quorumnet_state, message const& msg) {
             auto bitset_view =
                     bitset_view16(context.transient.wait_for_handshake_bitsets.best_bitset)
                             .to_string();
-            log::trace(
+            log::error(
                     logcat,
                     "{}Dropping {}. Not a locked in participant, bitset is {}",
                     log_prefix(context),
