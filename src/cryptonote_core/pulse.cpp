@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iterator>
 #include <memory>
+#include <random>
 
 #include "common/formattable.h"
 #include "common/random.h"
@@ -571,6 +572,11 @@ namespace {
         assert(state >= round_state::send_and_wait_for_random_value_hashes);
 
         auto& participants = transient.block.pulse.validator_bitset;
+        log::critical(
+                logcat,
+                "checking for reset for missing: stage bits={:011b}, block.validators={:011b}",
+                stage.bitset,
+                participants);
         if (stage.bitset == participants)
             return std::nullopt;
 
@@ -1882,6 +1888,8 @@ namespace {
         generate_random_value();
     }
 
+    static std::bernoulli_distribution DEBUG_DROP_OUT{0.25};
+
     // Common code for late stage send-and-wait functions: if the type's value is not yet sent, this
     // builds a message, loads it, signs it, and starts distributing it, and starts the stage timer
     // (defining when we time out the stage).  If the value is already sent, this method does
@@ -1895,6 +1903,23 @@ namespace {
         message msg = msg_init<mtype>(*saw.to_send);
         saw.to_send.reset();  // Send only once
         auto& key = core.get_service_keys();
+
+        // FIXME TODO DEBUG CODE
+        auto pub_hex = tools::hex_guts(key.pub);
+        log::warning(logcat, "pub_hex: {}", pub_hex);
+        if (pub_hex.starts_with("decaf19") || pub_hex.starts_with("decaf12")) {
+            // Simulate drop-out where we don't send ours.  Everyone else should be able to continue
+            // without us.
+            if (DEBUG_DROP_OUT(tools::rng)) {
+                log::critical(
+                        logcat, "DROPPING OUT OF THIS PULSE ROUND! {}", round_state_string(state));
+                return;
+            } else {
+                log::error(logcat, "OK I'll STAY IN FOR NOW {}", round_state_string(state));
+            }
+        }
+        // END DEBUG CODE
+
         crypto::generate_signature(
                 msg_signature_hash(curr_block.top_hash, msg), key.pub, key.key, msg.signature);
         handle_message(msg);  // Add our own. We receive our own msg for the
@@ -2111,6 +2136,12 @@ namespace {
             }
 
             assert(std::popcount(stage.bitset) >= service_nodes::PULSE_BLOCK_REQUIRED_SIGNATURES);
+
+            log::critical(
+                    logcat,
+                    "block signing done! we have: {:011b} == {:011b}",
+                    stage.bitset,
+                    transient.block.pulse.validator_bitset);
 
             // Add first PULSE_BLOCK_REQUIRED_SIGNATURES signatures
             for (uint16_t validator_index = 0; validator_index < quorum.size(); validator_index++) {
