@@ -684,12 +684,18 @@ namespace {
         auto& _state_change(const T& x) {
             // Common loading code for nearly-identical state_change and deregister_old variables:
             auto voters = json::array();
-            for (auto& v : x.votes)
+            auto sigs = json::array();
+            json_binary_proxy sigs_hex{sigs, format};
+
+            for (auto& v : x.votes) {
                 voters.push_back(v.validator_index);
+                sigs_hex.push_back(v.signature);
+            }
 
             json sc{{"height", x.block_height},
                     {"index", x.service_node_index},
-                    {"voters", std::move(voters)}};
+                    {"voters", std::move(voters)},
+                    {"signatures", std::move(sigs)}};
             return set("sn_state_change", std::move(sc));
         }
         void operator()(const tx_extra_service_node_deregister_old& x) {
