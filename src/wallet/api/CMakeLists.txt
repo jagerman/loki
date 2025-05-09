@@ -93,6 +93,8 @@ function(combine_archives output_archive)
   endif()
 endfunction(combine_archives)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 if (STATIC AND BUILD_STATIC_DEPS)
     set(optional_deps)
     if(TARGET protobuf_lite)
@@ -147,6 +149,7 @@ if (STATIC AND BUILD_STATIC_DEPS)
             libzmq
             lmdb
             oxen::logging
+            logging
             oxenmq::oxenmq
             randomx
             sodium
