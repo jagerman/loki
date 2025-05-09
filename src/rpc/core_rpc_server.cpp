@@ -1620,20 +1620,35 @@ void core_rpc_server::invoke(GET_BLOCK_HEADER_BY_HASH& gbh, rpc_context context)
 //------------------------------------------------------------------------------------------------------------------------------
 void core_rpc_server::invoke(
         GET_BLOCK_HEADERS_RANGE& get_block_headers_range, rpc_context context) {
-    const uint64_t bc_height = m_core.blockchain.get_current_blockchain_height();
-    uint64_t start_height = get_block_headers_range.request.start_height;
-    uint64_t end_height = get_block_headers_range.request.end_height;
-    if (start_height >= bc_height)
+    const int64_t bc_height =
+            static_cast<int64_t>(m_core.blockchain.get_current_blockchain_height());
+    const auto& req = get_block_headers_range.request;
+    int64_t start_height = req.start_height;
+    int64_t end_height = req.end_height;
+    if (start_height >= bc_height || -start_height > bc_height)
         throw rpc_error{
                 ERROR_TOO_BIG_HEIGHT,
                 "Invalid start_height: {} exceeds top block height {}"_format(
                         start_height, bc_height - 1)};
-    if (end_height >= bc_height)
+    if (start_height < 0)
+        start_height = bc_height + start_height;
+    if (end_height >= bc_height || -end_height > bc_height)
         throw rpc_error{
                 ERROR_TOO_BIG_HEIGHT,
                 "Invalid end_height: {} exceeds top block height {}"_format(
                         end_height, bc_height - 1)};
-    for (uint64_t h = start_height; h <= end_height; ++h) {
+    if (end_height < 0)
+        end_height = bc_height + end_height;
+    if (start_height > end_height)
+        throw rpc_error{
+                ERROR_TOO_BIG_HEIGHT,
+                "Invalid start/end heights: end_height cannot be less than start_height."};
+    if (end_height - start_height >= GET_BLOCK_HEADERS_RANGE::MAX_COUNT)
+        throw rpc_error{
+                ERROR_TOO_BIG_HEIGHT,
+                "Invalid start/end heights: requested range of {} blocks exceeds limit {}"_format(
+                        end_height - start_height + 1, GET_BLOCK_HEADERS_RANGE::MAX_COUNT)};
+    for (int64_t h = start_height; h <= end_height; ++h) {
         block blk;
         size_t block_size;
         bool have_block = m_core.blockchain.get_block_by_height(h, blk, &block_size);
@@ -1647,8 +1662,8 @@ void core_rpc_server::invoke(
                 false,
                 std::nullopt,
                 get_block_hash(blk),
-                get_block_headers_range.request.fill_pow_hash && context.admin,
-                get_block_headers_range.request.get_tx_hashes,
+                req.fill_pow_hash && context.admin,
+                req.get_tx_hashes,
                 get_block_headers_range.response["headers"].emplace_back(),
                 get_block_headers_range.is_bt(),
                 m_core);

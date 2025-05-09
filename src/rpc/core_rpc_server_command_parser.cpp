@@ -396,12 +396,6 @@ void parse_request(GET_BLOCK_HEADERS_RANGE& gbhr, rpc_input in) {
             gbhr.request.get_tx_hashes,
             "start_height",
             required{gbhr.request.start_height});
-
-    if (gbhr.request.end_height >= gbhr.request.start_height + gbhr.MAX_HEIGHTS)
-        throw std::invalid_argument{
-                "Error: no more than 1000 block headers may be requested at once"};
-    if (gbhr.request.end_height < gbhr.request.start_height)
-        throw std::invalid_argument{"Error: end_height cannot be less than start_height"};
 }
 
 void parse_request(GET_BLOCK_HEADER_BY_HEIGHT& get_block_header_by_height, rpc_input in) {
