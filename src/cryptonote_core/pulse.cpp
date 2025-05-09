@@ -1953,7 +1953,7 @@ namespace {
                     stage.bitset,
                     timed_out ? ". We timed out and some hashes are missing" : "");
 
-            if (!hf21 || core.blockchain.get_current_blockchain_height() < *hf21) {
+            if (!all_hashes && (!hf21 || core.blockchain.get_current_blockchain_height() < *hf21)) {
                 // HF20 workaround to allow pulse to proceed even if a validator fails to send a
                 // random value hash in type.  This can be deleted once we are on HF21 (when the
                 // more robust version via reset_for_missing_validators takes over).
@@ -2003,15 +2003,22 @@ namespace {
             all_values = stage.bitset == transient.block.pulse.validator_bitset;
 
         if (timed_out || all_values) {
-            if (hf20_compat_mode) {
-                if (std::popcount(stage.bitset) <
+            if (!all_values && hf20_compat_mode) {
+                auto num_validators = std::popcount(stage.bitset);
+                if (num_validators <
                     static_cast<int>(service_nodes::PULSE_BLOCK_REQUIRED_SIGNATURES))
                     return goto_preparing_for_next_round();
-                log::debug(logcat, "{}Attempting to continue with HF20 workaround handling", *this);
+                log::debug(
+                        logcat,
+                        "{}Attempting to continue with HF20 workaround handling with {}/{} "
+                        "validators",
+                        *this,
+                        num_validators,
+                        std::popcount(transient.random_value_hashes.wait.stage.bitset));
             } else if (auto missing = reset_for_missing_validators(stage, timed_out)) {
                 bool retry = *missing;
                 if (retry)
-                    // Missing validators have been removed, but there are enough left to restarting
+                    // Missing validators have been removed, but there are enough left to restart
                     // from just after the block template was received.
                     return round_state::send_and_wait_for_random_value_hashes;
                 else
