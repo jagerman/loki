@@ -1623,8 +1623,16 @@ void core_rpc_server::invoke(
     const uint64_t bc_height = m_core.blockchain.get_current_blockchain_height();
     uint64_t start_height = get_block_headers_range.request.start_height;
     uint64_t end_height = get_block_headers_range.request.end_height;
-    if (start_height >= bc_height || end_height >= bc_height || start_height > end_height)
-        throw rpc_error{ERROR_TOO_BIG_HEIGHT, "Invalid start/end heights."};
+    if (start_height >= bc_height)
+        throw rpc_error{
+                ERROR_TOO_BIG_HEIGHT,
+                "Invalid start_height: {} exceeds top block height {}"_format(
+                        start_height, bc_height - 1)};
+    if (end_height >= bc_height)
+        throw rpc_error{
+                ERROR_TOO_BIG_HEIGHT,
+                "Invalid end_height: {} exceeds top block height {}"_format(
+                        end_height, bc_height - 1)};
     for (uint64_t h = start_height; h <= end_height; ++h) {
         block blk;
         size_t block_size;
@@ -1705,21 +1713,20 @@ void core_rpc_server::invoke(GET_BLOCK& get_block, rpc_context context) {
                             get_block.request.hash)};
         if (!m_core.blockchain.get_block_by_hash(block_hash, blk, &block_size, &orphan))
             throw rpc_error{
-                    ERROR_INTERNAL,
-                    "Internal error: can't get block by hash. Hash = {}."_format(
-                            get_block.request.hash)};
+                    ERROR_NOT_FOUND,
+                    "Requested block hash: {} not found"_format(get_block.request.hash)};
     } else {
+        auto req_height = get_block.request.height.value();
         if (auto curr_height = m_core.blockchain.get_current_blockchain_height();
-            get_block.request.height >= curr_height)
+            req_height >= curr_height)
             throw rpc_error{
                     ERROR_TOO_BIG_HEIGHT,
                     "Requested block height: {} greater than current top block height: {}"_format(
-                            get_block.request.height, curr_height - 1)};
-        if (!m_core.blockchain.get_block_by_height(get_block.request.height, blk, &block_size))
+                            req_height, curr_height - 1)};
+        if (!m_core.blockchain.get_block_by_height(*get_block.request.height, blk, &block_size))
             throw rpc_error{
                     ERROR_INTERNAL,
-                    "Internal error: can't get block by height. Height = {}."_format(
-                            get_block.request.height)};
+                    "Internal error: can't get block by height. Height = {}."_format(req_height)};
         block_hash = get_block_hash(blk);
         block_height = get_block.request.height;
     }

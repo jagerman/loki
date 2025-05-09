@@ -809,7 +809,7 @@ struct GET_BLOCK : PUBLIC {
 
     struct request_parameters {
         std::string hash;
-        uint64_t height;
+        std::optional<uint64_t> height;
         bool fill_pow_hash;
     } request;
 };
@@ -1060,7 +1060,7 @@ struct GET_CONNECTIONS : NO_ARGS {
 /// Inputs:
 ///
 /// - `start_height` -- The starting block's height.
-/// - `end_height` -- The ending block's height.
+/// - `end_height` -- The ending block's height (inclusive).  Must be less than start_height + 1000.
 /// - `fill_pow_hash` -- Tell the daemon if it should fill out pow_hash field.
 /// - `get_tx_hashes` -- If true (default false) then include the hashes of non-coinbase
 ///   transactions
@@ -1081,6 +1081,9 @@ struct GET_BLOCK_HEADERS_RANGE : PUBLIC {
     static constexpr auto names() {
         return NAMES("get_block_headers_range", "getblockheadersrange");
     }
+
+    // Used for this endpoint as well as the by_hash/by_height versions.
+    static constexpr size_t MAX_COUNT = 1000;
 
     struct request_parameters {
         uint64_t start_height;
