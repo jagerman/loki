@@ -1491,27 +1491,27 @@ static void fill_block_header_response(
         std::optional<uint64_t> maybe_height,
         const crypto::hash& hash,
         bool fill_pow_hash,
-        bool get_tx_hashes,
+        bool tx_hashes_and_sigs,
         nlohmann::json& response,
         bool is_bt,
         cryptonote::core& core) {
 
     auto& db = core.blockchain.db();
 
-    tools::json_binary_proxy response_hex{
-            response,
-            is_bt ? tools::json_binary_proxy::fmt::bt : tools::json_binary_proxy::fmt::hex};
+    auto binfmt = is_bt ? tools::json_binary_proxy::fmt::bt : tools::json_binary_proxy::fmt::hex;
+
+    serialization::json_archiver ar{binfmt};
+    serialize(ar, const_cast<block&>(blk));
+    response = std::move(ar).json();
+    tools::json_binary_proxy response_hex{response, binfmt};
 
     uint64_t height = maybe_height ? *maybe_height : blk.get_height();
-
-    response["major_version"] = static_cast<uint8_t>(blk.major_version);
-    response["minor_version"] = static_cast<uint8_t>(blk.minor_version);
-    response["timestamp"] = blk.timestamp;
-    response_hex["prev_hash"] = blk.prev_id;
-    response["nonce"] = blk.nonce;
-    response["orphan_status"] = orphan_status;
-    response["height"] = height;
+    if (!response.count("height"))
+        response["height"] = height;
     response["depth"] = core.blockchain.get_current_blockchain_height() - height - 1;
+    response["prev_hash"] = std::move(response["prev_id"]);
+    response.erase("prev_id");
+    response["orphan_status"] = orphan_status;
     response_hex["hash"] = hash;
     response["difficulty"] = core.blockchain.block_difficulty(height);
     response["cumulative_difficulty"] = db.get_block_cumulative_difficulty(height);
@@ -1519,9 +1519,10 @@ static void fill_block_header_response(
     response["block_weight"] = weight;
     response["block_size"] = block_size + weight;
     auto coinbase = get_block_coinbase_payouts(blk);
-    response["coinbase_payouts"] = coinbase;
-    response["reward"] =
-            blk.major_version >= cryptonote::hf::hf19_reward_batching ? blk.reward : coinbase;
+    if (blk.major_version < cryptonote::hf::hf21_eth)
+        response["coinbase_payouts"] = coinbase;
+    if (blk.major_version < cryptonote::hf::hf19_reward_batching)
+        response["reward"] = coinbase;
     response["num_txes"] = blk.tx_hashes.size();
     if (fill_pow_hash)
         response_hex["pow_hash"] = get_block_longhash_w_blockchain(
@@ -1530,20 +1531,19 @@ static void fill_block_header_response(
     if (blk.major_version < feature::ETH_BLS)
         response_hex["service_node_winner"] =
                 cryptonote::get_service_node_winner_from_tx_extra(blk.miner_tx.value().extra);
-    else
-        response_hex["service_node_winner_tail"] = blk.sn_winner_tail;
-    if (blk.major_version >= cryptonote::feature::ETH_BLS) {
-        response["l2_height"] = blk.l2_height;
-        response["l2_reward"] = blk.l2_reward;
-        response["l2_votes"] = blk.l2_votes;
+    else {
+        response["service_node_winner_tail"] = std::move(response["sn_winner_tail"]);
+        response.erase("sn_winner_tail");
     }
+    response.erase("miner_tx");
     if (blk.miner_tx) {
         response_hex["miner_tx_hash"] = cryptonote::get_transaction_hash(*blk.miner_tx);
         response["miner_tx_outs"] = blk.miner_tx->vout.size();
     }
-    if (get_tx_hashes)
-        for (const auto& tx_hash : blk.tx_hashes)
-            response_hex["tx_hashes"].push_back(tx_hash);
+    if (!tx_hashes_and_sigs) {
+        response.erase("tx_hashes");
+        response.erase("signatures");
+    }
 }
 //------------------------------------------------------------------------------------------------------------------------------
 void core_rpc_server::invoke(GET_LAST_BLOCK_HEADER& get_last_block_header, rpc_context context) {
@@ -1752,11 +1752,12 @@ void core_rpc_server::invoke(GET_BLOCK& get_block, rpc_context context) {
             block_height,
             block_hash,
             get_block.request.fill_pow_hash && context.admin,
-            false /*tx hashes*/,
+            true /*tx hashes*/,
             get_block.response["block_header"],
             get_block.is_bt(),
             m_core);
-    get_block.response_hex["tx_hashes"] = blk.tx_hashes;
+    get_block.response["tx_hashes"] = std::move(get_block.response["block_header"]["tx_hashes"]);
+    get_block.response["block_header"].erase("tx_hashes");
     get_block.response_hex["blob"] = t_serializable_object_to_blob(blk);
     get_block.response["json"] = obj_to_json_str(blk);
     get_block.response["status"] = STATUS_OK;

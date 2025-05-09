@@ -664,8 +664,8 @@ struct GET_BLOCK_HASH : PUBLIC {
 ///
 /// Inputs:
 /// - `fill_pow_hash` -- Tell the daemon if it should fill out pow_hash field.
-/// - `get_tx_hashes` -- If true (default false) then include the hashes of non-coinbase
-///   transactions
+/// - `get_tx_hashes` -- If true (default false) then include some extra info: hashes of non-coinbase
+///   transactions, and pulse quorum block signatures.
 ///
 /// Outputs:
 ///
@@ -724,8 +724,8 @@ struct GET_LAST_BLOCK_HEADER : PUBLIC {
 /// - `hash` -- The block's hash.
 /// - `hashes` -- Request multiple blocks via an array of hashes
 /// - `fill_pow_hash` -- Tell the daemon if it should fill out pow_hash field.
-/// - `get_tx_hashes` -- If true (default false) then include the hashes of non-coinbase
-///   transactions
+/// - `get_tx_hashes` -- If true (default false) then include some extra info: hashes of non-coinbase
+///   transactions, and pulse quorum block signatures.
 ///
 /// Outputs:
 ///
@@ -755,8 +755,8 @@ struct GET_BLOCK_HEADER_BY_HASH : PUBLIC {
 /// - `height` -- A block height to look up; returned in `block_header`
 /// - `heights` -- Block heights to retrieve; returned in `block_headers`
 /// - `fill_pow_hash` -- Tell the daemon if it should fill out pow_hash field.
-/// - `get_tx_hashes` -- If true (default false) then include the hashes of non-coinbase
-///   transactions
+/// - `get_tx_hashes` -- If true (default false) then include some extra info: hashes of non-coinbase
+///   transactions, and pulse quorum block signatures.
 ///
 /// Outputs:
 ///
@@ -1065,8 +1065,8 @@ struct GET_CONNECTIONS : NO_ARGS {
 /// - `end_height` -- The ending block's height (inclusive).  Must be less than start_height + 1000.
 ///   Negative values are relative to the current chain height.
 /// - `fill_pow_hash` -- Tell the daemon if it should fill out pow_hash field.
-/// - `get_tx_hashes` -- If true (default false) then include the hashes of non-coinbase
-///   transactions
+/// - `get_tx_hashes` -- If true (default false) then include some extra info: hashes of non-coinbase
+///   transactions, and pulse quorum block signatures.
 ///
 /// Outputs:
 ///
