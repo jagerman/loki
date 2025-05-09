@@ -623,12 +623,29 @@ std::vector<cryptonote::batch_sn_payment> BlockchainSQLite::get_sn_payments(uint
     // The block before HF21, addresses which have not registered an ETH address for the
     // SENT transition will have their balances paid out, regardless of balance.
     bool pre_hf21_final_payout = false;
-    auto hf21_begins = *cryptonote::hard_fork_begins(m_nettype, hf::hf21_eth);
-    if (block_height == hf21_begins - 1) {
+    auto hf21_begins = cryptonote::hard_fork_begins(m_nettype, hf::hf21_eth);
+    if (hf21_begins && block_height == *hf21_begins - 1) {
+        pre_hf21_final_payout = true;
+
+        if (m_nettype == network_type::TESTNET) {
+            // Testnet forked before this final block payout code was added (and just dropped
+            // pending rewards), so skip the handling.
+            using namespace oxenc::literals;
+            constexpr auto id = "223a7865e16fcab802a1dc17616415bf"_hex_u;
+            static_assert(
+                    std::equal(
+                            id.begin(),
+                            id.end(),
+                            get_config(network_type::TESTNET).NETWORK_ID.begin()),
+                    "If rebooting testnet, remove this workaround code!");
+            pre_hf21_final_payout = false;
+        }
+    }
+
+    if (pre_hf21_final_payout) {
         log::debug(
                 logcat,
                 "block before hf21, doing final payout to addresses not registered for conversion");
-        pre_hf21_final_payout = true;
         auto all_accrued_amounts = prepared_results<std::string_view, int64_t>(
                 "SELECT address, amount FROM batched_payments_accrued ORDER BY address ASC");
         accrued_pairs.clear();
