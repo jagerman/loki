@@ -3135,7 +3135,7 @@ void core_rpc_server::fill_sn_response_entry(
             } else
                 c["address"] = cryptonote::get_account_address_as_str(
                         m_core.get_nettype(), false /*subaddress*/, contributor.address);
-            if (contributor.reserved != contributor.amount)
+            if (contributor.reserved && contributor.reserved != contributor.amount)
                 c["reserved"] = contributor.reserved;
             if (want_locked_c) {
                 auto& locked = (c["locked_contributions"] = json::array());

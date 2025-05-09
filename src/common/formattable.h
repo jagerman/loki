@@ -169,10 +169,8 @@ struct hex_span_formatter {
 
     // Called to produce a default format; subclasses can override to change the default.
     virtual fmt::format_context::iterator default_format(
-            std::span<const unsigned char> val, fmt::format_context& ctx) const {
-        auto out = ctx.out();
-        out = oxenc::to_hex(val.begin(), val.end(), out);
-        return out;
+            std::span<const unsigned char> val, fmt::format_context::iterator& out) const {
+        return oxenc::to_hex(val.begin(), val.end(), out);
     }
 
     auto format(std::span<const unsigned char> val, fmt::format_context& ctx) const {
@@ -182,7 +180,9 @@ struct hex_span_formatter {
 
         using namespace fmt;
         auto it = val.begin();
-        if (mode == output::raw)
+        if (mode == output::default_)
+            out = default_format(val, out);
+        else if (mode == output::raw)
             out = std::copy(it, val.end(), out);
         else if (mode == output::b64)
             out = oxenc::to_base64(it, val.end(), out);
