@@ -1798,6 +1798,7 @@ namespace {
 
     // Extra fields are intentionally given tags after the common header fields.
     const std::string PULSE_TAG_BLOCK_TEMPLATE = "t";
+    const std::string PULSE_TAG_BLOCK_SUPPLEMENTAL = "tx";
     const std::string PULSE_TAG_VALIDATOR_BITSET = "u";
     const std::string PULSE_TAG_RANDOM_VALUE = "v";
     const std::string PULSE_TAG_RANDOM_VALUE_HASH = "x";
@@ -1853,7 +1854,10 @@ namespace {
 
             case message_type::block_template: {
                 command = PULSE_CMD_SEND_BLOCK_TEMPLATE;
-                data.append(PULSE_TAG_BLOCK_TEMPLATE, msg.get<message_type::block_template>());
+                const auto& [block, supplemental] = msg.get<message_type::block_template>();
+                data.append(PULSE_TAG_BLOCK_TEMPLATE, block);
+                if (!supplemental.empty())
+                    data.append_list(PULSE_TAG_BLOCK_SUPPLEMENTAL, supplemental);
             } break;
 
             case message_type::handshake: command = PULSE_CMD_SEND_VALIDATOR_BIT; [[fallthrough]];
@@ -1971,10 +1975,15 @@ namespace {
         pulse::message msg = pulse_parse_msg_header_fields(
                 pulse::message_type::block_template, data, INVALID_ARG_PREFIX);
 
+        auto& [block_blob, supplemental] = msg.payload.emplace<pulse::message::block_and_txes>();
         if (auto const& tag = PULSE_TAG_BLOCK_TEMPLATE; data.skip_until(tag))
-            msg.payload = data.consume_string();
+            block_blob = data.consume_string();
         else
             throw oxen::traced<std::invalid_argument>{"{}{}'"_format(INVALID_ARG_PREFIX, tag)};
+
+        if (data.skip_until(PULSE_TAG_BLOCK_SUPPLEMENTAL))
+            data.consume_list(supplemental);
+        // else missing is fine: it is not sent if empty, or by Oxen nodes older than 11.3
 
         qnet.omq.job(
                 [&qnet, msg = std::move(msg)] { qnet.pulse(&msg); }, qnet.core.pulse_thread_id());

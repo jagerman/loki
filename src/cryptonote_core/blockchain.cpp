@@ -1996,7 +1996,8 @@ bool Blockchain::create_block_template_internal(
         difficulty_type& diffic,
         uint64_t& height,
         uint64_t& expected_reward,
-        const std::string& ex_nonce) {
+        const std::string& ex_nonce,
+        std::vector<std::string>* state_change_txes) {
     ZoneScoped;
     log::trace(logcat, "Blockchain::{}", __func__);
     size_t median_weight;
@@ -2083,7 +2084,8 @@ bool Blockchain::create_block_template_internal(
                 expected_reward,
                 b.major_version,
                 height,
-                l2_mempool_max))
+                l2_mempool_max,
+                state_change_txes))
         return false;
 
     pool_cookie = tx_pool.cookie();
@@ -2257,14 +2259,16 @@ bool Blockchain::create_next_pulse_block_template(
         const service_nodes::payout& block_producer,
         uint8_t round,
         uint16_t validator_bitset,
-        uint64_t& height) {
+        uint64_t& height,
+        std::vector<std::string>* supplemental_txes) {
     uint64_t expected_reward = 0;
     block_template_info info = {};
     info.service_node_payout = block_producer;
     uint64_t diffic = 0;
-    std::string nonce = {};
+    std::string nonce;
 
-    bool result = create_block_template_internal(b, info, diffic, height, expected_reward, nonce);
+    bool result = create_block_template_internal(
+            b, info, diffic, height, expected_reward, nonce, supplemental_txes);
     b.pulse.round = round;
     b.pulse.validator_bitset = validator_bitset;
     return result;

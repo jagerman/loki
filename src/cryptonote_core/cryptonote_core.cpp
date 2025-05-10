@@ -2392,22 +2392,29 @@ bool core::relay_service_node_votes() {
 void core::set_service_node_votes_relayed(const std::vector<service_nodes::quorum_vote_t>& votes) {
     m_quorum_cop.set_votes_relayed(votes);
 }
-//-----------------------------------------------------------------------------------------------
+
+// Attempts to build a block_complete_entry containing the block and any referenced transactions in
+// the block.  Transactions are looked up in the mempool.
+//
+// Throws on error (such as failing to parse the block or failing to find a referenced tx).
 block_complete_entry get_block_complete_entry(block& b, tx_memory_pool& pool) {
     block_complete_entry bce = {};
     bce.block = cryptonote::block_to_blob(b);
     for (const auto& tx_hash : b.tx_hashes) {
-        std::string txblob;
-        if (!pool.get_transaction(tx_hash, txblob) || txblob.size() == 0) {
-            oxen::log::error(logcat, "Transaction {} not found in pool", tx_hash);
-            throw oxen::traced<std::runtime_error>("Transaction not found in pool");
+
+        if (std::string txblob; pool.get_transaction(tx_hash, txblob) && !txblob.empty()) {
+            bce.txs.push_back(std::move(txblob));
+            continue;
         }
-        bce.txs.push_back(txblob);
+
+        throw std::runtime_error{"Transaction {} not found in pool"_format(tx_hash)};
     }
     return bce;
 }
 //-----------------------------------------------------------------------------------------------
-bool core::handle_block_found(block& b, block_verification_context& bvc) {
+bool core::handle_block_found(
+        block& b,
+        block_verification_context& bvc) {
     ZoneScoped;
     bvc = {};
     std::vector<block_complete_entry> blocks;
@@ -2416,9 +2423,11 @@ bool core::handle_block_found(block& b, block_verification_context& bvc) {
         OXEN_DEFER {
             miner.resume();
         };
+
         try {
             blocks.push_back(get_block_complete_entry(b, mempool));
         } catch (const std::exception& e) {
+            log::error(logcat, "Cannot add block: {}", e.what());
             return false;
         }
         std::vector<block> pblocks;

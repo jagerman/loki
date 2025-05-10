@@ -48,10 +48,11 @@ struct message {
     crypto::signature signature;  // Signs the contents of the message, proving it came from the
                                   // node at quorum_position
 
+    using block_and_txes = std::pair<std::string, std::vector<std::string>>;
     std::variant<
             std::monostate,
             uint16_t,
-            std::string,
+            block_and_txes,
             crypto::hash,
             cryptonote::pulse_random_value,
             crypto::signature>
@@ -61,16 +62,20 @@ struct message {
     template <message_type Type>
     using payload_t =
         std::conditional_t<Type == message_type::handshake_bitset, uint16_t,
-        std::conditional_t<Type == message_type::block_template, std::string,
+        std::conditional_t<Type == message_type::block_template, block_and_txes,
         std::conditional_t<Type == message_type::random_value_hash, crypto::hash,
         std::conditional_t<Type == message_type::random_value, cryptonote::pulse_random_value,
         std::conditional_t<Type == message_type::block_signature, crypto::signature, void>>>>>;
     // clang-format on
 
     template <message_type Type>
+        requires(!std::is_void_v<payload_t<Type>>)
     auto& get() const {
-        static_assert(
-                !std::is_void_v<payload_t<Type>>, "message_type does not have a payload value");
+        return std::get<payload_t<Type>>(payload);
+    }
+    template <message_type Type>
+        requires(!std::is_void_v<payload_t<Type>>)
+    auto& get() {
         return std::get<payload_t<Type>>(payload);
     }
 };

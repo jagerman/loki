@@ -1867,7 +1867,8 @@ bool tx_memory_pool::fill_block_template(
         uint64_t& expected_reward,
         hf version,
         uint64_t height,
-        std::optional<uint64_t> l2_max) {
+        std::optional<uint64_t> l2_max,
+        std::vector<std::string>* state_change_txes) {
     auto locks = tools::unique_locks(m_transactions_lock, m_blockchain);
 
     total_weight = 0;
@@ -1923,6 +1924,8 @@ bool tx_memory_pool::fill_block_template(
     uint64_t next_reward = 0;
     uint64_t net_fee = 0;
     bl.tx_eth_count = 0;
+    if (state_change_txes)
+        state_change_txes->clear();
 
     for (const auto& pooltx : m_txs_by_priority) {
         const auto& txid = std::get<crypto::hash>(pooltx);
@@ -2036,6 +2039,8 @@ bool tx_memory_pool::fill_block_template(
         bl.tx_hashes.push_back(txid);
         if (meta.l2_height > 0)
             bl.tx_eth_count++;
+        if (tx.type == txtype::state_change && state_change_txes)
+            state_change_txes->push_back(txblob);
         total_weight += meta.weight;
         raw_fee += meta.fee;
         net_fee = next_reward_parts.miner_fee;

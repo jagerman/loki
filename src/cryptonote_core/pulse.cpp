@@ -208,9 +208,15 @@ namespace {
                 pulse_wait_stage stage;
             } wait_for_block_template;
 
-            cryptonote::block block;  // The block, received during wait-for-handshake, and
-                                      // updated with validators/signatures as we progress to
-                                      // finalizing it through later stages.
+            // The block, send by the producer after all determining all (initial) participating
+            // validators.  The producer also (starting with Oxen 11.3) also sends any included
+            // state change txes alongside the block template because those can easily have
+            // equivalent but different local txes on the validators if they received quorum
+            // signatures in a different order, and the validators will fail to add the block to the
+            // chain if they don't have the same version of those txes.  (We don't send or allow
+            // other types of txes because we should received those separately).
+            cryptonote::block block;
+            std::unordered_map<crypto::hash, std::string> state_change_txs;
 
             template <typename T, round_state RoundState>
             struct send_and_wait {
@@ -361,10 +367,12 @@ namespace {
             } break;
 
             case message_type::block_template: {
-                const auto& blob = msg.get<message_type::block_template>();
+                const auto& [blob, state_changes] = msg.get<message_type::block_template>();
                 crypto::hash block_hash = blake2b_hash(blob.data(), blob.size());
                 auto buf = tools::memcpy_le(msg.round, block_hash);
                 result = blake2b_hash(buf.data(), buf.size());
+                // blobs in state_changes aren't directly signed, but we parse them and only accept
+                // them if they match txes referenced in the signed block.
             } break;
 
             case message_type::random_value_hash: {
@@ -798,8 +806,8 @@ namespace {
                     return;  // Duplicate copy; nothing to do.
 
                 cryptonote::block block = {};
-                if (!cryptonote::t_serializable_object_from_blob(
-                            block, msg.get<message_type::block_template>())) {
+                auto& [block_blob, state_change_blobs] = msg.get<message_type::block_template>();
+                if (!cryptonote::t_serializable_object_from_blob(block, block_blob)) {
                     log::warning(logcat, "{}Received unparsable pulse block template blob", *this);
                     return;
                 }
@@ -827,7 +835,47 @@ namespace {
                     return;
                 }
 
+                std::unordered_map<crypto::hash, std::string> supp_tx;
+                for (auto& tx_blob : state_change_blobs) {
+                    cryptonote::transaction tx;
+                    if (!parse_and_validate_tx_from_blob(tx_blob, tx)) {
+                        log::warning(logcat, "{}Received unparsable supplemental tx", *this);
+                        return;
+                    }
+
+                    if (tx.type != cryptonote::txtype::state_change) {
+                        log::warning(
+                                logcat,
+                                "{}Received invalid non-state change supplemental tx type: {}",
+                                *this,
+                                tx.type);
+                        return;
+                    }
+
+                    auto hash = get_transaction_hash(tx);
+                    if (std::find(block.tx_hashes.begin(), block.tx_hashes.end(), hash) ==
+                        block.tx_hashes.end()) {
+                        log::warning(
+                                logcat,
+                                "{}Received invalid state change tx {} not referenced by the block "
+                                "template",
+                                *this,
+                                hash);
+                        return;
+                    }
+
+                    supp_tx.emplace(hash, std::move(tx_blob));
+                }
+
+                log::debug(
+                        logcat,
+                        "{}Accepted {}B block template with {} state change txes",
+                        *this,
+                        block_blob.size(),
+                        supp_tx.size());
+
                 transient.block = std::move(block);
+                transient.state_change_txs = std::move(supp_tx);
             } break;
 
             case message_type::random_value_hash: {
@@ -1702,6 +1750,7 @@ namespace {
 
         // Block
         cryptonote::block new_block{};
+        std::vector<std::string> state_change_txes;
         {
             uint64_t height = 0;
             service_nodes::payout block_producer_payouts =
@@ -1713,7 +1762,8 @@ namespace {
                             block_producer_payouts,
                             round.number,
                             transient.wait_for_handshake_bitsets.best_bitset,
-                            height)) {
+                            height,
+                            &state_change_txes)) {
                     log::error(
                             logcat,
                             "{}Failed to generate a block template, waiting until next round",
@@ -1741,8 +1791,9 @@ namespace {
         }
 
         // Message
-        message msg = msg_init<message_type::block_template>(
-                cryptonote::t_serializable_object_to_blob(new_block));
+        message msg = msg_init<message_type::block_template>(message::block_and_txes{
+                cryptonote::t_serializable_object_to_blob(new_block),
+                std::move(state_change_txes)});
         crypto::generate_signature(
                 msg_signature_hash(curr_block.top_hash, msg), key.pub, key.key, msg.signature);
 
@@ -1835,7 +1886,7 @@ namespace {
                     // get rejected during blockchain handling so don't need to be checked here.
                     log::debug(
                             logcat,
-                            "{}Block passed state change validation ({} state changes of {} txs)",
+                            "{}Block passed L2 event validation ({} L2 events of {} txs)",
                             *this,
                             block.tx_eth_count,
                             block.tx_hashes.size());
@@ -2167,7 +2218,7 @@ namespace {
                     break;
             }
             assert(block.signatures.size() == service_nodes::PULSE_BLOCK_REQUIRED_SIGNATURES);
-            transient.block.invalidate_hashes();
+            block.invalidate_hashes();
 
             // Propagate Final Block
             if (log::get_level(logcat) <= log::Level::debug)
@@ -2176,6 +2227,20 @@ namespace {
                         "{}Final signed block constructed:\n{}",
                         *this,
                         cryptonote::obj_to_json_str(block));
+
+            // Insert any state change txes into the mempool, because we quite possibly have
+            // *equivalent* ones but those do not have the same hash and will not be found, and we
+            // need to ensure we have the exact one the block producer sent in order for the block
+            // to get admitted to the chain.
+            for (auto& [hash, blob] : transient.state_change_txs) {
+                cryptonote::tx_verification_context tvc{};
+                if (!core.handle_incoming_tx(
+                            blob, tvc, cryptonote::tx_pool_options::from_block()) ||
+                    tvc.m_verifivation_failed) {
+                    log::error(logcat, "Failed to add state change tx {} to mempool", hash);
+                    return goto_preparing_for_next_round();
+                }
+            }
 
             cryptonote::block_verification_context bvc = {};
             if (!core.handle_block_found(block, bvc))

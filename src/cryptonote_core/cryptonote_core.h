@@ -336,7 +336,9 @@ class core final {
      *
      * @return true if the block was added to the main chain, otherwise false
      */
-    bool handle_block_found(block& b, block_verification_context& bvc);
+    bool handle_block_found(
+            block& b,
+            block_verification_context& bvc);
 
     /**
      * @brief called when a transaction is relayed; return the hash of the parsed tx, or null hash
