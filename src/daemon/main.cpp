@@ -35,6 +35,7 @@
 #include "common/command_line.h"
 #include "common/exception.h"
 #include "common/fs.h"
+#include "common/guts.h"
 #include "common/password.h"
 #include "common/scoped_message_writer.h"
 #include "common/util.h"
@@ -320,6 +321,15 @@ int main(int argc, char const* argv[]) {
         // else (in command mode) ignore the log file
 
         oxen::logging::init(log_file, command_line::get_arg(vm, daemon_args::arg_log_level));
+
+        auto contract = tools::make_from_hex_guts<eth::address>(cryptonote::get_config(cryptonote::network_type::MAINNET).ETHEREUM_REWARDS_CONTRACT);
+        namespace log = oxen::log;
+        auto cat = log::Cat("TAG");
+        log::critical(cat, "HASH_TO_G2 tag: {}", build_tag_hash(eth::tag::HASH_TO_G2, cryptonote::network_type::MAINNET, &contract));
+        log::critical(cat, "REWARD tag: {}", build_tag_hash(eth::tag::REWARD, cryptonote::network_type::MAINNET, &contract));
+        log::critical(cat, "PROOF_OF_POSSESSION tag: {}", build_tag_hash(eth::tag::PROOF_OF_POSSESSION, cryptonote::network_type::MAINNET, &contract));
+        log::critical(cat, "EXIT tag: {}", build_tag_hash(eth::tag::EXIT, cryptonote::network_type::MAINNET, &contract));
+        log::critical(cat, "LIQUIDATE tag: {}", build_tag_hash(eth::tag::LIQUIDATE, cryptonote::network_type::MAINNET, &contract));
 
         logs_initialized = true;
 
