@@ -1784,6 +1784,9 @@ namespace {
             }
         }
 
+        // FIXME: DELIBERATE TESTNET BREAKAGE:
+        new_block.l2_votes.assign(new_block.l2_votes.size(), false);
+
         // Message
         message msg = msg_init<message_type::block_template>(message::block_and_txes{
                 cryptonote::t_serializable_object_to_blob(new_block),
@@ -1909,7 +1912,8 @@ namespace {
                                 *this,
                                 fmt::join(block.l2_votes, ","),
                                 fmt::join(block.l2_votes, ","));
-                        return goto_preparing_for_next_round();
+                        // FIXME: DELIBERATE TESTNET BREAKAGE:
+                        //return goto_preparing_for_next_round();
                     }
                 }
 
