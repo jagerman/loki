@@ -1911,7 +1911,7 @@ namespace {
                                 "(this node)",
                                 *this,
                                 fmt::join(block.l2_votes, ","),
-                                fmt::join(block.l2_votes, ","));
+                                fmt::join(my_l2_votes, ","));
                         // FIXME: DELIBERATE TESTNET BREAKAGE:
                         //return goto_preparing_for_next_round();
                     }
