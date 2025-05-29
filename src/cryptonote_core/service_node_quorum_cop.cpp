@@ -424,6 +424,9 @@ void quorum_cop::process_quorums(cryptonote::block const& block) {
                             test_results.lokinet_reachable = true;
                             bool passed = test_results.passed();
 
+                            // FIXME TESTNET hack: disable decomm/dereg.
+                            passed = true;
+
                             new_state vote_for_state;
                             uint16_t reason = 0;
                             if (passed) {
