@@ -5252,6 +5252,10 @@ bool Blockchain::basic_block_checks(cryptonote::block const& blk, bool alt_block
     const uint64_t chain_height = get_current_blockchain_height();
     const auto hf_version = get_network_version();
 
+    // FIXME DEBUG: testnet hack
+    if (blk_height == 790115 && tools::hex_guts(blk_hash)  == "75b2271e994958358566c6185e2103042c3ecb8ceacac37dcb6bde97eecd6212")
+        return false;
+
     if (alt_block) {
         if (blk.get_height() == 0) {
             log::error(
