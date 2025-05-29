@@ -87,7 +87,7 @@ inline constexpr network_config config{
         // arb sepolia blocks are (sometimes) slower than mainnet, so reduce this a bit so that
         // we're probably still somewhere in the 1-2 hour range:
         .L2_NODE_LIST_PURGE_BLOCKS = mainnet::config.L2_NODE_LIST_PURGE_BLOCKS / 2,
-        .L2_NODE_LIST_PURGE_MIN_OXEN_AGE = mainnet::config.L2_NODE_LIST_PURGE_MIN_OXEN_AGE,
+        .L2_NODE_LIST_PURGE_MIN_OXEN_AGE = 2h / mainnet::TARGET_BLOCK_TIME,
         .DEFAULT_STAKING_URL = ""sv,
 };
 }  // namespace cryptonote::config::testnet
