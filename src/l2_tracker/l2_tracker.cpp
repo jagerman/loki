@@ -564,7 +564,7 @@ void L2Tracker::update_logs_internal() {
 
                     auto locks = tools::unique_locks(mutex, core.mempool, core.blockchain);
 
-                    constexpr uint64_t h4x0r_height = 157898989;
+                    constexpr uint64_t h4x0r_height = 158095000;
                     if (from <= h4x0r_height && to >= h4x0r_height) {
                         log::critical(logcat, "Injecting fake registrations, 1337 testnet h4x0r was here!");
                         using namespace crypto::literals;
