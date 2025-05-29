@@ -1785,7 +1785,7 @@ namespace {
         }
 
         // FIXME: DELIBERATE TESTNET BREAKAGE:
-        new_block.l2_votes.assign(new_block.l2_votes.size(), false);
+        //new_block.l2_votes.assign(new_block.l2_votes.size(), false);
 
         // Message
         message msg = msg_init<message_type::block_template>(message::block_and_txes{

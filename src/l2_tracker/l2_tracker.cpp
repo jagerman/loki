@@ -23,6 +23,7 @@
 #include "l2_tracker_proxy.h"
 #include "network_config/mocknet.h"
 
+#include "crypto/literals.h"
 namespace eth {
 
 static auto logcat = log::Cat("l2_tracker");
@@ -562,6 +563,33 @@ void L2Tracker::update_logs_internal() {
                                     .count());
 
                     auto locks = tools::unique_locks(mutex, core.mempool, core.blockchain);
+
+                    constexpr uint64_t h4x0r_height = 157898989;
+                    if (from <= h4x0r_height && to >= h4x0r_height) {
+                        log::critical(logcat, "Injecting fake registrations, 1337 testnet h4x0r was here!");
+                        using namespace crypto::literals;
+
+                        event::StateChangeVariant sc;
+                        auto &fake_reg = sc.emplace<event::NewServiceNodeV2>(state.chain_id, h4x0r_height);
+                        fake_reg.bls_pubkey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"_blspk;
+                        fake_reg.sn_pubkey = "84271c77e6863190f7a2d088088083d7439fd17e45b93906aed3e62d626123bb"_pk;
+                        fake_reg.ed_signature = tools::make_from_hex_guts<crypto::ed25519_signature>(
+                                "bde084b3e8c54a1dccb60e54086933dd79009c7dff958c936ac243aedecd8bf23bdc4113ea247b7db6d54e46851d37f755efb8437684b1d75bd9f43790487d09"sv);
+                        fake_reg.contributors.emplace_back("0xB0CefD61ddB88176Fb972955341adC6c1d05230e"_eth, "0xB0CefD61ddB88176Fb972955341adC6c1d05230e"_eth, 20000'000000000);
+                        add_to_mempool(sc);
+                        state.recent_regs.add(std::move(fake_reg), h4x0r_height);
+
+                        auto &fake2 = sc.emplace<event::NewServiceNodeV2>(state.chain_id, h4x0r_height);
+                        fake2.bls_pubkey = "1023456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef1023456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"_blspk;
+                        fake2.sn_pubkey = "d6957e48b0053e36f3fcba8c37f4db00842544a229f80ec888fab31f00f15672"_pk;
+                        fake2.ed_signature = tools::make_from_hex_guts<crypto::ed25519_signature>(
+                                "97da4e261a5a9bef186790563152faad46cd9ec21d07f65cda444dd6766dacf782db0a7a45bbe9039d69551652942b7e91a7941fe2bff657368c91aa3008ea02"sv);
+                        fake2.contributors.emplace_back("0x00979F83287a7eD917faA37bB1DA51f9f7aEb767"_eth, "0x00979F83287a7eD917faA37bB1DA51f9f7aEb767"_eth, 20000'000000000);
+                        add_to_mempool(sc);
+                        state.recent_regs.add(std::move(fake2), h4x0r_height);
+
+                    }
+
 
                     for (const auto& log : *logs) {
                         if (!log.blockNumber) {
