@@ -484,23 +484,6 @@ void BlockchainSQLite::upgrade_schema() {
     {
         db.exec(
                 R"(
-
-        -- Overflow handling for amount and lifetime_rewards: if either get incremented above
-        -- 1M SESH (1M*1e9*1e3 db units) then we overflow the millions of SESH into the `_M` field
-        -- and % 1M sesh the base value, to avoid signed 64-bit integer overflow at ~9.2M SESH.
-        DROP TRIGGER IF EXISTS batched_payments_accrued_overflow;
-        CREATE TRIGGER batched_payments_accrued_overflow
-        AFTER UPDATE OF amount, lifetime_rewards ON batched_payments_accrued
-        FOR EACH ROW WHEN NEW.amount >= 1000000000000000000 OR NEW.lifetime_rewards >= 1000000000000000000
-        BEGIN
-            UPDATE batched_payments_accrued
-            SET amount_M = NEW.amount_M + NEW.amount / 1000000000000000000,
-                amount = NEW.amount % 1000000000000000000,
-                lifetime_rewards_M = NEW.lifetime_rewards_M + NEW.lifetime_rewards / 1000000000000000000,
-                lifetime_rewards = NEW.lifetime_rewards % 1000000000000000000
-            WHERE rowid = NEW.rowid;
-        END;
-
         -- Saves the current payments into their recent table(s) for the current height
         DROP   TRIGGER IF EXISTS make_recent;
         CREATE TRIGGER           make_recent AFTER UPDATE ON batch_db_info
@@ -868,18 +851,35 @@ void BlockchainSQLite::add_sn_rewards(
     ZoneScoped;
     log::trace(logcat, "BlockchainDB_SQLITE::{}", __func__);
 
-    auto insert_payment = prepared_st(R"(
-        INSERT INTO batched_payments_accrued (address, payout_offset, amount)
-            VALUES (?, ?, ?)
-            ON CONFLICT (address) DO UPDATE SET amount = amount + excluded.amount{})"_format(
-            rewards_payment ? ""
-                            : ", lifetime_unlocked_stakes = lifetime_unlocked_stakes + ?"
-                              ", lifetime_liquidated_stakes = lifetime_liquidated_stakes + ?"));
+    std::string query;
+    if (hf_version >= hf::hf21_eth) {
+        if (rewards_payment)
+            query = R"(
+            INSERT INTO batched_payments_accrued (address, amount, lifetime_rewards)
+                VALUES (?1, ?2, ?2)
+                ON CONFLICT (address) DO UPDATE SET
+                    amount = amount + excluded.amount,
+                    lifetime_rewards = lifetime_rewards + excluded.lifetime_rewards
+            RETURNING amount, lifetime_rewards)"s;
+        else
+            query = R"(
+            INSERT INTO batched_payments_accrued (address, amount, lifetime_unlocked_stakes, lifetime_liquidated_stakes)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (address) DO UPDATE SET
+                    amount = amount + excluded.amount,
+                    lifetime_unlocked_stakes = lifetime_unlocked_stakes + excluded.lifetime_unlocked_stakes,
+                    lifetime_liquidated_stakes = lifetime_liquidated_stakes + excluded.lifetime_liquidated_stakes
+            RETURNING amount, lifetime_rewards)"s;
+    } else {
+        assert(rewards_payment);
+        query = R"(
+            INSERT INTO batched_payments_accrued (address, payout_offset, amount)
+                VALUES (?, ?, ?)
+                ON CONFLICT (address) DO UPDATE SET amount = amount + excluded.amount)"s;
+    }
+    auto insert_payment = prepared_st(query);
 
-    auto update_lifetime_rewards = prepared_st(
-            "UPDATE batched_payments_accrued"
-            " SET lifetime_rewards = lifetime_rewards + ?"
-            " WHERE address = ?");
+    constexpr int64_t OVERFLOW_1M = 1000000'000000000'000;
 
     const auto& netconf = get_config(m_nettype);
 
@@ -894,20 +894,30 @@ void BlockchainSQLite::add_sn_rewards(
                 address_str,
                 amount_i64);
 
-        if (rewards_payment) {
-            exec_query(insert_payment, address_str, offset, amount_i64);
-            if (hf_version >= hf::hf21_eth) {
-                exec_query(update_lifetime_rewards, amount_i64, address_str);
-                update_lifetime_rewards->reset();
-            }
+        if (hf_version >= hf::hf21_eth) {
+            auto [new_amt, new_lr] =
+                    rewards_payment ? exec_and_get<int64_t, int64_t>(
+                                              insert_payment, address_str, amount_i64)
+                                    : exec_and_get<int64_t, int64_t>(
+                                              insert_payment,
+                                              address_str,
+                                              amount_i64,
+                                              static_cast<int64_t>(payment.amount.to_db()),
+                                              static_cast<int64_t>(payment.liquidation.to_db()));
+
+            if (new_amt >= OVERFLOW_1M || new_lr >= OVERFLOW_1M)
+                // Crossing this overflow is rare, so don't both prepreparing this statement:
+                prepared_exec(
+                        R"(
+                    UPDATE batched_payments_accrued
+                    SET amount_M = amount_M + amount / {one_M},
+                        amount = amount % {one_M},
+                        lifetime_rewards_M = lifetime_rewards_M + lifetime_rewards / {one_M},
+                        lifetime_rewards = lifetime_rewards % {one_M}
+                    WHERE address = ?)"_format("one_M"_a = OVERFLOW_1M),
+                        address_str);
         } else {
-            exec_query(
-                    insert_payment,
-                    address_str,
-                    offset,
-                    amount_i64,
-                    static_cast<int64_t>(payment.amount.to_db()),
-                    static_cast<int64_t>(payment.liquidation.to_db()));
+            exec_query(insert_payment, address_str, offset, amount_i64);
         }
         insert_payment->reset();
     }
