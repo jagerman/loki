@@ -89,12 +89,22 @@ BlockchainSQLite::BlockchainSQLite(
 
 // Used in queries.  NOTE: does not include `height`!
 static constexpr auto BATCHED_PAYMENTS_COLS =
-        "address, amount, payout_offset, lifetime_locked_stakes, lifetime_unlocked_stakes, "
-        "lifetime_liquidated_stakes, lifetime_rewards"sv;
+        "address, amount, amount_M, payout_offset, "
+        "lifetime_locked_stakes, lifetime_unlocked_stakes, lifetime_liquidated_stakes, "
+        "lifetime_rewards, lifetime_rewards_M"sv;
 static std::string CREATE_BATCHED_PAYMENTS(std::string_view table_name, bool with_height) {
+
+    // NOTE: we use a trigger to overflow amount/lifetime reward values >= 1M SESH into the _M the
+    // `amount` field.  The trigger, however, does not support *decreasing* amounts, and so the code
+    // must never do that once in HF21+ code.  (There is a decrease in pre-HF21 code when a payout
+    // is processed, but that is fine as it is impossible for pre-HF21 amount to get even close to
+    // 1M because rewards gets paid and dropped to 0 every 3.5 days).
+
     std::string result = R"(CREATE TABLE {table}(
   address                    TEXT NOT NULL,
-  amount                     INTEGER NOT NULL DEFAULT 0, -- Claimable amount (lifetime rewards and unlocked stakes)
+  -- Claimable amount = amount + amount_M*1e14 (lifetime rewards and unlocked stakes)
+  amount                     INTEGER NOT NULL DEFAULT 0,
+  amount_M                   INTEGER NOT NULL DEFAULT 0,
   payout_offset              INTEGER,)"_format("table"_a = table_name);
 
     if (with_height)
@@ -102,13 +112,16 @@ static std::string CREATE_BATCHED_PAYMENTS(std::string_view table_name, bool wit
   height                     INTEGER NOT NULL DEFAULT 0, -- Height at which the row was recorded)";
 
     result += R"(
-  lifetime_locked_stakes     INTEGER NOT NULL DEFAULT 0,
-  lifetime_unlocked_stakes   INTEGER NOT NULL DEFAULT 0,
-  lifetime_liquidated_stakes INTEGER NOT NULL DEFAULT 0,
+  lifetime_locked_stakes     INTEGER NOT NULL DEFAULT 0, -- atomic SESH
+  lifetime_unlocked_stakes   INTEGER NOT NULL DEFAULT 0, -- atomic SESH
+  lifetime_liquidated_stakes INTEGER NOT NULL DEFAULT 0, -- atomic SESH
   lifetime_rewards           INTEGER NOT NULL DEFAULT 0, -- Lifetime accumulated rewards (i.e. not including unlocked stakes)
+  lifetime_rewards_M         INTEGER NOT NULL DEFAULT 0, -- 1M+ SESH value of lifetime_reward
   PRIMARY KEY({pk})
   CHECK(amount >= 0)
-);)"_format("table"_a = table_name, "pk"_a = with_height ? "height, address" : "address");
+  CHECK(amount_M >= 0)
+);
+)"_format("table"_a = table_name, "pk"_a = with_height ? "height, address" : "address");
 
     return result;
 }
@@ -356,30 +369,31 @@ void BlockchainSQLite::upgrade_schema() {
 
         const bool is_primary = table == "batched_payments_accrued"sv;
 
-        // The most recent change we've made is to make `payout_offset` nullable, so that's what we
+        // The most recent change we've made is to add `amount_M` so that's what we
         // look for here for our decision of whether to recreate:
-        bool recreate = false;
+        bool recreate = true;
         for (SQLite::Statement msg_cols{db, "PRAGMA main.table_info({})"_format(table)};
              msg_cols.executeStep();) {
-            auto [cid, name, type, notnull] =
-                    db::get<int64_t, std::string, std::string, int>(msg_cols);
-            if (name == "payout_offset"sv) {
-                recreate = notnull;
+            auto [cid, name] = db::get<int64_t, std::string>(msg_cols);
+            if (name == "amount_M"sv) {
+                recreate = false;
                 break;
             }
         }
         if (!recreate)
             continue;
 
-        log::debug(logcat, "Upgrading {} table for consistency", table);
+        log::debug(logcat, "Recreating {} table", table);
 
         db.exec(CREATE_BATCHED_PAYMENTS(
                 "{}_tmp"_format(table),
                 /*with_height=*/!is_primary));
         db.exec("INSERT INTO {table}_tmp ({base_cols}{maybe_height}) SELECT {base_cols}{maybe_height} FROM {table}"_format(
                 "table"_a = table,
-                "base_cols"_a = "address, amount, payout_offset, lifetime_locked_stakes, "
-                                "lifetime_unlocked_stakes, "
+                // We're upgrading from a table without amount_M, so we can't use
+                // BATCHED_PAYMENT_COLS here:
+                "base_cols"_a = "address, amount, payout_offset, "
+                                "lifetime_locked_stakes, lifetime_unlocked_stakes, "
                                 "lifetime_liquidated_stakes, lifetime_rewards",
                 "maybe_height"_a = is_primary ? "" : ", height"));
 
@@ -470,6 +484,23 @@ void BlockchainSQLite::upgrade_schema() {
     {
         db.exec(
                 R"(
+
+        -- Overflow handling for amount and lifetime_rewards: if either get incremented above
+        -- 1M SESH (1M*1e9*1e3 db units) then we overflow the millions of SESH into the `_M` field
+        -- and % 1M sesh the base value, to avoid signed 64-bit integer overflow at ~9.2M SESH.
+        DROP TRIGGER IF EXISTS batched_payments_accrued_overflow;
+        CREATE TRIGGER batched_payments_accrued_overflow
+        AFTER UPDATE OF amount, lifetime_rewards ON batched_payments_accrued
+        FOR EACH ROW WHEN NEW.amount >= 1000000000000000000 OR NEW.lifetime_rewards >= 1000000000000000000
+        BEGIN
+            UPDATE batched_payments_accrued
+            SET amount_M = NEW.amount_M + NEW.amount / 1000000000000000000,
+                amount = NEW.amount % 1000000000000000000,
+                lifetime_rewards_M = NEW.lifetime_rewards_M + NEW.lifetime_rewards / 1000000000000000000,
+                lifetime_rewards = NEW.lifetime_rewards % 1000000000000000000
+            WHERE rowid = NEW.rowid;
+        END;
+
         -- Saves the current payments into their recent table(s) for the current height
         DROP   TRIGGER IF EXISTS make_recent;
         CREATE TRIGGER           make_recent AFTER UPDATE ON batch_db_info
@@ -1441,10 +1472,12 @@ bool BlockchainSQLite::add_block(
     try {
         auto transaction = begin_tx();
 
-        // Goes through the miner transactions vouts checks they are right and marks them as paid in
-        // the database
-        if (!validate_batch_payment(miner_tx_vouts, calculated_rewards, block_height, rescan))
-            return false;
+        if (hf_version < hf::hf21_eth) {
+            // Goes through the miner transactions vouts checks they are right and marks them as
+            // paid in the database.  (HF21+ does not allow miner_txes in a block at all).
+            if (!validate_batch_payment(miner_tx_vouts, calculated_rewards, block_height, rescan))
+                return false;
+        }
 
         reward_handler(block, service_nodes_state, block_add);
         if (hf_version >= hf::hf21_eth)
@@ -1537,7 +1570,6 @@ bool BlockchainSQLite::validate_batch_payment(
     ZoneScoped;
     log::trace(logcat, "BlockchainDB_SQLITE::{}", __func__);
 
-    std::span<const cryptonote::batch_sn_payment> payments = calculated_payments_from_batching_db;
     if (!rescan || !rescan->skip_verify) {
         if (miner_tx_vouts.size() != calculated_payments_from_batching_db.size()) {
             log::error(
@@ -1595,7 +1627,7 @@ bool BlockchainSQLite::validate_batch_payment(
         }
     }
 
-    return save_payments(block_height, payments);
+    return save_payments(block_height, calculated_payments_from_batching_db);
 }
 
 bool BlockchainSQLite::save_payments(
