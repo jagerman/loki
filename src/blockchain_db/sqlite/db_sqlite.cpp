@@ -652,6 +652,12 @@ void BlockchainSQLite::upgrade_schema() {
         --
         -- When pruning we floor to the closest interval to make the SQL table match the equivalent
         -- pruning math ('cull_height') in the SNL at 'process_block()'.
+        --
+        -- It's possible and expected to have conflicts when archiving delayed_payments. For example
+        -- on mainnet, we archive every 10k blocks and a deregistration delayed payment row lasts
+        -- for 21.6k blocks (30 days). If we archive a deregistration, on the next 10k interval,
+        -- it's possible the deregistration is still present in the table and will be attempted to
+        -- be re-archived. We ignore those conflicts as it's expected behaviour.
         DROP   TRIGGER IF EXISTS make_archive;
         CREATE TRIGGER           make_archive AFTER UPDATE ON batch_db_info
         FOR EACH ROW WHEN (NEW.height % {archive_interval}) = 0 AND NEW.height > OLD.height BEGIN
@@ -666,7 +672,8 @@ void BlockchainSQLite::upgrade_schema() {
 
             -- Delayed payments
             INSERT INTO delayed_payments_archive ({delayed_fields})
-                SELECT {delayed_fields} FROM delayed_payments;
+                SELECT {delayed_fields} FROM delayed_payments WHERE true
+                ON CONFLICT (block_height, block_tx_index, contributor_index) DO NOTHING;
             DELETE FROM delayed_payments_archive WHERE height < (NEW.height - {archive_keep});
 
         END;
@@ -791,7 +798,7 @@ void BlockchainSQLite::blockchain_detached(
         prepared_exec(
                 "INSERT INTO delayed_payments ({delayed_fields})"
                 " SELECT {delayed_fields} FROM delayed_payments_{suffix}"
-                " WHERE ? BETWEEN height AND payout_height"_format(
+                " WHERE ?1 >= height AND ?1 < payout_height"_format(
                         "delayed_fields"_a = DELAYED_PAYMENTS_COLS, "suffix"_a = suffix),
                 static_cast<int64_t>(new_height));
     }
@@ -858,19 +865,33 @@ BlockchainSQLite::wallet_info::wallet_info(
             auto rederived =
                     lifetime_unlocked_stakes + lifetime_rewards - lifetime_liquidated_stakes;
             if (amount != rederived) {
-                log::error(
-                        logcat,
-                        "Internal error: SN contributor {} at height {} lifetime claimable "
-                        "mismatch:\n"
-                        "lifetime claimable {} != {} (= {} rewards + {} unlocked - {} liquidated)",
-                        log_addr{tools::make_from_guts<eth::address>(addr_bytes)},
-                        height,
-                        amount,
-                        rederived,
-                        lifetime_rewards,
-                        lifetime_unlocked_stakes,
-                        lifetime_liquidated_stakes);
-                assert(amount == rederived);
+                // clang-format off
+                // NOTE: The affected address that we patched up in the fixups in SNL received a
+                // payment before the fix could be applied so this assert would trigger. 2 blocks
+                // later at 1871520 is when their DB entry is sorted, so we add an exception here to
+                // skip it.
+                //
+                // [sqlite/db_sqlite.cpp:872] Internal error: SN contributor 0x7AaF70e681F17aae9284dC311431341CB7b64A43 at height 1871518 lifetime claimable mismatch:
+                // lifetime claimable 34.840001830887 != 18766.090001830887 (= 16.090001830887 rewards + 18750 unlocked - 0 liquidated)
+                // db_sqlite.cpp:873: wallet_info(...): Assertion `amount == rederived' failed.
+                // clang-format on
+                bool skip = db.nettype == network_type::MAINNET && db.height == 1871518;
+                if (!skip) {
+                    log::error(
+                            logcat,
+                            "Internal error: SN contributor {} at height {} lifetime claimable "
+                            "mismatch:\n"
+                            "lifetime claimable {} != {} (= {} rewards + {} unlocked - {} "
+                            "liquidated)",
+                            log_addr{tools::make_from_guts<eth::address>(addr_bytes)},
+                            height,
+                            amount,
+                            rederived,
+                            lifetime_rewards,
+                            lifetime_unlocked_stakes,
+                            lifetime_liquidated_stakes);
+                    assert(amount == rederived);
+                }
             }
 
             // NOTE: Delayed payments is only supported on ETH addresses
@@ -1719,5 +1740,93 @@ bool BlockchainSQLite::save_payments(
         exec_query(cleanup_st);
     }
     return true;
+}
+
+std::optional<uint64_t> BlockchainSQLite::apply_fixups()
+{
+    std::optional<uint64_t> result;
+    if (nettype == cryptonote::network_type::MAINNET) {
+        struct fixup_record {
+            uint64_t height;
+            uint64_t value;
+            cryptonote::hf hf;
+        } constexpr RECORDS[] = {
+                {1'890'000, 12'826'639'569'804, hf::hf22_eth_fixup},
+                {1'880'000, 12'576'153'824'838, hf::hf22_eth_fixup},
+                {1'870'000, 12'342'509'582'265'973, hf::hf21_eth},
+        };
+
+        int64_t version = prepared_get<int64_t>("PRAGMA user_version");
+        uint64_t earliest_height = (std::end(RECORDS) - 1)->height;
+        if (version == 0 && height >= earliest_height) {
+            // This DB that has synced past the ETH transition and is still on V0 may be affected by
+            // the delayed payments issue that incorrectly rejected rewards payments in blocks
+            // sitting on the archiving interval (due to duplicate delayed payment rows to be
+            // archived) at 1'870'000 and/or 1'880'000
+            //
+            // We verify that here with known correct values on those heights for an arbitrary
+            // address.
+            //
+            // TODO: This is temporary code to migrate all the old DBs to V1 and to ensure everyone
+            // has the correct rewards value. Once a release has been put out with this code, we can
+            // immediately remove this from the codebase.
+            //
+            // The only thing that needs to move is the DB pragma to set the version to 1. This
+            // should be moved into the SQL DB constructor.
+            eth::address addr = tools::make_from_hex_guts<eth::address>(
+                    "0x26b0227617159797b9301a8EA6FB264f17d37Cb4"sv);
+
+            fmt::memory_buffer buf;
+            for (const auto& record : RECORDS) {
+                std::optional<int64_t> amount_db = prepared_maybe_get<int64_t>(
+                        "SELECT amount FROM batched_payments_accrued_archive WHERE address = ? AND "
+                        "height = ?",
+                        db::blob_binder{addr},
+                        static_cast<int64_t>(record.height));
+
+                if (amount_db) {
+                    auto read = reward_money::from_db_amount(*amount_db, record.hf);
+                    auto expected =
+                            cryptonote::reward_money::from_db_amount(record.value, record.hf);
+                    if (read != expected) {
+                        fmt::format_to(
+                                std::back_inserter(buf),
+                                "{}  - Incorrect rewards in archive at blk {}, read: {}, "
+                                "expected: {}",
+                                buf.size() ? "\n" : "",
+                                record.height,
+                                cryptonote::print_money(read.to_coin()),
+                                cryptonote::print_money(expected.to_coin()));
+                        if (!result)
+                            result = record.height;
+                    }
+                }
+            }
+
+            // If there's no rewind height set, it means this node's DB is up to date. But inbetween
+            // this patch being released and it being run on a node, there could be many more 10k
+            // intervals that has elapsed since the hardcoded heights. At any one of those future
+            // 10k intervals the rewards value can potentially diverge so we enforce a rescan
+            // always. Again once you have a v1 database, that signifies you're running a version of
+            // the code that is not affected by this bug and so this code branch can be eliminated.
+            if (result) {
+                log::info(
+                        globallogcat,
+                        "Incorrect rewards detected in SQL DB will be fixed, re-orging to the "
+                        "closest snapshot from blk {} and recalculating\n{}",
+                        *result - 1,
+                        fmt::to_string(buf));
+            } else {
+                result = RECORDS[0].height;
+                log::info(
+                        globallogcat,
+                        "Re-orging to the closest snapshot from blk {} and recalculating "
+                        "rewards",
+                        *result - 1);
+            }
+        }
+        db.exec("PRAGMA user_version = 1");
+    }
+    return result;
 }
 }  // namespace cryptonote

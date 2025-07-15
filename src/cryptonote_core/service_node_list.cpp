@@ -6458,11 +6458,13 @@ service_nodes_infos_t::iterator service_node_list::state_t::erase_info(
 
             uint32_t public_ip = 0;
             uint16_t qnet_port = 0;
+            std::array<uint16_t, 3> version = {};
             if (sn_list) {
                 auto proof_it = sn_list->proofs.find(snpk);
                 if (proof_it != sn_list->proofs.end()) {
                     const std::unique_ptr<uptime_proof::Proof>& proof = proof_it->second.proof;
                     if (proof) {
+                        version = proof->version;
                         public_ip = proof->public_ip;
                         qnet_port = proof->qnet_port;
                     }
@@ -6480,6 +6482,7 @@ service_nodes_infos_t::iterator service_node_list::state_t::erase_info(
                     .type = exit_type,
                     .public_ip = public_ip,
                     .qnet_port = qnet_port,
+                    .version = version,
                     .service_node_pubkey = snpk,
                     .info = *it->second});
         }

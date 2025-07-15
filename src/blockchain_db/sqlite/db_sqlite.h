@@ -262,6 +262,8 @@ class BlockchainSQLite : public db::Database {
     // (for HF21 and earlier blocks) into atomics (expected for HF22+ blocks).
     void convert_hf22();
 
+    std::optional<uint64_t> apply_fixups();
+
     uint64_t height;
     const cryptonote::network_type nettype;
 };
