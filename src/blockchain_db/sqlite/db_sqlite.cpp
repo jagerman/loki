@@ -1742,8 +1742,7 @@ bool BlockchainSQLite::save_payments(
     return true;
 }
 
-std::optional<uint64_t> BlockchainSQLite::apply_fixups()
-{
+std::optional<uint64_t> BlockchainSQLite::apply_fixups() {
     std::optional<uint64_t> result;
     if (nettype == cryptonote::network_type::MAINNET) {
         struct fixup_record {
