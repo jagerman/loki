@@ -1742,22 +1742,24 @@ bool BlockchainSQLite::save_payments(
     return true;
 }
 
-std::optional<uint64_t> BlockchainSQLite::apply_fixups() {
-    std::optional<uint64_t> result;
+BlockchainSQLite::NeedsFixupResult BlockchainSQLite::needs_fixup(bool dry_run) {
+    NeedsFixupResult result = {};
+    result.prev_db_version = prepared_get<int64_t>("PRAGMA user_version");
+
     if (nettype == cryptonote::network_type::MAINNET) {
         struct fixup_record {
             uint64_t height;
             uint64_t value;
             cryptonote::hf hf;
         } constexpr RECORDS[] = {
-                {1'890'000, 12'826'639'569'804, hf::hf22_eth_fixup},
-                {1'880'000, 12'576'153'824'838, hf::hf22_eth_fixup},
                 {1'870'000, 12'342'509'582'265'973, hf::hf21_eth},
+                {1'880'000, 12'576'153'824'838, hf::hf22_eth_fixup},
+                {1'890'000, 12'826'639'569'804, hf::hf22_eth_fixup},
         };
 
-        int64_t version = prepared_get<int64_t>("PRAGMA user_version");
-        uint64_t earliest_height = (std::end(RECORDS) - 1)->height;
-        if (version == 0 && height >= earliest_height) {
+        uint64_t earliest_height = RECORDS[0].height;
+        bool do_checks = dry_run || result.prev_db_version == 0;
+        if (do_checks && height >= earliest_height) {
             // This DB that has synced past the ETH transition and is still on V0 may be affected by
             // the delayed payments issue that incorrectly rejected rewards payments in blocks
             // sitting on the archiving interval (due to duplicate delayed payment rows to be
@@ -1796,8 +1798,8 @@ std::optional<uint64_t> BlockchainSQLite::apply_fixups() {
                                 record.height,
                                 cryptonote::print_money(read.to_coin()),
                                 cryptonote::print_money(expected.to_coin()));
-                        if (!result)
-                            result = record.height;
+                        if (!result.detach_height)
+                            result.detach_height = (record.height - 1);
                     }
                 }
             }
@@ -1808,23 +1810,27 @@ std::optional<uint64_t> BlockchainSQLite::apply_fixups() {
             // 10k intervals the rewards value can potentially diverge so we enforce a rescan
             // always. Again once you have a v1 database, that signifies you're running a version of
             // the code that is not affected by this bug and so this code branch can be eliminated.
-            if (result) {
+            if (result.detach_height) {
                 log::info(
                         globallogcat,
                         "Incorrect rewards detected in SQL DB will be fixed, re-orging to the "
                         "closest snapshot from blk {} and recalculating\n{}",
-                        *result - 1,
+                        *result.detach_height,
                         fmt::to_string(buf));
             } else {
-                result = RECORDS[0].height;
-                log::info(
-                        globallogcat,
-                        "Re-orging to the closest snapshot from blk {} and recalculating "
-                        "rewards",
-                        *result - 1);
+                if (!dry_run) {
+                    result.detach_height = (std::end(RECORDS) - 1)->height - 1;
+                    log::info(
+                            globallogcat,
+                            "Re-orging to the closest snapshot from blk {} and recalculating "
+                            "rewards",
+                            *result.detach_height);
+                }
             }
         }
-        db.exec("PRAGMA user_version = 1");
+
+        if (!dry_run)
+            db.exec("PRAGMA user_version = 1");
     }
     return result;
 }

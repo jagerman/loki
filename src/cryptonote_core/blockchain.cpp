@@ -963,6 +963,10 @@ bool Blockchain::init(
             detach_height = std::max(detach_height, static_cast<uint64_t>(1));
         }
 
+        BlockchainSQLite::NeedsFixupResult fixup_result = m_sqlite_db->needs_fixup(/*dry_run=*/false);
+        if (fixup_result.detach_height)
+            detach_height = std::min(detach_height, *fixup_result.detach_height);
+
         if (!exec_detach_hooks(
                     *this,
                     detach_height,
@@ -973,20 +977,19 @@ bool Blockchain::init(
                     /*use_threaded_load*/ true)) {
             return false;
         }
-    }
 
-    if (std::optional<uint64_t> rewind_to_height = m_sqlite_db->apply_fixups(); rewind_to_height) {
-        if (!exec_detach_hooks(
-                    *this,
-                    (*rewind_to_height - 1),
-                    m_blockchain_detached_hooks,
-                    /*by_pop_blocks*/ false,
-                    /*load_missing_blocks_into_oxen_subsystems*/ true,
-                    abort,
-                    /*use_threaded_load*/ true)) {
-            return false;
+        // Only check the rewards values are correct, just once afterwards, on the initial migration
+        if (fixup_result.prev_db_version == 0) {
+            bool still_wrong = m_sqlite_db->needs_fixup(/*dry_run=*/true).detach_height.has_value();
+            if (still_wrong) {
+                log::warning(
+                        logcat,
+                        "Invalid rewards were detected. A re-org was attempted but the incorrect "
+                        "values are still present. Please notify the developers");
+            }
         }
     }
+
     return true;
 }
 //------------------------------------------------------------------
