@@ -742,7 +742,7 @@ bool Blockchain::load_missing_blocks_into_oxen_subsystems(
 
 static bool exec_detach_hooks(
         Blockchain& blockchain,
-        uint64_t detach_height,
+        uint64_t detach_height,  // The new blockchain height, i.e. top block number is this - 1
         std::span<BlockchainDetachedHook> hooks,
         bool by_pop_blocks,
         bool load_missing_blocks = true,
@@ -963,9 +963,9 @@ bool Blockchain::init(
             detach_height = std::max(detach_height, static_cast<uint64_t>(1));
         }
 
-        BlockchainSQLite::NeedsFixupResult fixup_result = m_sqlite_db->needs_fixup(/*dry_run=*/false);
-        if (fixup_result.detach_height)
-            detach_height = std::min(detach_height, *fixup_result.detach_height);
+        auto fixup_detach = m_sqlite_db->fixup();
+        if (fixup_detach)
+            detach_height = std::min(detach_height, *fixup_detach + 1);
 
         if (!exec_detach_hooks(
                     *this,
@@ -979,14 +979,14 @@ bool Blockchain::init(
         }
 
         // Only check the rewards values are correct, just once afterwards, on the initial migration
-        if (fixup_result.prev_db_version == 0) {
-            bool still_wrong = m_sqlite_db->needs_fixup(/*dry_run=*/true).detach_height.has_value();
-            if (still_wrong) {
-                log::warning(
-                        logcat,
-                        "Invalid rewards were detected. A re-org was attempted but the incorrect "
+        if (fixup_detach) {
+            if (m_sqlite_db->fixup(/*recheck=*/true))
+                log::critical(
+                        globallogcat,
+                        "Invalid rewards were detected. A rescan was attempted but the incorrect "
                         "values are still present. Please notify the developers");
-            }
+            else
+                log::info(globallogcat, "Database fixup and reward rescan applied and confirmed");
         }
     }
 

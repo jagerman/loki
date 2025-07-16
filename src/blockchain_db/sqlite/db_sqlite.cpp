@@ -40,11 +40,11 @@
 #include <sqlite3.h>
 
 #include <cassert>
-#include <functional>
 #include <type_traits>
 #include <variant>
 
 #include "cryptonote_basic/cryptonote_basic.h"
+#include "snapshots.h"
 
 namespace {
 
@@ -171,15 +171,21 @@ CREATE INDEX {table}_height_idx ON {table}(height);
    )"_format("table"_a = table_name);
 }
 
+// Constants for PRAGMA user_version for DB fixup handling:
+constexpr int FIXUP_DELAYED_PAYMENT_REWARDS = 2;
+
+constexpr int FIXUP_MAX = FIXUP_DELAYED_PAYMENT_REWARDS;
+
 void BlockchainSQLite::create_schema() {
     log::trace(logcat, "BlockchainDB_SQLITE::{}", __func__);
     auto& netconf = get_config(nettype);
 
-    if (!table_exists("batched_payments_accrued"))
-        db.exec(CREATE_BATCHED_PAYMENTS("batched_payments_accrued", false));
+    assert(!table_exists("batched_payments_accrued"));
+    db.exec(CREATE_BATCHED_PAYMENTS("batched_payments_accrued", false));
     db.exec(R"(CREATE INDEX IF NOT EXISTS batched_payments_accrued_payout_offset_idx ON batched_payments_accrued(payout_offset);
                CREATE TABLE IF NOT EXISTS batch_db_info(height INTEGER NOT NULL);
                INSERT INTO  batch_db_info(height) VALUES(0);)");
+    db.exec("PRAGMA user_version = {}"_format(FIXUP_MAX));
     log::debug(logcat, "Database setup complete");
 }
 
@@ -275,30 +281,31 @@ void BlockchainSQLite::upgrade_schema() {
         DROP TRIGGER IF EXISTS clear_archive;
         DROP TRIGGER IF EXISTS clear_recent;
         DROP TRIGGER IF EXISTS rollback_payment;
+        DROP TRIGGER IF EXISTS delayed_payments_prune;
+
         DROP TABLE IF EXISTS batched_payments_raw;
         DROP VIEW  IF EXISTS batched_payments_paid;
         DROP TABLE IF EXISTS batched_payments_accrued_raw;
         DROP VIEW  IF EXISTS batched_payments_accrued_paid;
+
+        DROP TABLE IF EXISTS delayed_payments_archive;
+        DROP TABLE IF EXISTS delayed_payments_recent;
     )");
 
-    // delayed_payments: Stores time-locked payments that will be paid out once 'payout_height' is
-    // met. This is typically then for when SN's exit the network, their stake is locked for X
-    // amount of time before the network merges these payments into 'batch_payments_accrued`.
+    // delayed_payments: Stores time-locked payments that will/did pay out when 'payout_height'
+    // is/was reached. This applies when SNs exit the network via dereg: upon confirmation of the
+    // associated event removing the node from the ETH side, we create a row in here which is where
+    // we store the locked stakes until they are due to be released back into the claimable rewards
+    // amount (currently 30 days after dereg, on mainnet).
     //
-    // The network will then uniformly agree to sign a signature to permit the address to withdraw
-    // those tokens from the smart contract.
-    //
-    // delayed_payments_archive: stores copies of 'delayed_payments' rows at intervals of
-    // 'HISTORY_ARCHIVE_INTERVAL' blocks in a rolling window of 'HISTORY_ARCHIVE_KEEP_WINDOW'
-    //
-    // delayed_payments_recent: stores copies of 'batch_payments_accrued' rows at each height in a
-    // rolling window consisting of the past 'HISTORY_RECENT_KEEP_WINDOW' heights.
-    for (auto table : {"delayed_payments", "delayed_payments_archive", "delayed_payments_recent"}) {
-        if (!table_exists(table)) {
-            log::debug(logcat, "Adding {} table to batching db", table);
-            db.exec(CREATE_DELAYED_PAYMENTS(table));
-        }
+    // Note that these rows also serve as their own archive, i.e. they are not cleared after being
+    // paid: rows with a payout_height > current height are to-be-paid, while other rows are archive
+    // rows that are used if the blockchain reorgs.
+    if (!table_exists("delayed_payments")) {
+        log::debug(logcat, "Adding delayed_payments table to batching db");
+        db.exec(CREATE_DELAYED_PAYMENTS("delayed_payments"));
     }
+
     // Not all of these were present if the table was created before 11.4.0:
     db.exec(R"(
         CREATE INDEX IF NOT EXISTS delayed_payments_height_idx ON delayed_payments(height);
@@ -571,43 +578,40 @@ void BlockchainSQLite::upgrade_schema() {
             }
         }
 
-        // Finally we also replace the delayed_payments* tables to use blob addresses, and to store
+        // Finally we also replace the delayed_payments tables to use blob addresses, and to store
         // atomic amounts rather than milli-atomics as the code now expects atomics (and despite
         // being stored as milli-atomics, these values could never have subatomic components).
-        for (auto table :
-             {"delayed_payments", "delayed_payments_archive", "delayed_payments_recent"}) {
 
-            // Safety check first: there should not actually be any sub-atomic values in the tables.
-            {
-                SQLite::Statement no_subatomic_amount{
-                        db,
-                        "SELECT COUNT(*) FROM {table} WHERE"
-                        " amount % {factor} != 0 OR liquidation_amount % {factor} != 0"_format(
-                                "table"_a = table, "factor"_a = BATCH_REWARD_FACTOR)};
-                if (int uhoh = db::exec_and_get<int>(no_subatomic_amount); uhoh > 0)
-                    throw oxen::traced<std::logic_error>{
-                            "Internal error: 11.4.0 transition code found {} {} rows with"
-                            " unexpected sub-atomic amounts"_format(table, uhoh)};
-            }
-
-            db.exec(CREATE_DELAYED_PAYMENTS("{}_tmp"_format(table)));
-            db.exec(
-                    R"(
-            INSERT INTO {table}_tmp
-                (eth_address, amount, liquidation_amount,
-                    payout_height, height, block_height, block_tx_index, contributor_index)
-            SELECT
-                oxen_upgrade_addr_to_blob(eth_address),
-                amount / {factor},
-                liquidation_amount / {factor},
-                payout_height, height, block_height, block_tx_index, contributor_index
-            FROM {table};
-
-            DROP TABLE {table};
-            ALTER TABLE {table}_tmp RENAME TO {table};
-
-            )"_format("table"_a = table, "factor"_a = BATCH_REWARD_FACTOR));
+        // Safety check first: there should not actually be any sub-atomic values in the table.
+        {
+            SQLite::Statement no_subatomic_amount{
+                    db,
+                    "SELECT COUNT(*) FROM delayed_payments WHERE"
+                    " amount % {factor} != 0 OR liquidation_amount % {factor} != 0"_format(
+                            "factor"_a = BATCH_REWARD_FACTOR)};
+            if (int uhoh = db::exec_and_get<int>(no_subatomic_amount); uhoh > 0)
+                throw oxen::traced<std::logic_error>{
+                        "Internal error: 11.4.0 transition code found {} delayed_payments rows with"
+                        " unexpected sub-atomic amounts"_format(uhoh)};
         }
+
+        db.exec(CREATE_DELAYED_PAYMENTS("delayed_payments_tmp"));
+        db.exec(
+                R"(
+        INSERT INTO delayed_payments_tmp
+            (eth_address, amount, liquidation_amount,
+                payout_height, height, block_height, block_tx_index, contributor_index)
+        SELECT
+            oxen_upgrade_addr_to_blob(eth_address),
+            amount / {factor},
+            liquidation_amount / {factor},
+            payout_height, height, block_height, block_tx_index, contributor_index
+        FROM delayed_payments;
+
+        DROP TABLE delayed_payments;
+        ALTER TABLE delayed_payments_tmp RENAME TO delayed_payments;
+
+        )"_format("factor"_a = BATCH_REWARD_FACTOR));
     }
 
     // This code block could be moved, someday, into schema creation to avoid needing to recreate
@@ -618,7 +622,6 @@ void BlockchainSQLite::upgrade_schema() {
     // - make_recent
     // - make_archive
     // - clear_recent_and_archive
-    // - delayed_payments_prune
     //
     // Triggers to maintain the table when blocks are added or the blockchain
     // detaches with the following format specifiers. Note that _order_ of the
@@ -635,12 +638,6 @@ void BlockchainSQLite::upgrade_schema() {
                 SELECT {batched_fields}, NEW.height FROM batched_payments_accrued;
 
             DELETE FROM batched_payments_accrued_recent WHERE height < (NEW.height - {recent_keep});
-
-            -- Delayed payments
-            INSERT INTO delayed_payments_recent ({delayed_fields})
-                SELECT {delayed_fields} FROM delayed_payments WHERE height == NEW.height;
-            DELETE FROM delayed_payments_recent WHERE height < (NEW.height - {recent_keep});
-
         END;
 
         -- Keep a copy of all the rows for payments for this height if it's on an archival
@@ -653,11 +650,9 @@ void BlockchainSQLite::upgrade_schema() {
         -- When pruning we floor to the closest interval to make the SQL table match the equivalent
         -- pruning math ('cull_height') in the SNL at 'process_block()'.
         --
-        -- It's possible and expected to have conflicts when archiving delayed_payments. For example
-        -- on mainnet, we archive every 10k blocks and a deregistration delayed payment row lasts
-        -- for 21.6k blocks (30 days). If we archive a deregistration, on the next 10k interval,
-        -- it's possible the deregistration is still present in the table and will be attempted to
-        -- be re-archived. We ignore those conflicts as it's expected behaviour.
+        -- For delayed_payments we drop any rows that paid out before the oldest archive height,
+        -- since in those cases we won't have the batched_payments_accrued archive and will need a
+        -- full rescan anyway.
         DROP   TRIGGER IF EXISTS make_archive;
         CREATE TRIGGER           make_archive AFTER UPDATE ON batch_db_info
         FOR EACH ROW WHEN (NEW.height % {archive_interval}) = 0 AND NEW.height > OLD.height BEGIN
@@ -667,15 +662,9 @@ void BlockchainSQLite::upgrade_schema() {
                 SELECT {batched_fields}, NEW.height
                 FROM batched_payments_accrued;
 
-            DELETE FROM batched_payments_accrued_archive
-                WHERE height < (NEW.height - {archive_keep});
+            DELETE FROM batched_payments_accrued_archive WHERE height < NEW.height - {archive_keep};
 
-            -- Delayed payments
-            INSERT INTO delayed_payments_archive ({delayed_fields})
-                SELECT {delayed_fields} FROM delayed_payments WHERE true
-                ON CONFLICT (block_height, block_tx_index, contributor_index) DO NOTHING;
-            DELETE FROM delayed_payments_archive WHERE height < (NEW.height - {archive_keep});
-
+            DELETE FROM delayed_payments WHERE payout_height < NEW.height - {archive_keep};
         END;
 
         -- On re-org to a lower height, delete all recent rows that are newer
@@ -689,49 +678,31 @@ void BlockchainSQLite::upgrade_schema() {
             DELETE FROM batched_payments_accrued_archive WHERE height > NEW.height;
 
             -- Delayed payments
-            DELETE FROM delayed_payments_recent          WHERE height > NEW.height;
-            DELETE FROM delayed_payments_archive         WHERE height > NEW.height;
+            DELETE FROM delayed_payments                 WHERE height > NEW.height;
 
-        END;
-
-        -- Delete processed delayed payments from the DB when a block is added to the blockchain
-        DROP TRIGGER IF EXISTS delayed_payments_prune;
-        CREATE TRIGGER         delayed_payments_prune AFTER UPDATE ON batch_db_info
-        FOR EACH ROW WHEN NEW.height > OLD.height BEGIN
-            DELETE FROM delayed_payments WHERE payout_height <= NEW.height;
         END;
         )"_format("recent_keep"_a = netconf.HISTORY_RECENT_KEEP_WINDOW,
                   "archive_interval"_a = netconf.HISTORY_ARCHIVE_INTERVAL,
                   "archive_keep"_a = netconf.HISTORY_ARCHIVE_KEEP_WINDOW,
-                  "batched_fields"_a = BATCHED_PAYMENTS_COLS,
-                  "delayed_fields"_a = DELAYED_PAYMENTS_COLS));
+                  "batched_fields"_a = BATCHED_PAYMENTS_COLS));
     }
 
     // NOTE: Add new liquidation field to delayed payment table
     {
-        std::string_view tables[] = {
-                "delayed_payments",
-                "delayed_payments_archive",
-                "delayed_payments_recent",
-        };
-
-        constexpr std::string_view field = "liquidation_amount";
-        for (auto it : tables) {
-            bool has_field = false;
-            SQLite::Statement msg_cols{db, "PRAGMA main.table_info({})"_format(it)};
-            while (msg_cols.executeStep()) {
-                auto [cid, name] = db::get<int64_t, std::string>(msg_cols);
-                if (name == field) {
-                    has_field = true;
-                    break;
-                }
+        bool has_field = false;
+        SQLite::Statement msg_cols{db, "PRAGMA main.table_info(delayed_payments)"};
+        while (msg_cols.executeStep()) {
+            auto [cid, name] = db::get<int64_t, std::string>(msg_cols);
+            if (name == "liquidation_amount"sv) {
+                has_field = true;
+                break;
             }
-            msg_cols.reset();
-
-            if (!has_field)
-                db.exec("ALTER TABLE {} ADD COLUMN {} INTEGER NOT NULL DEFAULT 0;"_format(
-                        it, field));
         }
+        msg_cols.reset();
+
+        if (!has_field)
+            db.exec("ALTER TABLE delayed_payments ADD COLUMN liquidation_amount INTEGER NOT NULL "
+                    "DEFAULT 0");
     }
 
     if (transaction)
@@ -743,8 +714,6 @@ void BlockchainSQLite::reset_database() {
 
     db.exec(R"(
       DROP TABLE IF EXISTS delayed_payments;
-      DROP TABLE IF EXISTS delayed_payments_archive;
-      DROP TABLE IF EXISTS delayed_payments_recent;
 
       DROP TABLE IF EXISTS batched_payments_accrued;
       DROP TABLE IF EXISTS batched_payments_accrued_archive;
@@ -793,13 +762,6 @@ void BlockchainSQLite::blockchain_detached(
                 "SELECT {batched_fields} FROM batched_payments_accrued_{suffix}"
                 " WHERE height = ?"_format(
                         "batched_fields"_a = BATCHED_PAYMENTS_COLS, "suffix"_a = suffix),
-                static_cast<int64_t>(new_height));
-        prepared_exec("DELETE FROM delayed_payments");
-        prepared_exec(
-                "INSERT INTO delayed_payments ({delayed_fields})"
-                " SELECT {delayed_fields} FROM delayed_payments_{suffix}"
-                " WHERE ?1 >= height AND ?1 < payout_height"_format(
-                        "delayed_fields"_a = DELAYED_PAYMENTS_COLS, "suffix"_a = suffix),
                 static_cast<int64_t>(new_height));
     }
 
@@ -1349,15 +1311,18 @@ static block_payments get_delayed_payments_impl(Results&& rows) {
 block_payments BlockchainSQLite::get_delayed_payments() {
     ZoneScoped;
     return get_delayed_payments_impl(prepared_results<blob_guts<eth::address>, int64_t, int64_t>(
-            "SELECT eth_address, amount, liquidation_amount FROM delayed_payments"s));
+            "SELECT eth_address, amount, liquidation_amount FROM delayed_payments"
+            " WHERE payout_height > ?"s,
+            static_cast<int64_t>(height)));
 }
 
 block_payments BlockchainSQLite::get_delayed_payments(const eth::address& addr) {
     ZoneScoped;
     return get_delayed_payments_impl(prepared_results<blob_guts<eth::address>, int64_t, int64_t>(
             "SELECT eth_address, amount, liquidation_amount FROM delayed_payments"
-            " WHERE eth_address = ?"s,
-            bind_guts(addr)));
+            " WHERE eth_address = ? AND payout_height > ?"s,
+            bind_guts(addr),
+            static_cast<int64_t>(height)));
 }
 
 block_payments BlockchainSQLite::get_delayed_payments(uint64_t payout_height) {
@@ -1742,96 +1707,173 @@ bool BlockchainSQLite::save_payments(
     return true;
 }
 
-BlockchainSQLite::NeedsFixupResult BlockchainSQLite::needs_fixup(bool dry_run) {
-    NeedsFixupResult result = {};
-    result.prev_db_version = prepared_get<int64_t>("PRAGMA user_version");
+std::optional<uint64_t> BlockchainSQLite::fixup(bool recheck) {
+    auto tx = begin_tx();
 
-    if (nettype == cryptonote::network_type::MAINNET) {
-        struct fixup_record {
-            uint64_t height;
-            uint64_t value;
-            cryptonote::hf hf;
-        } constexpr RECORDS[] = {
-                {1'870'000, 12'342'509'582'265'973, hf::hf21_eth},
-                {1'880'000, 12'576'153'824'838, hf::hf22_eth_fixup},
-                {1'890'000, 12'826'639'569'804, hf::hf22_eth_fixup},
-        };
+    auto with_commit = [&tx](std::optional<uint64_t> ret) {
+        if (tx)
+            tx->commit();
+        return ret;
+    };
 
-        uint64_t earliest_height = RECORDS[0].height;
-        bool do_checks = dry_run || result.prev_db_version == 0;
-        if (do_checks && height >= earliest_height) {
-            // This DB that has synced past the ETH transition and is still on V0 may be affected by
-            // the delayed payments issue that incorrectly rejected rewards payments in blocks
-            // sitting on the archiving interval (due to duplicate delayed payment rows to be
-            // archived) at 1'870'000 and/or 1'880'000
-            //
-            // We verify that here with known correct values on those heights for an arbitrary
-            // address.
-            //
-            // TODO: This is temporary code to migrate all the old DBs to V1 and to ensure everyone
-            // has the correct rewards value. Once a release has been put out with this code, we can
-            // immediately remove this from the codebase.
-            //
-            // The only thing that needs to move is the DB pragma to set the version to 1. This
-            // should be moved into the SQL DB constructor.
-            eth::address addr = tools::make_from_hex_guts<eth::address>(
-                    "0x26b0227617159797b9301a8EA6FB264f17d37Cb4"sv);
+    auto prev_db_version = prepared_get<int>("PRAGMA user_version");
+    if (!recheck) {
+        if (prev_db_version >= FIXUP_DELAYED_PAYMENT_REWARDS)
+            return with_commit(std::nullopt);
 
-            fmt::memory_buffer buf;
-            for (const auto& record : RECORDS) {
-                std::optional<int64_t> amount_db = prepared_maybe_get<int64_t>(
-                        "SELECT amount FROM batched_payments_accrued_archive WHERE address = ? AND "
-                        "height = ?",
-                        db::blob_binder{addr},
-                        static_cast<int64_t>(record.height));
+        db.exec("PRAGMA user_version = {}"_format(FIXUP_DELAYED_PAYMENT_REWARDS));
+    } else {
+        assert(prev_db_version >= FIXUP_DELAYED_PAYMENT_REWARDS);
+    }
 
-                if (amount_db) {
-                    auto read = reward_money::from_db_amount(*amount_db, record.hf);
-                    auto expected =
-                            cryptonote::reward_money::from_db_amount(record.value, record.hf);
-                    if (read != expected) {
-                        fmt::format_to(
-                                std::back_inserter(buf),
-                                "{}  - Incorrect rewards in archive at blk {}, read: {}, "
-                                "expected: {}",
-                                buf.size() ? "\n" : "",
-                                record.height,
-                                cryptonote::print_money(read.to_coin()),
-                                cryptonote::print_money(expected.to_coin()));
-                        if (!result.detach_height)
-                            result.detach_height = (record.height - 1);
-                    }
-                }
-            }
+    if (nettype != cryptonote::network_type::MAINNET)
+        return with_commit(std::nullopt);
 
-            // If there's no rewind height set, it means this node's DB is up to date. But inbetween
-            // this patch being released and it being run on a node, there could be many more 10k
-            // intervals that has elapsed since the hardcoded heights. At any one of those future
-            // 10k intervals the rewards value can potentially diverge so we enforce a rescan
-            // always. Again once you have a v1 database, that signifies you're running a version of
-            // the code that is not affected by this bug and so this code branch can be eliminated.
-            if (result.detach_height) {
-                log::info(
-                        globallogcat,
-                        "Incorrect rewards detected in SQL DB will be fixed, re-orging to the "
-                        "closest snapshot from blk {} and recalculating\n{}",
-                        *result.detach_height,
-                        fmt::to_string(buf));
-            } else {
-                if (!dry_run) {
-                    result.detach_height = (std::end(RECORDS) - 1)->height - 1;
-                    log::info(
-                            globallogcat,
-                            "Re-orging to the closest snapshot from blk {} and recalculating "
-                            "rewards",
-                            *result.detach_height);
-                }
-            }
+    auto hf21_started = get_hard_fork_heights(nettype, hf::hf21_eth).first.value();
+    if (height < hf21_started)
+        // If we're before HF21 then there are no fixups to apply because we already have to rescan
+        // the entirety of HF21+ which should get everything right.
+        return with_commit(std::nullopt);
+
+    // If we select a straight sum of all amounts then we would overflow, so select the sum of
+    // values modulo a large (but not too large) prime as a checksum to verify the aggregate amount
+    // without having to resort to 128-bit math:
+    constexpr int64_t CSUM_MOD = 789012345678901;
+    struct fixup_record {
+        int64_t height;
+        int64_t checksum;
+    };
+    constexpr std::array<fixup_record, 4> RECORDS{{
+            {1'860'000, 212'642'223'336'227'860},
+            {1'870'000, 227'908'952'909'310'216},
+            {1'880'000, 19'447'225'076'325'721},
+            {1'890'000, 22'402'200'527'873'036},
+    }};
+
+    // If we can't find a way to do better, the fallback option is to require a rescan from HF21:
+    int64_t detach = hf21_started - 1;
+
+    // We are *always* going to force delete all HF21+ current and recent rows because we just don't
+    // know if they are correct and we need to rescan from one of the known-correct archive heights,
+    // above (or from our reproduced 1890k snapshot, if your node has an invalid 1890k value).
+    if (!recheck) {
+        db::exec_query(
+                db,
+                "DELETE FROM batched_payments_accrued_recent WHERE height >= ?",
+                static_cast<int64_t>(hf21_started));
+        if (height >= hf21_started)
+            db.exec("DELETE FROM batched_payments_accrued");
+    }
+
+    //
+    // We have snapshot data for 1890k, however, so if you were beyond 1890k but 1890k itself is
+    // incorrect, we'll start from there (and just drop any invalid pre-18
+
+    //
+    // ; ultimate as part of this fix, we're going to repopulate the rewards DBs for 1890k we're
+    // going to send you back to the later of   and so you'll always have to rescan from 1890,
+    // above.
+
+    // If any of the archive checksums don't match the above then we will delete it because it isn't
+    // correct and we don't ever want you to use it (e.g. if you every roll back into the range).
+    bool have_snapshot_height = false;
+    for (const auto& [archive_height, checksum] : RECORDS) {
+        auto [db_csum, db_count] = prepared_get<int64_t, int>(
+                "SELECT SUM(amount % ?), COUNT(*) FROM batched_payments_accrued_archive"
+                " WHERE height = ?",
+                CSUM_MOD,
+                archive_height);
+
+        if (!db_count)
+            continue;
+        if (db_csum == checksum) {
+            detach = archive_height;
+            if (archive_height == snapshots::height)
+                have_snapshot_height = true;
+            continue;
+        }
+        if (recheck) {
+            log::critical(
+                    logcat,
+                    "Database fixup recheck failed: still have invalid reward archive checksum "
+                    "at block {} (db: {}, expected: {})",
+                    archive_height,
+                    db_csum,
+                    checksum);
+            return with_commit(0);  // any non-nullopt signifies the failure
         }
 
-        if (!dry_run)
-            db.exec("PRAGMA user_version = 1");
+        log::warning(
+                logcat,
+                "Deleting invalid reward archive at blk {} (checksum failed)",
+                archive_height);
+        db::exec_query(
+                db,
+                "DELETE FROM batched_payments_accrued_archive WHERE height = ?",
+                archive_height);
     }
-    return result;
+
+    if (recheck)
+        return with_commit(std::nullopt);  // Passed all rechecks
+
+    if (height >= static_cast<uint64_t>(snapshots::height) && !have_snapshot_height) {
+        // As long as we are synced above 1'890'000 then we can load our hard-coded snapshot data
+        // into the archive to rescan from there even if you had invalid 1'890'000 reward data.
+        detach = snapshots::height;
+        auto ins = prepared_st(
+                "INSERT INTO batched_payments_accrued_archive ("
+                "address, amount, payout_offset, height, lifetime_locked_stakes, "
+                "lifetime_unlocked_stakes, lifetime_liquidated_stakes, lifetime_rewards"
+                ") VALUES (?, ?, NULL, ?, ?, ?, ?, ?)");
+        for (auto& r : snapshots::batched_payments) {
+            exec_query(
+                    ins,
+                    bind_guts(r.addr),
+                    r.amount,
+                    snapshots::height,
+                    r.lifetime_locked_stakes,
+                    r.lifetime_unlocked_stakes,
+                    r.lifetime_liquidated_stakes,
+                    r.lifetime_rewards);
+            ins->reset();
+        }
+
+        log::warning(logcat, "Loaded reward archive snapshot for height {}", snapshots::height);
+    }
+
+    // Earlier versions had a bug where the delayed_payments table could end up with missing rows
+    // (which then later cause missing rewards when the row should have been released into the
+    // reward table).  Rather than forcing a rescan from the beginning of HF21 we instead load a
+    // hard-coded list of values that include all values up to 1'890'000, so that the rescan doesn't
+    // have to cover as much.
+    db.exec("DELETE FROM delayed_payments");
+    auto ins = prepared_st(
+            "INSERT INTO delayed_payments ("
+            "eth_address, amount, payout_height, height, block_height, block_tx_index, "
+            "contributor_index, liquidation_amount"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    int count = 0;
+    for (auto& [addr, amt, pay_h, h, block_h, block_tx, contr_i, liq] :
+         snapshots::delayed_payments) {
+        // Values are sorted by `height`, and so once we find a height above the height
+        // we're going to detach to there is no need to continue
+        if (h > detach)
+            break;
+        exec_query(ins, bind_guts(addr), amt, pay_h, h, block_h, block_tx, contr_i, liq);
+        count++;
+        ins->reset();
+    }
+    log::warning(
+            logcat,
+            "Repopulated {} delayed_payments rows from snapshot up to height {}",
+            count,
+            detach);
+
+    if (tx)
+        tx->commit();
+
+    log::warning(logcat, "Forcing rescan from block {} to ensure correct reward values", detach);
+    return static_cast<uint64_t>(detach);
 }
+
 }  // namespace cryptonote
