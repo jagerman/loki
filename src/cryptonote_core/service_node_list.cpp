@@ -2997,8 +2997,10 @@ static bool verify_block_components(
             if (alt_block)
                 log::info(logcat, "Alt-block {}:{} verified successfully", height, hash);
 #ifndef NDEBUG
-            auto num_validators = service_nodes::PULSE_QUORUM_NUM_VALIDATORS(block.major_version, active_nodes);
-            auto num_sigs = service_nodes::PULSE_BLOCK_REQUIRED_SIGNATURES(block.major_version, num_validators);
+            auto num_validators =
+                    service_nodes::PULSE_QUORUM_NUM_VALIDATORS(block.major_version, active_nodes);
+            auto num_sigs = service_nodes::PULSE_BLOCK_REQUIRED_SIGNATURES(
+                    block.major_version, num_validators);
 #endif
             assert(block.pulse.validator_bitset != 0);
             assert(block.pulse.validator_bitset < (1 << num_validators));
@@ -3042,7 +3044,8 @@ static bool find_block_in_db(
 void service_node_list::verify_block(
         const cryptonote::block& block,
         bool alt_block,
-        cryptonote::checkpoint_t const* checkpoint) const {
+        cryptonote::checkpoint_t const* checkpoint,
+        size_t active_node_count) const {
     ZoneScoped;
     if (block.major_version < hf::hf9_service_nodes)
         return;
@@ -3179,7 +3182,7 @@ void service_node_list::verify_block(
                     true /*alt_block*/,
                     false /*log_errors*/,
                     timings,
-                    active_service_nodes_count(),
+                    active_node_count,
                     pulse_quorum,
                     alt_pulse_quorums);
 
@@ -3191,7 +3194,7 @@ void service_node_list::verify_block(
                     true /*alt_block*/,
                     false /*log_errors*/,
                     timings,
-                    active_service_nodes_count(),
+                    active_node_count,
                     pulse_quorum,
                     alt_pulse_quorums);
     } else {
@@ -3207,7 +3210,7 @@ void service_node_list::verify_block(
                 false /*alt_block*/,
                 true /*log_errors*/,
                 timings,
-                active_service_nodes_count(),
+                active_node_count,
                 pulse_quorum,
                 alt_pulse_quorums);
     }
@@ -3238,9 +3241,10 @@ void service_node_list::block_add(
         }
 
         std::lock_guard lock(m_sn_mutex);
+        auto active_sn_count = active_service_nodes_count();
         result = process_block(block, txs);
         if (!rescan || !rescan->skip_verify)
-            verify_block(block, false /*alt_block*/, checkpoint);
+            verify_block(block, false /*alt_block*/, checkpoint, active_sn_count);
         if (block.has_pulse()) {
             // NOTE: Only record participation if its a block we recently received.
             // Otherwise processing blocks in retrospect/re-loading on restart seeds
@@ -3252,7 +3256,7 @@ void service_node_list::block_add(
             auto earliest_time = std::chrono::seconds(block.timestamp) - target_block_time;
             auto latest_time = std::chrono::seconds(block.timestamp) + target_block_time;
             const size_t num_validators =
-                    PULSE_QUORUM_NUM_VALIDATORS(block.major_version, active_service_nodes_count());
+                    PULSE_QUORUM_NUM_VALIDATORS(block.major_version, active_sn_count);
 
             if (newest_block && (now >= earliest_time && now <= latest_time)) {
                 std::shared_ptr<const quorum> quorum =
@@ -5438,6 +5442,7 @@ void service_node_list::alt_block_add(const cryptonote::block_add_info& info) {
 
     // NOTE: Generate the next Service Node list state from this Alt block.
     state_t alt_state = *starting_state;
+    auto alt_sn_count = alt_state.active_service_nodes_count();
     alt_state.update_from_block(
             blockchain.db(),
             blockchain.maybe_sqlite_db(),
@@ -5455,7 +5460,7 @@ void service_node_list::alt_block_add(const cryptonote::block_add_info& info) {
     else
         m_transient->alt_state.emplace(block_hash, std::move(alt_state));
 
-    verify_block(block, true /*alt_block*/, info.checkpoint);
+    verify_block(block, true /*alt_block*/, info.checkpoint, alt_sn_count);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

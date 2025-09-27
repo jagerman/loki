@@ -1400,11 +1400,13 @@ class service_node_list {
             crypto::public_key const& pubkey, uint64_t height, uint8_t round, bool participated);
 
     // Verify block against Service Node state that has just been called with
-    // 'state.update_from_block(block)'.
+    // 'state.update_from_block(block)'.  `active_node_count` is the node count at the time the
+    // block was produced (i.e. the count of the previous state, not the just-updated state).
     void verify_block(
             const cryptonote::block& block,
             bool alt_block,
-            cryptonote::checkpoint_t const* checkpoint) const;
+            cryptonote::checkpoint_t const* checkpoint,
+            size_t active_node_count) const;
 
     void reset(bool delete_db_entry = false);
     bool load(uint64_t current_height);
