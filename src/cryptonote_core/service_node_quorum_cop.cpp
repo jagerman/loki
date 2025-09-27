@@ -362,7 +362,7 @@ void quorum_cop::process_quorums(cryptonote::block const& block) {
 
                     // NOTE: Wait at least 2 hours before we're allowed to vote so that we collect
                     // necessary voting information from people on the network
-                    if (live_time < m_core.get_net_config().UPTIME_PROOF_VALIDITY)
+                    if (false && live_time < m_core.get_net_config().UPTIME_PROOF_VALIDITY)
                         continue;
 
                     if (!m_core.service_node())

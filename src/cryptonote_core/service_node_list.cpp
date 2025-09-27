@@ -7301,6 +7301,7 @@ bool service_node_info::can_transition_to_state(
         log::debug(logcat, "SN recommission invalid: not decommissioned");
         return false;
     } else if (
+            false &&
             proposed_state == new_state::deregister &&
             hf_version >= feature::CONCENSUS_DEREG_CHECK) {
         // Before HF23, we didn't enforce this check (but it has always been part of the actual
