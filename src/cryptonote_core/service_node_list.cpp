@@ -7244,7 +7244,10 @@ bool service_node_info::can_be_voted_on(uint64_t height) const {
 }
 
 bool service_node_info::can_transition_to_state(
-        hf hf_version, uint64_t height, new_state proposed_state) const {
+        cryptonote::network_type nettype,
+        hf hf_version,
+        uint64_t height,
+        new_state proposed_state) const {
     if (hf_version >= hf::hf13_enforce_checkpoints) {
         if (!can_be_voted_on(height)) {
             log::debug(
@@ -7295,9 +7298,27 @@ bool service_node_info::can_transition_to_state(
         }
         return true;  // recomm or dereg
     } else if (proposed_state == new_state::recommission) {
-        log::debug(logcat, "SN recommission invalid: not recommissioned");
+        log::debug(logcat, "SN recommission invalid: not decommissioned");
         return false;
+    } else if (
+            proposed_state == new_state::deregister &&
+            hf_version >= feature::CONCENSUS_DEREG_CHECK) {
+        // Before HF23, we didn't enforce this check (but it has always been part of the actual
+        // obligation quorum logic).  Starting at HF23 we enforce it at the chain level so that a
+        // rogue obligation quorum cannot kick perfectly good nodes off the network without
+        // respecting the earned decomm credit.
+        auto credit = quorum_cop::calculate_decommission_credit(nettype, *this, height);
+        auto min_credit = get_config(nettype).BLOCKS_IN(DECOMMISSION_MINIMUM);
+        if (credit >= min_credit) {
+            log::debug(
+                    logcat,
+                    "SN deregister invalid: node has {} blocks (>= min {}) decomm credit",
+                    credit,
+                    min_credit);
+            return false;
+        }
     }
+
     log::trace(logcat, "SN state change is valid");
     return true;
 }
