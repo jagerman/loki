@@ -495,7 +495,7 @@ void quorum_cop::process_quorums(cryptonote::block const& block) {
                                             quorum->workers[node_index]);
                                     vote_for_state = new_state::deregister;  // Credit ran out!
                                 } else {
-                                    if (credit >= netconf.BLOCKS_IN(DECOMMISSION_MINIMUM)) {
+                                    if (false && credit >= netconf.BLOCKS_IN(DECOMMISSION_MINIMUM)) {
                                         vote_for_state = new_state::decommission;
                                         log::debug(
                                                 logcat,
