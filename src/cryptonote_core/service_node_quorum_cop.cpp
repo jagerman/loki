@@ -522,6 +522,7 @@ void quorum_cop::process_quorums(cryptonote::block const& block) {
                             }
 
                             if (vote_for_state == new_state::deregister &&
+                                    false &&
                                 height - *cryptonote::get_hard_fork_heights(
                                                   m_core.get_nettype(), hf_version)
                                                         .first <
