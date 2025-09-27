@@ -510,7 +510,7 @@ void quorum_cop::process_quorums(cryptonote::block const& block) {
                                         log::debug(
                                                 logcat,
                                                 "Service node {} has stopped passing required "
-                                                "checks, but does not ahve sufficient earned "
+                                                "checks, but does not have sufficient earned "
                                                 "credit ({} blocks, {} required) to decommission; "
                                                 "voting to deregister",
                                                 quorum->workers[node_index],
