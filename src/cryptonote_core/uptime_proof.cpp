@@ -103,7 +103,8 @@ Proof::Proof(
     if (l2_height == 0)
         throw oxen::traced<std::runtime_error>{"Invalid L2 height in proof"};
 
-    lokinet_version = proof.maybe<std::array<uint16_t, 3>>("lv").value_or({0, 0, 0});
+    lokinet_version =
+            proof.maybe<std::array<uint16_t, 3>>("lv").value_or(std::array<uint16_t, 3>{0, 0, 0});
 
     pubkey_ed25519 = tools::make_from_guts<crypto::ed25519_public_key>(
             proof.require<std::string_view>("pke"sv));
@@ -117,7 +118,8 @@ Proof::Proof(
     storage_omq_port = proof.require<uint16_t>("sop");
 
     // TODO: we can .require instead of .maybe this after HF23 has happened:
-    session_router_version = proof.maybe<std::array<uint16_t, 3>>("srv").value_or({0, 0, 0});
+    session_router_version =
+            proof.maybe<std::array<uint16_t, 3>>("srv").value_or(std::array<uint16_t, 3>{0, 0, 0});
 
     storage_server_version = proof.require<std::array<uint16_t, 3>>("sv");
 
