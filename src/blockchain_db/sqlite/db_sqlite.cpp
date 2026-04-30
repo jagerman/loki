@@ -35,11 +35,16 @@
 #include <cryptonote_core/blockchain.h>
 #include <cryptonote_core/cryptonote_tx_utils.h>
 #include <cryptonote_core/sesh_transition/sesh_transition.h>
+#include <fmt/chrono.h>
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 #include <sodium.h>
 #include <sqlite3.h>
 
 #include <cassert>
+#include <fstream>
+#include <oxen/log.hpp>
+#include <oxen/log/catlogger.hpp>
 #include <type_traits>
 #include <variant>
 
@@ -1305,6 +1310,44 @@ void BlockchainSQLite::reward_handler(
         assert(delayed.empty());  // There should be no delayed payments before HF21!
 
     add_sn_rewards(block.major_version, std::move(payments), true /*rewards_payment*/);
+
+    // Block scheduled times are determined by the timestamp of the block that first started Pulse
+    // block production: that ended up such that the height mod 720 ends up being the block at the
+    // last block of the day (using UTC time).  E.g. block 2099758 was at 29/4/26, 11:58 pm UTC,
+    // block 2099038 was at 28/4/26, 11:58 pm UTC, and so on.  Thus we use that to trigger print the
+    // daily reward value, so that we print it once per day, on the last block before midnight UTC.
+    // We also print the value at 1852079 because that's the ETH transition height, and so should
+    // contain the exact amounts at the OXEN->SESH conversion.
+    if (auto h = block.get_height(); h == 1852079 || (h > 1852079 && h % 720 == 238)) {
+        constexpr auto LOG_WALLET = "0x0123456789aBcDeF0123456789aBcDeF01234567"sv;
+        static const auto w = oxenc::from_hex(LOG_WALLET.substr(2));
+        if (auto maybe = prepared_maybe_get<int64_t, int64_t, int64_t, int64_t>(
+                    "SELECT lifetime_rewards, lifetime_locked_stakes, lifetime_unlocked_stakes, "
+                    "lifetime_liquidated_stakes FROM batched_payments_accrued WHERE address = ?",
+                    db::blob_binder{w})) {
+            static std::ofstream out{fmt::format("./sesh-rewards-{}.csv", LOG_WALLET), std::ios::app};
+            auto [r, l_l, l_u, l_q] = *maybe;
+
+            // Subtract a couple hours because we are only formatting the date, not the time, and
+            // this ensures that a slight delay just before midnight still shows up at the actual
+            // target date of the relevant block:
+            auto date = "{:%Y-%m-%d}"_format(std::chrono::system_clock::time_point{
+                    std::chrono::seconds{block.timestamp} - 2h});
+            fmt::print(out, "{},{},{},{},{},{}\n", date, h, r, l_l, l_u, l_q);
+            out.flush();
+            log::critical(
+                    log::Cat("REWARD"),
+                    "{}: h={}, r={}, l={}, u={}, q={}\n",
+                    date,
+                    h,
+                    r,
+                    l_l,
+                    l_u,
+                    l_q);
+        } else {
+            log::critical(log::Cat("REWARD"), "no results at h={}", h);
+        }
+    }
 }
 
 template <typename Results>
